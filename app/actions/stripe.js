@@ -1,26 +1,33 @@
-'use server'
+// actions/stripe.js
+'use server';
 
-import { headers } from 'next/headers'
+import { headers } from 'next/headers';
+import { stripe } from '../../lib/stripe';
 
-import { stripe } from '../../lib/stripe'
+export async function fetchClientSecret({ plan, uid }) {
+  const origin = (await headers()).get('origin');
 
-export async function fetchClientSecret() {
-  const origin = (await headers()).get('origin')
+  // Define o priceId conforme o plano
+  let priceId;
+  if (plan === "annual") {
+    priceId = "price_1QyKwWI2qmEooUtqOJ9lCFBl";
+  } else {
+    priceId = "price_1QyKrNI2qmEooUtqKfgYIemz";
+  }
 
-  // Create Checkout Sessions from body params.
+  // Cria a sessão e adiciona em metadata o uid do usuário
   const session = await stripe.checkout.sessions.create({
     ui_mode: 'embedded',
     line_items: [
       {
-        // Provide the exact Price ID (for example, pr_1234) of
-        // the product you want to sell
-        price: 'price_1QyKrNI2qmEooUtqKfgYIemz',
-        quantity: 1
-      }
+        price: priceId,
+        quantity: 1,
+      },
     ],
     mode: 'subscription',
-    return_url: `${origin}/return?session_id={CHECKOUT_SESSION_ID}`,
-  })
+    metadata: { uid }, // vincula a sessão ao usuário
+    return_url: `${origin}/`, // redireciona para a home
+  });
 
-  return session.client_secret
+  return session.client_secret;
 }

@@ -1,11 +1,53 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box } from '@mui/material';
+import { onAuthStateChanged } from 'firebase/auth';
 import AuthForms from './authForms';
 import PlanCard from "./planSelector";
+import ComingSoon from "./comingSoon";
+import firebaseService from "../../lib/firebaseService";
 
 const AuthTemplate = () => {
+    const [currentUser, setCurrentUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [assinouPlano, setAssinouPlano] = useState(false);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(firebaseService.auth, async (user) => {
+            if (user) {
+                setCurrentUser(user);
+                try {
+                    const userData = await firebaseService.getUserData(user.uid);
+                    setAssinouPlano(userData.assinouPlano);
+                } catch (error) {
+                    console.error("Erro ao buscar dados do usuário:", error);
+                }
+            } else {
+                setCurrentUser(null);
+            }
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    if (loading) {
+        // Enquanto os dados carregam, exibe um indicador de loading
+        return <div>Carregando...</div>;
+    }
+
+    let content;
+    if (!currentUser) {
+        // Usuário não autenticado: mostra o formulário de autenticação
+        content = <AuthForms />;
+    } else if (currentUser && !assinouPlano) {
+        // Usuário autenticado, mas sem plano: mostra o selector de plano
+        content = <PlanCard />;
+    } else {
+        // Usuário autenticado e com plano: mostra a tela principal (ou ComingSoon)
+        content = <ComingSoon />;
+    }
+
     return (
         <Box
             sx={{
@@ -33,7 +75,7 @@ const AuthTemplate = () => {
                 }}
             />
 
-            {/* Coluna esquerda: AuthForms centralizado */}
+            {/* Coluna esquerda: conteúdo dinâmico */}
             <Box
                 sx={{
                     flex: 1,
@@ -45,7 +87,7 @@ const AuthTemplate = () => {
                     marginLeft: '40px',
                 }}
             >
-                <PlanCard />
+                {content}
             </Box>
 
             {/* Coluna direita: imagem de fundo */}

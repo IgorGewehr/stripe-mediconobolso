@@ -13,10 +13,9 @@ import {
 } from "@mui/material";
 import React, { useState } from "react";
 import firebaseService from "../../lib/firebaseService";
-import {useRouter} from "next/router";
+import { useRouter } from "next/router";
 
 export const AuthForms = () => {
-
     const [isLogin, setIsLogin] = useState(false);
     const [formData, setFormData] = useState({
         fullName: "",
@@ -26,6 +25,7 @@ export const AuthForms = () => {
         confirmPassword: "",
     });
     const [errors, setErrors] = useState({});
+    const router = useRouter();
 
     const handleToggleForm = () => {
         setIsLogin(!isLogin);
@@ -41,7 +41,7 @@ export const AuthForms = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const formatPhone = (phone) => {
@@ -59,13 +59,11 @@ export const AuthForms = () => {
 
     const handlePhoneBlur = () => {
         const formatted = formatPhone(formData.phone);
-        setFormData(prev => ({ ...prev, phone: formatted }));
+        setFormData((prev) => ({ ...prev, phone: formatted }));
     };
 
     const handleSubmit = async () => {
         // Validação dos campos obrigatórios
-
-
         const newErrors = {};
         if (!formData.email.trim()) newErrors.email = true;
         if (!formData.password.trim()) newErrors.password = true;
@@ -88,14 +86,17 @@ export const AuthForms = () => {
             if (isLogin) {
                 await firebaseService.login(formData.email, formData.password);
                 console.log("Login efetuado com sucesso!");
+                // Redirecionamento pode ser feito aqui, se necessário
             } else {
                 const userData = {
                     fullName: formData.fullName,
                     phone: formData.phone,
                     email: formData.email,
+                    assinouPlano: false, // campo extra para controle de assinatura
                 };
                 await firebaseService.signUp(formData.email, formData.password, userData);
                 console.log("Cadastro efetuado com sucesso!");
+                // Redirecionamento pode ser feito aqui, se necessário
             }
         } catch (error) {
             console.error("Erro na autenticação:", error);
@@ -113,7 +114,13 @@ export const AuthForms = () => {
         >
             {/* Título com animação de entrada */}
             <Slide direction="down" in={true} mountOnEnter unmountOnExit timeout={500}>
-                <Box display="flex" flexDirection="column" alignItems="center" gap={1} width="100%">
+                <Box
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                    gap={1}
+                    width="100%"
+                >
                     <Typography variant="h4" component="h1">
                         {isLogin ? "Entrar" : "Registre-se"}
                     </Typography>
@@ -144,7 +151,9 @@ export const AuthForms = () => {
                             variant="outlined"
                             fullWidth
                             InputProps={{
-                                startAdornment: <InputAdornment position="start">+55</InputAdornment>,
+                                startAdornment: (
+                                    <InputAdornment position="start">+55</InputAdornment>
+                                ),
                             }}
                             sx={{ borderRadius: 8 }}
                             name="phone"
@@ -224,7 +233,12 @@ export const AuthForms = () => {
                     <Typography variant="body2">
                         {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}
                     </Typography>
-                    <Link href="#" color="primary" underline="hover" onClick={handleToggleForm}>
+                    <Link
+                        href="#"
+                        color="primary"
+                        underline="hover"
+                        onClick={handleToggleForm}
+                    >
                         {isLogin ? "Registre-se" : "Entre aqui"}
                     </Link>
                 </Box>

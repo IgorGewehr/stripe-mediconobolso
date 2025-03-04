@@ -3,15 +3,22 @@
 import React, { useState } from "react";
 import { Box, Typography, Button, Switch, Fade } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { useRouter } from "next/navigation";
 
 const PlanCard = () => {
     const [selectedPlan, setSelectedPlan] = useState("annual");
+    const router = useRouter();
     const monthlyPrice = 127;
     const annualTotalPrice = 1143;
     const annualMonthlyPrice = (annualTotalPrice / 12).toFixed(2);
 
     const handleChange = (event) => {
         setSelectedPlan(event.target.checked ? "annual" : "monthly");
+    };
+
+    const handleAssinar = () => {
+        // Navega para a rota de checkout passando o plano selecionado como query parameter
+        router.push(`/checkout?plan=${selectedPlan}`);
     };
 
     return (
@@ -79,6 +86,7 @@ const PlanCard = () => {
                     fontWeight: 600,
                     textTransform: "none",
                 }}
+                onClick={handleAssinar}
             >
                 Assinar Agora
             </Button>

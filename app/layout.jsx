@@ -1,7 +1,6 @@
 // RootLayout.jsx
 import '../styles/global.css';
 import ThemeProvider from "./components/themeProvider";
-import Page from "./page";
 
 export default function RootLayout({ children }) {
     return (
