@@ -17,7 +17,7 @@ const PlanCard = () => {
     };
 
     const handleAssinar = () => {
-        // Navega para a rota de checkout passando o plano selecionado como query parameter
+        // Navega para a rota de checkout com o plano escolhido
         router.push(`/checkout?plan=${selectedPlan}`);
     };
 
