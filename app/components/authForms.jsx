@@ -21,11 +21,89 @@ export const AuthForms = () => {
         fullName: "",
         phone: "",
         email: "",
+        cpf: "",
         password: "",
         confirmPassword: "",
     });
     const [errors, setErrors] = useState({});
     const router = useRouter();
+
+    // ----------------------------------------
+    // Funções auxiliares para formatação e validação
+    // ----------------------------------------
+
+    // Formata o número de telefone ao perder o foco
+    const formatPhone = (phone) => {
+        const digits = phone.replace(/\D/g, "");
+        if (digits.length === 10) {
+            return digits.replace(/(\d{2})(\d{4})(\d{4})/, "$1 $2-$3");
+        } else if (digits.length === 11) {
+            return digits.replace(/(\d{2})(\d{5})(\d{4})/, "$1 $2-$3");
+        }
+        return phone;
+    };
+
+    // Formata o CPF no formato XXX.XXX.XXX-XX
+    const formatCPF = (cpf) => {
+        const digits = cpf.replace(/\D/g, "");
+        if (digits.length === 11) {
+            return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        }
+        return cpf;
+    };
+
+    // Valida se o CPF é correto (cálculo dos dígitos verificadores)
+    const validateCPF = (cpf) => {
+        const digits = cpf.replace(/\D/g, "");
+
+        if (digits.length !== 11 || /^(\d)\1+$/.test(digits)) {
+            return false;
+        }
+
+        // Primeiro dígito verificador
+        let sum = 0;
+        for (let i = 0; i < 9; i++) {
+            sum += parseInt(digits.charAt(i)) * (10 - i);
+        }
+        let firstCheck = (sum * 10) % 11;
+        if (firstCheck === 10 || firstCheck === 11) {
+            firstCheck = 0;
+        }
+        if (firstCheck !== parseInt(digits.charAt(9))) {
+            return false;
+        }
+
+        // Segundo dígito verificador
+        sum = 0;
+        for (let i = 0; i < 10; i++) {
+            sum += parseInt(digits.charAt(i)) * (11 - i);
+        }
+        let secondCheck = (sum * 10) % 11;
+        if (secondCheck === 10 || secondCheck === 11) {
+            secondCheck = 0;
+        }
+
+        return secondCheck === parseInt(digits.charAt(10));
+    };
+
+    // Função completa que formata e valida o CPF, além de checar duplicidade
+    const formatAndValidateCPF = async (cpf) => {
+        const formattedCPF = formatCPF(cpf);
+        const isValid = validateCPF(formattedCPF);
+
+        // Se CPF for inválido, já retornamos indicando isso
+        if (!isValid) {
+            return { formattedCPF, isValid, existsInDB: false };
+        }
+
+        // Se for válido, checa se já existe no banco
+        const existsInDB = await firebaseService.checkUserByCPF(formattedCPF);
+        return { formattedCPF, isValid, existsInDB };
+    };
+
+    // ----------------------------------------
+    // Handlers do formulário
+    // ----------------------------------------
 
     const handleToggleForm = () => {
         setIsLogin(!isLogin);
@@ -33,6 +111,7 @@ export const AuthForms = () => {
             fullName: "",
             phone: "",
             email: "",
+            cpf: "",
             password: "",
             confirmPassword: "",
         });
@@ -44,29 +123,27 @@ export const AuthForms = () => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const formatPhone = (phone) => {
-        // Remove caracteres não numéricos
-        const digits = phone.replace(/\D/g, "");
-        if (digits.length === 10) {
-            // Formata como: XX XXXX-XXXX
-            return digits.replace(/(\d{2})(\d{4})(\d{4})/, "$1 $2-$3");
-        } else if (digits.length === 11) {
-            // Formata como: XX XXXXX-XXXX
-            return digits.replace(/(\d{2})(\d{5})(\d{4})/, "$1 $2-$3");
-        }
-        return phone;
-    };
-
     const handlePhoneBlur = () => {
         const formatted = formatPhone(formData.phone);
         setFormData((prev) => ({ ...prev, phone: formatted }));
     };
 
+    // Se preferir, também podemos formatar o CPF ao perder o foco
+    const handleCPFBlur = async () => {
+        if (formData.cpf.trim()) {
+            const { formattedCPF } = await formatAndValidateCPF(formData.cpf);
+            setFormData((prev) => ({ ...prev, cpf: formattedCPF }));
+        }
+    };
+
     const handleSubmit = async () => {
-        // Validação dos campos obrigatórios
         const newErrors = {};
+
+        // Campos obrigatórios gerais
         if (!formData.email.trim()) newErrors.email = true;
         if (!formData.password.trim()) newErrors.password = true;
+
+        // Campos obrigatórios apenas de cadastro
         if (!isLogin) {
             if (!formData.fullName.trim()) newErrors.fullName = true;
             if (!formData.phone.trim()) newErrors.phone = true;
@@ -74,8 +151,20 @@ export const AuthForms = () => {
             if (formData.password !== formData.confirmPassword) {
                 newErrors.confirmPassword = true;
             }
+
+            // Validação do CPF
+            const { formattedCPF, isValid, existsInDB } = await formatAndValidateCPF(formData.cpf);
+            if (!formData.cpf.trim() || !isValid) {
+                newErrors.cpf = "CPF inválido";
+            } else if (existsInDB) {
+                newErrors.cpf = "CPF já cadastrado";
+            } else {
+                // CPF válido e não existente no DB, podemos sobrescrever o formData com CPF formatado
+                setFormData((prev) => ({ ...prev, cpf: formattedCPF }));
+            }
         }
 
+        // Se houver qualquer erro, exibe e não continua
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             setTimeout(() => setErrors({}), 2000);
@@ -86,23 +175,27 @@ export const AuthForms = () => {
             if (isLogin) {
                 await firebaseService.login(formData.email, formData.password);
                 console.log("Login efetuado com sucesso!");
-                // Redirecionamento pode ser feito aqui, se necessário
+                // Redirecionamento ou outra ação
             } else {
                 const userData = {
                     fullName: formData.fullName,
                     phone: formData.phone,
                     email: formData.email,
-                    assinouPlano: false, // campo extra para controle de assinatura
+                    cpf: formData.cpf, // CPF formatado e validado
+                    assinouPlano: false,
                 };
                 await firebaseService.signUp(formData.email, formData.password, userData);
                 console.log("Cadastro efetuado com sucesso!");
-                // Redirecionamento pode ser feito aqui, se necessário
+                // Redirecionamento ou outra ação
             }
         } catch (error) {
             console.error("Erro na autenticação:", error);
         }
     };
 
+    // ----------------------------------------
+    // Renderização do componente
+    // ----------------------------------------
     return (
         <Box
             display="flex"
@@ -112,7 +205,6 @@ export const AuthForms = () => {
             gap={3}
             sx={{ width: "100%", maxWidth: 400, mx: "auto" }}
         >
-            {/* Título com animação de entrada */}
             <Slide direction="down" in={true} mountOnEnter unmountOnExit timeout={500}>
                 <Box
                     display="flex"
@@ -130,7 +222,6 @@ export const AuthForms = () => {
                 </Box>
             </Slide>
 
-            {/* Campos do formulário */}
             <Stack spacing={2} width="100%">
                 {/* Campos exclusivos de registro */}
                 <Collapse in={!isLogin} timeout={500}>
@@ -155,13 +246,25 @@ export const AuthForms = () => {
                                     <InputAdornment position="start">+55</InputAdornment>
                                 ),
                             }}
-                            sx={{ borderRadius: 8 }}
+                            sx={{ borderRadius: 8, mb: 2 }}
                             name="phone"
                             value={formData.phone}
                             onChange={handleInputChange}
                             onBlur={handlePhoneBlur}
                             error={Boolean(errors.phone)}
                             helperText={errors.phone ? "Campo obrigatório" : ""}
+                        />
+                        <TextField
+                            label="CPF"
+                            variant="outlined"
+                            fullWidth
+                            sx={{ borderRadius: 8 }}
+                            name="cpf"
+                            value={formData.cpf}
+                            onChange={handleInputChange}
+                            onBlur={handleCPFBlur}
+                            error={Boolean(errors.cpf)}
+                            helperText={errors.cpf || ""}
                         />
                     </Box>
                 </Collapse>
@@ -191,7 +294,7 @@ export const AuthForms = () => {
                     helperText={errors.password ? "Campo obrigatório" : ""}
                 />
 
-                {/* Campo de confirmação de senha */}
+                {/* Campo de confirmação de senha para registro */}
                 <Collapse in={!isLogin} timeout={500}>
                     <TextField
                         label="Confirme sua senha"
