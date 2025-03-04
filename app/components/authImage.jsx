@@ -1,6 +1,5 @@
 import { Box, Paper, Typography } from "@mui/material";
 import React from "react";
-import DepoimentPfp from "../components/depoiment_pfp";
 
 const AuthImage = () => {
     return (

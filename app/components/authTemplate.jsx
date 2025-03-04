@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Box } from '@mui/material';
-import AuthForms from './AuthForms';
+import AuthForms from './authForms';
 
 const AuthTemplate = () => {
     return (
