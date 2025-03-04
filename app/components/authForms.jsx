@@ -121,7 +121,7 @@ export const AuthForms = () => {
                     gap={1}
                     width="100%"
                 >
-                    <Typography variant="h4" component="h1">
+                    <Typography variant="h4" component="h1" sx={{ color: 'primary.main' }}>
                         {isLogin ? "Entrar" : "Registre-se"}
                     </Typography>
                     <Typography variant="subtitle1" color="text.secondary">

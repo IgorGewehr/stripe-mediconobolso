@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Box } from '@mui/material';
+import {Box, CircularProgress} from '@mui/material';
 import { onAuthStateChanged } from 'firebase/auth';
 import AuthForms from './authForms';
 import PlanCard from "./planSelector";
@@ -33,7 +33,18 @@ const AuthTemplate = () => {
 
     if (loading) {
         // Enquanto os dados carregam, exibe um indicador de loading
-        return <div>Carregando...</div>;
+        return (
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                }}
+            >
+                <CircularProgress color="primary" />
+            </Box>
+        );
     }
 
     let content;
