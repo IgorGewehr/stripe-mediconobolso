@@ -1,6 +1,16 @@
 "use client";
 
-import { Box, Button, Link, Stack, TextField, Typography, InputAdornment } from "@mui/material";
+import {
+    Box,
+    Button,
+    Link,
+    Stack,
+    TextField,
+    Typography,
+    InputAdornment,
+    Slide,
+    Collapse,
+} from "@mui/material";
 import React, { useState } from "react";
 
 export const AuthForms = () => {
@@ -17,22 +27,31 @@ export const AuthForms = () => {
             alignItems="center"
             justifyContent="center"
             gap={3}
-            position="relative"
             sx={{ width: "100%", maxWidth: 400, mx: "auto" }}
         >
-            <Box display="flex" flexDirection="column" alignItems="center" gap={1} width="100%">
-                <Typography variant="h4" component="h1">
-                    {isLogin ? "Entrar" : "Registre-se"}
-                </Typography>
-                <Typography variant="subtitle1" color="text.secondary">
-                    Tudo que um médico precisa num só lugar!
-                </Typography>
-            </Box>
+            {/* Título com animação de entrada */}
+            <Slide direction="down" in={true} mountOnEnter unmountOnExit timeout={500}>
+                <Box display="flex" flexDirection="column" alignItems="center" gap={1} width="100%">
+                    <Typography variant="h4" component="h1">
+                        {isLogin ? "Entrar" : "Registre-se"}
+                    </Typography>
+                    <Typography variant="subtitle1" color="text.secondary">
+                        Tudo que um médico precisa num só lugar!
+                    </Typography>
+                </Box>
+            </Slide>
 
+            {/* Campos do formulário */}
             <Stack spacing={2} width="100%">
-                {!isLogin && (
-                    <>
-                        <TextField label="Nome Completo" variant="outlined" fullWidth />
+                {/* Campos exclusivos de registro com Collapse */}
+                <Collapse in={!isLogin} timeout={500}>
+                    <Box>
+                        <TextField
+                            label="Nome Completo"
+                            variant="outlined"
+                            fullWidth
+                            sx={{ borderRadius: 8, mb: 2 }}
+                        />
                         <TextField
                             label="Telefone"
                             variant="outlined"
@@ -40,21 +59,38 @@ export const AuthForms = () => {
                             InputProps={{
                                 startAdornment: <InputAdornment position="start">+55</InputAdornment>,
                             }}
+                            sx={{ borderRadius: 8 }}
                         />
-                    </>
-                )}
+                    </Box>
+                </Collapse>
 
-                <TextField label="E-mail" variant="outlined" fullWidth />
-                <TextField label="Senha" type="password" variant="outlined" fullWidth />
-                {!isLogin && (
-                    <TextField label="Confirme sua senha" type="password" variant="outlined" fullWidth />
-                )}
+                {/* Campos comuns */}
+                <TextField label="E-mail" variant="outlined" fullWidth sx={{ borderRadius: 8 }} />
+                <TextField label="Senha" type="password" variant="outlined" fullWidth sx={{ borderRadius: 8 }} />
 
-                <Button variant="contained" color="primary" fullWidth onClick={handleToggleForm}>
+                {/* Campo de confirmação de senha com Collapse */}
+                <Collapse in={!isLogin} timeout={500}>
+                    <TextField
+                        label="Confirme sua senha"
+                        type="password"
+                        variant="outlined"
+                        fullWidth
+                        sx={{ borderRadius: 8 }}
+                    />
+                </Collapse>
+
+                <Button
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    onClick={handleToggleForm}
+                    sx={{ borderRadius: 8, py: 1.5 }}
+                >
                     {isLogin ? "Entrar" : "Registrar"}
                 </Button>
             </Stack>
 
+            {/* Links inferiores */}
             <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
                 <Link href="#" color="secondary" underline="hover">
                     Esqueceu sua senha?

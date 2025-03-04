@@ -1,5 +1,10 @@
-import {redirect} from "next/navigation";
+import Checkout from './components/checkout'
+import AuthTemplate from "./components/authTemplate";
 
-export default function Home() {
-    redirect('/auth');
+export default function Page() {
+  return (
+    <div >
+      <AuthTemplate />
+    </div>
+  )
 }

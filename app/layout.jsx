@@ -1,11 +1,20 @@
+// RootLayout.jsx
+import '../styles/global.css';
 import ThemeProvider from "./components/themeProvider";
-import Checkout from "./components/checkout";
+import Page from "./page";
 
-export default function RootLayout({children}) {
+export default function RootLayout({ children }) {
     return (
         <html lang="pt-br">
+        <head>
+            <title>Médico no Bolso</title>
+            <link rel="icon" href="/logoico.ico" />
+            <meta name="description" content="Médico no Bolso" />
+        </head>
         <body>
-        <Checkout/>
+        <ThemeProvider>
+            <Page />
+        </ThemeProvider>
         </body>
         </html>
     );

@@ -17,22 +17,22 @@ const AuthTemplate = () => {
                 p: 0,
             }}
         >
-            {/* Logo no canto superior esquerdo */}
+            {/* Logo reposicionada: afastada e menor */}
             <Box
                 component="img"
                 src="/logo.png"
                 alt="Logo"
                 sx={{
                     position: 'absolute',
-                    top: 8,
-                    left: 8,
-                    width: 50, // tamanho reduzido
+                    top: 20,
+                    left: 20,
+                    width: 40,
                     height: 'auto',
                     zIndex: 10,
                 }}
             />
 
-            {/* Coluna esquerda: AuthForms */}
+            {/* Coluna esquerda: AuthForms centralizado */}
             <Box
                 sx={{
                     flex: 1,
@@ -41,12 +41,13 @@ const AuthTemplate = () => {
                     justifyContent: 'center',
                     m: 0,
                     p: 0,
+                    marginLeft: '32px',
                 }}
             >
                 <AuthForms />
             </Box>
 
-            {/* Coluna direita: imagem de fundo ocupando exatamente metade da tela */}
+            {/* Coluna direita: imagem de fundo */}
             <Box
                 sx={{
                     flex: 1,
@@ -54,8 +55,9 @@ const AuthTemplate = () => {
                     m: 0,
                     p: 0,
                     backgroundImage: 'url("/fundo.jpg")',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'right bottom',
+                    backgroundRepeat: 'no-repeat',
                 }}
             />
         </Box>
