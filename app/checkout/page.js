@@ -1,9 +1,10 @@
 import Checkout from '../components/checkout'
+import BeforeCheckout from "../components/beforeCheckout";
 
 export default function Page() {
     return (
         <div id="checkout">
-            <Checkout />
+            <BeforeCheckout />
         </div>
     )
 }

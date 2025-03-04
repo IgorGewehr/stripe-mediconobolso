@@ -13,8 +13,10 @@ import {
 } from "@mui/material";
 import React, { useState } from "react";
 import firebaseService from "../../lib/firebaseService";
+import {useRouter} from "next/router";
 
 export const AuthForms = () => {
+
     const [isLogin, setIsLogin] = useState(false);
     const [formData, setFormData] = useState({
         fullName: "",
@@ -62,6 +64,8 @@ export const AuthForms = () => {
 
     const handleSubmit = async () => {
         // Validação dos campos obrigatórios
+
+
         const newErrors = {};
         if (!formData.email.trim()) newErrors.email = true;
         if (!formData.password.trim()) newErrors.password = true;
