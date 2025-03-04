@@ -8,6 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^6.4.6",
     "@stripe/react-stripe-js": "^3.1.1",
     "@stripe/stripe-js": "^5.5.0",
     "micro": "^10.0.0",
@@ -16,5 +19,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "stripe": "^17.5.0"
+  },
+  "devDependencies": {
+    "typescript": "5.8.2"
   }
 }

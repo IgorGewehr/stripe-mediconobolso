@@ -1,9 +1,5 @@
-import Checkout from './components/checkout'
+import {redirect} from "next/navigation";
 
-export default function Page() {
-  return (
-    <div id="checkout">
-      <Checkout />
-    </div>
-  )
+export default function Home() {
+    redirect('/auth');
 }
