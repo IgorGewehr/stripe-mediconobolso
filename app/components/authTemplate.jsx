@@ -3,6 +3,7 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import AuthForms from './authForms';
+import PlanCard from "./planSelector";
 
 const AuthTemplate = () => {
     return (
@@ -41,10 +42,10 @@ const AuthTemplate = () => {
                     justifyContent: 'center',
                     m: 0,
                     p: 0,
-                    marginLeft: '32px',
+                    marginLeft: '40px',
                 }}
             >
-                <AuthForms />
+                <PlanCard />
             </Box>
 
             {/* Coluna direita: imagem de fundo */}

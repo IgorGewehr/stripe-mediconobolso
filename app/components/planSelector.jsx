@@ -1,101 +1,163 @@
 "use client";
 
 import React, { useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, Button, Switch, Fade } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-const PlanSelector = () => {
-    const [selectedPlan, setSelectedPlan] = useState("monthly");
+const PlanCard = () => {
+    const [selectedPlan, setSelectedPlan] = useState("annual");
+    const monthlyPrice = 127;
+    const annualTotalPrice = 1143;
+    const annualMonthlyPrice = (annualTotalPrice / 12).toFixed(2);
 
-    const handleSelect = (plan) => {
-        setSelectedPlan(plan);
+    const handleChange = (event) => {
+        setSelectedPlan(event.target.checked ? "annual" : "monthly");
     };
-
-    // Define a posição do indicador com base no plano selecionado
-    const indicatorLeft = selectedPlan === "monthly" ? "0%" : "50%";
 
     return (
         <Box
             sx={{
-                width: { xs: "100%", sm: 300 },
-                height: 120,
-                position: "relative",
-                border: "1px solid #ccc",
-                borderRadius: 8,
-                overflow: "hidden",
-                cursor: "pointer",
-                boxShadow: 2,
+                width: 400,
+                p: 4,
+                borderRadius: 2,
+                boxShadow: 4,
+                backgroundColor: "background.paper",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
             }}
         >
-            {/* Indicador animado */}
+            {/* Título principal */}
+            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+                Escolha seu Plano
+            </Typography>
+            <Typography
+                variant="subtitle1"
+                sx={{
+                    fontWeight: 600,
+                    mb: 2,
+                    color: "primary.main",
+                }}
+            >
+                {selectedPlan === "monthly"
+                    ? "Plano Mensal"
+                    : "Plano Anual / 25% de desconto"}
+            </Typography>
+
+            {/* Exibição dinâmica do preço */}
+            <Fade in timeout={300}>
+                <Box
+                    sx={{
+                        width: "100%",
+                        p: 2,
+                        borderRadius: 2,
+                        textAlign: "center",
+                        backgroundColor: "white",
+                        transition: "all 0.3s ease",
+                    }}
+                >
+                    {selectedPlan === "monthly" ? (
+                        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                            R$ {monthlyPrice}/mês
+                        </Typography>
+                    ) : (
+                        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                            R$ {annualMonthlyPrice}/mês
+                        </Typography>
+                    )}
+                </Box>
+            </Fade>
+
+            {/* Botão de Assinatura */}
+            <Button
+                variant="contained"
+                color="primary"
+                sx={{
+                    width: "100%",
+                    py: 1.5,
+                    fontWeight: 600,
+                    textTransform: "none",
+                }}
+            >
+                Assinar Agora
+            </Button>
+
+            {/* Seção de funcionalidades */}
+            <Box sx={{ mt: 2, width: "100%" }}>
+                <Typography variant="body1" sx={{ fontWeight: 400, mb: 0 }}>
+                    Acesso completo a todas as funcionalidades premium
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
+                        <Typography variant="body2">
+                            Controle completo de pacientes
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
+                        <Typography variant="body2">
+                            Controle de agenda prático e intuitivo
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
+                        <Typography variant="body2">
+                            Acompanhamento de Exames e Receitas
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
+                        <Typography variant="body2">
+                            Anamnese completa de seus pacientes
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
+                        <Typography variant="body2">Suporte prioritário</Typography>
+                    </Box>
+                </Box>
+            </Box>
+
+            {/* Seletor de planos */}
             <Box
                 sx={{
-                    position: "absolute",
-                    top: 0,
-                    left: indicatorLeft,
-                    width: "50%",
-                    height: "100%",
-                    backgroundColor: "primary.main",
-                    opacity: 0.2,
-                    transition: "left 0.3s ease",
-                    zIndex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mt: 2,
                 }}
-            />
-
-            {/* Conteúdo dos planos */}
-            <Box display="flex" height="100%" zIndex={2}>
-                <Box
-                    flex={1}
-                    display="flex"
-                    flexDirection="column"
-                    alignItems="center"
-                    justifyContent="center"
-                    onClick={() => handleSelect("monthly")}
+            >
+                <Typography
+                    variant="subtitle2"
                     sx={{
-                        transition: "transform 0.3s ease",
-                        "&:hover": { transform: "scale(1.02)" },
+                        color: selectedPlan === "monthly" ? "primary.main" : "text.secondary",
                     }}
                 >
-                    <Typography
-                        variant="h6"
-                        color={selectedPlan === "monthly" ? "primary" : "text.primary"}
-                    >
-                        Mensal
-                    </Typography>
-                    <Typography
-                        variant="subtitle1"
-                        color={selectedPlan === "monthly" ? "primary" : "text.secondary"}
-                    >
-                        R$ 127
-                    </Typography>
-                </Box>
-                <Box
-                    flex={1}
-                    display="flex"
-                    flexDirection="column"
-                    alignItems="center"
-                    justifyContent="center"
-                    onClick={() => handleSelect("annual")}
+                    Mensal
+                </Typography>
+                <Switch
+                    checked={selectedPlan === "annual"}
+                    onChange={handleChange}
+                    color="primary"
                     sx={{
-                        transition: "transform 0.3s ease",
-                        "&:hover": { transform: "scale(1.02)" },
+                        "& .MuiSwitch-thumb": {
+                            boxShadow: 0,
+                        },
+                    }}
+                />
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: selectedPlan === "annual" ? "primary.main" : "text.secondary",
                     }}
                 >
-                    <Typography
-                        variant="h6"
-                        color={selectedPlan === "annual" ? "primary" : "text.primary"}
-                    >
-                        Anual
-                    </Typography>
-                    <Typography
-                        variant="subtitle1"
-                        color={selectedPlan === "annual" ? "primary" : "text.secondary"}
-                    >
-                        R$ 1.143
-                    </Typography>
-                </Box>
+                    Anual
+                </Typography>
             </Box>
         </Box>
     );
 };
 
-export default PlanSelector;
+export default PlanCard;
