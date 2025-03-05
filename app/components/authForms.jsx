@@ -28,11 +28,8 @@ export const AuthForms = () => {
     const [errors, setErrors] = useState({});
     const router = useRouter();
 
-    // ----------------------------------------
     // Funções auxiliares para formatação e validação
-    // ----------------------------------------
 
-    // Formata o número de telefone ao perder o foco
     const formatPhone = (phone) => {
         const digits = phone.replace(/\D/g, "");
         if (digits.length === 10) {
@@ -43,7 +40,6 @@ export const AuthForms = () => {
         return phone;
     };
 
-    // Formata o CPF no formato XXX.XXX.XXX-XX
     const formatCPF = (cpf) => {
         const digits = cpf.replace(/\D/g, "");
         if (digits.length === 11) {
@@ -52,7 +48,6 @@ export const AuthForms = () => {
         return cpf;
     };
 
-    // Valida se o CPF é correto (cálculo dos dígitos verificadores)
     const validateCPF = (cpf) => {
         const digits = cpf.replace(/\D/g, "");
 
@@ -60,7 +55,6 @@ export const AuthForms = () => {
             return false;
         }
 
-        // Primeiro dígito verificador
         let sum = 0;
         for (let i = 0; i < 9; i++) {
             sum += parseInt(digits.charAt(i)) * (10 - i);
@@ -73,7 +67,6 @@ export const AuthForms = () => {
             return false;
         }
 
-        // Segundo dígito verificador
         sum = 0;
         for (let i = 0; i < 10; i++) {
             sum += parseInt(digits.charAt(i)) * (11 - i);
@@ -86,24 +79,19 @@ export const AuthForms = () => {
         return secondCheck === parseInt(digits.charAt(10));
     };
 
-    // Função completa que formata e valida o CPF, além de checar duplicidade
     const formatAndValidateCPF = async (cpf) => {
         const formattedCPF = formatCPF(cpf);
         const isValid = validateCPF(formattedCPF);
 
-        // Se CPF for inválido, já retornamos indicando isso
         if (!isValid) {
             return { formattedCPF, isValid, existsInDB: false };
         }
 
-        // Se for válido, checa se já existe no banco
         const existsInDB = await firebaseService.checkUserByCPF(formattedCPF);
         return { formattedCPF, isValid, existsInDB };
     };
 
-    // ----------------------------------------
     // Handlers do formulário
-    // ----------------------------------------
 
     const handleToggleForm = () => {
         setIsLogin(!isLogin);
@@ -128,7 +116,6 @@ export const AuthForms = () => {
         setFormData((prev) => ({ ...prev, phone: formatted }));
     };
 
-    // Se preferir, também podemos formatar o CPF ao perder o foco
     const handleCPFBlur = async () => {
         if (formData.cpf.trim()) {
             const { formattedCPF } = await formatAndValidateCPF(formData.cpf);
@@ -143,7 +130,7 @@ export const AuthForms = () => {
         if (!formData.email.trim()) newErrors.email = true;
         if (!formData.password.trim()) newErrors.password = true;
 
-        // Campos obrigatórios apenas de cadastro
+        // Campos obrigatórios de cadastro
         if (!isLogin) {
             if (!formData.fullName.trim()) newErrors.fullName = true;
             if (!formData.phone.trim()) newErrors.phone = true;
@@ -151,20 +138,16 @@ export const AuthForms = () => {
             if (formData.password !== formData.confirmPassword) {
                 newErrors.confirmPassword = true;
             }
-
-            // Validação do CPF
             const { formattedCPF, isValid, existsInDB } = await formatAndValidateCPF(formData.cpf);
             if (!formData.cpf.trim() || !isValid) {
                 newErrors.cpf = "CPF inválido";
             } else if (existsInDB) {
                 newErrors.cpf = "CPF já cadastrado";
             } else {
-                // CPF válido e não existente no DB, podemos sobrescrever o formData com CPF formatado
                 setFormData((prev) => ({ ...prev, cpf: formattedCPF }));
             }
         }
 
-        // Se houver qualquer erro, exibe e não continua
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             setTimeout(() => setErrors({}), 2000);
@@ -173,29 +156,35 @@ export const AuthForms = () => {
 
         try {
             if (isLogin) {
-                await firebaseService.login(formData.email, formData.password);
+                // Efetua o login
+                const userCredential = await firebaseService.login(formData.email, formData.password);
                 console.log("Login efetuado com sucesso!");
-                // Redirecionamento ou outra ação
+                // Após o login, busca os dados do usuário para verificar se assinou o plano
+                const userData = await firebaseService.getUserData(userCredential.user.uid);
+                if (!userData.assinouPlano) {
+                    router.push("/checkout");
+                } else {
+                    router.push("/"); // Se já assinou, redireciona para a tela principal (ou outra rota)
+                }
             } else {
+                // Cadastro
                 const userData = {
                     fullName: formData.fullName,
                     phone: formData.phone,
                     email: formData.email,
-                    cpf: formData.cpf, // CPF formatado e validado
+                    cpf: formData.cpf,
                     assinouPlano: false,
                 };
                 await firebaseService.signUp(formData.email, formData.password, userData);
                 console.log("Cadastro efetuado com sucesso!");
-                // Redirecionamento ou outra ação
+                // Após o cadastro, redireciona para a rota de checkout
+                router.push("/checkout");
             }
         } catch (error) {
             console.error("Erro na autenticação:", error);
         }
     };
 
-    // ----------------------------------------
-    // Renderização do componente
-    // ----------------------------------------
     return (
         <Box
             display="flex"
@@ -206,14 +195,8 @@ export const AuthForms = () => {
             sx={{ width: "100%", maxWidth: 400, mx: "auto" }}
         >
             <Slide direction="down" in={true} mountOnEnter unmountOnExit timeout={500}>
-                <Box
-                    display="flex"
-                    flexDirection="column"
-                    alignItems="center"
-                    gap={1}
-                    width="100%"
-                >
-                    <Typography variant="h4" component="h1" sx={{ color: 'primary.main' }}>
+                <Box display="flex" flexDirection="column" alignItems="center" gap={1} width="100%">
+                    <Typography variant="h4" component="h1" sx={{ color: "primary.main" }}>
                         {isLogin ? "Entrar" : "Registre-se"}
                     </Typography>
                     <Typography variant="subtitle1" color="text.secondary">
@@ -242,9 +225,7 @@ export const AuthForms = () => {
                             variant="outlined"
                             fullWidth
                             InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">+55</InputAdornment>
-                                ),
+                                startAdornment: <InputAdornment position="start">+55</InputAdornment>,
                             }}
                             sx={{ borderRadius: 8, mb: 2 }}
                             name="phone"
@@ -336,12 +317,7 @@ export const AuthForms = () => {
                     <Typography variant="body2">
                         {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}
                     </Typography>
-                    <Link
-                        href="#"
-                        color="primary"
-                        underline="hover"
-                        onClick={handleToggleForm}
-                    >
+                    <Link href="#" color="primary" underline="hover" onClick={handleToggleForm}>
                         {isLogin ? "Registre-se" : "Entre aqui"}
                     </Link>
                 </Box>

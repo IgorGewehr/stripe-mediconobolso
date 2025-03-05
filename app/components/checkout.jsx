@@ -1,39 +1,70 @@
-'use client';
+"use client";
 
-import React, { Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
+import { Box, CircularProgress } from '@mui/material';
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { useSearchParams } from 'next/navigation';
-import { fetchClientSecret } from '../actions/stripe';
 import firebaseService from '../../lib/firebaseService';
+import { fetchClientSecret } from '../actions/stripe';
+import PlanCard from './planSelector';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-function CheckoutContent() {
-    // useSearchParams precisa estar dentro de um Suspense boundary
-    const searchParams = useSearchParams();
-    const plan = searchParams.get('plan') || 'monthly';
-
-    // Obtém o usuário autenticado (assegure-se de que ele está logado antes de chegar aqui)
+function CheckoutContent({ selectedPlan }) {
+    // Recupera o usuário autenticado para enviar o uid para o checkout
     const currentUser = firebaseService.auth.currentUser;
     const uid = currentUser ? currentUser.uid : '';
 
     return (
-        <EmbeddedCheckoutProvider
-            stripe={stripePromise}
-            options={{ fetchClientSecret: () => fetchClientSecret({ plan, uid }) }}
-        >
-            <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
+        <Box sx={{ display: 'flex', width: '100vw', height: '100vh' }}>
+            {/* Painel Esquerdo: Informações do plano */}
+            <Box
+                sx={{
+                    flex: 1,
+                    backgroundColor: '#F3F4F6',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}
+            >
+                <PlanCard selectedPlan={selectedPlan} onPlanChange={() => {}} />
+            </Box>
+
+            {/* Painel Direito: Checkout do Stripe */}
+            <Box
+                sx={{
+                    flex: 1,
+                    backgroundColor: '#FFF',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}
+            >
+                <EmbeddedCheckoutProvider
+                    key={selectedPlan} // força a remount quando o plano muda
+                    stripe={stripePromise}
+                    options={{ fetchClientSecret: () => fetchClientSecret({ plan: selectedPlan, uid }) }}
+                >
+                    <EmbeddedCheckout />
+                </EmbeddedCheckoutProvider>
+            </Box>
+        </Box>
     );
 }
 
 export default function Checkout() {
+    // Estado para controlar o plano (inicialmente mensal)
+    const [selectedPlan, setSelectedPlan] = useState("monthly");
+
     return (
-        <div id="checkout">
-            <Suspense fallback={<div>Carregando checkout...</div>}>
-                <CheckoutContent />
-            </Suspense>
-        </div>
+        <Suspense
+            fallback={
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                    <CircularProgress color="primary" />
+                </Box>
+            }
+        >
+            <CheckoutContent selectedPlan={selectedPlan} />
+        </Suspense>
     );
 }

@@ -1,24 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
-import { Box, Typography, Button, Switch, Fade } from "@mui/material";
+import React from "react";
+import { Box, Typography, Switch, Fade } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { useRouter } from "next/navigation";
 
-const PlanCard = () => {
-    const [selectedPlan, setSelectedPlan] = useState("annual");
-    const router = useRouter();
+const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false }) => {
     const monthlyPrice = 127;
     const annualTotalPrice = 1143;
     const annualMonthlyPrice = (annualTotalPrice / 12).toFixed(2);
 
-    const handleChange = (event) => {
-        setSelectedPlan(event.target.checked ? "annual" : "monthly");
-    };
-
-    const handleAssinar = () => {
-        // Navega para a rota de checkout com o plano escolhido
-        router.push(`/checkout?plan=${selectedPlan}`);
+    const handleToggle = (event) => {
+        const newPlan = event.target.checked ? "annual" : "monthly";
+        if (onPlanChange) {
+            onPlanChange(newPlan);
+        }
     };
 
     return (
@@ -35,17 +30,13 @@ const PlanCard = () => {
                 gap: 2,
             }}
         >
-            {/* Título principal */}
+            {/* Título */}
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                Escolha seu Plano
+                Plano Selecionado
             </Typography>
             <Typography
                 variant="subtitle1"
-                sx={{
-                    fontWeight: 600,
-                    mb: 2,
-                    color: "primary.main",
-                }}
+                sx={{ fontWeight: 600, mb: 2, color: "primary.main" }}
             >
                 {selectedPlan === "monthly"
                     ? "Plano Mensal"
@@ -76,20 +67,42 @@ const PlanCard = () => {
                 </Box>
             </Fade>
 
-            {/* Botão de Assinatura */}
-            <Button
-                variant="contained"
-                color="primary"
+            {/* Seção do Toggle para mudar de plano */}
+            <Box
                 sx={{
-                    width: "100%",
-                    py: 1.5,
-                    fontWeight: 600,
-                    textTransform: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mt: 2,
                 }}
-                onClick={handleAssinar}
             >
-                Assinar Agora
-            </Button>
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: selectedPlan === "monthly" ? "primary.main" : "text.secondary",
+                    }}
+                >
+                    Mensal
+                </Typography>
+                <Switch
+                    checked={selectedPlan === "annual"}
+                    onChange={handleToggle}
+                    color="primary"
+                    sx={{
+                        "& .MuiSwitch-thumb": {
+                            boxShadow: 0,
+                        },
+                    }}
+                />
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: selectedPlan === "annual" ? "primary.main" : "text.secondary",
+                    }}
+                >
+                    Anual
+                </Typography>
+            </Box>
 
             {/* Seção de funcionalidades */}
             <Box sx={{ mt: 2, width: "100%" }}>
@@ -126,43 +139,6 @@ const PlanCard = () => {
                         <Typography variant="body2">Suporte prioritário</Typography>
                     </Box>
                 </Box>
-            </Box>
-
-            {/* Seletor de planos */}
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mt: 2,
-                }}
-            >
-                <Typography
-                    variant="subtitle2"
-                    sx={{
-                        color: selectedPlan === "monthly" ? "primary.main" : "text.secondary",
-                    }}
-                >
-                    Mensal
-                </Typography>
-                <Switch
-                    checked={selectedPlan === "annual"}
-                    onChange={handleChange}
-                    color="primary"
-                    sx={{
-                        "& .MuiSwitch-thumb": {
-                            boxShadow: 0,
-                        },
-                    }}
-                />
-                <Typography
-                    variant="subtitle2"
-                    sx={{
-                        color: selectedPlan === "annual" ? "primary.main" : "text.secondary",
-                    }}
-                >
-                    Anual
-                </Typography>
             </Box>
         </Box>
     );
