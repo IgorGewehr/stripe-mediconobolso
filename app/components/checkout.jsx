@@ -42,7 +42,7 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
             <Box
                 sx={{
                     flex: 1,
-                    backgroundColor: '#F3F4F6',
+                    backgroundColor: '#FFF',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
