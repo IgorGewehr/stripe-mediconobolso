@@ -68,9 +68,7 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                         fetchClientSecret: () =>
                             fetchClientSecret({
                                 plan: selectedPlan,
-                                uid,
-                                email: userInfo.email,
-                                name: userInfo.fullName,
+                                uid
                             }),
                     }}
                 >
