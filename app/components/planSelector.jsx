@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Box, Typography, Switch, Fade, Chip } from "@mui/material";
+import { Box, Typography, Switch, Fade } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false }) => {
@@ -16,6 +16,28 @@ const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false })
         }
     };
 
+    // Funcionalidades comuns a todos os planos
+    const commonFeatures = [
+        "Controle completo de pacientes",
+        "Controle de agenda prático e intuitivo",
+        "Acompanhamento de Exames e Receitas",
+        "Anamnese completa de seus pacientes",
+        "Suporte prioritário",
+    ];
+
+    // Funcionalidades exclusivas para o plano anual
+    const annualFeatures = [
+        "Novas funções constantemente",
+        "Atualizações frequentes",
+        "Suporte 24hs",
+    ];
+
+    // Define a lista final de funcionalidades
+    const features =
+        selectedPlan === "annual"
+            ? [...commonFeatures, ...annualFeatures]
+            : commonFeatures;
+
     return (
         <Box
             sx={{
@@ -28,7 +50,6 @@ const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false })
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 2,
-                position: "relative",
                 transition: "transform 0.3s ease, box-shadow 0.3s ease",
                 "&:hover": {
                     transform: "scale(1.02)",
@@ -36,19 +57,22 @@ const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false })
                 },
             }}
         >
-            {/* Label de Teste Gratuito */}
-            <Chip
-                label="15 dias de teste gratuito"
-                color="primary"
+            {/* Banner de Teste Gratuito */}
+            <Box
                 sx={{
-                    position: "absolute",
-                    top: 16,
-                    right: 16,
-                    fontWeight: 600,
+                    width: "100%",
+                    py: 1,
+                    backgroundColor: "primary.main",
+                    borderRadius: 1,
+                    textAlign: "center",
                 }}
-            />
+            >
+                <Typography variant="body2" sx={{ fontWeight: 600, color: "white" }}>
+                    15 dias de teste gratuito
+                </Typography>
+            </Box>
 
-            <Typography variant="h5" sx={{ fontWeight: 600, mt: 2 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, mt: 1 }}>
                 Plano Selecionado
             </Typography>
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "primary.main" }}>
@@ -105,39 +129,15 @@ const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false })
             {/* Seção de Funcionalidades */}
             <Box sx={{ mt: 2, width: "100%" }}>
                 <Typography variant="body1" sx={{ fontWeight: 400, mb: 1 }}>
-                    Acesso completo a todas as funcionalidades premium
+                    Acesso completo a todas as funcionalidades premium:
                 </Typography>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
-                        <Typography variant="body2">
-                            Controle completo de pacientes
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
-                        <Typography variant="body2">
-                            Controle de agenda prático e intuitivo
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
-                        <Typography variant="body2">
-                            Acompanhamento de Exames e Receitas
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
-                        <Typography variant="body2">
-                            Anamnese completa de seus pacientes
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
-                        <Typography variant="body2">
-                            Suporte prioritário
-                        </Typography>
-                    </Box>
+                    {features.map((feature, index) => (
+                        <Box key={index} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
+                            <Typography variant="body2">{feature}</Typography>
+                        </Box>
+                    ))}
                 </Box>
             </Box>
         </Box>
