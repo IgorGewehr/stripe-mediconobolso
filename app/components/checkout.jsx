@@ -10,8 +10,8 @@ import PlanCard from './planSelector';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-function CheckoutContent({ selectedPlan }) {
-    // Recupera o usuário autenticado para enviar o uid para o checkout
+function CheckoutContent({ selectedPlan, onPlanChange }) {
+    // Recupera o UID do usuário autenticado
     const currentUser = firebaseService.auth.currentUser;
     const uid = currentUser ? currentUser.uid : '';
 
@@ -27,7 +27,7 @@ function CheckoutContent({ selectedPlan }) {
                     alignItems: 'center',
                 }}
             >
-                <PlanCard selectedPlan={selectedPlan} onPlanChange={() => {}} />
+                <PlanCard selectedPlan={selectedPlan} onPlanChange={onPlanChange} />
             </Box>
 
             {/* Painel Direito: Checkout do Stripe */}
@@ -41,7 +41,7 @@ function CheckoutContent({ selectedPlan }) {
                 }}
             >
                 <EmbeddedCheckoutProvider
-                    key={selectedPlan} // força a remount quando o plano muda
+                    key={selectedPlan} // força remount quando o plano muda
                     stripe={stripePromise}
                     options={{ fetchClientSecret: () => fetchClientSecret({ plan: selectedPlan, uid }) }}
                 >
@@ -59,12 +59,19 @@ export default function Checkout() {
     return (
         <Suspense
             fallback={
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: '100vh',
+                    }}
+                >
                     <CircularProgress color="primary" />
                 </Box>
             }
         >
-            <CheckoutContent selectedPlan={selectedPlan} />
+            <CheckoutContent selectedPlan={selectedPlan} onPlanChange={setSelectedPlan} />
         </Suspense>
     );
 }

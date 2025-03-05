@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import {Box, CircularProgress} from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
 import { onAuthStateChanged } from 'firebase/auth';
 import AuthForms from './authForms';
-import PlanCard from "./planSelector";
-import ComingSoon from "./comingSoon";
-import firebaseService from "../../lib/firebaseService";
+import ComingSoon from './comingSoon';
+import firebaseService from '../../lib/firebaseService';
+import { useRouter } from 'next/navigation';
 
 const AuthTemplate = () => {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [assinouPlano, setAssinouPlano] = useState(false);
+    const router = useRouter();
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(firebaseService.auth, async (user) => {
@@ -20,6 +21,10 @@ const AuthTemplate = () => {
                 try {
                     const userData = await firebaseService.getUserData(user.uid);
                     setAssinouPlano(userData.assinouPlano);
+                    // Se o usuário está autenticado mas ainda não assinou, redireciona para "/checkout"
+                    if (!userData.assinouPlano) {
+                        router.push("/checkout");
+                    }
                 } catch (error) {
                     console.error("Erro ao buscar dados do usuário:", error);
                 }
@@ -29,10 +34,9 @@ const AuthTemplate = () => {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [router]);
 
     if (loading) {
-        // Enquanto os dados carregam, exibe um indicador de loading
         return (
             <Box
                 sx={{
@@ -49,13 +53,8 @@ const AuthTemplate = () => {
 
     let content;
     if (!currentUser) {
-        // Usuário não autenticado: mostra o formulário de autenticação
         content = <AuthForms />;
-    } else if (currentUser && !assinouPlano) {
-        // Usuário autenticado, mas sem plano: mostra o selector de plano
-        content = <PlanCard />;
-    } else {
-        // Usuário autenticado e com plano: mostra a tela principal (ou ComingSoon)
+    } else if (currentUser && assinouPlano) {
         content = <ComingSoon />;
     }
 
@@ -71,7 +70,6 @@ const AuthTemplate = () => {
                 p: 0,
             }}
         >
-            {/* Logo reposicionada: afastada e menor */}
             <Box
                 component="img"
                 src="/logo.png"
@@ -86,7 +84,6 @@ const AuthTemplate = () => {
                 }}
             />
 
-            {/* Coluna esquerda: conteúdo dinâmico */}
             <Box
                 sx={{
                     flex: 1,
@@ -101,7 +98,6 @@ const AuthTemplate = () => {
                 {content}
             </Box>
 
-            {/* Coluna direita: imagem de fundo */}
             <Box
                 sx={{
                     flex: 1,

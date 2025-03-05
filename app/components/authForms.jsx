@@ -82,11 +82,9 @@ export const AuthForms = () => {
     const formatAndValidateCPF = async (cpf) => {
         const formattedCPF = formatCPF(cpf);
         const isValid = validateCPF(formattedCPF);
-
         if (!isValid) {
             return { formattedCPF, isValid, existsInDB: false };
         }
-
         const existsInDB = await firebaseService.checkUserByCPF(formattedCPF);
         return { formattedCPF, isValid, existsInDB };
     };
@@ -156,18 +154,15 @@ export const AuthForms = () => {
 
         try {
             if (isLogin) {
-                // Efetua o login
                 const userCredential = await firebaseService.login(formData.email, formData.password);
                 console.log("Login efetuado com sucesso!");
-                // Após o login, busca os dados do usuário para verificar se assinou o plano
                 const userData = await firebaseService.getUserData(userCredential.user.uid);
                 if (!userData.assinouPlano) {
                     router.push("/checkout");
                 } else {
-                    router.push("/"); // Se já assinou, redireciona para a tela principal (ou outra rota)
+                    router.push("/"); // Se já assinou, redireciona para a tela principal
                 }
             } else {
-                // Cadastro
                 const userData = {
                     fullName: formData.fullName,
                     phone: formData.phone,
@@ -177,7 +172,6 @@ export const AuthForms = () => {
                 };
                 await firebaseService.signUp(formData.email, formData.password, userData);
                 console.log("Cadastro efetuado com sucesso!");
-                // Após o cadastro, redireciona para a rota de checkout
                 router.push("/checkout");
             }
         } catch (error) {
