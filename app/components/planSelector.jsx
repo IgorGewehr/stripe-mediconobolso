@@ -68,7 +68,7 @@ const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false })
                 }}
             >
                 <Typography variant="body2" sx={{ fontWeight: 600, color: "white" }}>
-                    15 dias de teste gratuito
+                    7 dias de teste gratuito
                 </Typography>
             </Box>
 

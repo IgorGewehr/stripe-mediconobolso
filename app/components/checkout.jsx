@@ -60,6 +60,7 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
+                    marginLeft: '40px'
                 }}
             >
                 <PlanCard selectedPlan={selectedPlan} onPlanChange={onPlanChange} />
