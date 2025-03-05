@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Box, Typography, Switch, Fade } from "@mui/material";
+import { Box, Typography, Switch, Fade, Chip } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false }) => {
@@ -21,16 +21,34 @@ const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false })
             sx={{
                 width: 400,
                 p: 4,
-                borderRadius: 2,
+                borderRadius: 3,
                 boxShadow: 4,
                 backgroundColor: "background.paper",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 2,
+                position: "relative",
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                "&:hover": {
+                    transform: "scale(1.02)",
+                    boxShadow: 6,
+                },
             }}
         >
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+            {/* Label de Teste Gratuito */}
+            <Chip
+                label="15 dias de teste gratuito"
+                color="primary"
+                sx={{
+                    position: "absolute",
+                    top: 16,
+                    right: 16,
+                    fontWeight: 600,
+                }}
+            />
+
+            <Typography variant="h5" sx={{ fontWeight: 600, mt: 2 }}>
                 Plano Selecionado
             </Typography>
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "primary.main" }}>
@@ -43,10 +61,10 @@ const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false })
                 <Box
                     sx={{
                         width: "100%",
-                        p: 2,
+                        p: 3,
                         borderRadius: 2,
                         textAlign: "center",
-                        backgroundColor: "white",
+                        backgroundColor: "grey.50",
                         transition: "all 0.3s ease",
                     }}
                 >
@@ -84,12 +102,12 @@ const PlanCard = ({ selectedPlan = "annual", onPlanChange, showButton = false })
                 </Typography>
             </Box>
 
-            {/* Seção de funcionalidades */}
+            {/* Seção de Funcionalidades */}
             <Box sx={{ mt: 2, width: "100%" }}>
-                <Typography variant="body1" sx={{ fontWeight: 400, mb: 0 }}>
+                <Typography variant="body1" sx={{ fontWeight: 400, mb: 1 }}>
                     Acesso completo a todas as funcionalidades premium
                 </Typography>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <CheckCircleIcon fontSize="small" sx={{ color: "primary.main" }} />
                         <Typography variant="body2">

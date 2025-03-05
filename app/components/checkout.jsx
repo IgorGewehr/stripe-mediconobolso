@@ -38,6 +38,20 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
 
     return (
         <Box sx={{ display: 'flex', width: '100vw', height: '100vh' }}>
+            <Box
+                component="img"
+                src="/logo.png"
+                alt="Logo"
+                sx={{
+                    position: 'absolute',
+                    top: 20,
+                    left: 20,
+                    width: 40,
+                    height: 'auto',
+                    zIndex: 10,
+                }}
+            />
+
             {/* Painel Esquerdo: Exibe o PlanCard com o toggle para mudar o plano */}
             <Box
                 sx={{
