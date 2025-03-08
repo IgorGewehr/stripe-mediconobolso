@@ -6,7 +6,7 @@ import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe
 import { loadStripe } from '@stripe/stripe-js';
 import firebaseService from '../../lib/firebaseService';
 import { fetchClientSecret } from '../actions/stripe';
-import PlanCard from './planSelector';
+import PlanCard from './organismsComponents/planSelector';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 

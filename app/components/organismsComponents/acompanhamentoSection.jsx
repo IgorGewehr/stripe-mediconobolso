@@ -1,9 +1,9 @@
 "use client";
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import ReceitasCard from "./ReceitasCard";
-import ExamesCard from "./ExamesCard";
-import AnamneseCard from "./anamneseCard";
+import ReceitasCard from "../basicComponents/receitasCard";
+import ExamesCard from "../basicComponents/examesCard";
+import AnamneseCard from "../basicComponents/anamneseCard";
 
 const AcompanhamentoSection = () => {
     return (

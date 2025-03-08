@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { onAuthStateChanged } from 'firebase/auth';
-import AuthForms from './authForms';
-import ComingSoon from './comingSoon';
+import AuthForms from './organismsComponents/authForms';
+import ComingSoon from './organismsComponents/comingSoon';
 import firebaseService from '../../lib/firebaseService';
 import { useRouter } from 'next/navigation';
 

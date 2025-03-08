@@ -12,7 +12,7 @@ import {
     Collapse,
 } from "@mui/material";
 import React, { useState } from "react";
-import firebaseService from "../../lib/firebaseService";
+import firebaseService from "../../../lib/firebaseService";
 import { useRouter } from "next/navigation";
 
 export const AuthForms = () => {

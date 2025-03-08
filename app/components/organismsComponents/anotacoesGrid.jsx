@@ -1,8 +1,8 @@
 "use client";
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import CriarNovaFichaButton from "./basicComponents/criarNovaFichaButton";
-import AnotacoesCard from "./basicComponents/anotacoesCard";
+import CriarNovaFichaButton from "../basicComponents/criarNovaFichaButton";
+import AnotacoesCard from "../basicComponents/anotacoesCard";
 
 // O componente recebe uma lista de notas por props
 const AnotacoesGrid = ({ notas = [] }) => {
@@ -10,8 +10,8 @@ const AnotacoesGrid = ({ notas = [] }) => {
         <Box
             sx={{
                 width: "1110px",
-                // Tenta usar fundo transparente; se não, fallback para #D8E8FF
-                background: "transparent", // se necessário, substitua por "#D8E8FF"
+                // Fundo transparente, ou "#D8E8FF" se preferir
+                background: "transparent",
                 boxSizing: "border-box",
             }}
         >
@@ -45,13 +45,17 @@ const AnotacoesGrid = ({ notas = [] }) => {
 
             {/* Espaçamento de 37px abaixo do header */}
             <Box sx={{ mt: "37px" }}>
-                {/* Grid de notas */}
+                {/* Grid de notas com scroll vertical se houver mais de 4 linhas */}
                 <Box
                     sx={{
                         display: "grid",
                         gap: "20px",
-                        // Aqui definimos um grid responsivo; ajuste o minmax conforme o tamanho médio do card
                         gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+                        // Estimando altura máxima para 4 linhas de cards:
+                        // Por exemplo, se o card tem altura máxima de 101px e gap de 20px entre linhas:
+                        // total = 4*101 + 3*20 = 404 + 60 = 464px.
+                        maxHeight: "464px",
+                        overflowY: "auto",
                     }}
                 >
                     {notas.map((nota, index) => (
