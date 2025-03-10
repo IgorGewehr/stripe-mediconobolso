@@ -24,6 +24,8 @@ const AuthTemplate = () => {
                     // Se o usuário está autenticado mas ainda não assinou, redireciona para "/checkout"
                     if (!userData.assinouPlano) {
                         router.push("/checkout");
+                    }else{
+                        router.push("/app");
                     }
                 } catch (error) {
                     console.error("Erro ao buscar dados do usuário:", error);

@@ -3,12 +3,11 @@
 import React, { useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 
-const Sidebar = ({ initialSelected = "Dashboard", userName = "Médico", onMenuSelect }) => {
+const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRole = "Cirurgião", onMenuSelect }) => {
     const [selected, setSelected] = useState(initialSelected);
-    const firstName = userName.split(" ")[0];
 
     const principalItems = [
-        { label: "Dashboard", icon: "/dashboard.svg" },
+        { label: "Dashboard", icon: "/dashboardico.svg" },
         { label: "Pacientes", icon: "/pacientes.svg" },
         { label: "Receitas", icon: "/receitas.svg" },
         { label: "Agenda", icon: "/agenda.svg" },
@@ -24,153 +23,157 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Médico", onMenuSe
         if (onMenuSelect) onMenuSelect(label);
     };
 
-    const nonSelectedButtonStyles = {
-        color: "#111E5A",
-        fontFamily: "Gellix",
-        fontSize: "16px",
-        fontWeight: 500,
-        textTransform: "none",
+    const buttonStyles = (isSelected) => ({
+        display: "flex",
+        alignItems: "center",
         justifyContent: "flex-start",
-        px: 1,
-        "&:hover": {
-            backgroundColor: "rgba(0,0,0,0.05)",
-        },
-    };
-
-    const selectedButtonStyles = {
-        width: "148px",
-        height: "33px",
-        borderRadius: "99px",
-        opacity: 0.77,
-        backgroundColor: "#2971FF",
-        color: "#FFF",
-        fontFamily: "Gellix",
-        fontSize: "16px",
+        fontFamily: "Gellix, sans-serif",
+        fontSize: "14px", // Reduzido o tamanho da fonte
         fontWeight: 500,
         textTransform: "none",
-    };
+        width: "100%",
+        height: "36px", // Reduzido a altura do botão
+        px: 2,
+        py: 1,
+        my: 0.5,
+        borderRadius: "18px", // Ajustado para metade da altura para manter a proporção
+        transition: "background-color 0.2s ease, color 0.2s ease",
+        color: isSelected ? "#FFF" : "#111E5A",
+        backgroundColor: isSelected ? "#4285F4" : "transparent",
+        opacity: isSelected ? 0.77 : 1, // Adicionada a opacidade conforme solicitado
+        "&:hover": {
+            backgroundColor: isSelected ? "#4285F4" : "rgba(66, 133, 244, 0.08)",
+        },
+    });
 
     const iconStyles = {
-        width: "16px",
-        height: "16px",
-        mr: 1,
+        width: "18px", // Reduzido o tamanho do ícone
+        height: "18px",
+        mr: 1.2,
+    };
+
+    const categoryLabelStyle = {
+        color: "#8A94A6",
+        fontFamily: "Gellix, sans-serif",
+        fontSize: "12px", // Reduzido o tamanho da fonte
+        fontWeight: 500,
+        mb: 0.8,
+        mt: 2.5,
+        ml: 1.5,
     };
 
     return (
         <Box
             sx={{
-                backgroundColor: "#89BDFF",
+                backgroundColor: "#F8FAFF",
                 height: "100vh",
-                width: "250px",
+                width: "240px",
                 position: "relative",
-                p: 2,
+                pl: "30px", // Padding-left de 30px conforme solicitado
+                pr: "16px",
+                pt: "30px", // Padding-top de 30px conforme solicitado
                 boxSizing: "border-box",
+                display: "flex",
+                flexDirection: "column",
             }}
         >
             {/* Logo e Títulos */}
-            <Box sx={{ display: "flex", alignItems: "center" }}>
+            <Box sx={{ display: "flex", alignItems: "center", mb: 4, ml: 0 }}>
                 <Box
                     component="img"
                     src="/ico.svg"
                     alt="Logo"
-                    sx={{ width: "44px", height: "47.466px", flexShrink: 0 }}
+                    sx={{ width: "47px", height: "44px", flexShrink: 0, ml: "4px" }} // Aumentado o tamanho da logo
                 />
-                <Box sx={{ ml: 1 }}>
+                <Box sx={{ ml: "10px" }}>
                     <Typography
                         sx={{
-                            color: "#2971FF",
-                            fontFamily: "Gellix",
-                            fontSize: "23.855px",
-                            fontWeight: 400,
+                            color: "#4285F4",
+                            fontFamily: "Gellix, sans-serif",
+                            fontSize: "18px", // Reduzido proporcionalmente em relação à logo
+                            fontWeight: 500,
+                            lineHeight: 1.2,
                         }}
                     >
                         Médico
                     </Typography>
                     <Typography
                         sx={{
-                            color: "#31343A",
-                            fontFamily: "Gellix",
-                            fontSize: "9.19px",
-                            letterSpacing: "3.033px",
-                            fontWeight: 400,
+                            color: "#8A94A6",
+                            fontFamily: "Gellix, sans-serif",
+                            fontSize: "9px", // Reduzido tamanho
+                            letterSpacing: "2px",
+                            fontWeight: 500,
+                            lineHeight: 1.2,
+                            opacity: 0.9, // Adicionado opacity conforme solicitado
                         }}
                     >
-                        no bolso
+                        NO BOLSO
                     </Typography>
                 </Box>
             </Box>
 
             {/* Seção de Menu */}
-            <Box sx={{ mt: "78.53px" }}>
+            <Box sx={{ flex: 1 }}>
                 {/* Categoria Principal */}
-                <Typography
-                    sx={{
-                        color: "#111E5A",
-                        fontFamily: "Gellix",
-                        fontSize: "14px",
-                        fontWeight: 500,
-                        opacity: 0.33,
-                    }}
-                >
+                <Typography sx={categoryLabelStyle}>
                     Principal
                 </Typography>
                 <Box>
-                    {principalItems.map((item, index) => (
-                        <Box key={item.label} sx={{ mt: index === 0 ? "23px" : "25px" }}>
+                    {principalItems.map((item) => {
+                        const isSelected = selected === item.label;
+                        return (
                             <Button
+                                key={item.label}
                                 onClick={() => handleMenuClick(item.label)}
-                                variant={selected === item.label ? "contained" : "text"}
-                                sx={selected === item.label ? selectedButtonStyles : nonSelectedButtonStyles}
+                                variant="text"
+                                sx={buttonStyles(isSelected)}
                                 startIcon={
                                     <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
                                 }
                             >
                                 {item.label}
                             </Button>
-                        </Box>
-                    ))}
+                        );
+                    })}
                 </Box>
 
                 {/* Categoria Suporte */}
-                <Box sx={{ mt: "35px" }}>
-                    <Typography
-                        sx={{
-                            color: "#111E5A",
-                            fontFamily: "Gellix",
-                            fontSize: "14px",
-                            fontWeight: 500,
-                            opacity: 0.33,
-                        }}
-                    >
-                        Suporte
-                    </Typography>
-                    <Box>
-                        {suporteItems.map((item, index) => (
-                            <Box key={item.label} sx={{ mt: index === 0 ? "23px" : "25px" }}>
-                                <Button
-                                    onClick={() => handleMenuClick(item.label)}
-                                    variant={selected === item.label ? "contained" : "text"}
-                                    sx={selected === item.label ? selectedButtonStyles : nonSelectedButtonStyles}
-                                    startIcon={
-                                        <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
-                                    }
-                                >
-                                    {item.label}
-                                </Button>
-                            </Box>
-                        ))}
-                    </Box>
+                <Typography sx={categoryLabelStyle}>
+                    Suporte
+                </Typography>
+                <Box>
+                    {suporteItems.map((item) => {
+                        const isSelected = selected === item.label;
+                        return (
+                            <Button
+                                key={item.label}
+                                onClick={() => handleMenuClick(item.label)}
+                                variant="text"
+                                sx={buttonStyles(isSelected)}
+                                startIcon={
+                                    <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
+                                }
+                            >
+                                {item.label}
+                            </Button>
+                        );
+                    })}
                 </Box>
             </Box>
 
-            {/* Área do Médico (fixa 50px acima do fim) */}
+            {/* Área do Médico */}
             <Box
                 sx={{
-                    position: "absolute",
-                    bottom: "50px",
-                    left: 2,
                     display: "flex",
                     alignItems: "center",
+                    py: 1.8,
+                    px: 1.5,
+                    mt: 2,
+                    mb: 2,
+                    borderRadius: "12px",
+                    border: "1px solid rgba(66, 133, 244, 0.15)",
+                    backgroundColor: "rgba(248, 250, 255, 0.8)",
                 }}
             >
                 <Box
@@ -178,25 +181,46 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Médico", onMenuSe
                     src="/doctorimage.png"
                     alt="Doctor"
                     sx={{
-                        width: "43px",
-                        height: "43px",
-                        borderRadius: "33.594px",
-                        border: "1.344px solid #2971FF",
+                        width: "32px", // Reduzido
+                        height: "32px",
+                        borderRadius: "50%",
+                        border: "2px solid #4285F4",
                         flexShrink: 0,
-                        background: 'lightgray 50% / cover no-repeat',
                     }}
                 />
-                <Typography
+                <Box sx={{ ml: 1.2, flex: 1 }}>
+                    <Typography
+                        sx={{
+                            color: "#111E5A",
+                            fontFamily: "Gellix, sans-serif",
+                            fontSize: "13px", // Reduzido
+                            fontWeight: 600,
+                            lineHeight: 1.2,
+                        }}
+                    >
+                        Dr. {userName}
+                    </Typography>
+                    <Typography
+                        sx={{
+                            color: "#8A94A6",
+                            fontFamily: "Gellix, sans-serif",
+                            fontSize: "11px", // Reduzido
+                            fontWeight: 400,
+                            lineHeight: 1.2,
+                        }}
+                    >
+                        {userRole}
+                    </Typography>
+                </Box>
+                <Box
+                    component="img"
+                    src="/chevron-down.svg"
+                    alt="Expand"
                     sx={{
-                        ml: 2,
-                        color: "#111E5A",
-                        fontFamily: "Gellix",
-                        fontSize: "16px",
-                        fontWeight: 500,
+                        width: "14px", // Reduzido
+                        height: "14px",
                     }}
-                >
-                    {`Dr ${firstName}`}
-                </Typography>
+                />
             </Box>
         </Box>
     );
