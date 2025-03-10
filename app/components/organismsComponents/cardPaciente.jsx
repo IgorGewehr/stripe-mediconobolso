@@ -1,51 +1,59 @@
 "use client";
 import React, { useState } from "react";
-import { Box, Typography, Button, Avatar } from "@mui/material";
+import {
+    Paper,
+    Box,
+    Typography,
+    IconButton,
+    Avatar,
+    Chip,
+    Stack,
+    Button,
+    useMediaQuery,
+    useTheme
+} from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
+import EditIcon from "@mui/icons-material/Edit";
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 
-// Exemplo de dados do paciente (a "interface")
-const exemploPaciente = {
-    nome: "Dr. José Silva",
-    fotoPerfil: "", // se vazio, usará fallback
-    tipoSanguineo: "O+",
-    dataNascimento: "15/03/1985",
-    contato: {
-        celular: "(11) 98765-4321",
-        fixo: "(11) 3344-5566",
-        email: "jose.silva@medico.com"
+// Color palette
+const themeColors = {
+    primary: "#1852FE",
+    textPrimary: "#111E5A",
+    textSecondary: "#666",
+    lightBg: "#F1F3FA",
+    borderColor: "rgba(0, 0, 0, 0.10)",
+    chronic: {
+        fumante: { bg: "#E3FAFC", color: "#15AABF" },
+        obeso: { bg: "#FFF0F6", color: "#D6336C" },
+        hipertenso: { bg: "#E6FCF5", color: "#2B8A3E" },
     },
-    chronicDiseases: ["Hipertensão", "Diabetes"],
-    // Dados para Card2:
-    endereco: "Rua das Palmeiras, 123",
-    cidade: "São Paulo",
-    cep: "01234-567",
-    cirurgias: ["Cirurgia A", "Cirurgia B"],
-    alergias: ["Penicilina"],
-    atividadeFisica: ["Caminhada", "Natação"],
-    historicoDoencasGeneticas: "Nenhuma informação cadastrada"
 };
 
-//
-// COMPONENTE CARD1 – informações básicas do paciente
-//
-const Card1 = ({ paciente, expanded, onToggle }) => {
-    // Definição dos offsets (em pixels) conforme especificação:
-    // Patient image: top: 48px, left: 35px; tamanho: 118x118
-    // Nome: top = 48+118+17 = 183px, left: 33px
-    // Botão “Ver mais informações”: top = 183+30+17 ≈ 230px, left: 33px
-    // Label “Doenças Crônicas”: top = 230+52+45 = 327px, left: 33px
-    // Grid de doenças inicia em: top = 327+20 = 347px
-    // “Informações Gerais” – usaremos um offset fixo (ex.: 500px)
+// ----------------------
+// Subcomponent: Card1
+// ----------------------
+function Card1({ paciente, expanded, onToggle }) {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
     return (
-        <Box
+        <Paper
+            elevation={expanded ? 4 : 0}
             sx={{
                 position: "relative",
-                width: "380px",
-                height: "817px",
-                boxSizing: "border-box"
+                width: "350px",
+                boxSizing: "border-box",
+                backgroundColor: "#fff",
+                borderRadius: expanded ? "40px 0 0 40px" : "40px",
+                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                border: expanded ? "none" : `1px solid ${themeColors.borderColor}`,
+                height: "auto",
+                zIndex: expanded ? 10 : 1,
             }}
         >
-            {/* Imagem de overlay (layeruser.png) no canto superior direito */}
+            {/* Overlay image */}
             <Box
                 component="img"
                 src="/layeruser.png"
@@ -54,724 +62,638 @@ const Card1 = ({ paciente, expanded, onToggle }) => {
                     position: "absolute",
                     top: 0,
                     right: 0,
-                    width: "239px",
-                    height: "240px",
-                    flexShrink: 0,
-                    backgroundColor: "#1852FE",
-                    mixBlendMode: "overlay"
+                    width: "200px",
+                    height: "170px",
+                    zIndex: 0,
                 }}
             />
 
-            {/* Imagem do paciente – posicionado a 48px do topo e 35px da esquerda */}
-            <Box sx={{ position: "absolute", top: "48px", left: "35px" }}>
-                {paciente.fotoPerfil ? (
-                    <Box
-                        component="img"
-                        src={paciente.fotoPerfil}
-                        alt={paciente.nome}
-                        sx={{
-                            width: "118px",
-                            height: "118px",
-                            borderRadius: "50%",
-                            border: "3px solid #3378FF",
-                            objectFit: "cover"
-                        }}
-                    />
-                ) : (
-                    <Box
-                        sx={{
-                            width: "118px",
-                            height: "118px",
-                            borderRadius: "50%",
-                            border: "3px solid #3378FF",
-                            backgroundColor: "#FFF",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center"
-                        }}
-                    >
-                        <PersonIcon sx={{ color: "#B9D6FF", fontSize: "60px" }} />
-                    </Box>
-                )}
-                {/* Ícone de edição sobreposto na imagem do paciente */}
+            <Box sx={{ p: 3, pb: 6 }}>
+                {/* Avatar/Photo */}
                 <Box
                     sx={{
-                        position: "absolute",
-                        top: "2px",
-                        left: "85px", // 85px da margem esquerda do container da imagem
-                        width: "37px",
-                        height: "37px",
-                        borderRadius: "50%",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "transparent",
-                        // Para simular o stroke e fill, o ícone editimage.svg deve ter esses atributos no SVG
+                        justifyContent: "flex-start",
+                        position: "relative",
+                        mb: 3,
+                        zIndex: 1,
                     }}
                 >
+                    {paciente.fotoPerfil ? (
+                        <Avatar
+                            src={paciente.fotoPerfil}
+                            alt={paciente.nome}
+                            sx={{
+                                width: 110,
+                                height: 110,
+                                border: `3px solid ${themeColors.primary}`,
+                                position: "relative",
+                            }}
+                        />
+                    ) : (
+                        <Avatar
+                            sx={{
+                                width: 110,
+                                height: 110,
+                                border: `3px solid ${themeColors.primary}`,
+                                bgcolor: "#FFF",
+                                position: "relative",
+                            }}
+                        >
+                            <PersonIcon sx={{ color: "#B9D6FF", fontSize: 60 }} />
+                        </Avatar>
+                    )}
+
+                    {/* Verification Icon */}
                     <Box
-                        component="img"
-                        src="/editimage.svg"
-                        alt="Editar"
                         sx={{
-                            width: "12.25px",
-                            height: "12.25px"
+                            position: "absolute",
+                            top: 0,
+                            left: 75,
+                            width: 35,
+                            height: 35,
+                            borderRadius: "50%",
+                            backgroundColor: themeColors.primary,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "2px solid white",
+                            zIndex: 2,
                         }}
-                    />
+                    >
+                        <Box
+                            component="img"
+                            src="/check.svg"
+                            alt="Verificado"
+                            sx={{
+                                width: 12,
+                                height: 12,
+                                color: "#FFF",
+                            }}
+                        />
+                    </Box>
                 </Box>
-            </Box>
 
-            {/* Nome do paciente */}
-            <Typography
-                sx={{
-                    position: "absolute",
-                    top: "183px",
-                    left: "33px",
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "30px",
-                    fontWeight: 500,
-                    lineHeight: 1
-                }}
-            >
-                {paciente.nome || "Nome não informado"}
-            </Typography>
+                {/* Patient Name */}
+                <Typography
+                    variant="h4"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 24,
+                        fontWeight: 500,
+                        mb: 2,
+                        zIndex: 1,
+                        position: "relative",
+                    }}
+                >
+                    {paciente.nome || "Nome não informado"}
+                </Typography>
 
-            {/* Botão "Ver mais informações" */}
-            <Box sx={{ position: "absolute", top: "230px", left: "33px" }}>
+                {/* Expand/Collapse Button */}
                 <Button
                     onClick={onToggle}
+                    variant="contained"
+                    endIcon={expanded ? <KeyboardArrowLeftIcon /> : <KeyboardArrowRightIcon />}
                     sx={{
-                        display: "inline-flex",
-                        height: "52px",
-                        padding: "18px 27px",
-                        gap: "10px",
-                        borderRadius: "99px",
-                        background: "#1852FE",
+                        height: 44,
+                        borderRadius: 99,
+                        backgroundColor: themeColors.primary,
                         color: "#FFF",
                         fontFamily: "Gellix",
-                        fontSize: "16px",
+                        fontSize: 14,
                         fontWeight: 500,
-                        lineHeight: "16px",
-                        textTransform: "none"
+                        textTransform: "none",
+                        mb: 4,
+                        "&:hover": {
+                            backgroundColor: "#0d47e0",
+                        },
                     }}
                 >
                     Ver mais informações
-                    <Box
-                        component="img"
-                        src="/leftarrow.svg"
-                        alt="Arrow"
-                        sx={{
-                            width: "18px",
-                            height: "18px",
-                            transform: expanded ? "rotate(180deg)" : "none"
-                        }}
-                    />
                 </Button>
-            </Box>
 
-            {/* Label "Doenças Crônicas" */}
-            <Typography
-                sx={{
-                    position: "absolute",
-                    top: "327px",
-                    left: "33px",
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    opacity: 0.33
-                }}
-            >
-                Doenças Crônicas
-            </Typography>
-
-            {/* Grid de Doenças Crônicas */}
-            <Box
-                sx={{
-                    position: "absolute",
-                    top: "347px",
-                    left: "33px",
-                    right: "33px",
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "8px"
-                }}
-            >
-                {paciente.chronicDiseases && paciente.chronicDiseases.length > 0 ? (
-                    paciente.chronicDiseases.map((disease, index) => {
-                        // Combinações de cores (exemplos)
-                        const combos = [
-                            { bg: "#E3FAFC", color: "#15AABF" },
-                            { bg: "#FFF0F6", color: "#D6336C" },
-                            { bg: "#E6FCF5", color: "#2B8A3E" }
-                        ];
-                        const combo = combos[index % combos.length];
-                        return (
-                            <Box
-                                key={index}
-                                sx={{
-                                    display: "inline-flex",
-                                    height: "40px",
-                                    padding: "12px 17px",
-                                    alignItems: "center",
-                                    gap: "10px",
-                                    borderRadius: "99px",
-                                    background: combo.bg,
-                                    color: combo.color,
-                                    fontFamily: "Gellix",
-                                    fontSize: "16px",
-                                    fontWeight: 500,
-                                    justifyContent: "center"
-                                }}
-                            >
-                                {disease}
-                            </Box>
-                        );
-                    })
-                ) : (
-                    <Box
-                        sx={{
-                            display: "inline-flex",
-                            height: "40px",
-                            padding: "12px 17px",
-                            alignItems: "center",
-                            gap: "10px",
-                            borderRadius: "99px",
-                            background: "#EEE",
-                            color: "#AAA",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500,
-                            justifyContent: "center"
-                        }}
-                    >
-                        -
-                    </Box>
-                )}
-            </Box>
-
-            {/* Seção "Informações Gerais" */}
-            <Typography
-                sx={{
-                    position: "absolute",
-                    top: "500px", // valor aproximado – ajuste conforme necessidade
-                    left: "33px",
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    opacity: 0.33
-                }}
-            >
-                Informações Gerais
-            </Typography>
-
-            {/* Linha "Tipo Sanguíneo" */}
-            <Box
-                sx={{
-                    position: "absolute",
-                    top: "524px",
-                    left: "33px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
-                }}
-            >
-                <Box
-                    component="img"
-                    src="/sangue.svg"
-                    alt="Tipo Sanguíneo"
-                    sx={{ width: "24px", height: "24px" }}
-                />
+                {/* Chronic Diseases */}
                 <Typography
+                    variant="subtitle2"
                     sx={{
-                        color: "#111E5A",
+                        color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: "16px",
-                        fontWeight: 500
+                        fontSize: 14,
+                        fontWeight: 500,
+                        opacity: 0.33,
+                        mb: 1,
                     }}
                 >
-                    Tipo Sanguíneo:
+                    Doenças Crônicas
                 </Typography>
-                <Typography
-                    sx={{
-                        color: "#1852FE",
-                        fontFamily: "Gellix",
-                        fontSize: "16px",
-                        fontWeight: 500
-                    }}
-                >
-                    {paciente.tipoSanguineo || "-"}
-                </Typography>
-            </Box>
 
-            {/* Linha "Data de Nascimento" */}
-            <Box
-                sx={{
-                    position: "absolute",
-                    top: "557px",
-                    left: "33px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
-                }}
-            >
-                <Box
-                    component="img"
-                    src="/nascimento.svg"
-                    alt="Data de Nascimento"
-                    sx={{ width: "24px", height: "24px" }}
-                />
-                <Typography
-                    sx={{
-                        color: "#111E5A",
-                        fontFamily: "Gellix",
-                        fontSize: "16px",
-                        fontWeight: 500
-                    }}
-                >
-                    Data de Nascimento:
-                </Typography>
-                <Typography
-                    sx={{
-                        color: "#1852FE",
-                        fontFamily: "Gellix",
-                        fontSize: "16px",
-                        fontWeight: 500
-                    }}
-                >
-                    {paciente.dataNascimento || "-"}
-                </Typography>
-            </Box>
+                <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3 }}>
+                    {paciente.chronicDiseases && paciente.chronicDiseases.length > 0 ? (
+                        paciente.chronicDiseases.map((disease, index) => {
+                            let colorScheme = { bg: "#E3FAFC", color: "#15AABF" };
+                            if (disease.toLowerCase() === "fumante") {
+                                colorScheme = themeColors.chronic.fumante;
+                            } else if (disease.toLowerCase() === "obeso") {
+                                colorScheme = themeColors.chronic.obeso;
+                            } else if (disease.toLowerCase() === "hipertenso") {
+                                colorScheme = themeColors.chronic.hipertenso;
+                            }
+                            return (
+                                <Chip
+                                    key={index}
+                                    label={disease}
+                                    sx={{
+                                        height: 34,
+                                        borderRadius: 99,
+                                        padding: "0 15px",
+                                        backgroundColor: colorScheme.bg,
+                                        color: colorScheme.color,
+                                        fontFamily: "Gellix",
+                                        fontSize: 14,
+                                        fontWeight: 500,
+                                    }}
+                                />
+                            );
+                        })
+                    ) : (
+                        <Chip
+                            label="-"
+                            sx={{
+                                height: 34,
+                                borderRadius: 99,
+                                padding: "0 15px",
+                                backgroundColor: "#EEE",
+                                color: "#AAA",
+                                fontFamily: "Gellix",
+                                fontSize: 14,
+                                fontWeight: 500,
+                            }}
+                        />
+                    )}
+                </Stack>
 
-            {/* Seção "Contato" */}
-            <Typography
-                sx={{
-                    position: "absolute",
-                    top: "611px",
-                    left: "33px",
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    opacity: 0.33
-                }}
-            >
-                Contato
-            </Typography>
-            <Box
-                sx={{
-                    position: "absolute",
-                    top: "635px",
-                    left: "33px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "16px"
-                }}
-            >
-                {/* Celular */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Box
-                        component="img"
-                        src="/celular.svg"
-                        alt="Celular"
-                        sx={{ width: "24px", height: "24px" }}
-                    />
-                    <Typography
-                        sx={{
-                            color: "#111E5A",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500
-                        }}
-                    >
-                        Celular:
-                    </Typography>
-                    <Typography
-                        sx={{
-                            color: "#1852FE",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500
-                        }}
-                    >
-                        {paciente.contato?.celular || "-"}
-                    </Typography>
-                </Box>
-                {/* Fixo */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Box
-                        component="img"
-                        src="/telefone.svg"
-                        alt="Telefone"
-                        sx={{ width: "24px", height: "24px" }}
-                    />
-                    <Typography
-                        sx={{
-                            color: "#111E5A",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500
-                        }}
-                    >
-                        Fixo:
-                    </Typography>
-                    <Typography
-                        sx={{
-                            color: "#1852FE",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500
-                        }}
-                    >
-                        {paciente.contato?.fixo || "-"}
-                    </Typography>
-                </Box>
-                {/* Email */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Box
-                        component="img"
-                        src="/email.svg"
-                        alt="Email"
-                        sx={{ width: "24px", height: "24px" }}
-                    />
-                    <Typography
-                        sx={{
-                            color: "#111E5A",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500
-                        }}
-                    >
-                        Email:
-                    </Typography>
-                    <Typography
-                        sx={{
-                            color: "#1852FE",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500
-                        }}
-                    >
-                        {paciente.contato?.email || "-"}
-                    </Typography>
-                </Box>
+                {/* General Information */}
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        opacity: 0.33,
+                        mb: 1,
+                    }}
+                >
+                    Informações Gerais
+                </Typography>
+
+                <Stack spacing={2} sx={{ mb: 3 }}>
+                    {/* Blood Type */}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                            component="img"
+                            src="/sangue.svg"
+                            alt="Tipo Sanguíneo"
+                            sx={{ width: 24, height: 24 }}
+                        />
+                        <Typography
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            Tipo Sanguíneo:
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: themeColors.primary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            {paciente.tipoSanguineo || "-"}
+                        </Typography>
+                    </Stack>
+
+                    {/* Birth Date */}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                            component="img"
+                            src="/nascimento.svg"
+                            alt="Data de Nascimento"
+                            sx={{ width: 24, height: 24 }}
+                        />
+                        <Typography
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            Data de Nascimento:
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: themeColors.primary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            {paciente.dataNascimento || "-"}
+                        </Typography>
+                    </Stack>
+                </Stack>
+
+                {/* Contact */}
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        opacity: 0.33,
+                        mb: 1,
+                    }}
+                >
+                    Contato
+                </Typography>
+
+                <Stack spacing={2}>
+                    {/* Mobile */}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                            component="img"
+                            src="/celular.svg"
+                            alt="Celular"
+                            sx={{ width: 24, height: 24 }}
+                        />
+                        <Typography
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            Celular:
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: themeColors.primary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            {paciente.contato?.celular || "-"}
+                        </Typography>
+                    </Stack>
+
+                    {/* Landline */}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                            component="img"
+                            src="/telefone.svg"
+                            alt="Telefone"
+                            sx={{ width: 24, height: 24 }}
+                        />
+                        <Typography
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            Fixo:
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: themeColors.primary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            {paciente.contato?.fixo || "-"}
+                        </Typography>
+                    </Stack>
+
+                    {/* Email */}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                            component="img"
+                            src="/email.svg"
+                            alt="Email"
+                            sx={{ width: 24, height: 24 }}
+                        />
+                        <Typography
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            Email:
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: themeColors.primary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                                wordBreak: "break-word",
+                            }}
+                        >
+                            {paciente.contato?.email || "-"}
+                        </Typography>
+                    </Stack>
+                </Stack>
             </Box>
-            {/* Spacer para deixar 43px do fundo */}
-            <Box sx={{ position: "absolute", bottom: "43px" }} />
-        </Box>
+        </Paper>
     );
-};
+}
 
-//
-// COMPONENTE CARD2 – informações complementares (endereço, cirurgias, etc.)
-//
-const Card2 = ({ paciente }) => {
+// ----------------------
+// Subcomponent: Card2
+// ----------------------
+// ----------------------
+// Subcomponent: Card2
+// ----------------------
+function Card2({ paciente }) {
+    // Helper to create chips
+    const renderChips = (items = []) => {
+        return items.length > 0 ? (
+            items.map((item, idx) => (
+                <Chip
+                    key={idx}
+                    label={item}
+                    sx={{
+                        height: 34,
+                        padding: "0 15px",
+                        borderRadius: 99,
+                        border: `1px solid #CED4DA`,
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                    }}
+                />
+            ))
+        ) : (
+            <Chip
+                label="-"
+                sx={{
+                    height: 34,
+                    padding: "0 15px",
+                    borderRadius: 99,
+                    border: `1px solid #CED4DA`,
+                    color: themeColors.textPrimary,
+                    fontFamily: "Gellix",
+                    fontSize: 14,
+                    fontWeight: 500,
+                }}
+            />
+        );
+    };
+
     return (
-        <Box
+        <Paper
+            elevation={4}
             sx={{
-                width: "502px",
-                height: "771px",
-                flexShrink: 0,
-                borderRadius: "40px",
-                border: "1px solid rgba(0,0,0,0.10)",
-                opacity: 0.44,
-                background: "#F1F3FA",
-                position: "relative",
+                width: "420px", // Slightly narrower to create space between cards
+                height: "100%", // Match height of Card1
+                borderRadius: "0 40px 40px 0",
+                border: `1px solid ${themeColors.borderColor}`,
+                backgroundColor: "#F1F3FA",
                 boxSizing: "border-box",
-                padding: "42px 48px 0 48px" // top e left conforme especificação
+                overflow: "hidden",
+                zIndex: 5,
+                margin: "0 0 0 10px", // Add margin on the left side for space between cards
             }}
         >
-            {/* Título "Endereço Completo" */}
-            <Typography
-                sx={{
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    opacity: 0.33,
-                    mb: "16px"
-                }}
-            >
-                Endereço Completo
-            </Typography>
-            {/* Linha de Endereço */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: "8px", mb: "8px" }}>
-                <Box component="img" src="/endereco.svg" alt="Endereço" sx={{ width:"24px", height:"24px" }} />
-                <Typography
-                    sx={{
-                        color: "#111E5A",
-                        fontFamily: "Gellix",
-                        fontSize: "16px",
-                        fontWeight: 500
-                    }}
-                >
-                    Endereço:
-                </Typography>
-                <Typography sx={{ color: "#1852FE", fontFamily: "Gellix", fontSize: "16px", fontWeight: 500 }}>
-                    {paciente.endereco || "-"}
-                </Typography>
-            </Box>
-            {/* Linha Cidade */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: "8px", mb: "8px" }}>
-                <Box component="img" src="/cidade.svg" alt="Cidade" sx={{ width:"24px", height:"24px" }} />
-                <Typography
-                    sx={{
-                        color: "#111E5A",
-                        fontFamily: "Gellix",
-                        fontSize: "16px",
-                        fontWeight: 500
-                    }}
-                >
-                    Cidade:
-                </Typography>
-                <Typography sx={{ color: "#1852FE", fontFamily: "Gellix", fontSize: "16px", fontWeight: 500 }}>
-                    {paciente.cidade || "-"}
-                </Typography>
-            </Box>
-            {/* Linha CEP */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: "8px", mb: "16px" }}>
-                <Box component="img" src="/cep.svg" alt="CEP" sx={{ width:"24px", height:"24px" }} />
-                <Typography
-                    sx={{
-                        color: "#111E5A",
-                        fontFamily: "Gellix",
-                        fontSize: "16px",
-                        fontWeight: 500
-                    }}
-                >
-                    CEP:
-                </Typography>
-                <Typography sx={{ color: "#1852FE", fontFamily: "Gellix", fontSize: "16px", fontWeight: 500 }}>
-                    {paciente.cep || "-"}
-                </Typography>
-            </Box>
-            {/* Seção "Cirurgias" */}
-            <Typography
-                sx={{
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    opacity: 0.33,
-                    mb: "16px"
-                }}
-            >
-                Cirurgias
-            </Typography>
             <Box
                 sx={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-                    gap: "8px",
-                    mb: "42px"
+                    p: 3,
+                    height: "100%",
+                    overflow: "auto",
+                    "&::-webkit-scrollbar": {
+                        width: "6px",
+                    },
+                    "&::-webkit-scrollbar-thumb": {
+                        backgroundColor: "rgba(0,0,0,0.2)",
+                        borderRadius: "10px",
+                    },
                 }}
             >
-                {paciente.cirurgias && paciente.cirurgias.length > 0 ? (
-                    paciente.cirurgias.map((item, idx) => (
-                        <Box
-                            key={idx}
-                            sx={{
-                                display: "inline-flex",
-                                height: "40px",
-                                padding: "12px 17px",
-                                alignItems: "center",
-                                gap: "10px",
-                                borderRadius: "99px",
-                                border: "1px solid #CED4DA",
-                                color: "#111E5A",
-                                fontFamily: "Gellix",
-                                fontSize: "16px",
-                                fontWeight: 500,
-                                justifyContent: "center"
-                            }}
-                        >
-                            {item}
-                        </Box>
-                    ))
-                ) : (
-                    <Box
-                        sx={{
-                            display: "inline-flex",
-                            height: "40px",
-                            padding: "12px 17px",
-                            alignItems: "center",
-                            gap: "10px",
-                            borderRadius: "99px",
-                            border: "1px solid #CED4DA",
-                            color: "#111E5A",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500,
-                            justifyContent: "center"
-                        }}
-                    >
-                        -
-                    </Box>
-                )}
-            </Box>
-            {/* Seção "Alergias" */}
-            <Typography
-                sx={{
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    opacity: 0.33,
-                    mb: "16px"
-                }}
-            >
-                Alergias
-            </Typography>
-            <Box
-                sx={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-                    gap: "8px",
-                    mb: "42px"
-                }}
-            >
-                {paciente.alergias && paciente.alergias.length > 0 ? (
-                    paciente.alergias.map((item, idx) => (
-                        <Box
-                            key={idx}
-                            sx={{
-                                display: "inline-flex",
-                                height: "40px",
-                                padding: "12px 17px",
-                                alignItems: "center",
-                                gap: "10px",
-                                borderRadius: "99px",
-                                border: "1px solid #CED4DA",
-                                color: "#111E5A",
-                                fontFamily: "Gellix",
-                                fontSize: "16px",
-                                fontWeight: 500,
-                                justifyContent: "center"
-                            }}
-                        >
-                            {item}
-                        </Box>
-                    ))
-                ) : (
-                    <Box
-                        sx={{
-                            display: "inline-flex",
-                            height: "40px",
-                            padding: "12px 17px",
-                            alignItems: "center",
-                            gap: "10px",
-                            borderRadius: "99px",
-                            border: "1px solid #CED4DA",
-                            color: "#111E5A",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500,
-                            justifyContent: "center"
-                        }}
-                    >
-                        -
-                    </Box>
-                )}
-            </Box>
-            {/* Seção "Atividade Física" */}
-            <Typography
-                sx={{
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    opacity: 0.33,
-                    mb: "16px"
-                }}
-            >
-                Atividade Física
-            </Typography>
-            <Box
-                sx={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-                    gap: "8px",
-                    mb: "42px"
-                }}
-            >
-                {paciente.atividadeFisica && paciente.atividadeFisica.length > 0 ? (
-                    paciente.atividadeFisica.map((item, idx) => (
-                        <Box
-                            key={idx}
-                            sx={{
-                                display: "inline-flex",
-                                height: "40px",
-                                padding: "12px 17px",
-                                alignItems: "center",
-                                gap: "10px",
-                                borderRadius: "99px",
-                                border: "1px solid #CED4DA",
-                                color: "#111E5A",
-                                fontFamily: "Gellix",
-                                fontSize: "16px",
-                                fontWeight: 500,
-                                justifyContent: "center"
-                            }}
-                        >
-                            {item}
-                        </Box>
-                    ))
-                ) : (
-                    <Box
-                        sx={{
-                            display: "inline-flex",
-                            height: "40px",
-                            padding: "12px 17px",
-                            alignItems: "center",
-                            gap: "10px",
-                            borderRadius: "99px",
-                            border: "1px solid #CED4DA",
-                            color: "#111E5A",
-                            fontFamily: "Gellix",
-                            fontSize: "16px",
-                            fontWeight: 500,
-                            justifyContent: "center"
-                        }}
-                    >
-                        -
-                    </Box>
-                )}
-            </Box>
-            {/* Seção "Histórico Doenças Genéticas" */}
-            <Typography
-                sx={{
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    opacity: 0.33,
-                    mb: "10px"
-                }}
-            >
-                Histórico Doenças Genéticas
-            </Typography>
-            <Typography
-                sx={{
-                    color: "#111E5A",
-                    fontFamily: "Gellix",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    lineHeight: "150%"
-                }}
-            >
-                {paciente.historicoDoencasGeneticas || "-"}
-            </Typography>
-        </Box>
-    );
-};
+                {/* Complete Address */}
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        opacity: 0.33,
+                        mb: 2,
+                    }}
+                >
+                    Endereço Completo
+                </Typography>
 
-//
-// COMPONENTE PRINCIPAL: CardPaciente
-//
-const CardPaciente = ({ paciente = exemploPaciente }) => {
+                <Stack spacing={1} sx={{ mb: 3 }}>
+                    {/* Address */}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                            component="img"
+                            src="/endereco.svg"
+                            alt="Endereço"
+                            sx={{ width: 24, height: 24 }}
+                        />
+                        <Typography
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            Endereço:
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: themeColors.primary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            {paciente.endereco || "-"}
+                        </Typography>
+                    </Stack>
+
+                    {/* City */}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                            component="img"
+                            src="/cidade.svg"
+                            alt="Cidade"
+                            sx={{ width: 24, height: 24 }}
+                        />
+                        <Typography
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            Cidade:
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: themeColors.primary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            {paciente.cidade || "-"}
+                        </Typography>
+                    </Stack>
+
+                    {/* Zip Code */}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                            component="img"
+                            src="/cep.svg"
+                            alt="CEP"
+                            sx={{ width: 24, height: 24 }}
+                        />
+                        <Typography
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            CEP:
+                        </Typography>
+                        <Typography
+                            sx={{
+                                color: themeColors.primary,
+                                fontFamily: "Gellix",
+                                fontSize: 15,
+                                fontWeight: 500,
+                            }}
+                        >
+                            {paciente.cep || "-"}
+                        </Typography>
+                    </Stack>
+                </Stack>
+
+                {/* Surgeries */}
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        opacity: 0.33,
+                        mb: 2,
+                    }}
+                >
+                    Cirurgias
+                </Typography>
+                <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3 }}>
+                    {renderChips(paciente.cirurgias)}
+                </Stack>
+
+                {/* Allergies */}
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        opacity: 0.33,
+                        mb: 2,
+                    }}
+                >
+                    Alergias
+                </Typography>
+                <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3 }}>
+                    {renderChips(paciente.alergias)}
+                </Stack>
+
+                {/* Physical Activity */}
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        opacity: 0.33,
+                        mb: 2,
+                    }}
+                >
+                    Atividade Física
+                </Typography>
+                <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3 }}>
+                    {renderChips(paciente.atividadeFisica)}
+                </Stack>
+
+                {/* Genetic Disease History */}
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        opacity: 0.33,
+                        mb: 1,
+                    }}
+                >
+                    Histórico Doenças Genéticas
+                </Typography>
+                <Typography
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        lineHeight: 1.5,
+                    }}
+                >
+                    {paciente.historicoDoencasGeneticas || "-"}
+                </Typography>
+            </Box>
+        </Paper>
+    );
+}
+
+// ----------------------
+// Main component
+// (combines Card1 and Card2)
+// ----------------------
+export default function PacienteCard({ paciente }) {
     const [expanded, setExpanded] = useState(false);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
     const handleToggle = () => {
         setExpanded((prev) => !prev);
@@ -780,35 +702,40 @@ const CardPaciente = ({ paciente = exemploPaciente }) => {
     return (
         <Box
             sx={{
-                width: expanded ? "971px" : "380px",
-                height: "817px",
-                flexShrink: 0,
-                borderRadius: "40px",
-                border: expanded
-                    ? "1px solid rgba(0, 0, 0, 0.10)"
-                    : "1px solid #EAECEF",
-                background: expanded ? "#F1F3FA" : "#FFF",
-                opacity: expanded ? 0.44 : 1,
-                display: "flex",
                 position: "relative",
-                boxSizing: "border-box",
-                overflow: "hidden"
+                width: "350px", // Fixed base width
+                height: "auto",
             }}
         >
-            {/* Card1 – lado esquerdo, permanece estático */}
-            <Card1 paciente={paciente} expanded={expanded} onToggle={handleToggle} />
-            {/* Se estiver expandido, renderiza o Card2 à direita com 60px de distância */}
-            {expanded && (
+            <Box
+                sx={{
+                    position: "relative",
+                    display: "flex",
+                    flexDirection: "row",
+                    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                    marginBottom: "30px",
+                }}
+            >
+                {/* Card1 - left side */}
+                <Card1 paciente={paciente} expanded={expanded} onToggle={handleToggle} />
+
+                {/* Card2 - right side (absolutely positioned to overlap) */}
                 <Box
                     sx={{
-                        ml: "60px"
+                        position: "absolute",
+                        left: "320px", // Ajustado para considerar a margem
+                        top: 0,
+                        height: "100%", // Garantir mesma altura
+                        opacity: expanded ? 1 : 0,
+                        visibility: expanded ? "visible" : "hidden",
+                        transform: expanded ? "translateX(0)" : "translateX(-30px)",
+                        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                        transitionDelay: expanded ? "0.1s" : "0s"
                     }}
                 >
                     <Card2 paciente={paciente} />
                 </Box>
-            )}
+            </Box>
         </Box>
     );
-};
-
-export default CardPaciente;
+}

@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { Box } from "@mui/material";
 import TopAppBar from "../components/TopAppBar";
 import Sidebar from "../components/Sidebar";
-import PacienteTemplate from "../components/PacienteTemplate";
+import PacienteTemplate from "../components/pacienteTemplate";
 
 export default function AppLayout({ children }) {
     const [activePage, setActivePage] = useState("dashboard");

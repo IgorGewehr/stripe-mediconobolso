@@ -1,6 +1,6 @@
 import Sidebar from "../components/sidebar";
 import TopAppBar from "../components/topAppBar";
-import PacienteTemplate from "../components/PacienteTemplate";
+import PacienteTemplate from "../components/pacienteTemplate";
 
 
 export default function Playground() {
