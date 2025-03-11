@@ -10,6 +10,8 @@ import {
     InputAdornment,
     Slide,
     Collapse,
+    Alert,
+    Snackbar,
 } from "@mui/material";
 import React, { useState } from "react";
 import firebaseService from "../../lib/firebaseService";
@@ -26,6 +28,8 @@ export const AuthForms = () => {
         confirmPassword: "",
     });
     const [errors, setErrors] = useState({});
+    const [authError, setAuthError] = useState("");
+    const [passwordResetSent, setPasswordResetSent] = useState(false);
     const router = useRouter();
 
     // Funções auxiliares para formatação e validação
@@ -102,11 +106,17 @@ export const AuthForms = () => {
             confirmPassword: "",
         });
         setErrors({});
+        setAuthError("");
     };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+
+        // Limpa o erro de autenticação quando o usuário começa a digitar novamente
+        if ((name === "email" || name === "password") && authError) {
+            setAuthError("");
+        }
     };
 
     const handlePhoneBlur = () => {
@@ -118,6 +128,25 @@ export const AuthForms = () => {
         if (formData.cpf.trim()) {
             const { formattedCPF } = await formatAndValidateCPF(formData.cpf);
             setFormData((prev) => ({ ...prev, cpf: formattedCPF }));
+        }
+    };
+
+    const handlePasswordReset = async (e) => {
+        e.preventDefault();
+
+        if (!formData.email.trim()) {
+            setErrors((prev) => ({ ...prev, email: "Informe seu e-mail para recuperar a senha" }));
+            setTimeout(() => setErrors((prev) => ({ ...prev, email: false })), 3000);
+            return;
+        }
+
+        try {
+            await firebaseService.sendPasswordResetEmail(formData.email);
+            setPasswordResetSent(true);
+            setTimeout(() => setPasswordResetSent(false), 6000);
+        } catch (error) {
+            console.error("Erro ao enviar email de recuperação:", error);
+            setAuthError("Não foi possível enviar o email de recuperação. Verifique se o email está correto.");
         }
     };
 
@@ -176,6 +205,21 @@ export const AuthForms = () => {
             }
         } catch (error) {
             console.error("Erro na autenticação:", error);
+
+            // Trata erros específicos de autenticação
+            if (error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
+                setAuthError("Email ou senha incorretos.");
+            } else if (error.code === "auth/email-already-in-use") {
+                setAuthError("Este email já está em uso.");
+            } else if (error.code === "auth/weak-password") {
+                setAuthError("A senha é muito fraca. Use pelo menos 6 caracteres.");
+            } else if (error.code === "auth/invalid-email") {
+                setAuthError("Email inválido.");
+            } else if (error.code === "auth/too-many-requests") {
+                setAuthError("Muitas tentativas. Tente novamente mais tarde.");
+            } else {
+                setAuthError("Erro na autenticação. Tente novamente.");
+            }
         }
     };
 
@@ -188,6 +232,17 @@ export const AuthForms = () => {
             gap={3}
             sx={{ width: "100%", maxWidth: 400, mx: "auto" }}
         >
+            <Snackbar
+                open={passwordResetSent}
+                autoHideDuration={6000}
+                onClose={() => setPasswordResetSent(false)}
+                anchorOrigin={{ vertical: "top", horizontal: "center" }}
+            >
+                <Alert severity="success" sx={{ width: "100%" }}>
+                    Email de recuperação enviado com sucesso!
+                </Alert>
+            </Snackbar>
+
             <Slide direction="down" in={true} mountOnEnter unmountOnExit timeout={500}>
                 <Box display="flex" flexDirection="column" alignItems="center" gap={1} width="100%">
                     <Typography variant="h4" component="h1" sx={{ color: "primary.main" }}>
@@ -198,6 +253,12 @@ export const AuthForms = () => {
                     </Typography>
                 </Box>
             </Slide>
+
+            {authError && (
+                <Alert severity="error" sx={{ width: "100%" }}>
+                    {authError}
+                </Alert>
+            )}
 
             <Stack spacing={2} width="100%">
                 {/* Campos exclusivos de registro */}
@@ -213,6 +274,7 @@ export const AuthForms = () => {
                             onChange={handleInputChange}
                             error={Boolean(errors.fullName)}
                             helperText={errors.fullName ? "Campo obrigatório" : ""}
+                            color={errors.fullName ? "error" : "primary"}
                         />
                         <TextField
                             label="Telefone"
@@ -228,6 +290,7 @@ export const AuthForms = () => {
                             onBlur={handlePhoneBlur}
                             error={Boolean(errors.phone)}
                             helperText={errors.phone ? "Campo obrigatório" : ""}
+                            color={errors.phone ? "error" : "primary"}
                         />
                         <TextField
                             label="CPF"
@@ -240,6 +303,7 @@ export const AuthForms = () => {
                             onBlur={handleCPFBlur}
                             error={Boolean(errors.cpf)}
                             helperText={errors.cpf || ""}
+                            color={errors.cpf ? "error" : "primary"}
                         />
                     </Box>
                 </Collapse>
@@ -253,8 +317,9 @@ export const AuthForms = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    error={Boolean(errors.email)}
-                    helperText={errors.email ? "Campo obrigatório" : ""}
+                    error={Boolean(errors.email) || authError.includes("Email")}
+                    helperText={errors.email ? (typeof errors.email === "string" ? errors.email : "Campo obrigatório") : ""}
+                    color={(Boolean(errors.email) || authError.includes("Email")) ? "error" : "primary"}
                 />
                 <TextField
                     label="Senha"
@@ -265,8 +330,9 @@ export const AuthForms = () => {
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    error={Boolean(errors.password)}
+                    error={Boolean(errors.password) || authError.includes("senha")}
                     helperText={errors.password ? "Campo obrigatório" : ""}
+                    color={(Boolean(errors.password) || authError.includes("senha")) ? "error" : "primary"}
                 />
 
                 {/* Campo de confirmação de senha para registro */}
@@ -288,6 +354,7 @@ export const AuthForms = () => {
                                     : "Campo obrigatório"
                                 : ""
                         }
+                        color={errors.confirmPassword ? "error" : "primary"}
                     />
                 </Collapse>
 
@@ -304,7 +371,7 @@ export const AuthForms = () => {
 
             {/* Links inferiores */}
             <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
-                <Link href="#" color="secondary" underline="hover">
+                <Link href="#" color="secondary" underline="hover" onClick={handlePasswordReset}>
                     Esqueceu sua senha?
                 </Link>
                 <Box display="flex" alignItems="center" gap={0.5}>
