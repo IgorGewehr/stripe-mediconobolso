@@ -4,7 +4,7 @@
 import { headers } from 'next/headers';
 import { stripe } from '../../lib/stripe';
 
-export async function fetchClientSecret({ plan, uid, email  }) {
+export async function fetchClientSecret({ plan, uid, email }) {
   const origin = (await headers()).get('origin');
 
   // Define o priceId conforme o plano
@@ -28,6 +28,17 @@ export async function fetchClientSecret({ plan, uid, email  }) {
     customer_email: email,
     metadata: { uid }, // vincula a sessão ao usuário
     return_url: `${origin}/`, // redireciona para a home
+    subscription_data: {
+      trial_period_days: 7, // Adiciona período de teste de 7 dias
+    },
+    payment_method_types: ['card'],
+    payment_method_options: {
+      card: {
+        installments: {
+          enabled: true, // Habilita parcelamento
+        },
+      },
+    },
   });
 
   return session.client_secret;
