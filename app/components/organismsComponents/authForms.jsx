@@ -14,7 +14,7 @@ import {
     Snackbar,
 } from "@mui/material";
 import React, { useState } from "react";
-import firebaseService from "../../lib/firebaseService";
+import firebaseService from "../../../lib/firebaseService";
 import { useRouter } from "next/navigation";
 
 export const AuthForms = () => {
@@ -189,7 +189,7 @@ export const AuthForms = () => {
                 if (!userData.assinouPlano) {
                     router.push("/checkout");
                 } else {
-                    router.push("/"); // Se já assinou, redireciona para a tela principal
+                    router.push("/app"); // Se já assinou, redireciona para a tela principal
                 }
             } else {
                 const userData = {
