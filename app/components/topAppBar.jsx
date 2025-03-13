@@ -31,11 +31,13 @@ const ActionButton = ({ label, icon, isPrimary = false }) => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    ml: -1.0,
                     mr: 1,
-                    "& img": {
-                        width: "20px",
-                        height: "20px",
-                    }
+                    width: "28px", // Ajuste conforme necessário
+                    height: "28px",
+                    borderRadius: "50%",
+                    backgroundColor: "#FFF", // Fundo branco circular
+                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)", // Pequena sombra para destaque
                 }}
             >
                 <img
@@ -45,10 +47,11 @@ const ActionButton = ({ label, icon, isPrimary = false }) => {
                     height="20"
                 />
             </Box>
+
             <Typography
                 sx={{
                     fontFamily: "Gellix, sans-serif",
-                    fontSize: "14px",
+                    fontSize: "16px",
                     fontWeight: 500,
                 }}
             >
@@ -68,7 +71,7 @@ const BackButton = () => {
                 height: "30px",
                 borderRadius: "50%",
                 border: "1px solid #E5E7EB",
-                backgroundColor: "#fff",
+                backgroundColor: "#1852FE", // Fundo azul
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -76,11 +79,16 @@ const BackButton = () => {
                 padding: 0,
                 boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)",
                 "&:hover": {
-                    backgroundColor: "#1852FE",
+                    backgroundColor: "#154AC3",
                 }
             }}
         >
-
+            <img
+                src="/leftarrow.svg"
+                alt="Voltar"
+                width="14" // Ajuste conforme necessário
+                height="14" // Deixa o ícone branco
+            />
         </Button>
     );
 };
@@ -119,12 +127,12 @@ const TopAppBar = ({
     return (
         <Box
             sx={{
-                height: "64px",
+                height: "80px",
                 width: "100%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "0 24px",
+                padding: "0 40px",
                 boxSizing: "border-box",
                 backgroundColor: "#FFF",
                 borderBottom: "1px solid #F0F0F0",
@@ -142,7 +150,7 @@ const TopAppBar = ({
                     sx={{
                         color: "#111E5A",
                         fontFamily: "Gellix, sans-serif",
-                        fontSize: "20px",
+                        fontSize: "30px",
                         fontWeight: 500,
                         lineHeight: 1.2,
                     }}

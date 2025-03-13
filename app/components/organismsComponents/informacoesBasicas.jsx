@@ -1,181 +1,408 @@
+"use client";
+
 import React, { useState } from 'react';
-import { ChevronUp, ChevronDown, Camera, User } from 'lucide-react';
+import {
+    Box,
+    Grid,
+    FormControl,
+    InputLabel,
+    TextField,
+    Select,
+    MenuItem,
+    RadioGroup,
+    FormControlLabel,
+    Radio,
+    InputAdornment,
+    FormLabel,
+    Typography
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
 
-const InformacoesBasicas = () => {
-    const [isOpen, setIsOpen] = useState(true);
-    const [photoURL, setPhotoURL] = useState(null);
+// Componentes estilizados
+const StyledInputLabel = styled(InputLabel)({
+    color: '#111E5A',
+    fontFamily: 'Gellix, sans-serif',
+    fontSize: '16px',
+    fontWeight: 500,
+    lineHeight: '150%',
+    transform: 'none',
+    position: 'static',
+    marginBottom: '8px',
+    '&.Mui-focused': {
+        color: '#111E5A',
+    }
+});
 
-    const toggleOpen = () => {
-        setIsOpen(!isOpen);
-    };
-
-    const handlePhotoChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            // Em um ambiente real, você faria upload da imagem para um servidor
-            // Aqui apenas criamos uma URL temporária para visualização
-            setPhotoURL(URL.createObjectURL(e.target.files[0]));
+const StyledTextField = styled(TextField)({
+    '& .MuiOutlinedInput-root': {
+        borderRadius: '999px',
+        '& fieldset': {
+            borderColor: 'rgba(17, 30, 90, 0.30)'
+        },
+        '&:hover fieldset': {
+            borderColor: 'rgba(17, 30, 90, 0.50)'
+        },
+        '&.Mui-focused fieldset': {
+            borderColor: '#111E5A'
         }
+    },
+    '& .MuiInputBase-input': {
+        padding: '12px 16px',
+    }
+});
+
+const StyledSelect = styled(Select)({
+    borderRadius: '999px',
+    '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(17, 30, 90, 0.30)',
+    },
+    '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(17, 30, 90, 0.50)',
+    },
+    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#111E5A',
+    }
+});
+
+const FormSectionContainer = styled(Box)({
+    padding: '24px',
+    width: '100%',
+});
+
+const InfoBasicasForm = () => {
+    // Estados para os campos do formulário
+    const [formData, setFormData] = useState({
+        nomeCompleto: '',
+        dataNascimento: '',
+        tipoSanguineo: '',
+        genero: 'masculino',
+        endereco: '',
+        cidade: '',
+        estado: '',
+        cpf: '',
+        email: '',
+        telefone: '',
+        cep: ''
+    });
+
+    // Função para atualizar os dados do formulário
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prevState => ({
+            ...prevState,
+            [name]: value
+        }));
     };
 
     return (
-        <div className="font-sans">
-            <div
-                className="flex items-center justify-between cursor-pointer mb-1"
-                onClick={toggleOpen}
-            >
-                <h2 className="text-blue-600 font-medium text-lg">Informações básicas</h2>
-                {isOpen ? <ChevronUp className="text-blue-600" /> : <ChevronDown className="text-blue-600" />}
-            </div>
+        <FormSectionContainer>
+            <Grid container spacing={3}>
+                {/* Coluna Esquerda */}
+                <Grid item xs={12} md={6}>
+                    <Grid container spacing={3}>
+                        {/* Nome Completo */}
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="nomeCompleto">
+                                    Nome Completo*
+                                </StyledInputLabel>
+                                <StyledTextField
+                                    id="nomeCompleto"
+                                    name="nomeCompleto"
+                                    placeholder="Digite seu nome completo"
+                                    value={formData.nomeCompleto}
+                                    onChange={handleChange}
+                                    fullWidth
+                                />
+                            </FormControl>
+                        </Grid>
 
-            {isOpen && (
-                <div className="bg-white shadow-sm mb-6" style={{ width: '1536px', height: '498px', flexShrink: 0, borderRadius: '40px' }}>
-                    <div className="p-10 h-full">
-                        <div className="grid grid-cols-3 gap-8">
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo*</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
+                        {/* Data de Nascimento */}
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="dataNascimento">
+                                    Data De Nascimento*
+                                </StyledInputLabel>
+                                <StyledTextField
+                                    id="dataNascimento"
+                                    name="dataNascimento"
+                                    placeholder="DD/MM/AAAA"
+                                    value={formData.dataNascimento}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <img src="/nascimento.svg" alt="Calendário" style={{ width: '20px', height: '20px' }} />
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </FormControl>
+                        </Grid>
+
+                        {/* Tipo Sanguíneo */}
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="tipoSanguineo">
+                                    Tipo Sanguíneo*
+                                </StyledInputLabel>
+                                <StyledSelect
+                                    id="tipoSanguineo"
+                                    name="tipoSanguineo"
+                                    value={formData.tipoSanguineo}
+                                    onChange={handleChange}
+                                    displayEmpty
+                                    renderValue={selected => selected || "Selecione um..."}
+                                >
+                                    <MenuItem value="" disabled>
+                                        Selecione um...
+                                    </MenuItem>
+                                    <MenuItem value="A+">A+</MenuItem>
+                                    <MenuItem value="A-">A-</MenuItem>
+                                    <MenuItem value="B+">B+</MenuItem>
+                                    <MenuItem value="B-">B-</MenuItem>
+                                    <MenuItem value="AB+">AB+</MenuItem>
+                                    <MenuItem value="AB-">AB-</MenuItem>
+                                    <MenuItem value="O+">O+</MenuItem>
+                                    <MenuItem value="O-">O-</MenuItem>
+                                </StyledSelect>
+                            </FormControl>
+                        </Grid>
+
+                        {/* Gênero */}
+                        <Grid item xs={12} sm={6}>
+                            <FormControl component="fieldset" fullWidth>
+                                <FormLabel
+                                    sx={{
+                                        color: '#111E5A !important',
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontSize: '16px',
+                                        fontWeight: 500,
+                                        lineHeight: '150%',
+                                        marginBottom: '8px',
+                                    }}
+                                >
+                                    Gênero*
+                                </FormLabel>
+                                <RadioGroup
+                                    row
+                                    name="genero"
+                                    value={formData.genero}
+                                    onChange={handleChange}
+                                >
+                                    <FormControlLabel
+                                        value="masculino"
+                                        control={
+                                            <Radio
+                                                sx={{
+                                                    '&.Mui-checked': {
+                                                        color: '#111E5A',
+                                                    },
+                                                }}
+                                            />
+                                        }
+                                        label={
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <img
+                                                    src="/gMasculino.svg"
+                                                    alt="Masculino"
+                                                    style={{ marginRight: 8, width: '20px', height: '20px' }}
+                                                />
+                                                <Typography
+                                                    sx={{
+                                                        fontFamily: 'Gellix, sans-serif',
+                                                        fontSize: '14px',
+                                                    }}
+                                                >
+                                                    Masculino
+                                                </Typography>
+                                            </Box>
+                                        }
                                     />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Sanguíneo*</label>
-                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none appearance-none bg-white">
-                                        <option>Selecione um...</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
+                                    <FormControlLabel
+                                        value="feminino"
+                                        control={
+                                            <Radio
+                                                sx={{
+                                                    '&.Mui-checked': {
+                                                        color: '#111E5A',
+                                                    },
+                                                }}
+                                            />
+                                        }
+                                        label={
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <img
+                                                    src="/gFeminino.svg"
+                                                    alt="Feminino"
+                                                    style={{ marginRight: 8, width: '20px', height: '20px' }}
+                                                />
+                                                <Typography
+                                                    sx={{
+                                                        fontFamily: 'Gellix, sans-serif',
+                                                        fontSize: '14px',
+                                                    }}
+                                                >
+                                                    Feminino
+                                                </Typography>
+                                            </Box>
+                                        }
                                     />
-                                </div>
+                                </RadioGroup>
+                            </FormControl>
+                        </Grid>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
-                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none appearance-none bg-white">
-                                        <option>Selecione um...</option>
-                                    </select>
-                                </div>
-                            </div>
+                        {/* Endereço */}
+                        <Grid item xs={12}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="endereco">
+                                    Endereço
+                                </StyledInputLabel>
+                                <StyledTextField
+                                    id="endereco"
+                                    name="endereco"
+                                    placeholder="Digite seu endereço"
+                                    value={formData.endereco}
+                                    onChange={handleChange}
+                                    fullWidth
+                                />
+                            </FormControl>
+                        </Grid>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data De Nascimento*</label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="dd/mm/aaaa"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
-                                        />
-                                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* Cidade e Estado */}
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="cidade">
+                                    Cidade
+                                </StyledInputLabel>
+                                <StyledSelect
+                                    id="cidade"
+                                    name="cidade"
+                                    value={formData.cidade}
+                                    onChange={handleChange}
+                                    displayEmpty
+                                    renderValue={selected => selected || "Selecione uma..."}
+                                >
+                                    <MenuItem value="" disabled>
+                                        Selecione uma...
+                                    </MenuItem>
+                                    <MenuItem value="sao_paulo">São Paulo</MenuItem>
+                                    <MenuItem value="rio_de_janeiro">Rio de Janeiro</MenuItem>
+                                    <MenuItem value="belo_horizonte">Belo Horizonte</MenuItem>
+                                    <MenuItem value="fortaleza">Fortaleza</MenuItem>
+                                </StyledSelect>
+                            </FormControl>
+                        </Grid>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Gênero*</label>
-                                    <div className="flex space-x-8 pt-2">
-                                        <label className="flex items-center">
-                                            <div className="relative mr-2">
-                                                <div className="h-5 w-5 border-2 border-blue-500 rounded-full flex items-center justify-center">
-                                                    <div className="h-2.5 w-2.5 bg-blue-500 rounded-full"></div>
-                                                </div>
-                                            </div>
-                                            <span className="text-sm text-gray-700">Masculino</span>
-                                        </label>
-                                        <label className="flex items-center">
-                                            <div className="relative mr-2">
-                                                <div className="h-5 w-5 border-2 border-gray-300 rounded-full flex items-center justify-center">
-                                                </div>
-                                            </div>
-                                            <span className="text-sm text-gray-700">Feminino</span>
-                                        </label>
-                                    </div>
-                                </div>
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="estado">
+                                    Estado
+                                </StyledInputLabel>
+                                <StyledSelect
+                                    id="estado"
+                                    name="estado"
+                                    value={formData.estado}
+                                    onChange={handleChange}
+                                    displayEmpty
+                                    renderValue={selected => selected || "Selecione um..."}
+                                >
+                                    <MenuItem value="" disabled>
+                                        Selecione um...
+                                    </MenuItem>
+                                    <MenuItem value="SP">São Paulo</MenuItem>
+                                    <MenuItem value="RJ">Rio de Janeiro</MenuItem>
+                                    <MenuItem value="MG">Minas Gerais</MenuItem>
+                                    <MenuItem value="CE">Ceará</MenuItem>
+                                </StyledSelect>
+                            </FormControl>
+                        </Grid>
+                    </Grid>
+                </Grid>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none appearance-none bg-white">
-                                        <option>Selecione um...</option>
-                                    </select>
-                                </div>
-                            </div>
+                {/* Coluna Direita */}
+                <Grid item xs={12} md={6}>
+                    <Grid container spacing={3}>
+                        {/* CPF */}
+                        <Grid item xs={12}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="cpf">
+                                    CPF
+                                </StyledInputLabel>
+                                <StyledTextField
+                                    id="cpf"
+                                    name="cpf"
+                                    placeholder="000.000.000-00"
+                                    value={formData.cpf}
+                                    onChange={handleChange}
+                                    fullWidth
+                                />
+                            </FormControl>
+                        </Grid>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
-                                    <input
-                                        type="email"
-                                        placeholder="contato@paciente.com"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
-                                    />
-                                </div>
+                        {/* Email */}
+                        <Grid item xs={12}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="email">
+                                    Email*
+                                </StyledInputLabel>
+                                <StyledTextField
+                                    id="email"
+                                    name="email"
+                                    placeholder="contato@email.com"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    fullWidth
+                                />
+                            </FormControl>
+                        </Grid>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Telefone*</label>
-                                    <input
-                                        type="tel"
-                                        placeholder="(00) 00000-0000"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
-                                    />
-                                </div>
+                        {/* Telefone */}
+                        <Grid item xs={12}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="telefone">
+                                    Telefone*
+                                </StyledInputLabel>
+                                <StyledTextField
+                                    id="telefone"
+                                    name="telefone"
+                                    placeholder="(00) 00000-0000"
+                                    value={formData.telefone}
+                                    onChange={handleChange}
+                                    fullWidth
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <img src="/telefone.svg" alt="Telefone" style={{ width: '20px', height: '20px' }} />
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </FormControl>
+                        </Grid>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-                                    <input
-                                        type="text"
-                                        placeholder="000.000.000-00"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
-                                    />
-                                </div>
-
-                                <div className="flex justify-center pt-4">
-                                    <div className="relative">
-                                        <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                                            {photoURL ? (
-                                                <img src={photoURL} alt="Foto do perfil" className="h-full w-full object-cover" />
-                                            ) : (
-                                                <User size={40} className="text-gray-400" />
-                                            )}
-                                        </div>
-                                        <label
-                                            htmlFor="photo-upload"
-                                            className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-1.5 cursor-pointer shadow-md hover:bg-blue-600 transition"
-                                        >
-                                            <Camera size={16} className="text-white" />
-                                        </label>
-                                        <input
-                                            id="photo-upload"
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={handlePhotoChange}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+                        {/* CEP */}
+                        <Grid item xs={12}>
+                            <FormControl fullWidth>
+                                <StyledInputLabel htmlFor="cep">
+                                    CEP
+                                </StyledInputLabel>
+                                <StyledTextField
+                                    id="cep"
+                                    name="cep"
+                                    placeholder="00000-000"
+                                    value={formData.cep}
+                                    onChange={handleChange}
+                                    fullWidth
+                                />
+                            </FormControl>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </FormSectionContainer>
     );
 };
 
-export default InformacoesBasicas;
+export default InfoBasicasForm;

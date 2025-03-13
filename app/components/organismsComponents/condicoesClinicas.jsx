@@ -1,278 +1,254 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronUp, ChevronDown, Plus, X } from 'lucide-react';
+"use client";
 
-const CondicoesClinicas = () => {
-    // Estados
-    const [isOpen, setIsOpen] = useState(true);
-    const [medicamentos, setMedicamentos] = useState(['Metformina 500mg', 'Losartana Potássica 50mg']);
-    const [doencas, setDoencas] = useState(['Diabetes', 'Fumante', 'Internado']);
-    const [alergias, setAlergias] = useState(['Poeira', 'Amoxilina']);
-    const [cirurgias, setCirurgias] = useState(['Colecistectomia']);
-    const [atividadesFisicas, setAtividadesFisicas] = useState(['Caminhadas', 'Musculação']);
-    const [consomeAlcool, setConsomeAlcool] = useState('Sim');
-    const [eFumante, setEFumante] = useState('Sim');
+import React, { useState } from 'react';
+import {
+    Box,
+    Typography,
+    TextField,
+    IconButton,
+    Chip,
+    ToggleButton,
+    ToggleButtonGroup,
+    Grid,
+    FormControl,
+    FormLabel,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import { styled } from '@mui/material/styles';
 
-    // Estados para novos itens
-    const [novoMedicamento, setNovoMedicamento] = useState('');
-    const [novaDoenca, setNovaDoenca] = useState('');
-    const [novaAlergia, setNovaAlergia] = useState('');
-    const [novaCirurgia, setNovaCirurgia] = useState('');
-    const [novaAtividadeFisica, setNovaAtividadeFisica] = useState('');
+// Componentes estilizados
+const SectionTitle = styled(Typography)({
+    color: '#111E5A',
+    fontFamily: 'Gellix, sans-serif',
+    fontSize: '16px',
+    fontWeight: 500,
+    lineHeight: '24px',
+    textTransform: 'uppercase',
+    marginBottom: '12px',
+});
 
-    // Refs para focus nos inputs após adicionar
-    const medicamentoInputRef = useRef(null);
-    const doencaInputRef = useRef(null);
-    const alergiaInputRef = useRef(null);
-    const cirurgiaInputRef = useRef(null);
-    const atividadeInputRef = useRef(null);
+const StyledTextField = styled(TextField)({
+    '& .MuiOutlinedInput-root': {
+        borderRadius: '999px',
+        '& fieldset': {
+            borderColor: 'rgba(17, 30, 90, 0.30)'
+        },
+        '&:hover fieldset': {
+            borderColor: 'rgba(17, 30, 90, 0.50)'
+        },
+        '&.Mui-focused fieldset': {
+            borderColor: '#111E5A'
+        }
+    },
+    '& .MuiInputBase-input': {
+        padding: '12px 16px',
+    }
+});
 
-    // Alternar visibilidade do conteúdo
-    const toggleOpen = () => {
-        setIsOpen(!isOpen);
+const AddButton = styled(IconButton)({
+    backgroundColor: '#111E5A',
+    color: 'white',
+    '&:hover': {
+        backgroundColor: '#0A144A',
+    },
+    width: '36px',
+    height: '36px',
+});
+
+const ChipColors = {
+    medicamentos: '#E3F2FD',  // Azul claro
+    doencas: '#FFF9C4',       // Amarelo
+    alergias: '#F5F5F5',      // Cinza claro
+    cirurgias: '#E8F5E9',     // Verde claro
+    atividades: '#E0F7FA',    // Ciano claro
+};
+
+const StyledToggleButtonGroup = styled(ToggleButtonGroup)({
+    '& .MuiToggleButtonGroup-grouped': {
+        borderRadius: '20px',
+        margin: '0 8px',
+        border: '1px solid #EAECEF',
+        '&.Mui-selected': {
+            backgroundColor: '#111E5A',
+            color: 'white',
+            borderColor: '#111E5A',
+            '&:hover': {
+                backgroundColor: '#0A144A',
+            },
+        },
+        '&:not(.Mui-selected)': {
+            backgroundColor: '#EAECEF',
+            color: '#111E5A',
+            '&:hover': {
+                backgroundColor: '#D0D4D9',
+            },
+        },
+    },
+});
+
+const FormSectionContainer = styled(Box)({
+    padding: '24px',
+    width: '100%',
+});
+
+const CondicoesClinicasForm = () => {
+    // Estados para cada seção de texto
+    const [inputValues, setInputValues] = useState({
+        medicamentos: '',
+        doencas: '',
+        alergias: '',
+        cirurgias: '',
+        atividades: '',
+    });
+
+    const [items, setItems] = useState({
+        medicamentos: [],
+        doencas: [],
+        alergias: [],
+        cirurgias: [],
+        atividades: [],
+    });
+
+    // Estados para perguntas binárias
+    const [consumeAlcool, setConsumeAlcool] = useState('Não');
+    const [ehFumante, setEhFumante] = useState('Não');
+
+    // Função para atualizar os inputs
+    const handleInputChange = (e, type) => {
+        setInputValues({
+            ...inputValues,
+            [type]: e.target.value,
+        });
     };
 
-    // Adicionar novo item genérico
-    const addItem = (list, setList, newItem, setNewItem, inputRef) => {
-        if (newItem.trim() !== '') {
-            setList([...list, newItem.trim()]);
-            setNewItem('');
+    // Função para adicionar itens às listas
+    const addItem = (type) => {
+        if (inputValues[type].trim() !== '') {
+            setItems({
+                ...items,
+                [type]: [...items[type], inputValues[type].trim()],
+            });
+            setInputValues({
+                ...inputValues,
+                [type]: '',
+            });
+        }
+    };
 
-            // Foco no input após adicionar item
-            if (inputRef && inputRef.current) {
-                setTimeout(() => {
-                    inputRef.current.focus();
-                }, 10);
+    // Função para remover itens das listas
+    const removeItem = (type, index) => {
+        setItems({
+            ...items,
+            [type]: items[type].filter((_, i) => i !== index),
+        });
+    };
+
+    // Função para lidar com a mudança nos botões de toggle
+    const handleToggleChange = (type, event, newValue) => {
+        if (newValue !== null) {
+            if (type === 'alcool') {
+                setConsumeAlcool(newValue);
+            } else if (type === 'fumante') {
+                setEhFumante(newValue);
             }
         }
     };
 
-    // Remover item de uma lista
-    const removeItem = (list, setList, index) => {
-        const newList = [...list];
-        newList.splice(index, 1);
-        setList(newList);
-    };
-
-    // Cores para os cards de tags baseadas no tipo
-    const getTagStyle = (category, item) => {
-        if (category === 'doencas') {
-            if (item === 'Diabetes')
-                return { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' };
-            if (item === 'Fumante')
-                return { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' };
-            if (item === 'Internado')
-                return { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' };
-        }
-        return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' };
-    };
-
-    // Lidar com tecla Enter nos inputs
-    const handleKeyDown = (e, list, setList, newItem, setNewItem, inputRef) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addItem(list, setList, newItem, setNewItem, inputRef);
-        }
-    };
-
-    // JSX para um campo de entrada com botão de adição
-    const InputField = ({ label, value, onChange, onKeyDown, placeholder, onAdd, inputRef }) => (
-        <div className="mb-6">
-            <p className="text-sm font-medium text-gray-700 mb-2">{label}</p>
-            <div className="relative">
-                <input
-                    ref={inputRef}
-                    type="text"
-                    className="w-full h-12 px-4 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-shadow"
-                    value={value}
-                    onChange={onChange}
-                    onKeyDown={onKeyDown}
-                    placeholder={placeholder || "Digite e pressione Enter"}
+    // Helper para renderizar as seções de itens
+    const renderItemSection = (title, type) => (
+        <Box sx={{ mb: 3 }}>
+            <SectionTitle>{title}</SectionTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', mb: 1 }}>
+                <StyledTextField
+                    value={inputValues[type]}
+                    onChange={(e) => handleInputChange(e, type)}
+                    placeholder={`Digite ${type === 'medicamentos' ? 'o' : type === 'doencas' ? 'a' : 'a'} ${title.toLowerCase().slice(0, -1)}`}
+                    fullWidth
+                    size="small"
                 />
-                <button
-                    className="absolute right-2 top-2 bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-blue-600 transition-colors"
-                    onClick={onAdd}
-                    aria-label={`Adicionar ${label}`}
-                >
-                    <Plus size={20} />
-                </button>
-            </div>
-        </div>
-    );
-
-    // JSX para a lista de tags
-    const TagList = ({ items, category, onRemove }) => (
-        <div className="flex flex-wrap gap-2 mt-2">
-            {items.map((item, index) => {
-                const style = getTagStyle(category, item);
-                return (
-                    <div
+                <AddButton onClick={() => addItem(type)} aria-label={`Adicionar ${title}`}>
+                    <AddIcon />
+                </AddButton>
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', mt: 1 }}>
+                {items[type].map((item, index) => (
+                    <Chip
                         key={index}
-                        className={`${style.bg} ${style.border} border rounded-full px-3 py-1.5 flex items-center space-x-1 shadow-sm`}
-                    >
-                        <span className={`text-sm font-medium ${style.text}`}>{item}</span>
-                        <button
-                            className={`${style.text} opacity-70 hover:opacity-100`}
-                            onClick={() => onRemove(index)}
-                            aria-label={`Remover ${item}`}
-                        >
-                            <X size={16} />
-                        </button>
-                    </div>
-                );
-            })}
-        </div>
+                        label={item}
+                        onDelete={() => removeItem(type, index)}
+                        sx={{
+                            backgroundColor: ChipColors[type],
+                            color: '#111E5A',
+                            borderRadius: '16px',
+                            '& .MuiChip-deleteIcon': {
+                                color: '#111E5A',
+                                '&:hover': {
+                                    color: '#0A144A',
+                                },
+                            },
+                        }}
+                    />
+                ))}
+            </Box>
+        </Box>
     );
 
-    // JSX do componente principal
     return (
-        <div className="font-sans bg-white rounded-xl shadow-sm" style={{ width: '732px', flexShrink: 0 }}>
-            {/* Cabeçalho */}
-            <div
-                className="flex items-center justify-between cursor-pointer p-4 bg-blue-50 rounded-t-xl"
-                onClick={toggleOpen}
-            >
-                <h2 className="text-blue-600 font-medium text-lg">Condições Clínicas</h2>
-                <div className="text-blue-600">
-                    {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </div>
-            </div>
+        <FormSectionContainer>
+            <Grid container spacing={3}>
+                {/* Coluna Esquerda */}
+                <Grid item xs={12} md={6}>
+                    {renderItemSection('Medicamentos', 'medicamentos')}
+                    {renderItemSection('Doenças', 'doencas')}
+                    {renderItemSection('Alergias', 'alergias')}
+                </Grid>
 
-            {/* Conteúdo expansível */}
-            {isOpen && (
-                <div className="bg-white p-6 rounded-b-xl transition-all">
-                    {/* Medicamentos */}
-                    <InputField
-                        label="Medicamentos"
-                        value={novoMedicamento}
-                        onChange={(e) => setNovoMedicamento(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, medicamentos, setMedicamentos, novoMedicamento, setNovoMedicamento, medicamentoInputRef)}
-                        onAdd={() => addItem(medicamentos, setMedicamentos, novoMedicamento, setNovoMedicamento, medicamentoInputRef)}
-                        inputRef={medicamentoInputRef}
-                    />
-                    <TagList
-                        items={medicamentos}
-                        category="medicamentos"
-                        onRemove={(index) => removeItem(medicamentos, setMedicamentos, index)}
-                    />
+                {/* Coluna Direita */}
+                <Grid item xs={12} md={6}>
+                    {renderItemSection('Cirurgias', 'cirurgias')}
+                    {renderItemSection('Atividade Física', 'atividades')}
 
-                    {/* Doenças */}
-                    <InputField
-                        label="Doenças"
-                        value={novaDoenca}
-                        onChange={(e) => setNovaDoenca(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, doencas, setDoencas, novaDoenca, setNovaDoenca, doencaInputRef)}
-                        onAdd={() => addItem(doencas, setDoencas, novaDoenca, setNovaDoenca, doencaInputRef)}
-                        inputRef={doencaInputRef}
-                    />
-                    <TagList
-                        items={doencas}
-                        category="doencas"
-                        onRemove={(index) => removeItem(doencas, setDoencas, index)}
-                    />
+                    {/* Consome Álcool? */}
+                    <Box sx={{ mb: 3 }}>
+                        <SectionTitle>Consome Álcool?</SectionTitle>
+                        <StyledToggleButtonGroup
+                            value={consumeAlcool}
+                            exclusive
+                            onChange={(e, val) => handleToggleChange('alcool', e, val)}
+                            aria-label="Consome álcool?"
+                            size="small"
+                        >
+                            <ToggleButton value="Sim" aria-label="Sim">
+                                Sim
+                            </ToggleButton>
+                            <ToggleButton value="Não" aria-label="Não">
+                                Não
+                            </ToggleButton>
+                        </StyledToggleButtonGroup>
+                    </Box>
 
-                    {/* Alergias */}
-                    <InputField
-                        label="Alergias"
-                        value={novaAlergia}
-                        onChange={(e) => setNovaAlergia(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, alergias, setAlergias, novaAlergia, setNovaAlergia, alergiaInputRef)}
-                        onAdd={() => addItem(alergias, setAlergias, novaAlergia, setNovaAlergia, alergiaInputRef)}
-                        inputRef={alergiaInputRef}
-                    />
-                    <TagList
-                        items={alergias}
-                        category="alergias"
-                        onRemove={(index) => removeItem(alergias, setAlergias, index)}
-                    />
-
-                    {/* Cirurgias */}
-                    <InputField
-                        label="Cirurgias"
-                        value={novaCirurgia}
-                        onChange={(e) => setNovaCirurgia(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, cirurgias, setCirurgias, novaCirurgia, setNovaCirurgia, cirurgiaInputRef)}
-                        onAdd={() => addItem(cirurgias, setCirurgias, novaCirurgia, setNovaCirurgia, cirurgiaInputRef)}
-                        inputRef={cirurgiaInputRef}
-                    />
-                    <TagList
-                        items={cirurgias}
-                        category="cirurgias"
-                        onRemove={(index) => removeItem(cirurgias, setCirurgias, index)}
-                    />
-
-                    {/* Atividade Física */}
-                    <InputField
-                        label="Atividade Física"
-                        value={novaAtividadeFisica}
-                        onChange={(e) => setNovaAtividadeFisica(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, atividadesFisicas, setAtividadesFisicas, novaAtividadeFisica, setNovaAtividadeFisica, atividadeInputRef)}
-                        onAdd={() => addItem(atividadesFisicas, setAtividadesFisicas, novaAtividadeFisica, setNovaAtividadeFisica, atividadeInputRef)}
-                        inputRef={atividadeInputRef}
-                    />
-                    <TagList
-                        items={atividadesFisicas}
-                        category="atividades"
-                        onRemove={(index) => removeItem(atividadesFisicas, setAtividadesFisicas, index)}
-                    />
-
-                    {/* Perguntas Sim/Não */}
-                    <div className="flex justify-between mt-6">
-                        <div>
-                            <p className="text-sm font-medium text-gray-700 mb-3">Consome Álcool?</p>
-                            <div className="flex space-x-3">
-                                <button
-                                    className={`px-6 py-2 rounded-full font-medium transition-all ${
-                                        consomeAlcool === 'Sim'
-                                            ? 'bg-blue-500 text-white shadow-md'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                    onClick={() => setConsomeAlcool('Sim')}
-                                >
-                                    Sim
-                                </button>
-                                <button
-                                    className={`px-6 py-2 rounded-full font-medium transition-all ${
-                                        consomeAlcool === 'Não'
-                                            ? 'bg-blue-500 text-white shadow-md'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                    onClick={() => setConsomeAlcool('Não')}
-                                >
-                                    Não
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <p className="text-sm font-medium text-gray-700 mb-3">É fumante?</p>
-                            <div className="flex space-x-3">
-                                <button
-                                    className={`px-6 py-2 rounded-full font-medium transition-all ${
-                                        eFumante === 'Sim'
-                                            ? 'bg-blue-500 text-white shadow-md'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                    onClick={() => setEFumante('Sim')}
-                                >
-                                    Sim
-                                </button>
-                                <button
-                                    className={`px-6 py-2 rounded-full font-medium transition-all ${
-                                        eFumante === 'Não'
-                                            ? 'bg-blue-500 text-white shadow-md'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                    onClick={() => setEFumante('Não')}
-                                >
-                                    Não
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+                    {/* É Fumante? */}
+                    <Box sx={{ mb: 3 }}>
+                        <SectionTitle>É Fumante?</SectionTitle>
+                        <StyledToggleButtonGroup
+                            value={ehFumante}
+                            exclusive
+                            onChange={(e, val) => handleToggleChange('fumante', e, val)}
+                            aria-label="É fumante?"
+                            size="small"
+                        >
+                            <ToggleButton value="Sim" aria-label="Sim">
+                                Sim
+                            </ToggleButton>
+                            <ToggleButton value="Não" aria-label="Não">
+                                Não
+                            </ToggleButton>
+                        </StyledToggleButtonGroup>
+                    </Box>
+                </Grid>
+            </Grid>
+        </FormSectionContainer>
     );
 };
 
-export default CondicoesClinicas;
+export default CondicoesClinicasForm;

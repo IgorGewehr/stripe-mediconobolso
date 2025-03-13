@@ -87,8 +87,8 @@ export default function PacienteTemplate() {
                 gap: 2,
                 width: "100%",
                 pb: "30px",
-                overflowY: "auto",
-                maxHeight: "calc(100vh - 20px)",
+                overflowY: "visible", // Alterado de "auto" para "visible"
+                height: "auto", // Alterado de maxHeight para height: auto
                 backgroundColor: "#F4F9FF",
                 p: "10px",
                 boxSizing: "border-box",
@@ -113,7 +113,7 @@ export default function PacienteTemplate() {
                     p: 4,
                     width: "100%",
                     boxSizing: "border-box",
-                    maxHeight: "auto",
+                    height: "auto", // Alterado de maxHeight para height: auto
                     zIndex: 1, // Lower z-index than the patient card
                 }}
             >

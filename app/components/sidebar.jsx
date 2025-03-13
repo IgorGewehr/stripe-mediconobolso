@@ -23,16 +23,16 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         if (onMenuSelect) onMenuSelect(label);
     };
 
-    const buttonStyles = (isSelected) => ({
+    const buttonStyles = (isSelected, label) => ({
         display: "flex",
         alignItems: "center",
         justifyContent: "flex-start",
         fontFamily: "Gellix, sans-serif",
-        fontSize: "14px", // Reduzido o tamanho da fonte
+        fontSize: "12px", // Reduzido o tamanho da fonte
         fontWeight: 500,
         textTransform: "none",
-        width: "100%",
-        height: "36px", // Reduzido a altura do botão
+        width: label === "Central de Ajuda" ? "180px" : "150px", // Width específico para Central de Ajuda
+        height: "28px", // Reduzido a altura do botão
         px: 2,
         py: 1,
         my: 0.5,
@@ -127,7 +127,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                 key={item.label}
                                 onClick={() => handleMenuClick(item.label)}
                                 variant="text"
-                                sx={buttonStyles(isSelected)}
+                                sx={buttonStyles(isSelected, item.label)}
                                 startIcon={
                                     <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
                                 }
@@ -150,7 +150,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                 key={item.label}
                                 onClick={() => handleMenuClick(item.label)}
                                 variant="text"
-                                sx={buttonStyles(isSelected)}
+                                sx={buttonStyles(isSelected, item.label)}
                                 startIcon={
                                     <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
                                 }
