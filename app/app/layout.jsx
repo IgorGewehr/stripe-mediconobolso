@@ -4,71 +4,60 @@ import React, { useState } from "react";
 import { Box } from "@mui/material";
 import TopAppBar from "../components/TopAppBar";
 import Sidebar from "../components/Sidebar";
-import PacienteTemplate from "../components/pacienteTemplate";
+import DashboardTemplate from "../components/DashboardTemplate";
+import ReceitasTemplate from "../components/ReceitasTemplate";
+import AgendaTemplate from "../components/AgendaTemplate";
 import PacienteCadastroTemplate from "../components/pacienteCadastroTemplae";
+import PacienteTemplate from "../components/pacienteTemplate";
 
 export default function AppLayout({ children }) {
-    const [activePage, setActivePage] = useState("dashboard");
+    // Define o estado inicial para "Dashboard"
+    const [activePage, setActivePage] = useState("Dashboard");
+
+    // Estilo de escala para o conteúdo
+    const contentScaleStyle = {
+        transform: 'scale(0.9)',
+        transformOrigin: 'top left',
+        width: '111.11%', // Compensar a redução (100% / 0.9 ≈ 111.11%)
+        height: '111.11%',
+    };
 
     const renderContent = () => {
-        switch (activePage) {
+        // Converte para lowercase para facilitar a comparação
+        switch (activePage.toLowerCase()) {
             case "dashboard":
-                return <PacienteCadastroTemplate  />;
+                return <PacienteTemplate />;
             case "pacientes":
-                return <PacienteTemplate />;
-            // Outros cases para novas páginas
+                return <PacienteCadastroTemplate />;
+            case "receitas":
+                return <ReceitasTemplate />;
+            case "agenda":
+                return <AgendaTemplate />;
             default:
-                return <PacienteTemplate />;
+                return <DashboardTemplate />;
         }
     };
 
-    // Função de callback que a Sidebar chamará ao clicar em uma opção
+    // Callback chamado pela Sidebar ao clicar em um item
     const handleMenuSelect = (page) => {
         setActivePage(page);
     };
 
-    // Estilo para aplicar escala somente no conteúdo
-    const contentScaleStyle = {
-        transform: 'scale(0.9)',
-        transformOrigin: 'top left',
-        width: '111.11%', // Compensar a redução (100% / 0.9 = ~111.11%)
-        height: '111.11%',
-    };
-
-    const contentContainerStyle = {
-        position: 'relative',
-        // Adiciona overflow auto apenas quando o componente é o cadastro de paciente
-        ...(activePage === "dashboard" && {
-            overflowY: 'visible',
-            maxHeight: 'calc(100vh - 64px)' // Ajuste conforme a altura do seu TopAppBar
-        })
+    // Callback para o botão "Paciente" da TopAppBar
+    const handlePacienteTopAppBarClick = () => {
+        setActivePage("Pacientes");
     };
 
     return (
-        <Box
-            display="flex"
-            height="100vh"
-            overflow="hidden" // Importante para prevenir scroll duplo
-        >
+        <Box display="flex" height="100vh" overflow="hidden">
             <Sidebar initialSelected={activePage} onMenuSelect={handleMenuSelect} />
-            <Box
-                flex={1}
-                display="flex"
-                flexDirection="column"
-                overflow="hidden" // Controla o overflow aqui
-            >
-                <Box
-                    sx={{
-                        flexShrink: 0 // Impede que a TopAppBar seja comprimida
-                    }}
-                >
-                    <TopAppBar label={activePage} />
+            <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
+                <Box sx={{ flexShrink: 0 }}>
+                    <TopAppBar label={activePage} onPacienteClick={handlePacienteTopAppBarClick} />
                 </Box>
-                <Box
-                    flex={1}
-                    sx={contentContainerStyle}
-                >
-                    <Box sx={contentScaleStyle}>
+                <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
+                    {/* Aplica o contentScaleStyle para ajustar a escala do conteúdo */}
+                    <Box sx={{ height: 'auto', padding: '10px', boxSizing: 'border-box', ...contentScaleStyle }}>
                         {renderContent()}
                     </Box>
                 </Box>

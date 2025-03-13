@@ -28,26 +28,26 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         alignItems: "center",
         justifyContent: "flex-start",
         fontFamily: "Gellix, sans-serif",
-        fontSize: "12px", // Reduzido o tamanho da fonte
+        fontSize: "12px",
         fontWeight: 500,
         textTransform: "none",
-        width: label === "Central de Ajuda" ? "180px" : "150px", // Width específico para Central de Ajuda
-        height: "28px", // Reduzido a altura do botão
+        width: label === "Central de Ajuda" ? "180px" : "150px",
+        height: "28px",
         px: 2,
         py: 1,
         my: 0.5,
-        borderRadius: "18px", // Ajustado para metade da altura para manter a proporção
+        borderRadius: "18px",
         transition: "background-color 0.2s ease, color 0.2s ease",
         color: isSelected ? "#FFF" : "#111E5A",
         backgroundColor: isSelected ? "#4285F4" : "transparent",
-        opacity: isSelected ? 0.77 : 1, // Adicionada a opacidade conforme solicitado
+        opacity: isSelected ? 0.77 : 1,
         "&:hover": {
             backgroundColor: isSelected ? "#4285F4" : "rgba(66, 133, 244, 0.08)",
         },
     });
 
     const iconStyles = {
-        width: "18px", // Reduzido o tamanho do ícone
+        width: "18px",
         height: "18px",
         mr: 1.2,
     };
@@ -55,7 +55,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
     const categoryLabelStyle = {
         color: "#8A94A6",
         fontFamily: "Gellix, sans-serif",
-        fontSize: "12px", // Reduzido o tamanho da fonte
+        fontSize: "12px",
         fontWeight: 500,
         mb: 0.8,
         mt: 2.5,
@@ -69,28 +69,27 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                 height: "100vh",
                 width: "240px",
                 position: "relative",
-                pl: "30px", // Padding-left de 30px conforme solicitado
+                pl: "30px",
                 pr: "16px",
-                pt: "30px", // Padding-top de 30px conforme solicitado
+                pt: "30px",
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
             }}
         >
-            {/* Logo e Títulos */}
             <Box sx={{ display: "flex", alignItems: "center", mb: 4, ml: 0 }}>
                 <Box
                     component="img"
                     src="/ico.svg"
                     alt="Logo"
-                    sx={{ width: "47px", height: "44px", flexShrink: 0, ml: "4px" }} // Aumentado o tamanho da logo
+                    sx={{ width: "47px", height: "44px", flexShrink: 0, ml: "4px" }}
                 />
                 <Box sx={{ ml: "10px" }}>
                     <Typography
                         sx={{
                             color: "#4285F4",
                             fontFamily: "Gellix, sans-serif",
-                            fontSize: "18px", // Reduzido proporcionalmente em relação à logo
+                            fontSize: "18px",
                             fontWeight: 500,
                             lineHeight: 1.2,
                         }}
@@ -101,11 +100,11 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                         sx={{
                             color: "#8A94A6",
                             fontFamily: "Gellix, sans-serif",
-                            fontSize: "9px", // Reduzido tamanho
+                            fontSize: "9px",
                             letterSpacing: "2px",
                             fontWeight: 500,
                             lineHeight: 1.2,
-                            opacity: 0.9, // Adicionado opacity conforme solicitado
+                            opacity: 0.9,
                         }}
                     >
                         NO BOLSO
@@ -113,9 +112,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                 </Box>
             </Box>
 
-            {/* Seção de Menu */}
             <Box sx={{ flex: 1 }}>
-                {/* Categoria Principal */}
                 <Typography sx={categoryLabelStyle}>
                     Principal
                 </Typography>
@@ -138,7 +135,6 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     })}
                 </Box>
 
-                {/* Categoria Suporte */}
                 <Typography sx={categoryLabelStyle}>
                     Suporte
                 </Typography>
@@ -162,7 +158,6 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                 </Box>
             </Box>
 
-            {/* Área do Médico */}
             <Box
                 sx={{
                     display: "flex",
@@ -181,7 +176,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     src="/doctorimage.png"
                     alt="Doctor"
                     sx={{
-                        width: "32px", // Reduzido
+                        width: "32px",
                         height: "32px",
                         borderRadius: "50%",
                         border: "2px solid #4285F4",
@@ -193,7 +188,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                         sx={{
                             color: "#111E5A",
                             fontFamily: "Gellix, sans-serif",
-                            fontSize: "13px", // Reduzido
+                            fontSize: "13px",
                             fontWeight: 600,
                             lineHeight: 1.2,
                         }}
@@ -204,7 +199,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                         sx={{
                             color: "#8A94A6",
                             fontFamily: "Gellix, sans-serif",
-                            fontSize: "11px", // Reduzido
+                            fontSize: "11px",
                             fontWeight: 400,
                             lineHeight: 1.2,
                         }}
@@ -217,7 +212,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     src="/chevron-down.svg"
                     alt="Expand"
                     sx={{
-                        width: "14px", // Reduzido
+                        width: "14px",
                         height: "14px",
                     }}
                 />

@@ -13,7 +13,6 @@ import {
     useTheme
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
-import EditIcon from "@mui/icons-material/Edit";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 
@@ -47,8 +46,10 @@ function Card1({ paciente, expanded, onToggle }) {
                 backgroundColor: "#fff",
                 borderRadius: expanded ? "40px 0 0 40px" : "40px",
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                height: "fit-content", // Ajusta altura ao conteúdo
                 zIndex: expanded ? 10 : 1,
+                display: "flex",
+                flexDirection: "column",// Usa altura baseada no conteúdo
+                minHeight: "0", // Remove altura mínima
             }}
         >
             {/* Overlay image */}
@@ -66,7 +67,7 @@ function Card1({ paciente, expanded, onToggle }) {
                 }}
             />
 
-            <Box sx={{ p: 2.5, pb: 2.5 }}>
+            <Box sx={{ p: 3, pb: 3, flexGrow: 0, height: "max-content" }}>
                 {/* Avatar/Photo */}
                 <Box
                     sx={{
@@ -83,8 +84,8 @@ function Card1({ paciente, expanded, onToggle }) {
                             src={paciente.fotoPerfil}
                             alt={paciente.nome}
                             sx={{
-                                width: 90,
-                                height: 90,
+                                width: 110,
+                                height: 110,
                                 border: `3px solid ${themeColors.primary}`,
                                 position: "relative",
                             }}
@@ -92,14 +93,14 @@ function Card1({ paciente, expanded, onToggle }) {
                     ) : (
                         <Avatar
                             sx={{
-                                width: 90,
-                                height: 90,
+                                width: 110,
+                                height: 110,
                                 border: `3px solid ${themeColors.primary}`,
                                 bgcolor: "#FFF",
                                 position: "relative",
                             }}
                         >
-                            <PersonIcon sx={{ color: "#B9D6FF", fontSize: 50 }} />
+                            <PersonIcon sx={{ color: "#B9D6FF", fontSize: 60 }} />
                         </Avatar>
                     )}
 
@@ -108,9 +109,9 @@ function Card1({ paciente, expanded, onToggle }) {
                         sx={{
                             position: "absolute",
                             top: 0,
-                            left: 62,
-                            width: 28,
-                            height: 28,
+                            left: 75,
+                            width: 35,
+                            height: 35,
                             borderRadius: "50%",
                             backgroundColor: themeColors.primary,
                             display: "flex",
@@ -125,8 +126,8 @@ function Card1({ paciente, expanded, onToggle }) {
                             src="/check.svg"
                             alt="Verificado"
                             sx={{
-                                width: 10,
-                                height: 10,
+                                width: 12,
+                                height: 12,
                                 color: "#FFF",
                             }}
                         />
@@ -139,9 +140,9 @@ function Card1({ paciente, expanded, onToggle }) {
                     sx={{
                         color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: 22,
+                        fontSize: 24,
                         fontWeight: 500,
-                        mb: 1.5,
+                        mb: 2,
                         zIndex: 1,
                         position: "relative",
                     }}
@@ -155,12 +156,12 @@ function Card1({ paciente, expanded, onToggle }) {
                     variant="contained"
                     endIcon={expanded ? <KeyboardArrowLeftIcon /> : <KeyboardArrowRightIcon />}
                     sx={{
-                        height: 36,
+                        height: 44,
                         borderRadius: 99,
                         backgroundColor: themeColors.primary,
                         color: "#FFF",
                         fontFamily: "Gellix",
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: 500,
                         textTransform: "none",
                         mb: 3,
@@ -178,16 +179,16 @@ function Card1({ paciente, expanded, onToggle }) {
                     sx={{
                         color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: 500,
                         opacity: 0.33,
-                        mb: 0.5,
+                        mb: 1,
                     }}
                 >
                     Doenças Crônicas
                 </Typography>
 
-                <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mb: 2 }}>
+                <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
                     {paciente.chronicDiseases && paciente.chronicDiseases.length > 0 ? (
                         paciente.chronicDiseases.map((disease, index) => {
                             let colorScheme = { bg: "#E3FAFC", color: "#15AABF" };
@@ -203,13 +204,13 @@ function Card1({ paciente, expanded, onToggle }) {
                                     key={index}
                                     label={disease}
                                     sx={{
-                                        height: 28,
+                                        height: 34,
                                         borderRadius: 99,
-                                        padding: "0 12px",
+                                        padding: "0 15px",
                                         backgroundColor: colorScheme.bg,
                                         color: colorScheme.color,
                                         fontFamily: "Gellix",
-                                        fontSize: 13,
+                                        fontSize: 14,
                                         fontWeight: 500,
                                     }}
                                 />
@@ -219,13 +220,13 @@ function Card1({ paciente, expanded, onToggle }) {
                         <Chip
                             label="-"
                             sx={{
-                                height: 28,
+                                height: 34,
                                 borderRadius: 99,
-                                padding: "0 12px",
+                                padding: "0 15px",
                                 backgroundColor: "#EEE",
                                 color: "#AAA",
                                 fontFamily: "Gellix",
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: 500,
                             }}
                         />
@@ -238,29 +239,29 @@ function Card1({ paciente, expanded, onToggle }) {
                     sx={{
                         color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: 500,
                         opacity: 0.33,
-                        mb: 0.5,
+                        mb: 1,
                     }}
                 >
                     Informações Gerais
                 </Typography>
 
-                <Stack spacing={1} sx={{ mb: 2 }}>
+                <Stack spacing={2} sx={{ mb: 2 }}>
                     {/* Blood Type */}
                     <Stack direction="row" alignItems="center" spacing={1}>
                         <Box
                             component="img"
                             src="/sangue.svg"
                             alt="Tipo Sanguíneo"
-                            sx={{ width: 20, height: 20 }}
+                            sx={{ width: 24, height: 24 }}
                         />
                         <Typography
                             sx={{
                                 color: themeColors.textPrimary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -270,7 +271,7 @@ function Card1({ paciente, expanded, onToggle }) {
                             sx={{
                                 color: themeColors.primary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -284,13 +285,13 @@ function Card1({ paciente, expanded, onToggle }) {
                             component="img"
                             src="/nascimento.svg"
                             alt="Data de Nascimento"
-                            sx={{ width: 20, height: 20 }}
+                            sx={{ width: 24, height: 24 }}
                         />
                         <Typography
                             sx={{
                                 color: themeColors.textPrimary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -300,7 +301,7 @@ function Card1({ paciente, expanded, onToggle }) {
                             sx={{
                                 color: themeColors.primary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -315,29 +316,29 @@ function Card1({ paciente, expanded, onToggle }) {
                     sx={{
                         color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: 500,
                         opacity: 0.33,
-                        mb: 0.5,
+                        mb: 1,
                     }}
                 >
                     Contato
                 </Typography>
 
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     {/* Mobile */}
                     <Stack direction="row" alignItems="center" spacing={1}>
                         <Box
                             component="img"
                             src="/celular.svg"
                             alt="Celular"
-                            sx={{ width: 20, height: 20 }}
+                            sx={{ width: 24, height: 24 }}
                         />
                         <Typography
                             sx={{
                                 color: themeColors.textPrimary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -347,7 +348,7 @@ function Card1({ paciente, expanded, onToggle }) {
                             sx={{
                                 color: themeColors.primary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -361,13 +362,13 @@ function Card1({ paciente, expanded, onToggle }) {
                             component="img"
                             src="/telefone.svg"
                             alt="Telefone"
-                            sx={{ width: 20, height: 20 }}
+                            sx={{ width: 24, height: 24 }}
                         />
                         <Typography
                             sx={{
                                 color: themeColors.textPrimary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -377,7 +378,7 @@ function Card1({ paciente, expanded, onToggle }) {
                             sx={{
                                 color: themeColors.primary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -391,13 +392,13 @@ function Card1({ paciente, expanded, onToggle }) {
                             component="img"
                             src="/email.svg"
                             alt="Email"
-                            sx={{ width: 20, height: 20 }}
+                            sx={{ width: 24, height: 24 }}
                         />
                         <Typography
                             sx={{
                                 color: themeColors.textPrimary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                             }}
                         >
@@ -407,7 +408,7 @@ function Card1({ paciente, expanded, onToggle }) {
                             sx={{
                                 color: themeColors.primary,
                                 fontFamily: "Gellix",
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 500,
                                 wordBreak: "break-word",
                             }}
@@ -426,35 +427,50 @@ function Card1({ paciente, expanded, onToggle }) {
 // ----------------------
 function Card2({ paciente }) {
     return (
-        <Box sx={{ p: "20px 5px 5px 5px", m: '15px 15px 15px 15px', height: 'auto', overflow: 'auto', backgroundColor: '#F1F3FA', borderRadius: '20px 20px 20px 20px' }}>
+        // No componente Card2, substitua o Box inicial por este:
+        // No componente Card2, substitua o Box inicial por este:
+        <Box sx={{
+            p: "25px 5px 5px 5px",
+            m: '20px 20px 20px 20px',
+            backgroundColor: '#F1F3FA',
+            borderRadius: '20px 20px 20px 20px',
+            flexGrow: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: "none", // Alterado de "calc(100% - 40px)" para "none"
+            overflow: "visible", // Alterado de "auto" para "visible"
+            height: "auto",
+            minHeight: "0"
+        }}>
             {/* Endereço Completo */}
             <Typography
                 variant="subtitle2"
                 sx={{
                     color: themeColors.textPrimary,
                     fontFamily: "Gellix",
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: 500,
-                    mb: 1.5,
+                    mb: 2,
+                    ml: "10px"
                 }}
             >
                 Endereço Completo
             </Typography>
 
             {/* Endereço */}
-            <Stack direction="row" alignItems="flex-start" spacing={1.5} sx={{ mb: 1.5 }}>
+            <Stack direction="row" alignItems="flex-start" spacing={2} sx={{ mb: 2, ml: "10px" }}>
                 <Box
                     component="img"
                     src="/endereco.svg"
                     alt="Endereço"
-                    sx={{ width: 20, height: 20, mt: 0.5 }}
+                    sx={{ width: 24, height: 24, mt: 0.5 }}
                 />
                 <Box>
                     <Typography
                         sx={{
                             color: themeColors.textSecondary,
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                             mb: 0.5,
                         }}
@@ -465,7 +481,7 @@ function Card2({ paciente }) {
                         sx={{
                             color: themeColors.primary,
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                         }}
                     >
@@ -477,21 +493,22 @@ function Card2({ paciente }) {
             </Stack>
 
             {/* Cidade */}
-            <Stack direction="row" alignItems="flex-start" spacing={1.5} sx={{ mb: 1.5 }}>
+            <Stack direction="row" alignItems="flex-start" spacing={2} sx={{ mb: 2, ml: "10px" }}>
                 <Box
                     component="img"
                     src="/cidade.svg"
                     alt="Cidade"
-                    sx={{ width: 20, height: 20, mt: 0.5 }}
+                    sx={{ width: 24, height: 24, mt: 0.5, }}
                 />
                 <Box>
                     <Typography
                         sx={{
                             color: themeColors.textSecondary,
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                             mb: 0.5,
+                            ml: "10px"
                         }}
                     >
                         Cidade:
@@ -500,7 +517,7 @@ function Card2({ paciente }) {
                         sx={{
                             color: themeColors.primary,
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                         }}
                     >
@@ -512,19 +529,19 @@ function Card2({ paciente }) {
             </Stack>
 
             {/* CEP */}
-            <Stack direction="row" alignItems="flex-start" spacing={1.5} sx={{ mb: 3 }}>
+            <Stack direction="row" alignItems="flex-start" spacing={2} sx={{ mb: 4, ml: "10px" }}>
                 <Box
                     component="img"
                     src="/cep.svg"
                     alt="CEP"
-                    sx={{ width: 20, height: 20, mt: 0.5 }}
+                    sx={{ width: 24, height: 24, mt: 0.5, }}
                 />
                 <Box>
                     <Typography
                         sx={{
                             color: themeColors.textSecondary,
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                             mb: 0.5,
                         }}
@@ -535,7 +552,7 @@ function Card2({ paciente }) {
                         sx={{
                             color: themeColors.primary,
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                         }}
                     >
@@ -550,29 +567,30 @@ function Card2({ paciente }) {
                 sx={{
                     color: themeColors.textPrimary,
                     fontFamily: "Gellix",
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: 500,
-                    mb: 1,
+                    mb: 1.5,
+                    ml: "10px"
                 }}
             >
                 Cirurgias
             </Typography>
 
-            <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mb: 2 }}>
+            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3, ml: "10px" }}>
                 {paciente.cirurgias && paciente.cirurgias.length > 0 ? (
                     paciente.cirurgias.map((cirurgia, index) => (
                         <Chip
                             key={index}
                             label={cirurgia}
                             sx={{
-                                height: 32,
+                                height: 36,
                                 borderRadius: 99,
-                                padding: "0 12px",
+                                padding: "0 15px",
                                 backgroundColor: "#F8F9FB",
                                 border: "1px solid #E5E9F2",
                                 color: themeColors.textPrimary,
                                 fontFamily: "Gellix",
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: 500,
                             }}
                         />
@@ -581,14 +599,14 @@ function Card2({ paciente }) {
                     <Chip
                         label="-"
                         sx={{
-                            height: 32,
+                            height: 36,
                             borderRadius: 99,
-                            padding: "0 12px",
+                            padding: "0 15px",
                             backgroundColor: "#F8F9FB",
                             border: "1px solid #E5E9F2",
                             color: "#AAA",
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                         }}
                     />
@@ -601,29 +619,30 @@ function Card2({ paciente }) {
                 sx={{
                     color: themeColors.textPrimary,
                     fontFamily: "Gellix",
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: 500,
-                    mb: 1,
+                    mb: 1.5,
+                    ml: "10px"
                 }}
             >
                 Alergias
             </Typography>
 
-            <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mb: 2 }}>
+            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3, ml: "10px" }}>
                 {paciente.alergias && paciente.alergias.length > 0 ? (
                     paciente.alergias.map((alergia, index) => (
                         <Chip
                             key={index}
                             label={alergia}
                             sx={{
-                                height: 32,
+                                height: 36,
                                 borderRadius: 99,
-                                padding: "0 12px",
+                                padding: "0 15px",
                                 backgroundColor: "#F8F9FB",
                                 border: "1px solid #E5E9F2",
                                 color: themeColors.textPrimary,
                                 fontFamily: "Gellix",
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: 500,
                             }}
                         />
@@ -632,14 +651,14 @@ function Card2({ paciente }) {
                     <Chip
                         label="-"
                         sx={{
-                            height: 32,
+                            height: 36,
                             borderRadius: 99,
-                            padding: "0 12px",
+                            padding: "0 15px",
                             backgroundColor: "#F8F9FB",
                             border: "1px solid #E5E9F2",
                             color: "#AAA",
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                         }}
                     />
@@ -652,29 +671,30 @@ function Card2({ paciente }) {
                 sx={{
                     color: themeColors.textPrimary,
                     fontFamily: "Gellix",
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: 500,
-                    mb: 1,
+                    mb: 1.5,
+                    ml: "10px"
                 }}
             >
                 Atividade Física
             </Typography>
 
-            <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mb: 2 }}>
+            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3, ml: "10px" }}>
                 {paciente.atividadeFisica && paciente.atividadeFisica.length > 0 ? (
                     paciente.atividadeFisica.map((atividade, index) => (
                         <Chip
                             key={index}
                             label={atividade}
                             sx={{
-                                height: 32,
+                                height: 36,
                                 borderRadius: 99,
-                                padding: "0 12px",
+                                padding: "0 15px",
                                 backgroundColor: "#F8F9FB",
                                 border: "1px solid #E5E9F2",
                                 color: themeColors.textPrimary,
                                 fontFamily: "Gellix",
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: 500,
                             }}
                         />
@@ -683,14 +703,14 @@ function Card2({ paciente }) {
                     <Chip
                         label="-"
                         sx={{
-                            height: 32,
+                            height: 36,
                             borderRadius: 99,
-                            padding: "0 12px",
+                            padding: "0 15px",
                             backgroundColor: "#F8F9FB",
                             border: "1px solid #E5E9F2",
                             color: "#AAA",
                             fontFamily: "Gellix",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                         }}
                     />
@@ -703,9 +723,10 @@ function Card2({ paciente }) {
                 sx={{
                     color: themeColors.textPrimary,
                     fontFamily: "Gellix",
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: 500,
-                    mb: 1,
+                    mb: 1.5,
+                    ml: "10px"
                 }}
             >
                 Histórico/Doenças Genéticas
@@ -715,9 +736,10 @@ function Card2({ paciente }) {
                 sx={{
                     color: themeColors.textSecondary,
                     fontFamily: "Gellix",
-                    fontSize: 13,
-                    lineHeight: 1.5,
+                    fontSize: 14,
+                    lineHeight: 1.6,
                     mb: 2,
+                    ml: "10px"
                 }}
             >
                 {paciente.historicoMedico ||
@@ -733,8 +755,6 @@ function Card2({ paciente }) {
 // ----------------------
 export default function PacienteCard({ paciente }) {
     const [expanded, setExpanded] = useState(false);
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
     const handleToggle = () => {
         setExpanded((prev) => !prev);
@@ -744,45 +764,59 @@ export default function PacienteCard({ paciente }) {
         <Box
             sx={{
                 position: "relative",
-                width: expanded ? "770px" : "350px", // Largura dinâmica baseada no estado
+                width: expanded ? "770px" : "350px",
                 transition: "width 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                marginBottom: "25px",
-                height: "fit-content", // Ajusta altura ao conteúdo
+                marginBottom: "20px",
+                display: 'flex',
+                flexShrink: 0,
+                height: 'max-content',
+                minHeight: "0",
+                maxHeight: "none",
+                alignSelf: "flex-start", // Força alinhamento no topo
             }}
         >
-            {/* Container branco principal - como um "livro aberto" */}
             <Paper
-                elevation={4}
+                elevation={3}
                 sx={{
                     display: "flex",
                     flexDirection: "row",
                     backgroundColor: "#fff",
                     borderRadius: "40px",
-                    overflow: "hidden",
+                    overflow: "visible", // Alterado de "hidden" para "visible"
                     border: `1px solid ${themeColors.borderColor}`,
-                    height: "auto", // Ajusta ao conteúdo
-                    maxHeight: "100%", // Limita altura máxima
+                    width: '100%',
+                    height: 'auto',
+                    maxHeight: "none", // Removida a limitação de altura máxima
+                    minHeight: "0",
                 }}
             >
                 {/* Card1 - lado esquerdo */}
                 <Card1 paciente={paciente} expanded={expanded} onToggle={handleToggle} />
 
                 {/* Card2 - lado direito */}
-                <Box
-                    sx={{
-                        width: expanded ? "400px" : 0,
-                        opacity: expanded ? 1 : 0,
-                        visibility: expanded ? "visible" : "hidden",
-                        transform: expanded ? "translateX(0)" : "translateX(-30px)",
-                        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                        transitionDelay: expanded ? "0.1s" : "0s",
-                        display: "flex",
-                        height: "auto", // Ajusta ao conteúdo
-                        borderRadius: "0 40px 40px 0"
-                    }}
-                >
-                    <Card2 paciente={paciente} />
-                </Box>
+                {expanded && (
+                    <Box
+                        sx={{
+                            width: "400px",
+                            visibility: "visible",
+                            transform: "translateX(0)",
+                            opacity: expanded ? 1 : 0,
+                            // Atraso na animação de opacidade para aparecer após a expansão da largura
+                            transitionProperty: "width, opacity",
+                            transitionDuration: "0.3s, 0.2s",
+                            transitionDelay: "0s, 0.25s",
+                            display: "flex",
+                            flexDirection: "column",
+                            borderRadius: "0 40px 40px 0",
+                            flexGrow: 1,
+                            height: 'auto',
+                            minHeight: "0",
+                            maxHeight: "none", // Removida a limitação de altura máxima
+                        }}
+                    >
+                        <Card2 paciente={paciente} />
+                    </Box>
+                )}
             </Paper>
         </Box>
     );

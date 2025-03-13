@@ -2,10 +2,11 @@
 import React from "react";
 import { Box, Typography, Button } from "@mui/material";
 
-// Componente para os botões da TopAppBar
-const ActionButton = ({ label, icon, isPrimary = false }) => {
+// Atualiza o ActionButton para aceitar onClick
+const ActionButton = ({ label, icon, isPrimary = false, onClick }) => {
     return (
         <Button
+            onClick={onClick}
             variant="contained"
             aria-label={label}
             sx={{
@@ -33,11 +34,11 @@ const ActionButton = ({ label, icon, isPrimary = false }) => {
                     justifyContent: "center",
                     ml: -1.0,
                     mr: 1,
-                    width: "28px", // Ajuste conforme necessário
+                    width: "28px",
                     height: "28px",
                     borderRadius: "50%",
-                    backgroundColor: "#FFF", // Fundo branco circular
-                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)", // Pequena sombra para destaque
+                    backgroundColor: "#FFF",
+                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
                 }}
             >
                 <img
@@ -61,7 +62,6 @@ const ActionButton = ({ label, icon, isPrimary = false }) => {
     );
 };
 
-// Botão de voltar
 const BackButton = () => {
     return (
         <Button
@@ -71,7 +71,7 @@ const BackButton = () => {
                 height: "30px",
                 borderRadius: "50%",
                 border: "1px solid #E5E7EB",
-                backgroundColor: "#1852FE", // Fundo azul
+                backgroundColor: "#1852FE",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -86,8 +86,8 @@ const BackButton = () => {
             <img
                 src="/leftarrow.svg"
                 alt="Voltar"
-                width="14" // Ajuste conforme necessário
-                height="14" // Deixa o ícone branco
+                width="14"
+                height="14"
             />
         </Button>
     );
@@ -96,16 +96,22 @@ const BackButton = () => {
 const TopAppBar = ({
                        title = "Perfil do Paciente",
                        showBackButton = true,
-                       variant = "standard" // standard, patient-profile, import
+                       variant = "standard",
+                       onPacienteClick
                    }) => {
-    // Determina os botões a serem mostrados com base na variante
+    const handlePacienteClick = () => {
+        if (onPacienteClick) {
+            onPacienteClick();
+        }
+    };
+
     const renderButtons = () => {
         switch (variant) {
             case "patient-profile":
                 return (
                     <>
                         <ActionButton label="Receita" icon="newreceita" isPrimary={true} />
-                        <ActionButton label="Paciente" icon="newpaciente" />
+                        <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
                         <ActionButton label="Agendamento" icon="newagendamento" />
                     </>
                 );
@@ -117,8 +123,8 @@ const TopAppBar = ({
                 return (
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <ActionButton label="Receita" icon="newreceita" isPrimary={true} />
-                        <ActionButton label="Paciente" icon="newpaciente" isPrimary={false} />
-                        <ActionButton label="Agendamento" icon="newagendamento" isPrimary={false} />
+                        <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
+                        <ActionButton label="Agendamento" icon="newagendamento" />
                     </Box>
                 );
         }
@@ -138,13 +144,7 @@ const TopAppBar = ({
                 borderBottom: "1px solid #F0F0F0",
             }}
         >
-            {/* Título com botão de voltar opcional */}
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center" }}>
                 {showBackButton && <BackButton />}
                 <Typography
                     sx={{
@@ -158,15 +158,7 @@ const TopAppBar = ({
                     {title}
                 </Typography>
             </Box>
-
-            {/* Grupo de botões à direita */}
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 {renderButtons()}
             </Box>
         </Box>

@@ -17,13 +17,18 @@ const exemploPaciente = {
         email: "nelioalves1@gmail.com",
     },
     chronicDiseases: ["Fumante", "Obeso", "Hipertenso"],
-    endereco: "Rua das Palmeiras, 123",
-    cidade: "São Paulo",
-    cep: "01234-567",
+    endereco: {
+        rua: "Rua das Palmeiras",
+        numero: "123",
+        bairro: "Centro",
+        cidade: "São Paulo",
+        estado: "SP",
+        cep: "01234-567"
+    },
     cirurgias: ["Cirurgia A", "Cirurgia B"],
     alergias: ["Penicilina"],
     atividadeFisica: ["Caminhada", "Natação"],
-    historicoDoencasGeneticas: "Nenhuma informação cadastrada",
+    historicoMedico: "Nenhuma informação cadastrada",
 };
 
 const exemploAnotacoes = [
@@ -86,20 +91,24 @@ export default function PacienteTemplate() {
                 flexDirection: "row",
                 gap: 2,
                 width: "100%",
-                pb: "30px",
-                overflowY: "visible", // Alterado de "auto" para "visible"
-                height: "auto", // Alterado de maxHeight para height: auto
                 backgroundColor: "#F4F9FF",
                 p: "10px",
                 boxSizing: "border-box",
-                position: "relative", // Important for z-index stacking
+                position: "relative",
+                alignItems: "flex-start", // Importante para alinhamento superior
+                height: "auto",
+                minHeight: "0",
+                overflow: "visible", // Permite que o conteúdo ultrapasse sem scroll
             }}
         >
             <Box
                 sx={{
-                    position: "relative", // Needed for proper z-index stacking
+                    position: "relative",
                     flexShrink: 0,
-                    zIndex: 2, // Ensuring patient card stays above other content if needed
+                    zIndex: 2,
+                    alignSelf: "flex-start", // Força o card a ficar no topo
+                    height: "max-content", // Define altura baseada no conteúdo
+                    maxHeight: "none", // Remove limitação de altura máxima
                 }}
             >
                 <PacienteCard paciente={exemploPaciente} />
@@ -109,12 +118,14 @@ export default function PacienteTemplate() {
                 sx={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 4,
-                    p: 4,
+                    gap: 3,
+                    p: 3,
                     width: "100%",
                     boxSizing: "border-box",
-                    height: "auto", // Alterado de maxHeight para height: auto
-                    zIndex: 1, // Lower z-index than the patient card
+                    alignSelf: "flex-start", // Mantém esse container alinhado com o topo
+                    zIndex: 1,
+                    height: "auto", // Ajusta altura automaticamente
+                    minHeight: "0", // Remove altura mínima
                 }}
             >
                 {/* Accompaniment Section */}
@@ -124,5 +135,4 @@ export default function PacienteTemplate() {
                 <NotasSection notas={exemploAnotacoes} />
             </Box>
         </Box>
-    );
-}
+    );}
