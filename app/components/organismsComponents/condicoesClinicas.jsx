@@ -1,119 +1,116 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
     Box,
     Typography,
     TextField,
     IconButton,
     Chip,
-    ToggleButton,
-    ToggleButtonGroup,
-    Grid,
-    FormControl,
-    FormLabel,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import { styled } from '@mui/material/styles';
+    Button,
+    InputAdornment,
+    styled,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 
-// Componentes estilizados
-const SectionTitle = styled(Typography)({
-    color: '#111E5A',
-    fontFamily: 'Gellix, sans-serif',
-    fontSize: '16px',
+// ------------------ ESTILOS ------------------
+const SectionLabel = styled(Typography)(() => ({
+    color: "#111E5A",
     fontWeight: 500,
-    lineHeight: '24px',
-    textTransform: 'uppercase',
-    marginBottom: '12px',
-});
+    fontSize: "14px",
+    marginBottom: "8px",
+}));
 
-const StyledTextField = styled(TextField)({
-    '& .MuiOutlinedInput-root': {
-        borderRadius: '999px',
-        '& fieldset': {
-            borderColor: 'rgba(17, 30, 90, 0.30)'
+const StyledTextField = styled(TextField)(() => ({
+    "& .MuiOutlinedInput-root": {
+        borderRadius: "999px",
+        "& fieldset": {
+            borderColor: "rgba(17, 30, 90, 0.30)",
         },
-        '&:hover fieldset': {
-            borderColor: 'rgba(17, 30, 90, 0.50)'
+        "&:hover fieldset": {
+            borderColor: "rgba(17, 30, 90, 0.50)",
         },
-        '&.Mui-focused fieldset': {
-            borderColor: '#111E5A'
-        }
+        "&.Mui-focused fieldset": {
+            borderColor: "#111E5A",
+        },
     },
-    '& .MuiInputBase-input': {
-        padding: '12px 16px',
-    }
-});
-
-const AddButton = styled(IconButton)({
-    backgroundColor: '#111E5A',
-    color: 'white',
-    '&:hover': {
-        backgroundColor: '#0A144A',
+    "& .MuiInputBase-input": {
+        padding: "12px 16px",
     },
-    width: '36px',
-    height: '36px',
-});
+}));
 
+const AddButton = styled(IconButton)(({ theme }) => ({
+    backgroundColor: "#3366FF",
+    color: "white",
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    "&:hover": {
+        backgroundColor: "#2952CC",
+    },
+}));
+
+const StyledChip = styled(Chip)(({ bgColor }) => ({
+    borderRadius: "999px",
+    backgroundColor: bgColor,
+    height: "32px",
+    margin: "4px",
+    fontWeight: 500,
+    "& .MuiChip-deleteIcon": {
+        color: "rgba(0, 0, 0, 0.6)",
+        "&:hover": {
+            color: "rgba(0, 0, 0, 0.8)",
+        },
+    },
+}));
+
+const ToggleButton = styled(Button)(({ selected }) => ({
+    borderRadius: "999px",
+    backgroundColor: selected ? "#3366FF" : "#F0F2F5",
+    color: selected ? "white" : "#111E5A",
+    fontWeight: 500,
+    padding: "8px 16px",
+    textTransform: "none",
+    minWidth: "80px",
+    marginRight: "8px",
+    boxShadow: "none",
+    "&:hover": {
+        backgroundColor: selected ? "#2952CC" : "#E0E2E5",
+        boxShadow: "none",
+    },
+}));
+
+// Cores dos chips para cada categoria
 const ChipColors = {
-    medicamentos: '#E3F2FD',  // Azul claro
-    doencas: '#FFF9C4',       // Amarelo
-    alergias: '#F5F5F5',      // Cinza claro
-    cirurgias: '#E8F5E9',     // Verde claro
-    atividades: '#E0F7FA',    // Ciano claro
+    medicamentos: "#E3F2FD", // Azul claro
+    doencas: {
+        "Diabetes": "#FFF9C4", // Amarelo
+        "Fumante": "#E0F7FA", // Ciano
+        "Internado": "#E8EAF6", // Lavanda
+        "default": "#FFF9C4"
+    },
+    alergias: {
+        "Poeira": "#F5F5F5", // Cinza
+        "Amoxilina": "#F5F5F5", // Cinza
+        "default": "#F5F5F5"
+    },
+    cirurgias: "#E8F5E9", // Verde claro
+    atividades: "#E0F7FA", // Ciano claro
 };
 
-const StyledToggleButtonGroup = styled(ToggleButtonGroup)({
-    '& .MuiToggleButtonGroup-grouped': {
-        borderRadius: '20px',
-        margin: '0 8px',
-        border: '1px solid #EAECEF',
-        '&.Mui-selected': {
-            backgroundColor: '#111E5A',
-            color: 'white',
-            borderColor: '#111E5A',
-            '&:hover': {
-                backgroundColor: '#0A144A',
-            },
-        },
-        '&:not(.Mui-selected)': {
-            backgroundColor: '#EAECEF',
-            color: '#111E5A',
-            '&:hover': {
-                backgroundColor: '#D0D4D9',
-            },
-        },
-    },
-});
+// -------------------------------------------------
 
-const FormSectionContainer = styled(Box)({
-    padding: '24px',
-    width: '100%',
-});
-
-const CondicoesClinicasForm = () => {
-    // Estados para cada seção de texto
+const CondicoesClinicasForm = ({ formData, updateFormData }) => {
     const [inputValues, setInputValues] = useState({
-        medicamentos: '',
-        doencas: '',
-        alergias: '',
-        cirurgias: '',
-        atividades: '',
+        medicamentos: "",
+        doencas: "",
+        alergias: "",
+        cirurgias: "",
+        atividades: "",
     });
 
-    const [items, setItems] = useState({
-        medicamentos: [],
-        doencas: [],
-        alergias: [],
-        cirurgias: [],
-        atividades: [],
-    });
-
-    // Estados para perguntas binárias
-    const [consumeAlcool, setConsumeAlcool] = useState('Não');
-    const [ehFumante, setEhFumante] = useState('Não');
-
-    // Função para atualizar os inputs
+    // Atualiza valor do campo
     const handleInputChange = (e, type) => {
         setInputValues({
             ...inputValues,
@@ -121,133 +118,137 @@ const CondicoesClinicasForm = () => {
         });
     };
 
-    // Função para adicionar itens às listas
+    // Adiciona item à lista
     const addItem = (type) => {
-        if (inputValues[type].trim() !== '') {
-            setItems({
-                ...items,
-                [type]: [...items[type], inputValues[type].trim()],
-            });
+        if (inputValues[type].trim() !== "") {
+            const updatedItems = [...(formData[type] || []), inputValues[type].trim()];
+            updateFormData({ [type]: updatedItems });
             setInputValues({
                 ...inputValues,
-                [type]: '',
+                [type]: "",
             });
         }
     };
 
-    // Função para remover itens das listas
+    // Remove item da lista
     const removeItem = (type, index) => {
-        setItems({
-            ...items,
-            [type]: items[type].filter((_, i) => i !== index),
-        });
+        const updatedItems = formData[type].filter((_, i) => i !== index);
+        updateFormData({ [type]: updatedItems });
     };
 
-    // Função para lidar com a mudança nos botões de toggle
-    const handleToggleChange = (type, event, newValue) => {
-        if (newValue !== null) {
-            if (type === 'alcool') {
-                setConsumeAlcool(newValue);
-            } else if (type === 'fumante') {
-                setEhFumante(newValue);
-            }
+    // Enter para adicionar
+    const handleKeyPress = (e, type) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            addItem(type);
         }
     };
 
-    // Helper para renderizar as seções de itens
-    const renderItemSection = (title, type) => (
+    // Seleciona cor do chip baseado no tipo e no valor
+    const getChipColor = (type, value) => {
+        if (typeof ChipColors[type] === 'object') {
+            return ChipColors[type][value] || ChipColors[type].default;
+        }
+        return ChipColors[type];
+    };
+
+    // Gerencia estados de toggle (álcool e fumante)
+    const handleToggle = (field, value) => {
+        updateFormData({ [field]: value });
+    };
+
+    // Render para cada seção de itens
+    const renderItemSection = (title, type, placeholder) => (
         <Box sx={{ mb: 3 }}>
-            <SectionTitle>{title}</SectionTitle>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', mb: 1 }}>
-                <StyledTextField
-                    value={inputValues[type]}
-                    onChange={(e) => handleInputChange(e, type)}
-                    placeholder={`Digite ${type === 'medicamentos' ? 'o' : type === 'doencas' ? 'a' : 'a'} ${title.toLowerCase().slice(0, -1)}`}
-                    fullWidth
-                    size="small"
-                />
-                <AddButton onClick={() => addItem(type)} aria-label={`Adicionar ${title}`}>
-                    <AddIcon />
-                </AddButton>
-            </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px', mt: 1 }}>
-                {items[type].map((item, index) => (
-                    <Chip
+            <SectionLabel>{title}</SectionLabel>
+            <StyledTextField
+                fullWidth
+                placeholder={placeholder}
+                value={inputValues[type]}
+                onChange={(e) => handleInputChange(e, type)}
+                onKeyPress={(e) => handleKeyPress(e, type)}
+                InputProps={{
+                    endAdornment: (
+                        <InputAdornment position="end">
+                            <AddButton onClick={() => addItem(type)} size="small">
+                                <AddIcon fontSize="small" />
+                            </AddButton>
+                        </InputAdornment>
+                    ),
+                }}
+            />
+            <Box sx={{ display: "flex", flexWrap: "wrap", mt: 1 }}>
+                {(formData[type] || []).map((item, index) => (
+                    <StyledChip
                         key={index}
                         label={item}
+                        bgColor={getChipColor(type, item)}
                         onDelete={() => removeItem(type, index)}
-                        sx={{
-                            backgroundColor: ChipColors[type],
-                            color: '#111E5A',
-                            borderRadius: '16px',
-                            '& .MuiChip-deleteIcon': {
-                                color: '#111E5A',
-                                '&:hover': {
-                                    color: '#0A144A',
-                                },
-                            },
-                        }}
+                        deleteIcon={<CloseIcon style={{ fontSize: '16px' }} />}
                     />
                 ))}
             </Box>
         </Box>
     );
 
+    // Render para botões de toggle
+    const renderToggleSection = (title, field) => (
+        <Box sx={{ mb: 3 }}>
+            <SectionLabel>{title}</SectionLabel>
+            <Box sx={{ display: "flex", mt: 1 }}>
+                <ToggleButton
+                    selected={formData[field] === "Sim"}
+                    onClick={() => handleToggle(field, "Sim")}
+                    variant="contained"
+                    disableElevation
+                >
+                    Sim
+                </ToggleButton>
+                <ToggleButton
+                    selected={formData[field] === "Não"}
+                    onClick={() => handleToggle(field, "Não")}
+                    variant="contained"
+                    disableElevation
+                >
+                    Não
+                </ToggleButton>
+            </Box>
+        </Box>
+    );
+
     return (
-        <FormSectionContainer>
-            <Grid container spacing={3}>
-                {/* Coluna Esquerda */}
-                <Grid item xs={12} md={6}>
-                    {renderItemSection('Medicamentos', 'medicamentos')}
-                    {renderItemSection('Doenças', 'doencas')}
-                    {renderItemSection('Alergias', 'alergias')}
-                </Grid>
+        <Box sx={{ p: 2 }}>
+            {renderItemSection(
+                "Medicamentos",
+                "medicamentos",
+                "Digite o medicamento"
+            )}
+            {renderItemSection(
+                "Doenças",
+                "doencas",
+                "Digite a doença"
+            )}
+            {renderItemSection(
+                "Alergias",
+                "alergias",
+                "Digite a alergia"
+            )}
+            {renderItemSection(
+                "Cirurgias",
+                "cirurgias",
+                "Digite a cirurgia"
+            )}
+            {renderItemSection(
+                "Atividade Física",
+                "atividades",
+                "Digite a atividade"
+            )}
 
-                {/* Coluna Direita */}
-                <Grid item xs={12} md={6}>
-                    {renderItemSection('Cirurgias', 'cirurgias')}
-                    {renderItemSection('Atividade Física', 'atividades')}
-
-                    {/* Consome Álcool? */}
-                    <Box sx={{ mb: 3 }}>
-                        <SectionTitle>Consome Álcool?</SectionTitle>
-                        <StyledToggleButtonGroup
-                            value={consumeAlcool}
-                            exclusive
-                            onChange={(e, val) => handleToggleChange('alcool', e, val)}
-                            aria-label="Consome álcool?"
-                            size="small"
-                        >
-                            <ToggleButton value="Sim" aria-label="Sim">
-                                Sim
-                            </ToggleButton>
-                            <ToggleButton value="Não" aria-label="Não">
-                                Não
-                            </ToggleButton>
-                        </StyledToggleButtonGroup>
-                    </Box>
-
-                    {/* É Fumante? */}
-                    <Box sx={{ mb: 3 }}>
-                        <SectionTitle>É Fumante?</SectionTitle>
-                        <StyledToggleButtonGroup
-                            value={ehFumante}
-                            exclusive
-                            onChange={(e, val) => handleToggleChange('fumante', e, val)}
-                            aria-label="É fumante?"
-                            size="small"
-                        >
-                            <ToggleButton value="Sim" aria-label="Sim">
-                                Sim
-                            </ToggleButton>
-                            <ToggleButton value="Não" aria-label="Não">
-                                Não
-                            </ToggleButton>
-                        </StyledToggleButtonGroup>
-                    </Box>
-                </Grid>
-            </Grid>
-        </FormSectionContainer>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+                {renderToggleSection("Consome Álcool?", "consumeAlcool")}
+                {renderToggleSection("É fumante?", "ehFumante")}
+            </Box>
+        </Box>
     );
 };
 

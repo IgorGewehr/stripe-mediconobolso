@@ -7,7 +7,7 @@ import Sidebar from "../components/Sidebar";
 import DashboardTemplate from "../components/DashboardTemplate";
 import ReceitasTemplate from "../components/ReceitasTemplate";
 import AgendaTemplate from "../components/AgendaTemplate";
-import PacienteCadastroTemplate from "../components/pacienteCadastroTemplae";
+import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
 import PacienteTemplate from "../components/pacienteTemplate";
 
 export default function AppLayout({ children }) {
