@@ -5,10 +5,10 @@ import { Box } from "@mui/material";
 import TopAppBar from "../components/TopAppBar";
 import Sidebar from "../components/Sidebar";
 import DashboardTemplate from "../components/DashboardTemplate";
-import ReceitasTemplate from "../components/ReceitasTemplate";
-import AgendaTemplate from "../components/AgendaTemplate";
 import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
 import PacienteTemplate from "../components/pacienteTemplate";
+import AgendaMedica from "../components/organismsComponents/agendaComponente";
+import PrescriptionsPage from "../components/ReceitasTemplate";
 
 export default function AppLayout({ children }) {
     // Define o estado inicial para "Dashboard"
@@ -30,9 +30,9 @@ export default function AppLayout({ children }) {
             case "pacientes":
                 return <PacienteCadastroTemplate />;
             case "receitas":
-                return <ReceitasTemplate />;
+                return <PrescriptionsPage />;
             case "agenda":
-                return <AgendaTemplate />;
+                return <AgendaMedica />;
             default:
                 return <DashboardTemplate />;
         }
