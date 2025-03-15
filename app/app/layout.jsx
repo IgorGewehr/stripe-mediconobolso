@@ -9,6 +9,7 @@ import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
 import PacienteTemplate from "../components/pacienteTemplate";
 import AgendaMedica from "../components/organismsComponents/agendaComponente";
 import PrescriptionsPage from "../components/ReceitasTemplate";
+import PatientsTable from "../components/organismsComponents/patientTable";
 
 export default function AppLayout({ children }) {
     // Define o estado inicial para "Dashboard"
@@ -30,7 +31,7 @@ export default function AppLayout({ children }) {
             case "pacientes":
                 return <PacienteCadastroTemplate />;
             case "receitas":
-                return <PrescriptionsPage />;
+                return <PatientsTable />;
             case "agenda":
                 return <AgendaMedica />;
             default:
