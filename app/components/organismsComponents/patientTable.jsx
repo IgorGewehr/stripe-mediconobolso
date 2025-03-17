@@ -53,6 +53,7 @@ import FirebaseService from '../../../lib/FirebaseService';
 import { format, parseISO, isValid, isFuture, isPast, isToday, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
+import {useAuth} from '../authProvider'
 
 // Estilos personalizados
 const MainContainer = styled(Box)(({ theme }) => ({
@@ -444,12 +445,15 @@ const STATUS_OPTIONS = [
     { label: 'Reag. Pendente', value: 'reag. pendente' },
 ];
 
-const PatientsTable = () => {
+const PatientsTable = ({ onPatientClick }) => {
     // Estado para os dados dos pacientes
     const [patients, setPatients] = useState([]);
     const [filteredPatients, setFilteredPatients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    const { user } = useAuth();
+
 
     // Estado para o campo de pesquisa
     const [searchTerm, setSearchTerm] = useState('');
@@ -470,6 +474,37 @@ const PatientsTable = () => {
         }
     });
 
+    const handlePatientClick = (patientId) => {
+        if (onPatientClick) {
+            onPatientClick(patientId);
+        }
+    };
+
+
+    const calculateAge = (birthDate) => {
+        if (!birthDate) return null;
+        let birth;
+        if (birthDate instanceof Date) {
+            birth = birthDate;
+        } else if (birthDate && typeof birthDate.toDate === 'function') {
+            birth = birthDate.toDate();
+        } else if (typeof birthDate === 'string') {
+            // Supondo o formato "DD/MM/YYYY"
+            const [day, month, year] = birthDate.split('/');
+            birth = new Date(year, month - 1, day);
+        } else {
+            birth = new Date(birthDate);
+        }
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+        return age;
+    };
+
+
     // Estados para ordenação
     const [sortConfig, setSortConfig] = useState({
         key: 'nome',
@@ -481,19 +516,16 @@ const PatientsTable = () => {
         const fetchPatients = async () => {
             try {
                 setLoading(true);
-                // Substitua por ID real do médico logado
-                const doctorId = "DOCTOR_ID";
+                if (!user || !user.uid) return; // Aguarda o usuário carregar
+                const doctorId = user.uid;
                 const patientsData = await FirebaseService.getPatientsByDoctor(doctorId);
 
-                // Processa os dados para o formato necessário
                 const processedData = patientsData.map(patient => {
                     const conditions = [];
-
                     if (patient.isSmoker) conditions.push('fumante');
                     if (patient.chronicDiseases?.includes('Diabetes')) conditions.push('diabetes');
                     if (patient.chronicDiseases?.includes('Hipertensão')) conditions.push('hipertensao');
 
-                    // Determina o status baseado nas datas de consulta
                     let status = 'pendente';
                     if (!patient.lastConsultationDate && patient.nextConsultationDate) {
                         status = 'primeira consulta';
@@ -510,7 +542,6 @@ const PatientsTable = () => {
                         proximaConsulta: patient.nextConsultationDate ? new Date(patient.nextConsultationDate.toDate()) : null,
                         status: status,
                         conditions: conditions,
-                        // Dados adicionais que podem ser úteis
                         email: patient.patientEmail,
                         telefone: patient.patientPhone,
                         endereco: patient.patientAddress,
@@ -532,7 +563,7 @@ const PatientsTable = () => {
         };
 
         fetchPatients();
-    }, []);
+    }, [user]);
 
     // Aplicar filtragem quando os filtros ou termos de pesquisa mudarem
     useEffect(() => {
@@ -620,18 +651,7 @@ const PatientsTable = () => {
         setFilteredPatients(result);
     }, [patients, searchTerm, activeFilters, sortConfig]);
 
-    // Funções utilitárias
-    const calculateAge = (birthDate) => {
-        if (!birthDate) return null;
-        const today = new Date();
-        const birth = birthDate instanceof Date ? birthDate : birthDate.toDate();
-        let age = today.getFullYear() - birth.getFullYear();
-        const monthDiff = today.getMonth() - birth.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
-        }
-        return age;
-    };
+
 
     const formatDate = (date) => {
         if (!date) return '-';
@@ -795,7 +815,7 @@ const PatientsTable = () => {
                     borderRadius: '30px',
                     width: '541px',
                     maxHeight: '517px',
-                    overflow: 'hidden',
+                    overflowY: 'auto', // Permite scroll vertical
                 }
             }}
         >
@@ -1155,6 +1175,7 @@ const PatientsTable = () => {
                                         <TableRow
                                             key={patient.id}
                                             hover
+                                            onClick={() => handlePatientClick(patient.id)}
                                             sx={{
                                                 '&:hover': {
                                                     backgroundColor: alpha('#000', 0.02),
@@ -1202,6 +1223,10 @@ const PatientsTable = () => {
                                                     size="small"
                                                     sx={{ color: 'primary.main' }}
                                                     aria-label="detalhes do paciente"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Impede que o evento se propague para a TableRow
+                                                        handlePatientClick(patient.id);
+                                                    }}
                                                 >
                                                     <ChevronRightIcon />
                                                 </IconButton>

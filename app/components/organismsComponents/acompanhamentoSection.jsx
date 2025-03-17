@@ -11,6 +11,7 @@ import {
     useMediaQuery
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import { useRouter } from "next/navigation";
 
 // Paleta de cores (pode extrair para outro arquivo se quiser)
 const themeColors = {
@@ -19,7 +20,7 @@ const themeColors = {
 };
 
 // Card de acompanhamento (Anamnese, Receitas, Exames)
-function AcompanhamentoCard({ tipo, icone }) {
+function AcompanhamentoCard({ tipo, icone, onClick }) {
     return (
         <Card
             sx={{
@@ -34,7 +35,14 @@ function AcompanhamentoCard({ tipo, icone }) {
                 alignItems: "center",
                 justifyContent: "center",
                 p: 2,
+                cursor: "pointer", // Indica que o card é clicável
+                "&:hover": {
+                    boxShadow: "0px 12px 28px 0px rgba(0, 0, 0, 0.1)",
+                    transform: "translateY(-2px)",
+                    transition: "all 0.2s ease-in-out"
+                },
             }}
+            onClick={onClick}
         >
             <CardContent
                 sx={{
@@ -94,88 +102,9 @@ function AcompanhamentoCard({ tipo, icone }) {
                                 backgroundColor: "#0d47e0",
                             },
                         }}
-                    >
-                        <AddIcon />
-                    </IconButton>
-                </Box>
-            </CardContent>
-        </Card>
-
-    );
-}
-
-function AcompanhamentoCardExames({ tipo, icone }) {
-    return (
-        <Card
-            sx={{
-                width: "100%",
-                maxWidth: "240px",
-                height: "240px",
-                borderRadius: "20px",
-                boxShadow: "0px 8px 24px 0px rgba(0, 0, 0, 0.04)",
-                position: "relative",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                p: 2,
-            }}
-        >
-            <CardContent
-                sx={{
-                    width: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    p: 0,
-                }}
-            >
-                {/* Ícone central */}
-                <Box
-                    component="img"
-                    src={icone}
-                    alt={tipo}
-                    sx={{
-                        width: 130,
-                        height: 200,
-                        mb: 2,
-                    }}
-                />
-
-                <Box
-                    sx={{
-                        display: "flex",
-                        flexDirection: "row",
-                        gap: 2,
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        width: "100%",
-                    }}
-                >
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            color: themeColors.textPrimary,
-                            fontFamily: "Gellix",
-                            fontSize: 25,
-                            fontWeight: 500,
-                            textAlign: "start", // Garante o alinhamento do texto à esquerda
-                            flexGrow: 1,
-                        }}
-                    >
-                        {tipo}
-                    </Typography>
-
-                    <IconButton
-                        sx={{
-                            width: 36,
-                            height: 36,
-                            backgroundColor: themeColors.primary,
-                            color: "#FFF",
-                            "&:hover": {
-                                backgroundColor: "#0d47e0",
-                            },
+                        onClick={(e) => {
+                            e.stopPropagation(); // Evita que o evento se propague para o card
+                            if (onClick) onClick(true); // Indica que é uma ação de adição
                         }}
                     >
                         <AddIcon />
@@ -183,15 +112,33 @@ function AcompanhamentoCardExames({ tipo, icone }) {
                 </Box>
             </CardContent>
         </Card>
-
     );
 }
-
 
 // Seção que agrupa os 3 cards
-export default function AcompanhamentoSection() {
+export default function AcompanhamentoSection({ pacienteId }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+    const router = useRouter();
+
+    // Handlers para cada card
+    const handleAnamneseClick = (isAdd) => {
+        // Redirecionar para a página de nova anamnese ou lista de anamneses
+        console.log(`Clicou em Anamnese ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
+        // router.push(`/anamnese/${pacienteId}${isAdd ? "/nova" : ""}`);
+    };
+
+    const handleReceitasClick = (isAdd) => {
+        // Redirecionar para a página de nova receita ou lista de receitas
+        console.log(`Clicou em Receitas ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
+        // router.push(`/receitas/${pacienteId}${isAdd ? "/nova" : ""}`);
+    };
+
+    const handleExamesClick = (isAdd) => {
+        // Redirecionar para a página de novo exame ou lista de exames
+        console.log(`Clicou em Exames ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
+        // router.push(`/exames/${pacienteId}${isAdd ? "/novo" : ""}`);
+    };
 
     return (
         <Box sx={{ width: "100%", maxWidth: "840px" }}>
@@ -212,13 +159,25 @@ export default function AcompanhamentoSection() {
             {/* Grid de cards */}
             <Grid container spacing={3}>
                 <Grid item xs={12} sm={6} md={4}>
-                    <AcompanhamentoCard tipo="Anamnese" icone="/anamnesecard.svg" />
+                    <AcompanhamentoCard
+                        tipo="Anamnese"
+                        icone="/anamnesecard.svg"
+                        onClick={handleAnamneseClick}
+                    />
                 </Grid>
                 <Grid item xs={12} sm={6} md={4}>
-                    <AcompanhamentoCard tipo="Receitas" icone="/receitascard.svg" />
+                    <AcompanhamentoCard
+                        tipo="Receitas"
+                        icone="/receitascard.svg"
+                        onClick={handleReceitasClick}
+                    />
                 </Grid>
                 <Grid item xs={12} sm={6} md={4}>
-                    <AcompanhamentoCard tipo="Exames" icone="/examescard.png" />
+                    <AcompanhamentoCard
+                        tipo="Exames"
+                        icone="/examescard.png"
+                        onClick={handleExamesClick}
+                    />
                 </Grid>
             </Grid>
         </Box>

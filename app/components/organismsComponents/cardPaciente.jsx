@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Paper,
     Box,
@@ -27,7 +27,26 @@ const themeColors = {
         fumante: { bg: "#E3FAFC", color: "#15AABF" },
         obeso: { bg: "#FFF0F6", color: "#D6336C" },
         hipertenso: { bg: "#E6FCF5", color: "#2B8A3E" },
+        diabetes: { bg: "#FFF9C4", color: "#856404" },
+        default: { bg: "#E3FAFC", color: "#15AABF" }
     },
+};
+
+// Helper para garantir que propriedades aninhadas existam
+const getSafeValue = (obj, path, defaultValue = "-") => {
+    if (!obj) return defaultValue;
+
+    const keys = path.split('.');
+    let result = obj;
+
+    for (const key of keys) {
+        if (result === undefined || result === null || !result.hasOwnProperty(key)) {
+            return defaultValue;
+        }
+        result = result[key];
+    }
+
+    return result || defaultValue;
 };
 
 // ----------------------
@@ -36,6 +55,45 @@ const themeColors = {
 function Card1({ paciente, expanded, onToggle }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+    // Normalizar doenças crônicas para aceitar diferentes formatos de dados
+    const getChronicDiseases = () => {
+        // Verifica se temos um array em chronicDiseases
+        if (Array.isArray(paciente.chronicDiseases) && paciente.chronicDiseases.length > 0) {
+            return paciente.chronicDiseases;
+        }
+
+        // Verifica se temos um array em condicoesClinicas.doencas
+        if (paciente.condicoesClinicas && Array.isArray(paciente.condicoesClinicas.doencas)
+            && paciente.condicoesClinicas.doencas.length > 0) {
+            return paciente.condicoesClinicas.doencas;
+        }
+
+        // Verifica a propriedade isSmoker
+        const diseases = [];
+        if (paciente.isSmoker || paciente.condicoesClinicas?.ehFumante === "Sim") {
+            diseases.push("Fumante");
+        }
+
+        return diseases;
+    };
+
+    const getChipColor = (disease) => {
+        const lowerDisease = disease.toLowerCase();
+        if (themeColors.chronic[lowerDisease]) {
+            return themeColors.chronic[lowerDisease];
+        }
+
+        // Mapeamento adicional para nomes alternativos
+        if (lowerDisease.includes('fumante')) return themeColors.chronic.fumante;
+        if (lowerDisease.includes('obes')) return themeColors.chronic.obeso;
+        if (lowerDisease.includes('hipertens')) return themeColors.chronic.hipertenso;
+        if (lowerDisease.includes('diabet')) return themeColors.chronic.diabetes;
+
+        return themeColors.chronic.default;
+    };
+
+    const chronicDiseases = getChronicDiseases();
 
     return (
         <Box
@@ -48,8 +106,8 @@ function Card1({ paciente, expanded, onToggle }) {
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                 zIndex: expanded ? 10 : 1,
                 display: "flex",
-                flexDirection: "column",// Usa altura baseada no conteúdo
-                minHeight: "0", // Remove altura mínima
+                flexDirection: "column",
+                minHeight: "0",
             }}
         >
             {/* Overlay image */}
@@ -147,7 +205,7 @@ function Card1({ paciente, expanded, onToggle }) {
                         position: "relative",
                     }}
                 >
-                    {paciente.nome || "Nome não informado"}
+                    {paciente.nome || paciente.patientName || "Nome não informado"}
                 </Typography>
 
                 {/* Expand/Collapse Button */}
@@ -189,16 +247,9 @@ function Card1({ paciente, expanded, onToggle }) {
                 </Typography>
 
                 <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-                    {paciente.chronicDiseases && paciente.chronicDiseases.length > 0 ? (
-                        paciente.chronicDiseases.map((disease, index) => {
-                            let colorScheme = { bg: "#E3FAFC", color: "#15AABF" };
-                            if (disease.toLowerCase() === "fumante") {
-                                colorScheme = themeColors.chronic.fumante;
-                            } else if (disease.toLowerCase() === "obeso") {
-                                colorScheme = themeColors.chronic.obeso;
-                            } else if (disease.toLowerCase() === "hipertenso") {
-                                colorScheme = themeColors.chronic.hipertenso;
-                            }
+                    {chronicDiseases && chronicDiseases.length > 0 ? (
+                        chronicDiseases.map((disease, index) => {
+                            const colorScheme = getChipColor(disease);
                             return (
                                 <Chip
                                     key={index}
@@ -218,7 +269,7 @@ function Card1({ paciente, expanded, onToggle }) {
                         })
                     ) : (
                         <Chip
-                            label="-"
+                            label="Nenhuma"
                             sx={{
                                 height: 34,
                                 borderRadius: 99,
@@ -275,7 +326,7 @@ function Card1({ paciente, expanded, onToggle }) {
                                 fontWeight: 500,
                             }}
                         >
-                            {paciente.tipoSanguineo || "-"}
+                            {paciente.tipoSanguineo || paciente.bloodType || "-"}
                         </Typography>
                     </Stack>
 
@@ -305,7 +356,7 @@ function Card1({ paciente, expanded, onToggle }) {
                                 fontWeight: 500,
                             }}
                         >
-                            {paciente.dataNascimento || "-"}
+                            {paciente.dataNascimento || paciente.birthDate || "-"}
                         </Typography>
                     </Stack>
                 </Stack>
@@ -352,7 +403,7 @@ function Card1({ paciente, expanded, onToggle }) {
                                 fontWeight: 500,
                             }}
                         >
-                            {paciente.contato?.celular || "-"}
+                            {getSafeValue(paciente, 'contato.celular') || paciente.patientPhone || paciente.phone || "-"}
                         </Typography>
                     </Stack>
 
@@ -382,7 +433,7 @@ function Card1({ paciente, expanded, onToggle }) {
                                 fontWeight: 500,
                             }}
                         >
-                            {paciente.contato?.fixo || "-"}
+                            {getSafeValue(paciente, 'contato.fixo') || paciente.secondaryPhone || "-"}
                         </Typography>
                     </Stack>
 
@@ -413,7 +464,7 @@ function Card1({ paciente, expanded, onToggle }) {
                                 wordBreak: "break-word",
                             }}
                         >
-                            {paciente.contato?.email || "-"}
+                            {getSafeValue(paciente, 'contato.email') || paciente.patientEmail || paciente.email || "-"}
                         </Typography>
                     </Stack>
                 </Stack>
@@ -426,9 +477,98 @@ function Card1({ paciente, expanded, onToggle }) {
 // Subcomponent: Card2
 // ----------------------
 function Card2({ paciente }) {
+    // Função para obter valores seguros de propriedades aninhadas
+    const getAddress = () => {
+        if (paciente.endereco?.rua) {
+            const rua = paciente.endereco.rua;
+            const numero = paciente.endereco.numero || "";
+            const bairro = paciente.endereco.bairro || "";
+
+            // Construa o endereço com as partes disponíveis
+            let endereco = rua;
+            if (numero) endereco += `, ${numero}`;
+            if (bairro) endereco += ` - ${bairro}`;
+
+            return endereco;
+        }
+
+        // Tenta pegar o endereço direto do paciente, se disponível
+        return paciente.patientAddress || paciente.address || "-";
+    };
+
+    const getCidade = () => {
+        if (paciente.endereco?.cidade) {
+            const cidade = paciente.endereco.cidade;
+            const estado = paciente.endereco.estado || "";
+
+            if (estado) {
+                return `${cidade} - ${estado}`;
+            }
+            return cidade;
+        }
+
+        // Tenta pegar a cidade direto do paciente, se disponível
+        if (paciente.city) {
+            const estado = paciente.state || "";
+            if (estado) {
+                return `${paciente.city} - ${estado}`;
+            }
+            return paciente.city;
+        }
+
+        return "-";
+    };
+
+    const getCep = () => {
+        return paciente.endereco?.cep || paciente.cep || "-";
+    };
+
+    // Normaliza arrays para itens clicáveis
+    const getCirurgias = () => {
+        if (paciente.cirurgias && paciente.cirurgias.length > 0) {
+            return paciente.cirurgias;
+        }
+        if (paciente.condicoesClinicas?.cirurgias && paciente.condicoesClinicas.cirurgias.length > 0) {
+            return paciente.condicoesClinicas.cirurgias;
+        }
+        return [];
+    };
+
+    const getAlergias = () => {
+        if (paciente.alergias && paciente.alergias.length > 0) {
+            return paciente.alergias;
+        }
+        if (paciente.allergies && paciente.allergies.length > 0) {
+            return paciente.allergies;
+        }
+        if (paciente.condicoesClinicas?.alergias && paciente.condicoesClinicas.alergias.length > 0) {
+            return paciente.condicoesClinicas.alergias;
+        }
+        return [];
+    };
+
+    const getAtividadeFisica = () => {
+        if (paciente.atividadeFisica && paciente.atividadeFisica.length > 0) {
+            return paciente.atividadeFisica;
+        }
+        if (paciente.condicoesClinicas?.atividades && paciente.condicoesClinicas.atividades.length > 0) {
+            return paciente.condicoesClinicas.atividades;
+        }
+        return [];
+    };
+
+    const getHistoricoMedico = () => {
+        return paciente.historicoMedico ||
+            paciente.historicoConduta?.doencasHereditarias ||
+            "O paciente relata histórico familiar de hipertensão arterial em parentes de primeiro grau (pai e avô). Há também casos de diabetes tipo 2 em familiares maternos. Não há histórico conhecido de doenças genéticas raras ou hereditárias graves.";
+    };
+
+    const cirurgias = getCirurgias();
+    const alergias = getAlergias();
+    const atividadeFisica = getAtividadeFisica();
+    const historicoMedico = getHistoricoMedico();
+
     return (
-        // No componente Card2, substitua o Box inicial por este:
-        // No componente Card2, substitua o Box inicial por este:
         <Box sx={{
             p: "25px 5px 5px 5px",
             m: '20px 20px 20px 20px',
@@ -437,8 +577,8 @@ function Card2({ paciente }) {
             flexGrow: 1,
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: "none", // Alterado de "calc(100% - 40px)" para "none"
-            overflow: "visible", // Alterado de "auto" para "visible"
+            maxHeight: "none",
+            overflow: "visible",
             height: "auto",
             minHeight: "0"
         }}>
@@ -485,9 +625,7 @@ function Card2({ paciente }) {
                             fontWeight: 500,
                         }}
                     >
-                        {paciente.endereco?.rua
-                            ? `${paciente.endereco.rua}, ${paciente.endereco.numero} - ${paciente.endereco.bairro}`
-                            : "-"}
+                        {getAddress()}
                     </Typography>
                 </Box>
             </Stack>
@@ -508,7 +646,6 @@ function Card2({ paciente }) {
                             fontSize: 14,
                             fontWeight: 500,
                             mb: 0.5,
-                            ml: "10px"
                         }}
                     >
                         Cidade:
@@ -521,9 +658,7 @@ function Card2({ paciente }) {
                             fontWeight: 500,
                         }}
                     >
-                        {paciente.endereco?.cidade
-                            ? `${paciente.endereco.cidade} - ${paciente.endereco.estado}`
-                            : "-"}
+                        {getCidade()}
                     </Typography>
                 </Box>
             </Stack>
@@ -556,7 +691,7 @@ function Card2({ paciente }) {
                             fontWeight: 500,
                         }}
                     >
-                        {paciente.endereco?.cep || "-"}
+                        {getCep()}
                     </Typography>
                 </Box>
             </Stack>
@@ -577,8 +712,8 @@ function Card2({ paciente }) {
             </Typography>
 
             <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3, ml: "10px" }}>
-                {paciente.cirurgias && paciente.cirurgias.length > 0 ? (
-                    paciente.cirurgias.map((cirurgia, index) => (
+                {cirurgias.length > 0 ? (
+                    cirurgias.map((cirurgia, index) => (
                         <Chip
                             key={index}
                             label={cirurgia}
@@ -597,7 +732,7 @@ function Card2({ paciente }) {
                     ))
                 ) : (
                     <Chip
-                        label="-"
+                        label="Nenhuma"
                         sx={{
                             height: 36,
                             borderRadius: 99,
@@ -629,8 +764,8 @@ function Card2({ paciente }) {
             </Typography>
 
             <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3, ml: "10px" }}>
-                {paciente.alergias && paciente.alergias.length > 0 ? (
-                    paciente.alergias.map((alergia, index) => (
+                {alergias.length > 0 ? (
+                    alergias.map((alergia, index) => (
                         <Chip
                             key={index}
                             label={alergia}
@@ -649,7 +784,7 @@ function Card2({ paciente }) {
                     ))
                 ) : (
                     <Chip
-                        label="-"
+                        label="Nenhuma"
                         sx={{
                             height: 36,
                             borderRadius: 99,
@@ -681,8 +816,8 @@ function Card2({ paciente }) {
             </Typography>
 
             <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3, ml: "10px" }}>
-                {paciente.atividadeFisica && paciente.atividadeFisica.length > 0 ? (
-                    paciente.atividadeFisica.map((atividade, index) => (
+                {atividadeFisica.length > 0 ? (
+                    atividadeFisica.map((atividade, index) => (
                         <Chip
                             key={index}
                             label={atividade}
@@ -701,7 +836,7 @@ function Card2({ paciente }) {
                     ))
                 ) : (
                     <Chip
-                        label="-"
+                        label="Nenhuma"
                         sx={{
                             height: 36,
                             borderRadius: 99,
@@ -742,8 +877,7 @@ function Card2({ paciente }) {
                     ml: "10px"
                 }}
             >
-                {paciente.historicoMedico ||
-                    "O paciente relata histórico familiar de hipertensão arterial em parentes de primeiro grau (pai e avô). Há também casos de diabetes tipo 2 em familiares maternos. Não há histórico conhecido de doenças genéticas raras ou hereditárias graves."}
+                {historicoMedico}
             </Typography>
         </Box>
     );

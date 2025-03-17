@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import {
     Box,
@@ -6,18 +8,16 @@ import {
     IconButton,
     Paper,
     Popover,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
     TextField,
-    MenuItem,
-    FormControl,
-    InputLabel,
-    Select,
     Grid,
     Divider,
-    Chip
+    Chip,
+    Snackbar,
+    Alert,
+    CircularProgress,
+    Badge,
+    alpha,
+    styled
 } from '@mui/material';
 import {
     KeyboardArrowLeft,
@@ -26,17 +26,219 @@ import {
     AccessTime,
     KeyboardArrowDown,
     Add,
-    Edit,
-    Delete,
-    Close,
-    Check,
     FiberManualRecord
 } from '@mui/icons-material';
 import FirebaseService from '../../../lib/FirebaseService';
-import { consultationModel } from '../../../lib/ModelObjects';
+import { useAuth } from '../authProvider';
+import EventoModal from './eventoModal'; // Importando o componente otimizado
 
-// Componente otimizado para células de dia no calendário
-const DiaCell = memo(({ dia, eventos, isToday, onClick, activeView, isOutsideMonth }) => {
+// Estilos personalizados para componentes da agenda
+const CalendarContainer = styled(Box)(({ theme }) => ({
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F8FAFF',
+    borderRadius: '24px',
+    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+    fontFamily: 'Gellix, sans-serif',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column'
+}));
+
+const CalendarHeader = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '20px 24px',
+    borderBottom: '1px solid #EAECEF',
+    backgroundColor: '#FFFFFF'
+}));
+
+const CalendarBody = styled(Box)(({ theme }) => ({
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column'
+}));
+
+const HeaderButton = styled(Button)(({ theme }) => ({
+    borderRadius: '50px',
+    textTransform: 'none',
+    padding: '8px 16px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CED4DA',
+    boxShadow: 'none',
+    color: theme.palette.text.primary,
+    fontWeight: 500,
+    '&:hover': {
+        backgroundColor: alpha(theme.palette.primary.main, 0.04),
+        borderColor: theme.palette.primary.main
+    }
+}));
+
+const NavButton = styled(IconButton)(({ theme }) => ({
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CED4DA',
+    borderRadius: '50%',
+    padding: '8px',
+    color: theme.palette.text.primary,
+    '&:hover': {
+        backgroundColor: alpha(theme.palette.primary.main, 0.04),
+        borderColor: theme.palette.primary.main
+    }
+}));
+
+const AddButton = styled(Button)(({ theme }) => ({
+    borderRadius: '50px',
+    textTransform: 'none',
+    padding: '8px 16px',
+    backgroundColor: theme.palette.success.main,
+    color: '#FFFFFF',
+    fontWeight: 500,
+    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+    '&:hover': {
+        backgroundColor: theme.palette.success.dark,
+        boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.15)'
+    }
+}));
+
+const ViewToggleButton = styled(Button)(({ theme, active }) => ({
+    borderRadius: '50px',
+    textTransform: 'none',
+    minWidth: 'auto',
+    padding: '8px 16px',
+    backgroundColor: active ? theme.palette.primary.main : '#FFFFFF',
+    color: active ? '#FFFFFF' : theme.palette.text.primary,
+    border: `1px solid ${active ? theme.palette.primary.main : '#CED4DA'}`,
+    fontWeight: 500,
+    '&:hover': {
+        backgroundColor: active ? theme.palette.primary.dark : alpha(theme.palette.primary.main, 0.04),
+        borderColor: theme.palette.primary.main
+    }
+}));
+
+const StyledDateCell = styled(Box)(({ theme, istoday, active, isoutside }) => ({
+    padding: '12px',
+    textAlign: 'center',
+    position: 'relative',
+    cursor: 'pointer',
+    backgroundColor: istoday === 'true'
+        ? alpha(theme.palette.primary.main, 0.1)
+        : active === 'true'
+            ? alpha(theme.palette.primary.main, 0.05)
+            : 'transparent',
+    borderRadius: '8px',
+    border: istoday === 'true' ? `1px solid ${theme.palette.primary.main}` : '1px solid transparent',
+    transition: 'all 0.2s ease-in-out',
+    opacity: isoutside === 'true' ? 0.5 : 1,
+    '&:hover': {
+        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+        transform: 'translateY(-2px)',
+        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.05)'
+    }
+}));
+
+const DateNumber = styled(Typography)(({ theme, istoday }) => ({
+    fontSize: '1.25rem',
+    fontWeight: istoday === 'true' ? 600 : 500,
+    color: istoday === 'true' ? theme.palette.primary.main : theme.palette.text.primary
+}));
+
+const EventIndicator = styled(Box)(({ theme, status }) => {
+    let color;
+    switch (status?.toLowerCase()) {
+        case 'confirmado':
+        case 'concluída':
+            color = theme.palette.success.main;
+            break;
+        case 'cancelado':
+        case 'cancelada':
+            color = theme.palette.error.main;
+            break;
+        case 'em andamento':
+            color = theme.palette.warning.main;
+            break;
+        default:
+            color = theme.palette.primary.main;
+    }
+
+    return {
+        width: '8px',
+        height: '8px',
+        borderRadius: '50%',
+        backgroundColor: color,
+        display: 'inline-block',
+        marginRight: '4px'
+    };
+});
+
+const EventItem = styled(Box)(({ theme, status }) => {
+    let bgColor;
+    let borderColor;
+
+    switch (status?.toLowerCase()) {
+        case 'confirmado':
+        case 'concluída':
+            bgColor = alpha(theme.palette.success.main, 0.1);
+            borderColor = theme.palette.success.main;
+            break;
+        case 'cancelado':
+        case 'cancelada':
+            bgColor = alpha(theme.palette.error.main, 0.1);
+            borderColor = theme.palette.error.main;
+            break;
+        case 'em andamento':
+            bgColor = alpha(theme.palette.warning.main, 0.1);
+            borderColor = theme.palette.warning.main;
+            break;
+        default:
+            bgColor = alpha(theme.palette.primary.main, 0.1);
+            borderColor = theme.palette.primary.main;
+    }
+
+    return {
+        padding: '8px 12px',
+        borderRadius: '8px',
+        backgroundColor: bgColor,
+        borderLeft: `3px solid ${borderColor}`,
+        marginBottom: '8px',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+            transform: 'scale(1.02)',
+            boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)'
+        }
+    };
+});
+
+const TimeSlot = styled(Box)(({ theme, ishour, iscurrent }) => ({
+    padding: '8px 12px',
+    borderBottom: '1px solid #EAECEF',
+    position: 'relative',
+    backgroundColor: iscurrent === 'true' ? alpha(theme.palette.primary.main, 0.05) : 'transparent',
+    '&::after': iscurrent === 'true' ? {
+        content: '""',
+        position: 'absolute',
+        top: '50%',
+        left: 0,
+        right: 0,
+        height: '2px',
+        backgroundColor: theme.palette.error.main,
+        zIndex: 1
+    } : {}
+}));
+
+const TimeLabel = styled(Typography)(({ theme }) => ({
+    fontSize: '0.75rem',
+    fontWeight: 500,
+    color: theme.palette.text.secondary,
+    position: 'absolute',
+    top: '8px',
+    left: '12px'
+}));
+
+// Componente para exibir células de dia no calendário
+const DiaCell = memo(({ dia, eventos, isToday, onClick, activeView, isOutsideMonth, isSelected }) => {
     const eventosDia = useMemo(() => {
         return eventos.filter(ev => {
             const dataEvento = new Date(ev.data);
@@ -45,563 +247,171 @@ const DiaCell = memo(({ dia, eventos, isToday, onClick, activeView, isOutsideMon
     }, [dia, eventos]);
 
     const diaSemana = dia.getDay();
-    const isTerça = diaSemana === 2;
+    const diaSemanaTexto = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][diaSemana];
 
-    // Estilos específicos para dia no modo mês
     if (activeView === 'month') {
         return (
-            <Box
+            <StyledDateCell
                 onClick={() => onClick(dia)}
-                sx={{
-                    p: 1,
-                    height: 96,
-                    borderRight: 1,
-                    borderBottom: 1,
-                    borderColor: 'divider',
-                    position: 'relative',
-                    '&:hover': { bgcolor: 'action.hover' },
-                    cursor: 'pointer',
-                    bgcolor: isToday ? 'primary.lighter' : 'background.paper',
-                    opacity: isOutsideMonth ? 0.5 : 1
-                }}
+                istoday={isToday ? 'true' : 'false'}
+                active={isSelected ? 'true' : 'false'}
+                isoutside={isOutsideMonth ? 'true' : 'false'}
             >
-                <Box sx={{
-                    textAlign: 'right',
-                    p: 1,
-                    fontWeight: isToday ? 'bold' : 'regular',
-                    color: isToday ? 'primary.main' : 'text.primary'
-                }}>
-                    {dia.getDate()}
+                <Box sx={{ mb: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                        {diaSemanaTexto}
+                    </Typography>
+                    <DateNumber istoday={isToday ? 'true' : 'false'}>
+                        {dia.getDate()}
+                    </DateNumber>
                 </Box>
 
-                {/* Eventos do dia em visualização compacta */}
-                <Box sx={{ mt: 1 }}>
-                    {eventosDia.slice(0, 3).map((evento, idx) => {
-                        const statusColor = getStatusColor(evento.status).muiColor;
-                        return (
-                            <Box key={idx} sx={{
-                                fontSize: '0.75rem',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                mb: 0.5,
-                                pl: 3,
-                                position: 'relative'
-                            }}>
-                                <FiberManualRecord sx={{
-                                    position: 'absolute',
-                                    left: 0,
-                                    top: 6,
-                                    fontSize: 8,
-                                    color: statusColor
-                                }} />
-                                {evento.horaInicio} {evento.nome.substring(0, 12)}
-                                {evento.nome.length > 12 ? '...' : ''}
-                            </Box>
-                        );
-                    })}
-
-                    {eventosDia.length > 3 && (
-                        <Typography variant="caption" sx={{ pl: 2, color: 'primary.main' }}>
-                            +{eventosDia.length - 3} mais
-                        </Typography>
-                    )}
-                </Box>
-
-                {/* Indicador de hoje */}
-                {isToday && (
-                    <FiberManualRecord sx={{
-                        position: 'absolute',
-                        top: 4,
-                        left: 4,
-                        fontSize: 8,
-                        color: 'primary.main'
-                    }} />
+                {/* Indicadores de eventos */}
+                {eventosDia.length > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                        {eventosDia.length <= 3 ? (
+                            eventosDia.map((_, idx) => (
+                                <EventIndicator
+                                    key={idx}
+                                    status={eventosDia[idx].status}
+                                    sx={{ mx: 0.5 }}
+                                />
+                            ))
+                        ) : (
+                            <Badge
+                                badgeContent={eventosDia.length}
+                                color="primary"
+                                sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem', height: '18px', minWidth: '18px' } }}
+                            >
+                                <EventIndicator status="default" />
+                            </Badge>
+                        )}
+                    </Box>
                 )}
-            </Box>
+            </StyledDateCell>
         );
     }
 
     // Visualização padrão para dia na semana
     return (
-        <Box
+        <StyledDateCell
             onClick={() => onClick(dia)}
+            istoday={isToday ? 'true' : 'false'}
+            active={isSelected ? 'true' : 'false'}
             sx={{
-                p: 2,
-                textAlign: 'center',
-                position: 'relative',
-                transition: 'background-color 0.2s',
-                cursor: 'pointer',
-                '&:hover': { bgcolor: 'action.hover' },
-                bgcolor: isToday || isTerça ? 'primary.lighter' : 'background.paper',
-                borderRight: 1,
-                borderColor: 'divider'
+                height: '70px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
             }}
         >
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
-                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][diaSemana]}
+            <Typography variant="caption" color="text.secondary">
+                {diaSemanaTexto}
             </Typography>
-            <Typography
-                variant="h5"
-                sx={{
-                    fontWeight: 'medium',
-                    color: isToday || isTerça ? 'primary.main' : 'text.primary'
-                }}
-            >
+            <DateNumber istoday={isToday ? 'true' : 'false'}>
                 {dia.getDate()}
-            </Typography>
+            </DateNumber>
 
-            {/* Indicador de número de eventos */}
             {eventosDia.length > 0 && (
-                <Box
+                <Badge
+                    badgeContent={eventosDia.length}
+                    color="primary"
                     sx={{
                         position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        width: 20,
-                        height: 20,
-                        bgcolor: 'error.main',
-                        color: 'white',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.75rem'
-                    }}
-                >
-                    {eventosDia.length}
-                </Box>
-            )}
-
-            {/* Marcador de dia atual */}
-            {isToday && (
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: 32,
-                        height: 4,
-                        bgcolor: 'primary.main',
-                        borderTopLeftRadius: 4,
-                        borderTopRightRadius: 4
+                        top: '8px',
+                        right: '8px',
+                        '& .MuiBadge-badge': {
+                            fontSize: '0.7rem',
+                            height: '18px',
+                            minWidth: '18px'
+                        }
                     }}
                 />
             )}
-        </Box>
+        </StyledDateCell>
     );
 });
 
-// Componente otimizado para eventos
-const EventoCard = memo(({ evento, onClick, onStatusChange, onDelete }) => {
-    const { horaInicio, horaFim, nome, status, id } = evento;
-    const statusConfig = getStatusColor(status);
-
-    const handleStatusChange = (e, newStatus) => {
-        e.stopPropagation();
-        onStatusChange(id, newStatus);
-    };
-
-    const handleDelete = (e) => {
-        e.stopPropagation();
-        onDelete(id);
-    };
+// Componente para exibir eventos
+const EventoCard = memo(({ evento, onClick }) => {
+    const { horaInicio, horaFim, nome, status } = evento;
 
     return (
-        <Paper
+        <EventItem
+            status={status}
             onClick={() => onClick(evento)}
-            sx={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                mx: 0.5,
-                borderRadius: 1,
-                overflow: 'hidden',
-                boxShadow: 1,
-                bgcolor: statusConfig.bgColor,
-                borderLeft: 4,
-                borderColor: statusConfig.muiColor,
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                top: '2px',
-                bottom: '2px',
-                zIndex: 10,
-                '&:hover': {
-                    boxShadow: 3,
-                    transform: 'scale(1.01)'
-                }
-            }}
         >
-            <Box sx={{ p: 1 }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 600 }}>
                     {horaInicio} - {horaFim}
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'medium', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {nome}
-                </Typography>
-                <Box sx={{ mt: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Chip
-                        label={status || 'Pendente'}
-                        size="small"
-                        sx={{
-                            bgcolor: statusConfig.muiColor,
-                            color: 'white',
-                            fontSize: '0.65rem',
-                            height: 20
-                        }}
-                    />
-
-                    {/* Ações rápidas (visíveis no hover) */}
-                    <Box
-                        sx={{
-                            display: 'none',
-                            '.MuiPaper-root:hover &': { display: 'flex' },
-                            alignItems: 'center',
-                            gap: 0.5
-                        }}
-                    >
-                        {status !== 'Confirmado' && (
-                            <IconButton
-                                size="small"
-                                onClick={(e) => handleStatusChange(e, 'Confirmado')}
-                                sx={{ p: 0.5, color: 'success.main', '&:hover': { bgcolor: 'success.lighter' } }}
-                                title="Confirmar"
-                            >
-                                <Check fontSize="small" />
-                            </IconButton>
-                        )}
-                        {status !== 'Cancelado' && (
-                            <IconButton
-                                size="small"
-                                onClick={(e) => handleStatusChange(e, 'Cancelado')}
-                                sx={{ p: 0.5, color: 'error.main', '&:hover': { bgcolor: 'error.lighter' } }}
-                                title="Cancelar"
-                            >
-                                <Close fontSize="small" />
-                            </IconButton>
-                        )}
-                        <IconButton
-                            size="small"
-                            onClick={handleDelete}
-                            sx={{ p: 0.5, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover' } }}
-                            title="Remover"
-                        >
-                            <Delete fontSize="small" />
-                        </IconButton>
-                    </Box>
-                </Box>
+                <Chip
+                    label={status || 'Agendada'}
+                    size="small"
+                    sx={{
+                        height: '20px',
+                        fontSize: '0.65rem',
+                        backgroundColor: alpha(
+                            status?.toLowerCase() === 'confirmado' || status?.toLowerCase() === 'concluída'
+                                ? '#4caf50'
+                                : status?.toLowerCase() === 'cancelado' || status?.toLowerCase() === 'cancelada'
+                                    ? '#f44336'
+                                    : status?.toLowerCase() === 'em andamento'
+                                        ? '#ff9800'
+                                        : '#2196f3',
+                            0.1
+                        ),
+                        color: status?.toLowerCase() === 'confirmado' || status?.toLowerCase() === 'concluída'
+                            ? '#4caf50'
+                            : status?.toLowerCase() === 'cancelado' || status?.toLowerCase() === 'cancelada'
+                                ? '#f44336'
+                                : status?.toLowerCase() === 'em andamento'
+                                    ? '#ff9800'
+                                    : '#2196f3',
+                        borderRadius: '50px'
+                    }}
+                />
             </Box>
-        </Paper>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {nome}
+            </Typography>
+        </EventItem>
     );
 });
 
-// Modal para criar/editar eventos
-const EventoModal = ({ isOpen, onClose, onSave, evento, pacientes, doctorId }) => {
-    const [formData, setFormData] = useState({
-        patientId: '',
-        consultationDate: new Date(),
-        consultationTime: '09:00',
-        consultationDuration: 30,
-        consultationType: 'Presencial',
-        reasonForVisit: '',
-        status: 'Agendada'
-    });
+// Componente principal da Agenda Médica
+const AgendaMedica = () => {
+    const { user } = useAuth();
 
-    // Preencher formulário se for edição
-    useEffect(() => {
-        if (evento) {
-            setFormData({
-                patientId: evento.patientId || '',
-                consultationDate: evento.consultationDate ? new Date(evento.consultationDate) : new Date(),
-                consultationTime: evento.horaInicio || '09:00',
-                consultationDuration: evento.consultationDuration || 30,
-                consultationType: evento.consultationType || 'Presencial',
-                reasonForVisit: evento.reasonForVisit || '',
-                status: mapStatusToConsultation(evento.status) || 'Agendada'
-            });
-        }
-    }, [evento]);
-
-    const mapStatusToConsultation = (status) => {
-        if (!status) return 'Agendada';
-
-        switch (status.toLowerCase()) {
-            case 'confirmado':
-                return 'Concluída';
-            case 'a confirmar':
-                return 'Agendada';
-            case 'cancelado':
-                return 'Cancelada';
-            default:
-                return 'Agendada';
-        }
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleDateChange = (e) => {
-        setFormData(prev => ({
-            ...prev,
-            consultationDate: new Date(e.target.value)
-        }));
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-
-        // Criar formato de consulta para salvar
-        const consultationData = {
-            ...consultationModel,
-            patientId: formData.patientId,
-            doctorId: doctorId,
-            consultationDate: formData.consultationDate,
-            consultationTime: formData.consultationTime,
-            consultationDuration: parseInt(formData.consultationDuration),
-            consultationType: formData.consultationType,
-            status: formData.status,
-            reasonForVisit: formData.reasonForVisit,
-            id: evento?.id // Manter o ID se for edição
-        };
-
-        onSave(consultationData);
-        onClose();
-    };
-
-    return (
-        <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                {evento ? 'Editar Consulta' : 'Nova Consulta'}
-                <IconButton onClick={onClose} size="small">
-                    <Close />
-                </IconButton>
-            </DialogTitle>
-            <Divider />
-            <form onSubmit={handleSubmit}>
-                <DialogContent>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                            <FormControl fullWidth variant="outlined" required>
-                                <InputLabel id="paciente-select-label">Paciente</InputLabel>
-                                <Select
-                                    labelId="paciente-select-label"
-                                    id="patientId"
-                                    name="patientId"
-                                    value={formData.patientId}
-                                    onChange={handleChange}
-                                    label="Paciente"
-                                >
-                                    <MenuItem value="">
-                                        <em>Selecione um paciente</em>
-                                    </MenuItem>
-                                    {pacientes.map(paciente => (
-                                        <MenuItem key={paciente.id} value={paciente.id}>
-                                            {paciente.patientName}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Data"
-                                type="date"
-                                value={formData.consultationDate instanceof Date
-                                    ? formData.consultationDate.toISOString().split('T')[0]
-                                    : ''}
-                                onChange={handleDateChange}
-                                required
-                                InputLabelProps={{ shrink: true }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Horário"
-                                type="time"
-                                name="consultationTime"
-                                value={formData.consultationTime}
-                                onChange={handleChange}
-                                required
-                                InputLabelProps={{ shrink: true }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth variant="outlined">
-                                <InputLabel id="duracao-select-label">Duração</InputLabel>
-                                <Select
-                                    labelId="duracao-select-label"
-                                    id="consultationDuration"
-                                    name="consultationDuration"
-                                    value={formData.consultationDuration}
-                                    onChange={handleChange}
-                                    label="Duração"
-                                >
-                                    <MenuItem value={15}>15 minutos</MenuItem>
-                                    <MenuItem value={30}>30 minutos</MenuItem>
-                                    <MenuItem value={45}>45 minutos</MenuItem>
-                                    <MenuItem value={60}>1 hora</MenuItem>
-                                    <MenuItem value={90}>1h30</MenuItem>
-                                    <MenuItem value={120}>2 horas</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth variant="outlined">
-                                <InputLabel id="tipo-select-label">Tipo</InputLabel>
-                                <Select
-                                    labelId="tipo-select-label"
-                                    id="consultationType"
-                                    name="consultationType"
-                                    value={formData.consultationType}
-                                    onChange={handleChange}
-                                    label="Tipo"
-                                >
-                                    <MenuItem value="Presencial">Presencial</MenuItem>
-                                    <MenuItem value="Telemedicina">Telemedicina</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="Motivo da Consulta"
-                                name="reasonForVisit"
-                                value={formData.reasonForVisit}
-                                onChange={handleChange}
-                                multiline
-                                rows={3}
-                                variant="outlined"
-                            />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <FormControl fullWidth variant="outlined">
-                                <InputLabel id="status-select-label">Status</InputLabel>
-                                <Select
-                                    labelId="status-select-label"
-                                    id="status"
-                                    name="status"
-                                    value={formData.status}
-                                    onChange={handleChange}
-                                    label="Status"
-                                >
-                                    <MenuItem value="Agendada">Agendada</MenuItem>
-                                    <MenuItem value="Em Andamento">Em Andamento</MenuItem>
-                                    <MenuItem value="Concluída">Concluída</MenuItem>
-                                    <MenuItem value="Cancelada">Cancelada</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                    </Grid>
-                </DialogContent>
-
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button
-                        onClick={onClose}
-                        variant="outlined"
-                        color="inherit"
-                    >
-                        Cancelar
-                    </Button>
-                    <Button
-                        type="submit"
-                        variant="contained"
-                        color="primary"
-                    >
-                        {evento ? 'Atualizar' : 'Agendar'}
-                    </Button>
-                </DialogActions>
-            </form>
-        </Dialog>
-    );
-};
-
-// Função utilitária para obter cores com base no status
-function getStatusColor(status) {
-    if (!status) return {
-        bgColor: '#f5f5f5',
-        muiColor: 'grey.500',
-        borderColor: 'grey.400',
-    };
-
-    switch (status.toLowerCase()) {
-        case 'confirmado':
-        case 'concluída':
-            return {
-                bgColor: '#e8f5e9',
-                muiColor: 'success.main',
-                borderColor: 'success.main',
-            };
-        case 'a confirmar':
-        case 'agendada':
-            return {
-                bgColor: '#e3f2fd',
-                muiColor: 'primary.main',
-                borderColor: 'primary.main',
-            };
-        case 'cancelado':
-        case 'cancelada':
-            return {
-                bgColor: '#ffebee',
-                muiColor: 'error.main',
-                borderColor: 'error.main',
-            };
-        case 'em andamento':
-            return {
-                bgColor: '#fff8e1',
-                muiColor: 'warning.main',
-                borderColor: 'warning.main',
-            };
-        default:
-            return {
-                bgColor: '#f5f5f5',
-                muiColor: 'grey.500',
-                borderColor: 'grey.400',
-            };
-    }
-}
-
-// Componente principal de Agenda
-const AgendaMedica = ({ doctorId, filterCallback }) => {
-    // Refs para detectar cliques fora dos popvers
+    // Refs para calendários e popups
     const miniCalendarRef = useRef(null);
-    const periodoRef = useRef(null);
 
     // Estados para controle do calendário
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [activeView, setActiveView] = useState('week'); // 'day', 'week', 'month'
-    const [visibleTimeSlots, setVisibleTimeSlots] = useState([]);
     const [miniCalendarAnchor, setMiniCalendarAnchor] = useState(null);
-    const [periodoAnchor, setPeriodoAnchor] = useState(null);
     const [miniCalendarDate, setMiniCalendarDate] = useState(new Date());
 
     // Estados para eventos e modal
     const [eventos, setEventos] = useState([]);
-    const [pacientes, setPacientes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showEventoModal, setShowEventoModal] = useState(false);
     const [eventoSelecionado, setEventoSelecionado] = useState(null);
 
-    // Constantes e utilitários
+    // Estado para notificações
+    const [notification, setNotification] = useState({ open: false, message: '', type: 'info' });
+
+    // Constantes
     const horaAtual = new Date().getHours();
     const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const diasSemanaCompletos = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     const meses = [
         'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
     ];
 
-    // Memoização das datas e períodos para evitar cálculos desnecessários
+    // Memoização das datas e períodos
     const currentWeek = useMemo(() => {
         return obterSemana(currentDate);
     }, [currentDate]);
@@ -614,45 +424,46 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
         return obterDiasDoMes(currentDate);
     }, [currentDate]);
 
-    // Efeito para carregar consultas e pacientes do Firebase
+    // Slots de tempo para visualizações de dia e semana
+    const timeSlots = useMemo(() => {
+        return Array.from({ length: 14 }, (_, i) => i + 8); // 8:00 - 21:00
+    }, []);
+
+    // Efeito para carregar consultas do Firebase
     useEffect(() => {
-        const carregarDados = async () => {
+        const loadConsultations = async () => {
+            if (!user?.uid) return;
+
             setIsLoading(true);
             try {
-                // Verificar se doctorId é válido para evitar erros no Firestore
-                if (!doctorId) {
-                    console.warn("ID do médico não fornecido ou inválido");
-                    setEventos([]);
-                    setPacientes([]);
-                    setIsLoading(false);
-                    return;
-                }
+                const doctorId = user.uid;
+                const consultationsData = await FirebaseService.listAllConsultations(doctorId);
 
-                // Carregar consultas do médico
-                const consultasFirebase = await FirebaseService.listAllConsultations(doctorId);
+                // Buscar informações de pacientes para exibir nomes
+                const patientIds = [...new Set(consultationsData.map(c => c.patientId))];
+                const patientsPromises = patientIds.map(pid =>
+                    FirebaseService.getPatient(doctorId, pid)
+                );
 
-                // Converter para o formato de eventos da agenda
-                const eventosFormatados = await Promise.all(consultasFirebase.map(async (consulta) => {
-                    // Para cada consulta, buscar informações do paciente
-                    let nomePaciente = "Paciente";
-                    try {
-                        // Verificar se patientId é válido
-                        if (consulta.patientId) {
-                            const paciente = await FirebaseService.getPatient(consulta.patientId);
-                            if (paciente) {
-                                nomePaciente = paciente.patientName || "Paciente sem nome";
-                            }
-                        }
-                    } catch (error) {
-                        console.error("Erro ao buscar paciente:", error);
+                const patientsResults = await Promise.all(patientsPromises);
+                const patientsMap = {};
+                patientsResults.forEach(patient => {
+                    if (patient && patient.id) {
+                        patientsMap[patient.id] = patient;
                     }
+                });
 
-                    // Calcular hora de fim com base na duração
+                // Processar consultas em formato de eventos
+                const eventosProcessados = consultationsData.map(consulta => {
+                    // Obter informações do paciente
+                    const paciente = patientsMap[consulta.patientId];
+                    const nomePaciente = paciente ? paciente.patientName : "Paciente";
+
+                    // Calcular hora de término
                     const horaInicio = consulta.consultationTime || "00:00";
                     let [hora, minuto] = horaInicio.split(':').map(Number);
                     const duracao = consulta.consultationDuration || 30;
 
-                    // Adicionar a duração
                     minuto += duracao;
                     while (minuto >= 60) {
                         hora += 1;
@@ -678,13 +489,24 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
                             status = "A Confirmar";
                     }
 
-                    // Retornar evento formatado
+                    // Formatar data para consistência
+                    let dataFormatada;
+                    if (consulta.consultationDate instanceof Date) {
+                        dataFormatada = consulta.consultationDate.toISOString().split('T')[0];
+                    } else if (typeof consulta.consultationDate === 'string') {
+                        if (consulta.consultationDate.includes('T')) {
+                            dataFormatada = consulta.consultationDate.split('T')[0];
+                        } else {
+                            dataFormatada = consulta.consultationDate;
+                        }
+                    } else {
+                        dataFormatada = new Date(consulta.consultationDate).toISOString().split('T')[0];
+                    }
+
                     return {
                         id: consulta.id,
                         nome: nomePaciente,
-                        data: consulta.consultationDate instanceof Date
-                            ? consulta.consultationDate.toISOString().split('T')[0]
-                            : new Date(consulta.consultationDate).toISOString().split('T')[0],
+                        data: dataFormatada,
                         horaInicio,
                         horaFim,
                         status,
@@ -692,68 +514,51 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
                         doctorId: consulta.doctorId,
                         consultationDuration: consulta.consultationDuration,
                         consultationType: consulta.consultationType,
-                        reasonForVisit: consulta.reasonForVisit
+                        reasonForVisit: consulta.reasonForVisit,
+                        consultationDate: new Date(dataFormatada)
                     };
-                }));
+                });
 
-                // Aplicar filtro externo se fornecido
-                if (typeof filterCallback === 'function') {
-                    setEventos(filterCallback(eventosFormatados));
-                } else {
-                    setEventos(eventosFormatados);
-                }
-
-                // Carregar lista de pacientes
-                if (doctorId) {
-                    const pacientesFirebase = await FirebaseService.getPatientsByDoctor(doctorId);
-                    setPacientes(pacientesFirebase);
-                } else {
-                    setPacientes([]);
-                }
-
+                setEventos(eventosProcessados);
             } catch (error) {
-                console.error("Erro ao carregar dados:", error);
+                console.error("Erro ao carregar consultas:", error);
+                setNotification({
+                    open: true,
+                    message: "Erro ao carregar agenda. Tente novamente.",
+                    type: 'error'
+                });
             } finally {
                 setIsLoading(false);
             }
         };
 
-        carregarDados();
-    }, [doctorId, filterCallback]);
+        loadConsultations();
+    }, [user]);
 
     // Funções para gerenciar consultas
     const criarConsulta = async (consultaData) => {
         try {
             setIsLoading(true);
 
-            // Validar dados da consulta
-            if (!consultaData.patientId) {
-                console.error("ID do paciente não fornecido");
-                alert("Por favor, selecione um paciente");
-                setIsLoading(false);
+            if (!user?.uid) {
+                setNotification({
+                    open: true,
+                    message: "Erro de autenticação. Faça login novamente.",
+                    type: 'error'
+                });
                 return;
             }
 
-            // Garantir que doctorId esteja definido
-            if (!doctorId) {
-                console.error("ID do médico não fornecido");
-                alert("ID do médico não disponível. Tente fazer login novamente.");
-                setIsLoading(false);
-                return;
-            }
-
-            // Garantir que doctorId esteja na consulta
-            consultaData.doctorId = doctorId;
-
+            const doctorId = user.uid;
             const pacienteId = consultaData.patientId;
 
             // Criar consulta no Firebase
-            const consultaId = await FirebaseService.createConsultation(pacienteId, consultaData);
+            const consultaId = await FirebaseService.createConsultation(doctorId, pacienteId, consultaData);
 
-            // Buscar paciente para o nome
-            const paciente = await FirebaseService.getPatient(pacienteId);
+            // Buscar nome do paciente
+            const paciente = await FirebaseService.getPatient(doctorId, pacienteId);
 
-            // Calcular hora fim
+            // Calcular hora de término
             const horaInicio = consultaData.consultationTime;
             let [hora, minuto] = horaInicio.split(':').map(Number);
             const duracao = consultaData.consultationDuration;
@@ -783,10 +588,10 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
                     status = "A Confirmar";
             }
 
-            // Adicionar evento à lista local
+            // Adicionar à lista local de eventos
             const novoEvento = {
                 id: consultaId,
-                nome: paciente.patientName,
+                nome: paciente ? paciente.patientName : "Paciente",
                 data: consultaData.consultationDate instanceof Date
                     ? consultaData.consultationDate.toISOString().split('T')[0]
                     : new Date(consultaData.consultationDate).toISOString().split('T')[0],
@@ -794,16 +599,29 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
                 horaFim,
                 status,
                 patientId: pacienteId,
-                doctorId: consultaData.doctorId,
+                doctorId,
                 consultationDuration: consultaData.consultationDuration,
                 consultationType: consultaData.consultationType,
-                reasonForVisit: consultaData.reasonForVisit
+                reasonForVisit: consultaData.reasonForVisit,
+                consultationDate: consultaData.consultationDate instanceof Date
+                    ? consultaData.consultationDate
+                    : new Date(consultaData.consultationDate)
             };
 
             setEventos(prev => [...prev, novoEvento]);
 
+            setNotification({
+                open: true,
+                message: "Consulta agendada com sucesso!",
+                type: 'success'
+            });
         } catch (error) {
             console.error("Erro ao criar consulta:", error);
+            setNotification({
+                open: true,
+                message: "Erro ao agendar consulta. Tente novamente.",
+                type: 'error'
+            });
         } finally {
             setIsLoading(false);
         }
@@ -813,39 +631,23 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
         try {
             setIsLoading(true);
 
-            // Validar dados da consulta
-            if (!consultaData.patientId) {
-                console.error("ID do paciente não fornecido para atualização");
-                alert("Erro: ID do paciente não encontrado");
-                setIsLoading(false);
+            if (!user?.uid || !consultaData.id || !consultaData.patientId) {
+                setNotification({
+                    open: true,
+                    message: "Dados incompletos para atualização.",
+                    type: 'error'
+                });
                 return;
             }
 
-            if (!consultaData.id) {
-                console.error("ID da consulta não fornecido para atualização");
-                alert("Erro: ID da consulta não encontrado");
-                setIsLoading(false);
-                return;
-            }
-
-            // Garantir que doctorId esteja definido
-            if (!doctorId) {
-                console.error("ID do médico não fornecido");
-                alert("ID do médico não disponível. Tente fazer login novamente.");
-                setIsLoading(false);
-                return;
-            }
-
-            // Garantir que doctorId esteja na consulta
-            consultaData.doctorId = doctorId;
-
+            const doctorId = user.uid;
             const pacienteId = consultaData.patientId;
             const consultaId = consultaData.id;
 
-            // Atualizar consulta no Firebase
-            await FirebaseService.updateConsultation(pacienteId, consultaId, consultaData);
+            // Atualizar no Firebase
+            await FirebaseService.updateConsultation(doctorId, pacienteId, consultaId, consultaData);
 
-            // Calcular hora fim
+            // Calcular hora de término
             const horaInicio = consultaData.consultationTime;
             let [hora, minuto] = horaInicio.split(':').map(Number);
             const duracao = consultaData.consultationDuration;
@@ -875,7 +677,7 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
                     status = "A Confirmar";
             }
 
-            // Atualizar evento na lista local
+            // Atualizar na lista local
             setEventos(prev => prev.map(ev =>
                 ev.id === consultaId
                     ? {
@@ -888,80 +690,34 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
                         status,
                         consultationDuration: consultaData.consultationDuration,
                         consultationType: consultaData.consultationType,
-                        reasonForVisit: consultaData.reasonForVisit
+                        reasonForVisit: consultaData.reasonForVisit,
+                        consultationDate: consultaData.consultationDate instanceof Date
+                            ? consultaData.consultationDate
+                            : new Date(consultaData.consultationDate)
                     }
                     : ev
             ));
 
+            setNotification({
+                open: true,
+                message: "Consulta atualizada com sucesso!",
+                type: 'success'
+            });
         } catch (error) {
             console.error("Erro ao atualizar consulta:", error);
+            setNotification({
+                open: true,
+                message: "Erro ao atualizar consulta. Tente novamente.",
+                type: 'error'
+            });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const excluirConsulta = async (eventoId) => {
-        try {
-            // Encontrar o evento pelo ID
-            const evento = eventos.find(ev => ev.id === eventoId);
-            if (!evento) return;
-
-            const pacienteId = evento.patientId;
-
-            // Remover do Firebase
-            await FirebaseService.deleteConsultation(pacienteId, eventoId);
-
-            // Remover da lista local
-            setEventos(prev => prev.filter(ev => ev.id !== eventoId));
-
-        } catch (error) {
-            console.error("Erro ao excluir consulta:", error);
-        }
-    };
-
-    const alterarStatusConsulta = async (eventoId, novoStatus) => {
-        try {
-            // Encontrar o evento pelo ID
-            const evento = eventos.find(ev => ev.id === eventoId);
-            if (!evento) return;
-
-            const pacienteId = evento.patientId;
-
-            // Mapear status para o formato do Firebase
-            let statusFirebase = "Agendada";
-            switch (novoStatus) {
-                case "Confirmado":
-                    statusFirebase = "Concluída";
-                    break;
-                case "Cancelado":
-                    statusFirebase = "Cancelada";
-                    break;
-                case "Em Andamento":
-                    statusFirebase = "Em Andamento";
-                    break;
-                default:
-                    statusFirebase = "Agendada";
-            }
-
-            // Buscar consulta atual
-            const consulta = await FirebaseService.getConsultation(pacienteId, eventoId);
-
-            // Atualizar status
-            await FirebaseService.updateConsultation(pacienteId, eventoId, {
-                ...consulta,
-                status: statusFirebase
-            });
-
-            // Atualizar na lista local
-            setEventos(prev => prev.map(ev =>
-                ev.id === eventoId
-                    ? {...ev, status: novoStatus}
-                    : ev
-            ));
-
-        } catch (error) {
-            console.error("Erro ao alterar status:", error);
-        }
+    // Fechar notificação
+    const handleCloseNotification = () => {
+        setNotification(prev => ({ ...prev, open: false }));
     };
 
     // Funções de formatação e cálculo de datas
@@ -1015,66 +771,15 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
         return resultado;
     }
 
-    // Determinar slots de tempo visíveis de forma inteligente
-    const determinarSlotsVisiveis = useCallback(() => {
-        let datas = [];
-
-        // Selecionar as datas corretas com base na visualização ativa
-        if (activeView === 'day') {
-            datas = [selectedDate];
-        } else if (activeView === 'week') {
-            datas = currentWeek;
-        } else if (activeView === 'month') {
-            // Para o mês, usamos a semana atual para calcular horários
-            datas = currentWeek;
-        }
-
-        // Todas as horas possíveis (0-23)
-        const todasHoras = Array.from({ length: 24 }, (_, i) => i);
-
-        // Obter horas com eventos para as datas selecionadas
-        const horasComEventos = new Set();
-
-        datas.forEach(dia => {
-            const dataFormatada = formatarData(dia);
-
-            eventos.forEach(evento => {
-                const dataEvento = new Date(evento.data);
-                const dataEventoFormatada = formatarData(dataEvento);
-
-                if (dataEventoFormatada === dataFormatada) {
-                    const horaInicio = parseInt(evento.horaInicio.split(':')[0]);
-                    horasComEventos.add(horaInicio);
-                }
-            });
-        });
-
-        // Se tiver poucos eventos (≤ 6 horários diferentes)
-        if (horasComEventos.size <= 6) {
-            // Se não tiver nenhum evento, mostrar as próximas 6 horas a partir da hora atual
-            if (horasComEventos.size === 0) {
-                return Array.from({ length: 6 }, (_, i) => (horaAtual + i) % 24).sort((a, b) => a - b);
-            }
-
-            // Caso contrário, mostrar apenas os horários com eventos
-            return [...horasComEventos].sort((a, b) => a - b);
-        }
-
-        // Se tiver muitos eventos, mostrar horas de 7 às 19
-        return Array.from({ length: 13 }, (_, i) => i + 7);
-    }, [eventos, currentWeek, selectedDate, activeView, horaAtual]);
-
     function formatarData(data) {
         return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
     }
 
-    // Efeito para atualizar slots de tempo quando necessário
-    useEffect(() => {
-        const slots = determinarSlotsVisiveis();
-        setVisibleTimeSlots(slots);
-    }, [determinarSlotsVisiveis]);
+    function formatarHora(hora) {
+        return `${hora}:00`;
+    }
 
-    // Navegação
+    // Navegação no calendário
     const navegarParaHoje = useCallback(() => {
         const hoje = new Date();
         setCurrentDate(hoje);
@@ -1111,31 +816,28 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
         setSelectedDate(novaData);
     }, [currentDate, activeView]);
 
-    // Lógica para encontrar eventos
-    const encontrarEventos = useCallback((dia, hora) => {
+    // Lógica para encontrar eventos em uma data/hora
+    const encontrarEventos = useCallback((dia, hora = null) => {
         const dataFormatada = formatarData(dia);
 
         return eventos.filter(evento => {
             const dataEvento = new Date(evento.data);
             const dataEventoFormatada = formatarData(dataEvento);
 
-            const horaInicio = parseInt(evento.horaInicio.split(':')[0]);
+            if (dataEventoFormatada !== dataFormatada) return false;
 
-            return dataEventoFormatada === dataFormatada && horaInicio === hora;
+            if (hora !== null) {
+                const horaInicio = parseInt(evento.horaInicio.split(':')[0]);
+                return horaInicio === hora;
+            }
+
+            return true;
         });
     }, [eventos]);
 
-    // Formatação para exibição
-    const formatarHora = (hora) => {
-        if (hora === 0) return '12 AM';
-        if (hora === 12) return '12 PM';
-        return hora < 12 ? `${hora} AM` : `${hora - 12} PM`;
-    };
-
     // Manipuladores de eventos
-    const alterarVisualizacao = useCallback((tipo) => {
-        setActiveView(tipo);
-        setPeriodoAnchor(null);
+    const alterarVisualizacao = useCallback((novaView) => {
+        setActiveView(novaView);
     }, []);
 
     const selecionarDia = useCallback((dia) => {
@@ -1155,15 +857,15 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
         setShowEventoModal(true);
     }, []);
 
-    const salvarEvento = useCallback((evento) => {
-        if (evento.id) {
-            atualizarConsulta(evento);
+    const handleSaveEvent = useCallback((event) => {
+        if (event.id) {
+            atualizarConsulta(event);
         } else {
-            criarConsulta(evento);
+            criarConsulta(event);
         }
     }, []);
 
-    // Manipuladores de popover
+    // Mini-calendário
     const handleMiniCalendarOpen = (event) => {
         setMiniCalendarAnchor(event.currentTarget);
     };
@@ -1172,141 +874,160 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
         setMiniCalendarAnchor(null);
     };
 
-    const handlePeriodoOpen = (event) => {
-        setPeriodoAnchor(event.currentTarget);
-    };
-
-    const handlePeriodoClose = () => {
-        setPeriodoAnchor(null);
-    };
-
-    // Controle de exibição de popovers
     const miniCalendarOpen = Boolean(miniCalendarAnchor);
-    const periodoOpen = Boolean(periodoAnchor);
 
-    // Renderização condicional para diferentes visualizações
-    const renderizarConteudo = () => {
-        if (isLoading) {
-            return (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300, bgcolor: 'background.paper' }}>
-                    <Typography variant="body1">Carregando...</Typography>
+    // Renderização de visualizações
+    const renderDayView = () => {
+        const eventosHoje = encontrarEventos(selectedDate);
+        const hoje = new Date();
+        const isToday = selectedDate.toDateString() === hoje.toDateString();
+
+        return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                {/* Cabeçalho do dia */}
+                <Box sx={{ p: 2, borderBottom: '1px solid #EAECEF', display: 'flex', justifyContent: 'space-between', bgcolor: 'white' }}>
+                    <Box>
+                        <Typography variant="h6" fontWeight={600}>
+                            {selectedDate.getDate()} de {meses[selectedDate.getMonth()]}
+                            {selectedDate.getFullYear() !== new Date().getFullYear() && ` de ${selectedDate.getFullYear()}`}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            {diasSemana[selectedDate.getDay()]}-feira
+                        </Typography>
+                    </Box>
+
+                    {isToday && (
+                        <Chip
+                            label="Hoje"
+                            color="primary"
+                            size="small"
+                            sx={{
+                                height: '24px',
+                                borderRadius: '50px',
+                                bgcolor: alpha('#2196f3', 0.1),
+                                color: '#2196f3',
+                                fontWeight: 500
+                            }}
+                        />
+                    )}
                 </Box>
-            );
-        }
 
-        // Visualização diária
-        if (activeView === 'day') {
-            return (
-                <Paper sx={{ overflow: 'hidden', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
-                    {/* Cabeçalho do dia */}
-                    <Grid container sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                        <Grid item xs={6} sx={{ p: 2, textAlign: 'center' }}>
-                            <Typography variant="body2" color="text.secondary" fontWeight="medium">
-                                {diasSemanaCompletos[selectedDate.getDay()]}
+                {/* Lista de eventos */}
+                <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                    {eventosHoje.length === 0 ? (
+                        <Box sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '100%',
+                            color: 'text.secondary'
+                        }}>
+                            <DateRange sx={{ fontSize: 48, color: alpha('#000', 0.1), mb: 2 }} />
+                            <Typography variant="body1">
+                                Nenhuma consulta agendada para esta data
                             </Typography>
-                            <Typography variant="h4" fontWeight="medium" color="text.primary">
-                                {selectedDate.getDate()}
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={6} sx={{ p: 2, textAlign: 'right' }}>
-                            <Typography variant="body2" color="text.secondary">
-                                {`${selectedDate.getDate()} de ${meses[selectedDate.getMonth()]} de ${selectedDate.getFullYear()}`}
-                            </Typography>
-                        </Grid>
-                    </Grid>
-
-                    {/* Slots de horas do dia */}
-                    {visibleTimeSlots.map((hora) => {
-                        const isHoraAtual = hora === horaAtual && new Date().toDateString() === selectedDate.toDateString();
-                        const eventos = encontrarEventos(selectedDate, hora);
-
-                        return (
-                            <Box
-                                key={hora}
+                            <Button
+                                variant="outlined"
+                                startIcon={<Add />}
+                                onClick={manipularCliqueCriarEvento}
                                 sx={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '1fr',
-                                    bgcolor: isHoraAtual ? 'primary.lighter' : 'background.paper',
-                                    borderBottom: hora < visibleTimeSlots[visibleTimeSlots.length-1] ? 1 : 0,
-                                    borderColor: 'divider'
+                                    mt: 2,
+                                    borderRadius: '50px',
+                                    textTransform: 'none'
                                 }}
                             >
-                                {/* Marcador de hora */}
-                                <Box sx={{ p: 1, borderRight: 1, borderColor: 'divider', position: 'relative', minHeight: 80 }}>
-                                    <Typography
-                                        variant="body2"
-                                        sx={{ position: 'absolute', top: 8, left: 16, fontWeight: 'medium', color: 'text.secondary' }}
-                                    >
-                                        {formatarHora(hora)}
-                                    </Typography>
+                                Agendar Consulta
+                            </Button>
+                        </Box>
+                    ) : (
+                        <Box>
+                            {timeSlots.map(hora => {
+                                const eventosHora = eventosHoje.filter(e =>
+                                    parseInt(e.horaInicio.split(':')[0]) === hora
+                                );
 
-                                    {/* Indicador de hora atual */}
-                                    {isHoraAtual && (
-                                        <Box
+                                if (eventosHora.length === 0) return null;
+
+                                return (
+                                    <Box key={hora} sx={{ mb: 3 }}>
+                                        <Typography
+                                            variant="subtitle2"
                                             sx={{
-                                                position: 'absolute',
-                                                left: 0,
-                                                right: 0,
-                                                height: 2,
-                                                bgcolor: 'error.main',
-                                                zIndex: 1,
-                                                top: '50%'
+                                                mb: 1,
+                                                color: 'text.secondary',
+                                                fontWeight: 600,
+                                                display: 'flex',
+                                                alignItems: 'center'
                                             }}
-                                        />
-                                    )}
+                                        >
+                                            <AccessTime sx={{ fontSize: 16, mr: 1 }} />
+                                            {formatarHora(hora)}
+                                        </Typography>
 
-                                    {/* Eventos */}
-                                    <Box sx={{ pt: 8, px: 2, position: 'relative' }}>
-                                        {eventos.map((evento, i) => (
+                                        {eventosHora.map(evento => (
                                             <EventoCard
-                                                key={i}
+                                                key={evento.id}
                                                 evento={evento}
                                                 onClick={manipularClickEvento}
-                                                onStatusChange={alterarStatusConsulta}
-                                                onDelete={excluirConsulta}
                                             />
                                         ))}
                                     </Box>
-                                </Box>
-                            </Box>
-                        );
-                    })}
-                </Paper>
-            );
-        }
-
-        // Visualização semanal
-        if (activeView === 'week') {
-            return (
-                <Paper sx={{ overflow: 'hidden', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
-                    {/* Cabeçalho dos dias da semana */}
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'auto repeat(7, 1fr)', borderBottom: 1, borderColor: 'divider' }}>
-                        {/* Célula vazia para o canto superior esquerdo */}
-                        <Box sx={{ p: 1, borderRight: 1, borderColor: 'divider', textAlign: 'center' }}>
-                            <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'right', display: 'block', pr: 1 }}>
-                                EST<br />GMT-3
-                            </Typography>
+                                );
+                            })}
                         </Box>
+                    )}
+                </Box>
+            </Box>
+        );
+    };
 
-                        {/* Dias da semana */}
-                        {currentWeek.map((dia, index) => {
-                            const isToday = new Date().toDateString() === dia.toDateString();
-                            return (
-                                <DiaCell
-                                    key={index}
-                                    dia={dia}
-                                    eventos={eventos}
-                                    isToday={isToday}
-                                    onClick={selecionarDia}
-                                    activeView={activeView}
-                                />
-                            );
-                        })}
+    const renderWeekView = () => {
+        return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                {/* Cabeçalho da semana */}
+                <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto repeat(7, 1fr)',
+                    borderBottom: '1px solid #EAECEF',
+                    bgcolor: 'white'
+                }}>
+                    {/* Célula vazia para o canto superior esquerdo */}
+                    <Box sx={{
+                        p: 2,
+                        borderRight: '1px solid #EAECEF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <Typography variant="caption" color="text.secondary">
+                            Horário
+                        </Typography>
                     </Box>
 
-                    {/* Slots de horas - apenas horários relevantes */}
-                    {visibleTimeSlots.map((hora) => {
-                        const isHoraAtual = hora === horaAtual;
+                    {/* Dias da semana */}
+                    {currentWeek.map((dia, index) => {
+                        const isToday = new Date().toDateString() === dia.toDateString();
+                        const isSelected = selectedDate.toDateString() === dia.toDateString();
+
+                        return (
+                            <DiaCell
+                                key={index}
+                                dia={dia}
+                                eventos={eventos}
+                                isToday={isToday}
+                                isSelected={isSelected}
+                                onClick={selecionarDia}
+                                activeView={activeView}
+                            />
+                        );
+                    })}
+                </Box>
+
+                {/* Grade de horários e eventos */}
+                <Box sx={{ flex: 1, overflow: 'auto' }}>
+                    {timeSlots.map(hora => {
+                        const isCurrentHour = hora === horaAtual;
 
                         return (
                             <Box
@@ -1314,370 +1035,363 @@ const AgendaMedica = ({ doctorId, filterCallback }) => {
                                 sx={{
                                     display: 'grid',
                                     gridTemplateColumns: 'auto repeat(7, 1fr)',
-                                    bgcolor: isHoraAtual ? 'primary.lighter' : 'background.paper',
-                                    borderBottom: hora < visibleTimeSlots[visibleTimeSlots.length-1] ? 1 : 0,
-                                    borderColor: 'divider'
                                 }}
                             >
                                 {/* Marcador de hora */}
-                                <Box sx={{ p: 1, borderRight: 1, borderColor: 'divider', position: 'relative', minHeight: 64 }}>
-                                    <Typography
-                                        variant="caption"
-                                        sx={{ position: 'absolute', top: 0, right: 8, color: 'text.secondary' }}
-                                    >
+                                <TimeSlot
+                                    ishour="true"
+                                    iscurrent={isCurrentHour ? 'true' : 'false'}
+                                    sx={{
+                                        width: '80px',
+                                        borderRight: '1px solid #EAECEF',
+                                        textAlign: 'center',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <TimeLabel>
                                         {formatarHora(hora)}
-                                    </Typography>
+                                    </TimeLabel>
+                                </TimeSlot>
 
-                                    {/* Indicador de hora atual */}
-                                    {isHoraAtual && (
-                                        <Box sx={{ position: 'absolute', top: 4, left: 8 }}>
-                                            <AccessTime sx={{ fontSize: 14, color: 'primary.main' }} />
-                                        </Box>
-                                    )}
-                                </Box>
-
-                                {/* Células para cada dia da semana */}
+                                {/* Células para cada dia */}
                                 {currentWeek.map((dia, index) => {
                                     const eventos = encontrarEventos(dia, hora);
-                                    const isTerça = dia.getDay() === 2;
                                     const isToday = new Date().toDateString() === dia.toDateString();
 
                                     return (
-                                        <Box
+                                        <TimeSlot
                                             key={index}
+                                            iscurrent={isToday && isCurrentHour ? 'true' : 'false'}
                                             sx={{
-                                                p: 0,
-                                                position: 'relative',
-                                                minHeight: 64,
-                                                transition: 'background-color 0.2s',
-                                                cursor: 'pointer',
-                                                '&:hover': { bgcolor: 'action.hover' },
-                                                bgcolor: (isTerça || (isToday && isHoraAtual)) ? 'primary.lighter' : 'background.paper',
-                                                borderRight: index < 6 ? 1 : 0,
-                                                borderColor: 'divider'
+                                                minHeight: '80px',
+                                                borderRight: index < 6 ? '1px solid #EAECEF' : 'none',
+                                                p: 1
                                             }}
-                                            onClick={() => selecionarDia(dia)}
                                         >
-                                            {/* Linha vermelha para horário atual se for hoje */}
-                                            {isToday && isHoraAtual && (
-                                                <Box
-                                                    sx={{
-                                                        position: 'absolute',
-                                                        left: 0,
-                                                        right: 0,
-                                                        height: 2,
-                                                        bgcolor: 'error.main',
-                                                        zIndex: 1
-                                                    }}
-                                                />
-                                            )}
-
-                                            {/* Renderizar eventos para este dia e hora */}
-                                            {eventos.map((evento, i) => (
+                                            {eventos.map(evento => (
                                                 <EventoCard
-                                                    key={i}
+                                                    key={evento.id}
                                                     evento={evento}
                                                     onClick={manipularClickEvento}
-                                                    onStatusChange={alterarStatusConsulta}
-                                                    onDelete={excluirConsulta}
                                                 />
                                             ))}
-                                        </Box>
+                                        </TimeSlot>
                                     );
                                 })}
                             </Box>
                         );
                     })}
-                </Paper>
+                </Box>
+            </Box>
+        );
+    };
+
+    const renderMonthView = () => {
+        return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                {/* Cabeçalho dos dias da semana */}
+                <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    p: 1,
+                    borderBottom: '1px solid #EAECEF',
+                    bgcolor: 'white'
+                }}>
+                    {diasSemana.map((dia, index) => (
+                        <Box key={index} sx={{ p: 1, textAlign: 'center' }}>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                {dia}
+                            </Typography>
+                        </Box>
+                    ))}
+                </Box>
+
+                {/* Grade do mês */}
+                <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    gridTemplateRows: 'repeat(6, 1fr)',
+                    gap: 1,
+                    p: 2,
+                    flex: 1,
+                    overflow: 'auto'
+                }}>
+                    {diasDoMes.map((dia, index) => {
+                        const isToday = new Date().toDateString() === dia.toDateString();
+                        const isSelected = selectedDate.toDateString() === dia.toDateString();
+                        const isOutsideMonth = dia.getMonth() !== currentDate.getMonth();
+
+                        return (
+                            <DiaCell
+                                key={index}
+                                dia={dia}
+                                eventos={eventos}
+                                isToday={isToday}
+                                isSelected={isSelected}
+                                onClick={selecionarDia}
+                                activeView={activeView}
+                                isOutsideMonth={isOutsideMonth}
+                            />
+                        );
+                    })}
+                </Box>
+            </Box>
+        );
+    };
+
+    // Renderização condicional com base na visualização ativa
+    const renderActiveView = () => {
+        if (isLoading) {
+            return (
+                <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100%'
+                }}>
+                    <CircularProgress />
+                </Box>
             );
         }
 
-        // Visualização mensal
-        if (activeView === 'month') {
-            return (
-                <Paper sx={{ overflow: 'hidden', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
-                    {/* Cabeçalho dos dias da semana */}
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: 1, borderColor: 'divider' }}>
-                        {diasSemana.map((dia, index) => (
-                            <Box key={index} sx={{ p: 1, textAlign: 'center' }}>
-                                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
-                                    {dia}
-                                </Typography>
-                            </Box>
-                        ))}
-                    </Box>
-
-                    {/* Grade do mês */}
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-                        {diasDoMes.map((dia, index) => {
-                            const isToday = new Date().toDateString() === dia.toDateString();
-                            const isOutsideMonth = dia.getMonth() !== currentDate.getMonth();
-                            return (
-                                <DiaCell
-                                    key={index}
-                                    dia={dia}
-                                    eventos={eventos}
-                                    isToday={isToday}
-                                    onClick={selecionarDia}
-                                    activeView={activeView}
-                                    isOutsideMonth={isOutsideMonth}
-                                />
-                            );
-                        })}
-                    </Box>
-                </Paper>
-            );
+        switch (activeView) {
+            case 'day':
+                return renderDayView();
+            case 'week':
+                return renderWeekView();
+            case 'month':
+                return renderMonthView();
+            default:
+                return renderWeekView();
         }
     };
 
     return (
-        <Box sx={{ width: '100%', height: '100%', bgcolor: 'background.default', borderRadius: 2, boxShadow: 1, fontFamily: 'sans-serif' }}>
+        <CalendarContainer>
             {/* Cabeçalho do Calendário */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <CalendarHeader>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ position: 'relative' }} ref={miniCalendarRef}>
-                        <Button
-                            variant="contained"
-                            startIcon={<DateRange />}
-                            onClick={handleMiniCalendarOpen}
-                            size="small"
-                        >
-                            Hoje
-                        </Button>
+                    <HeaderButton
+                        startIcon={<DateRange />}
+                        onClick={handleMiniCalendarOpen}
+                        ref={miniCalendarRef}
+                    >
+                        Hoje
+                    </HeaderButton>
 
-                        {/* Mini Calendário Popover */}
-                        <Popover
-                            open={miniCalendarOpen}
-                            anchorEl={miniCalendarAnchor}
-                            onClose={handleMiniCalendarClose}
-                            anchorOrigin={{
-                                vertical: 'bottom',
-                                horizontal: 'left',
-                            }}
-                            transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'left',
-                            }}
-                        >
-                            <Box sx={{ p: 2, width: 280 }}>
-                                <Box sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                        <IconButton
-                                            size="small"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const newDate = new Date(miniCalendarDate);
-                                                newDate.setMonth(newDate.getMonth() - 1);
-                                                setMiniCalendarDate(newDate);
-                                            }}
-                                        >
-                                            <KeyboardArrowLeft />
-                                        </IconButton>
-
-                                        <Typography variant="subtitle1" fontWeight="medium">
-                                            {meses[miniCalendarDate.getMonth()]} {miniCalendarDate.getFullYear()}
-                                        </Typography>
-
-                                        <IconButton
-                                            size="small"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const newDate = new Date(miniCalendarDate);
-                                                newDate.setMonth(newDate.getMonth() + 1);
-                                                setMiniCalendarDate(newDate);
-                                            }}
-                                        >
-                                            <KeyboardArrowRight />
-                                        </IconButton>
-                                    </Box>
-
-                                    {/* Dias da semana */}
-                                    <Grid container spacing={0.5} mb={0.5}>
-                                        {diasSemana.map((d, i) => (
-                                            <Grid item xs={12/7} key={i} textAlign="center">
-                                                <Typography variant="caption" color="text.secondary" fontWeight="medium">
-                                                    {d.charAt(0)}
-                                                </Typography>
-                                            </Grid>
-                                        ))}
-                                    </Grid>
-
-                                    {/* Grade do mini calendário */}
-                                    <Grid container spacing={0.5}>
-                                        {obterDiasDoMes(miniCalendarDate).map((dia, index) => {
-                                            const isToday = new Date().toDateString() === dia.toDateString();
-                                            const isSelected = selectedDate.toDateString() === dia.toDateString();
-                                            const isOutsideMonth = dia.getMonth() !== miniCalendarDate.getMonth();
-
-                                            return (
-                                                <Grid item xs={12/7} key={index}>
-                                                    <Button
-                                                        fullWidth
-                                                        variant={isSelected ? 'contained' : 'text'}
-                                                        color={isToday && !isSelected ? 'primary' : 'inherit'}
-                                                        sx={{
-                                                            minWidth: 32,
-                                                            height: 32,
-                                                            p: 0,
-                                                            bgcolor: isSelected ? 'primary.main' : isToday ? 'primary.lighter' : 'transparent',
-                                                            color: isSelected
-                                                                ? 'white'
-                                                                : isOutsideMonth
-                                                                    ? 'text.disabled'
-                                                                    : isToday
-                                                                        ? 'primary.main'
-                                                                        : 'text.primary',
-                                                            '&:hover': {
-                                                                bgcolor: isSelected ? 'primary.dark' : 'action.hover'
-                                                            }
-                                                        }}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedDate(dia);
-                                                            setCurrentDate(dia);
-                                                            setActiveView('day');
-                                                            handleMiniCalendarClose();
-                                                        }}
-                                                    >
-                                                        {dia.getDate()}
-                                                    </Button>
-                                                </Grid>
-                                            );
-                                        })}
-                                    </Grid>
-                                </Box>
-
-                                <Box sx={{ p: 1, display: 'flex', justifyContent: 'center' }}>
-                                    <Button
-                                        color="primary"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navegarParaHoje();
-                                            handleMiniCalendarClose();
-                                        }}
-                                    >
-                                        Hoje
-                                    </Button>
-                                </Box>
-                            </Box>
-                        </Popover>
-                    </Box>
-
-                    <Box sx={{ display: 'flex' }}>
-                        <IconButton onClick={navegarAnterior} size="small">
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <NavButton onClick={navegarAnterior}>
                             <KeyboardArrowLeft />
-                        </IconButton>
-                        <IconButton onClick={navegarProximo} size="small">
+                        </NavButton>
+                        <NavButton onClick={navegarProximo}>
                             <KeyboardArrowRight />
-                        </IconButton>
+                        </NavButton>
                     </Box>
 
-                    <Typography variant="h5" fontWeight="medium" color="text.primary">
+                    <Typography variant="h6" fontWeight={600}>
                         {activeView === 'day'
-                            ? `${selectedDate.getDate()} de ${meses[selectedDate.getMonth()]} de ${selectedDate.getFullYear()}`
+                            ? `${selectedDate.getDate()} de ${meses[selectedDate.getMonth()]}`
                             : currentMonthName}
                     </Typography>
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Button
-                        variant="contained"
-                        color="success"
+                    <Box sx={{ display: 'flex', bgcolor: '#F5F7FA', p: 0.5, borderRadius: '50px', border: '1px solid #CED4DA' }}>
+                        <ViewToggleButton
+                            active={activeView === 'day' ? 'true' : 'false'}
+                            onClick={() => alterarVisualizacao('day')}
+                        >
+                            Dia
+                        </ViewToggleButton>
+                        <ViewToggleButton
+                            active={activeView === 'week' ? 'true' : 'false'}
+                            onClick={() => alterarVisualizacao('week')}
+                        >
+                            Semana
+                        </ViewToggleButton>
+                        <ViewToggleButton
+                            active={activeView === 'month' ? 'true' : 'false'}
+                            onClick={() => alterarVisualizacao('month')}
+                        >
+                            Mês
+                        </ViewToggleButton>
+                    </Box>
+
+                    <AddButton
                         startIcon={<Add />}
-                        size="small"
                         onClick={manipularCliqueCriarEvento}
+                        disabled={isLoading}
                     >
                         Nova Consulta
-                    </Button>
+                    </AddButton>
+                </Box>
+            </CalendarHeader>
 
-                    <Box sx={{ position: 'relative' }} ref={periodoRef}>
+            {/* Conteúdo do Calendário */}
+            <CalendarBody>
+                {renderActiveView()}
+            </CalendarBody>
+
+            {/* Mini Calendário Popover */}
+            <Popover
+                open={miniCalendarOpen}
+                anchorEl={miniCalendarAnchor}
+                onClose={handleMiniCalendarClose}
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'left',
+                }}
+                transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'left',
+                }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: '16px',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
+                        p: 2
+                    }
+                }}
+            >
+                <Box sx={{ width: 320 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <IconButton
+                            size="small"
+                            onClick={() => {
+                                const newDate = new Date(miniCalendarDate);
+                                newDate.setMonth(newDate.getMonth() - 1);
+                                setMiniCalendarDate(newDate);
+                            }}
+                        >
+                            <KeyboardArrowLeft />
+                        </IconButton>
+
+                        <Typography variant="subtitle1" fontWeight={600}>
+                            {meses[miniCalendarDate.getMonth()]} {miniCalendarDate.getFullYear()}
+                        </Typography>
+
+                        <IconButton
+                            size="small"
+                            onClick={() => {
+                                const newDate = new Date(miniCalendarDate);
+                                newDate.setMonth(newDate.getMonth() + 1);
+                                setMiniCalendarDate(newDate);
+                            }}
+                        >
+                            <KeyboardArrowRight />
+                        </IconButton>
+                    </Box>
+
+                    {/* Dias da semana */}
+                    <Grid container spacing={1} sx={{ mb: 1 }}>
+                        {diasSemana.map((dia, i) => (
+                            <Grid item xs={12/7} key={i} textAlign="center">
+                                <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                    {dia.charAt(0)}
+                                </Typography>
+                            </Grid>
+                        ))}
+                    </Grid>
+
+                    {/* Grade do mini calendário */}
+                    <Grid container spacing={1}>
+                        {obterDiasDoMes(miniCalendarDate).map((dia, index) => {
+                            const isToday = new Date().toDateString() === dia.toDateString();
+                            const isSelected = selectedDate.toDateString() === dia.toDateString();
+                            const isOutsideMonth = dia.getMonth() !== miniCalendarDate.getMonth();
+
+                            return (
+                                <Grid item xs={12/7} key={index}>
+                                    <Button
+                                        fullWidth
+                                        variant={isSelected ? 'contained' : 'text'}
+                                        color={isToday && !isSelected ? 'primary' : 'inherit'}
+                                        sx={{
+                                            minWidth: 32,
+                                            height: 32,
+                                            p: 0,
+                                            borderRadius: '8px',
+                                            backgroundColor: isSelected
+                                                ? 'primary.main'
+                                                : isToday
+                                                    ? alpha('#2196f3', 0.1)
+                                                    : 'transparent',
+                                            color: isSelected
+                                                ? 'white'
+                                                : isOutsideMonth
+                                                    ? alpha('#000', 0.3)
+                                                    : isToday
+                                                        ? 'primary.main'
+                                                        : 'text.primary',
+                                            '&:hover': {
+                                                backgroundColor: isSelected
+                                                    ? 'primary.dark'
+                                                    : alpha('#2196f3', 0.1)
+                                            }
+                                        }}
+                                        onClick={() => {
+                                            setSelectedDate(dia);
+                                            setCurrentDate(dia);
+                                            handleMiniCalendarClose();
+                                        }}
+                                    >
+                                        {dia.getDate()}
+                                    </Button>
+                                </Grid>
+                            );
+                        })}
+                    </Grid>
+
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
                         <Button
                             variant="outlined"
-                            endIcon={<KeyboardArrowDown />}
-                            size="small"
-                            onClick={handlePeriodoOpen}
+                            color="primary"
+                            onClick={() => {
+                                navegarParaHoje();
+                                handleMiniCalendarClose();
+                            }}
+                            sx={{
+                                borderRadius: '50px',
+                                textTransform: 'none',
+                                fontWeight: 500
+                            }}
                         >
-                            Período
+                            Ir para hoje
                         </Button>
-
-                        <Popover
-                            open={periodoOpen}
-                            anchorEl={periodoAnchor}
-                            onClose={handlePeriodoClose}
-                            anchorOrigin={{
-                                vertical: 'bottom',
-                                horizontal: 'right',
-                            }}
-                            transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                            }}
-                        >
-                            <Box sx={{ width: 160 }}>
-                                <Button
-                                    fullWidth
-                                    sx={{
-                                        justifyContent: 'flex-start',
-                                        px: 2,
-                                        py: 1,
-                                        textAlign: 'left',
-                                        bgcolor: activeView === 'day' ? 'primary.lighter' : 'transparent',
-                                        color: activeView === 'day' ? 'primary.main' : 'text.primary',
-                                        fontWeight: activeView === 'day' ? 'medium' : 'regular'
-                                    }}
-                                    onClick={() => alterarVisualizacao('day')}
-                                >
-                                    Dia
-                                </Button>
-                                <Button
-                                    fullWidth
-                                    sx={{
-                                        justifyContent: 'flex-start',
-                                        px: 2,
-                                        py: 1,
-                                        textAlign: 'left',
-                                        bgcolor: activeView === 'week' ? 'primary.lighter' : 'transparent',
-                                        color: activeView === 'week' ? 'primary.main' : 'text.primary',
-                                        fontWeight: activeView === 'week' ? 'medium' : 'regular'
-                                    }}
-                                    onClick={() => alterarVisualizacao('week')}
-                                >
-                                    Semana
-                                </Button>
-                                <Button
-                                    fullWidth
-                                    sx={{
-                                        justifyContent: 'flex-start',
-                                        px: 2,
-                                        py: 1,
-                                        textAlign: 'left',
-                                        bgcolor: activeView === 'month' ? 'primary.lighter' : 'transparent',
-                                        color: activeView === 'month' ? 'primary.main' : 'text.primary',
-                                        fontWeight: activeView === 'month' ? 'medium' : 'regular'
-                                    }}
-                                    onClick={() => alterarVisualizacao('month')}
-                                >
-                                    Mês
-                                </Button>
-                            </Box>
-                        </Popover>
                     </Box>
                 </Box>
-            </Box>
+            </Popover>
 
-            {/* Conteúdo do calendário */}
-            {renderizarConteudo()}
-
-            {/* Modal para criar/editar eventos */}
+            {/* Modal para criar/editar consultas */}
             <EventoModal
                 isOpen={showEventoModal}
                 onClose={() => setShowEventoModal(false)}
-                onSave={salvarEvento}
+                onSave={handleSaveEvent}
                 evento={eventoSelecionado}
-                pacientes={pacientes}
-                doctorId={doctorId}
             />
-        </Box>
+
+            {/* Notificações */}
+            <Snackbar
+                open={notification.open}
+                autoHideDuration={6000}
+                onClose={handleCloseNotification}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={handleCloseNotification}
+                    severity={notification.type}
+                    sx={{
+                        width: '100%',
+                        borderRadius: '50px',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
+                    }}
+                >
+                    {notification.message}
+                </Alert>
+            </Snackbar>
+        </CalendarContainer>
     );
 };
 

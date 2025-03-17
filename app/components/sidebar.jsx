@@ -16,7 +16,10 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
     const suporteItems = [
         { label: "Central de Ajuda", icon: "/centralajuda.svg" },
         { label: "Reportar", icon: "/reportar.svg" },
-        { label: "Logout", icon: "/logout.svg", isLogout: true }, // Novo item de logout
+    ];
+
+    const sairItems = [
+        { label: "Sair", icon: "/logout.svg", isLogout: true }, // Novo item de logout na seção "Sair"
     ];
 
     const handleMenuClick = (label, isLogout) => {
@@ -74,17 +77,15 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         <Box
             sx={{
                 backgroundColor: "#F8FAFF",
-                height: "100%", // Mudado para 100% ao invés de 100vh
-                width: "100%", // Mudado para 100% para respeitar o container pai
+                height: "100vh",
+                width: "240px",
                 position: "relative",
                 pl: "30px",
                 pr: "16px",
                 pt: "30px",
-                pb: "16px", // Adicionado padding-bottom para evitar cortes no final
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
-                overflowX: "hidden", // Evitar rolagem horizontal
             }}
         >
             {/* Logo e título */}
@@ -168,6 +169,29 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                 </Typography>
                 <Box>
                     {suporteItems.map((item) => {
+                        const isSelected = selected === item.label;
+                        return (
+                            <Button
+                                key={item.label}
+                                onClick={() => handleMenuClick(item.label)}
+                                variant="text"
+                                sx={buttonStyles(isSelected, item.label)}
+                                startIcon={
+                                    <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
+                                }
+                            >
+                                {item.label}
+                            </Button>
+                        );
+                    })}
+                </Box>
+
+                {/* Nova seção "Sair" */}
+                <Typography sx={categoryLabelStyle}>
+                    Sair
+                </Typography>
+                <Box>
+                    {sairItems.map((item) => {
                         const isSelected = selected === item.label;
                         return (
                             <Button

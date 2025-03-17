@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
     Box,
     Typography,
@@ -7,11 +7,22 @@ import {
     CardContent,
     Button,
     IconButton,
-    Grid
+    Grid,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+    CircularProgress
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import CloseIcon from "@mui/icons-material/Close";
+import { useAuth } from "../authProvider";
+import FirebaseService from "../../../lib/FirebaseService";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // Paleta de cores (pode extrair para outro arquivo se quiser)
 const themeColors = {
@@ -22,11 +33,12 @@ const themeColors = {
 };
 
 // Botão para criar nova ficha
-function CriarNovaFichaButton() {
+function CriarNovaFichaButton({ onClick }) {
     return (
         <Button
             variant="contained"
             startIcon={<AddIcon />}
+            onClick={onClick}
             sx={{
                 height: 46,
                 padding: "0 24px",
@@ -48,7 +60,7 @@ function CriarNovaFichaButton() {
 }
 
 // Card de cada anotação
-function AnotacoesCard({ nota }) {
+function AnotacoesCard({ nota, onOpen }) {
     return (
         <Card
             sx={{
@@ -57,7 +69,14 @@ function AnotacoesCard({ nota }) {
                 border: `1px solid ${themeColors.borderColor}`,
                 boxShadow: "0px 8px 24px 0px rgba(0, 0, 0, 0.04)",
                 mb: 2,
+                cursor: "pointer",
+                "&:hover": {
+                    boxShadow: "0px 12px 28px 0px rgba(0, 0, 0, 0.08)",
+                    transform: "translateY(-2px)",
+                    transition: "all 0.2s ease-in-out"
+                },
             }}
+            onClick={() => onOpen(nota)}
         >
             <CardContent sx={{ p: 3 }}>
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -198,10 +217,288 @@ function AnotacoesCard({ nota }) {
     );
 }
 
+// Componente de modal para nova anotação
+function NovaAnotacaoModal({ open, handleClose, patientId, onSave }) {
+    const [titulo, setTitulo] = useState('');
+    const [descricao, setDescricao] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { user } = useAuth();
+
+    const handleSave = async () => {
+        if (!titulo || !descricao) {
+            // Validação simples
+            alert("Por favor, preencha todos os campos");
+            return;
+        }
+
+        if (!user || !user.uid || !patientId) {
+            alert("Erro: Informações do usuário ou paciente ausentes");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // Formatar data atual
+            const hoje = format(new Date(), 'dd/MM/yyyy');
+            const criadoEm = format(new Date(), "dd 'de' MMMM'/'yyyy", { locale: ptBR });
+
+            // Criar objeto de anotação
+            const novaNota = {
+                titulo,
+                descricao,
+                data: hoje,
+                createdAt: new Date(),
+            };
+
+            // Salvar no Firebase
+            // Aqui você pode usar a função apropriada do seu FirebaseService
+            // Exemplo: await FirebaseService.createAnamnese(user.uid, patientId, novaNota);
+
+            // Simulando sucesso após 1 segundo
+            setTimeout(() => {
+                if (onSave) {
+                    onSave({
+                        id: Date.now(), // Temporário, seria substituído pelo ID do Firebase
+                        ...novaNota,
+                        criado: criadoEm
+                    });
+                }
+                handleClose();
+                setLoading(false);
+                setTitulo('');
+                setDescricao('');
+            }, 1000);
+
+        } catch (error) {
+            console.error("Erro ao salvar anotação:", error);
+            alert("Erro ao salvar a anotação. Tente novamente.");
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Dialog
+            open={open}
+            onClose={loading ? null : handleClose}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: "20px",
+                    p: 1
+                }
+            }}
+        >
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" sx={{ fontFamily: 'Gellix', fontWeight: 500 }}>
+                    Nova Anotação
+                </Typography>
+                <IconButton onClick={handleClose} disabled={loading}>
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
+
+            <DialogContent dividers>
+                <TextField
+                    autoFocus
+                    margin="dense"
+                    label="Título"
+                    fullWidth
+                    variant="outlined"
+                    value={titulo}
+                    onChange={(e) => setTitulo(e.target.value)}
+                    disabled={loading}
+                    sx={{ mb: 2 }}
+                />
+                <TextField
+                    margin="dense"
+                    label="Descrição"
+                    multiline
+                    rows={6}
+                    fullWidth
+                    variant="outlined"
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    disabled={loading}
+                />
+            </DialogContent>
+
+            <DialogActions sx={{ p: 2 }}>
+                <Button
+                    onClick={handleClose}
+                    variant="outlined"
+                    disabled={loading}
+                    sx={{
+                        borderRadius: '99px',
+                        textTransform: 'none'
+                    }}
+                >
+                    Cancelar
+                </Button>
+                <Button
+                    onClick={handleSave}
+                    variant="contained"
+                    disabled={loading}
+                    sx={{
+                        borderRadius: '99px',
+                        backgroundColor: themeColors.primary,
+                        textTransform: 'none'
+                    }}
+                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+                >
+                    {loading ? "Salvando..." : "Salvar"}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+}
+
+// Dialog para visualizar anotação
+function VisualizarAnotacaoDialog({ nota, open, handleClose }) {
+    if (!nota) return null;
+
+    return (
+        <Dialog
+            open={open}
+            onClose={handleClose}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: "20px",
+                    p: 1
+                }
+            }}
+        >
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" sx={{ fontFamily: 'Gellix', fontWeight: 500 }}>
+                    {nota.titulo}
+                </Typography>
+                <IconButton onClick={handleClose}>
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
+
+            <DialogContent dividers>
+                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 2 }}>
+                    Consulta: {nota.data} • Criado em {nota.criado}
+                </Typography>
+
+                <Typography variant="body1" sx={{ mb: 3 }}>
+                    {nota.descricao}
+                </Typography>
+
+                {nota.anexo && (
+                    <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <PictureAsPdfIcon sx={{ color: "#E74C3C", fontSize: 32 }} />
+                            <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                    {nota.anexo.nome}
+                                </Typography>
+                                <Typography variant="caption" color="textSecondary">
+                                    {nota.anexo.tamanho}
+                                </Typography>
+                            </Box>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                sx={{ ml: 'auto', borderRadius: '99px', textTransform: 'none' }}
+                            >
+                                Download
+                            </Button>
+                        </Box>
+                    </Box>
+                )}
+            </DialogContent>
+
+            <DialogActions sx={{ p: 2 }}>
+                <Button
+                    onClick={handleClose}
+                    variant="outlined"
+                    sx={{ borderRadius: '99px', textTransform: 'none' }}
+                >
+                    Fechar
+                </Button>
+                <Button
+                    variant="contained"
+                    sx={{
+                        borderRadius: '99px',
+                        backgroundColor: themeColors.primary,
+                        textTransform: 'none'
+                    }}
+                >
+                    Editar
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+}
+
 // Seção de notas
-export default function NotasSection({ notas = [] }) {
+export default function NotasSection({ notas = [], pacienteId }) {
+    const [notasData, setNotasData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [openNovaAnotacao, setOpenNovaAnotacao] = useState(false);
+    const [selectedNota, setSelectedNota] = useState(null);
+    const [openViewNota, setOpenViewNota] = useState(false);
+    const { user } = useAuth();
+
+    // Carregar notas do paciente
+    useEffect(() => {
+        if (notas.length > 0) {
+            // Se já recebemos as notas como prop, usamos elas
+            setNotasData(notas);
+        } else if (pacienteId && user?.uid) {
+            // Caso contrário, carregamos do Firebase
+            const fetchNotas = async () => {
+                try {
+                    setLoading(true);
+                    // Aqui você poderia carregar as anamneses ou outro tipo de anotação
+                    // const anotacoesData = await FirebaseService.listAnamneses(user.uid, pacienteId);
+
+                    // Como não temos a implementação real, usaremos dados de exemplo
+                    // Transformar os dados recebidos no formato esperado pelo componente
+                    // setNotasData(anotacoesData.map(...));
+
+                    // Simulação de carregamento
+                    setTimeout(() => {
+                        setNotasData(notasExemplo);
+                        setLoading(false);
+                    }, 1000);
+                } catch (error) {
+                    console.error("Erro ao carregar anotações:", error);
+                    setLoading(false);
+                }
+            };
+
+            fetchNotas();
+        }
+    }, [notas, pacienteId, user]);
+
+    const handleOpenNovaAnotacao = () => {
+        setOpenNovaAnotacao(true);
+    };
+
+    const handleCloseNovaAnotacao = () => {
+        setOpenNovaAnotacao(false);
+    };
+
+    const handleSaveAnotacao = (novaNota) => {
+        setNotasData(prev => [novaNota, ...prev]);
+    };
+
+    const handleOpenViewNota = (nota) => {
+        setSelectedNota(nota);
+        setOpenViewNota(true);
+    };
+
+    const handleCloseViewNota = () => {
+        setOpenViewNota(false);
+    };
+
     // Dados de exemplo para testar
-    const notasExemplo = notas.length > 0 ? notas : [
+    const notasExemplo = [
         {
             id: 1,
             titulo: "Lorem Título 1",
@@ -283,7 +580,7 @@ export default function NotasSection({ notas = [] }) {
                 >
                     Anotações
                 </Typography>
-                <CriarNovaFichaButton />
+                <CriarNovaFichaButton onClick={handleOpenNovaAnotacao} />
             </Box>
 
             {/* Lista de notas - um card por linha */}
@@ -308,10 +605,44 @@ export default function NotasSection({ notas = [] }) {
                     },
                 }}
             >
-                {notasExemplo.map((nota) => (
-                    <AnotacoesCard key={nota.id} nota={nota} />
-                ))}
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                        <CircularProgress />
+                    </Box>
+                ) : notasData.length === 0 ? (
+                    <Box sx={{ p: 3, textAlign: 'center' }}>
+                        <Typography variant="body1" color="textSecondary">
+                            Nenhuma anotação encontrada para este paciente.
+                        </Typography>
+                        <Button
+                            variant="text"
+                            onClick={handleOpenNovaAnotacao}
+                            sx={{ mt: 1, textTransform: 'none', color: themeColors.primary }}
+                        >
+                            Criar primeira anotação
+                        </Button>
+                    </Box>
+                ) : (
+                    notasData.map((nota) => (
+                        <AnotacoesCard key={nota.id} nota={nota} onOpen={handleOpenViewNota} />
+                    ))
+                )}
             </Box>
+
+            {/* Modal para nova anotação */}
+            <NovaAnotacaoModal
+                open={openNovaAnotacao}
+                handleClose={handleCloseNovaAnotacao}
+                patientId={pacienteId}
+                onSave={handleSaveAnotacao}
+            />
+
+            {/* Dialog para visualizar anotação */}
+            <VisualizarAnotacaoDialog
+                nota={selectedNota}
+                open={openViewNota}
+                handleClose={handleCloseViewNota}
+            />
         </Box>
     );
 }

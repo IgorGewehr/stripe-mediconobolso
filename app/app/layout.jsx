@@ -30,6 +30,9 @@ export default function AppLayout({ children }) {
     // Define o estado inicial para "Dashboard"
     const [activePage, setActivePage] = useState("Dashboard");
 
+    // Novo estado para armazenar o paciente selecionado
+    const [selectedPatientId, setSelectedPatientId] = useState(null);
+
     // Estilo de escala para o conteúdo
     const contentScaleStyle = {
         transform: 'scale(0.9)',
@@ -38,17 +41,31 @@ export default function AppLayout({ children }) {
         height: '111.11%',
     };
 
+    // Handler para quando um paciente é clicado na tabela
+    const handlePatientClick = (patientId) => {
+        setSelectedPatientId(patientId);
+        setActivePage("PatientProfile"); // Definir uma nova página ativa para o perfil do paciente
+    };
+
+    // Handler para voltar da visualização do paciente para a tabela de pacientes
+    const handleBackToPatients = () => {
+        setSelectedPatientId(null);
+        setActivePage("Dashboard");
+    };
+
     const renderContent = () => {
         // Converte para lowercase para facilitar a comparação
         switch (activePage.toLowerCase()) {
             case "dashboard":
-                return <PacienteTemplate />;
+                return <PatientsTable onPatientClick={handlePatientClick} />;
             case "pacientes":
                 return <PacienteCadastroTemplate />;
             case "receitas":
-                return <PatientsTable />;
+                return <PatientsTable onPatientClick={handlePatientClick} />;
             case "agenda":
                 return <AgendaMedica />;
+            case "patientprofile":
+                return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToPatients} />;
             default:
                 return <DashboardTemplate />;
         }
@@ -57,6 +74,10 @@ export default function AppLayout({ children }) {
     // Callback chamado pela Sidebar ao clicar em um item
     const handleMenuSelect = (page) => {
         setActivePage(page);
+        // Se estamos navegando para uma página diferente, resetamos o paciente selecionado
+        if (page.toLowerCase() !== "patientprofile") {
+            setSelectedPatientId(null);
+        }
     };
 
     // Callback para o botão "Paciente" da TopAppBar
@@ -96,7 +117,12 @@ export default function AppLayout({ children }) {
             />
             <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
                 <Box sx={{ flexShrink: 0 }}>
-                    <TopAppBar label={activePage} onPacienteClick={handlePacienteTopAppBarClick} />
+                    <TopAppBar
+                        title={activePage === "PatientProfile" ? "Perfil do Paciente" : activePage}
+                        onPacienteClick={handlePacienteTopAppBarClick}
+                        showBackButton={activePage === "PatientProfile"}
+                        onBackClick={handleBackToPatients}
+                    />
                 </Box>
                 <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
                     {/* Aplica o contentScaleStyle para ajustar a escala do conteúdo */}

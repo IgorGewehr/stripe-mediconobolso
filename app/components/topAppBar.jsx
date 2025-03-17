@@ -97,7 +97,8 @@ const TopAppBar = ({
                        title = "Perfil do Paciente",
                        showBackButton = true,
                        variant = "standard",
-                       onPacienteClick
+                       onPacienteClick,
+                       onBackClick
                    }) => {
     const handlePacienteClick = () => {
         if (onPacienteClick) {
@@ -145,7 +146,7 @@ const TopAppBar = ({
             }}
         >
             <Box sx={{ display: "flex", alignItems: "center" }}>
-                {showBackButton && <BackButton />}
+                {showBackButton && <BackButton onClick={onBackClick} />}
                 <Typography
                     sx={{
                         color: "#111E5A",
