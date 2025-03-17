@@ -51,7 +51,9 @@ const AddButton = styled(IconButton)(({ theme }) => ({
     },
 }));
 
-const StyledChip = styled(Chip)(({ bgColor }) => ({
+const StyledChip = styled(Chip, {
+    shouldForwardProp: (prop) => prop !== 'bgColor'
+})(({ bgColor }) => ({
     borderRadius: "999px",
     backgroundColor: bgColor,
     height: "32px",
@@ -64,6 +66,7 @@ const StyledChip = styled(Chip)(({ bgColor }) => ({
         },
     },
 }));
+
 
 const ToggleButton = styled(Button)(({ selected }) => ({
     borderRadius: "999px",

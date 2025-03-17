@@ -1,42 +1,25 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Box, CircularProgress } from '@mui/material';
-import { onAuthStateChanged } from 'firebase/auth';
 import AuthForms from './organismsComponents/authForms';
 import ComingSoon from './organismsComponents/comingSoon';
-import firebaseService from '../../lib/firebaseService';
+import { useAuth } from './authProvider';
 import { useRouter } from 'next/navigation';
 
 const AuthTemplate = () => {
-    const [currentUser, setCurrentUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [assinouPlano, setAssinouPlano] = useState(false);
+    const { user, loading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(firebaseService.auth, async (user) => {
-            if (user) {
-                setCurrentUser(user);
-                try {
-                    const userData = await firebaseService.getUserData(user.uid);
-                    setAssinouPlano(userData.assinouPlano);
-                    // Se o usuário está autenticado mas ainda não assinou, redireciona para "/checkout"
-                    if (!userData.assinouPlano) {
-                        router.push("/checkout");
-                    }else{
-                        router.push("/app");
-                    }
-                } catch (error) {
-                    console.error("Erro ao buscar dados do usuário:", error);
-                }
+        if (user) {
+            if (!user.assinouPlano) {
+                router.push("/checkout");
             } else {
-                setCurrentUser(null);
+                router.push("/app");
             }
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, [router]);
+        }
+    }, [user, router]);
 
     if (loading) {
         return (
@@ -54,9 +37,9 @@ const AuthTemplate = () => {
     }
 
     let content;
-    if (!currentUser) {
+    if (!user) {
         content = <AuthForms />;
-    } else if (currentUser && assinouPlano) {
+    } else if (user && user.assinouPlano) {
         content = <ComingSoon />;
     }
 

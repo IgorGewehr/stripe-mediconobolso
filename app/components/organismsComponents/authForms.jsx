@@ -16,6 +16,8 @@ import {
 import React, { useState } from "react";
 import firebaseService from "../../../lib/firebaseService";
 import { useRouter } from "next/navigation";
+// Importe o hook de autenticação criado
+import { useAuth } from "../authProvider";
 
 export const AuthForms = () => {
     const [isLogin, setIsLogin] = useState(false);
@@ -31,9 +33,9 @@ export const AuthForms = () => {
     const [authError, setAuthError] = useState("");
     const [passwordResetSent, setPasswordResetSent] = useState(false);
     const router = useRouter();
+    const { setUserId } = useAuth();
 
     // Funções auxiliares para formatação e validação
-
     const formatPhone = (phone) => {
         const digits = phone.replace(/\D/g, "");
         if (digits.length === 10) {
@@ -54,11 +56,9 @@ export const AuthForms = () => {
 
     const validateCPF = (cpf) => {
         const digits = cpf.replace(/\D/g, "");
-
         if (digits.length !== 11 || /^(\d)\1+$/.test(digits)) {
             return false;
         }
-
         let sum = 0;
         for (let i = 0; i < 9; i++) {
             sum += parseInt(digits.charAt(i)) * (10 - i);
@@ -70,7 +70,6 @@ export const AuthForms = () => {
         if (firstCheck !== parseInt(digits.charAt(9))) {
             return false;
         }
-
         sum = 0;
         for (let i = 0; i < 10; i++) {
             sum += parseInt(digits.charAt(i)) * (11 - i);
@@ -79,7 +78,6 @@ export const AuthForms = () => {
         if (secondCheck === 10 || secondCheck === 11) {
             secondCheck = 0;
         }
-
         return secondCheck === parseInt(digits.charAt(10));
     };
 
@@ -94,7 +92,6 @@ export const AuthForms = () => {
     };
 
     // Handlers do formulário
-
     const handleToggleForm = () => {
         setIsLogin(!isLogin);
         setFormData({
@@ -112,8 +109,6 @@ export const AuthForms = () => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-
-        // Limpa o erro de autenticação quando o usuário começa a digitar novamente
         if ((name === "email" || name === "password") && authError) {
             setAuthError("");
         }
@@ -133,13 +128,14 @@ export const AuthForms = () => {
 
     const handlePasswordReset = async (e) => {
         e.preventDefault();
-
         if (!formData.email.trim()) {
-            setErrors((prev) => ({ ...prev, email: "Informe seu e-mail para recuperar a senha" }));
+            setErrors((prev) => ({
+                ...prev,
+                email: "Informe seu e-mail para recuperar a senha",
+            }));
             setTimeout(() => setErrors((prev) => ({ ...prev, email: false })), 3000);
             return;
         }
-
         try {
             await firebaseService.sendPasswordResetEmail(formData.email);
             setPasswordResetSent(true);
@@ -152,12 +148,8 @@ export const AuthForms = () => {
 
     const handleSubmit = async () => {
         const newErrors = {};
-
-        // Campos obrigatórios gerais
         if (!formData.email.trim()) newErrors.email = true;
         if (!formData.password.trim()) newErrors.password = true;
-
-        // Campos obrigatórios de cadastro
         if (!isLogin) {
             if (!formData.fullName.trim()) newErrors.fullName = true;
             if (!formData.phone.trim()) newErrors.phone = true;
@@ -174,23 +166,15 @@ export const AuthForms = () => {
                 setFormData((prev) => ({ ...prev, cpf: formattedCPF }));
             }
         }
-
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             setTimeout(() => setErrors({}), 2000);
             return;
         }
-
         try {
             if (isLogin) {
-                const userCredential = await firebaseService.login(formData.email, formData.password);
-                console.log("Login efetuado com sucesso!");
-                const userData = await firebaseService.getUserData(userCredential.user.uid);
-                if (!userData.assinouPlano) {
-                    router.push("/checkout");
-                } else {
-                    router.push("/app"); // Se já assinou, redireciona para a tela principal
-                }
+                await firebaseService.login(formData.email, formData.password);
+                // O redirecionamento agora é gerenciado pelo AuthProvider em vez de aqui
             } else {
                 const userData = {
                     fullName: formData.fullName,
@@ -200,13 +184,10 @@ export const AuthForms = () => {
                     assinouPlano: false,
                 };
                 await firebaseService.signUp(formData.email, formData.password, userData);
-                console.log("Cadastro efetuado com sucesso!");
-                router.push("/checkout");
+                // O redirecionamento agora é gerenciado pelo AuthProvider
             }
         } catch (error) {
             console.error("Erro na autenticação:", error);
-
-            // Trata erros específicos de autenticação
             if (error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
                 setAuthError("Email ou senha incorretos.");
             } else if (error.code === "auth/email-already-in-use") {
@@ -261,7 +242,6 @@ export const AuthForms = () => {
             )}
 
             <Stack spacing={2} width="100%">
-                {/* Campos exclusivos de registro */}
                 <Collapse in={!isLogin} timeout={500}>
                     <Box>
                         <TextField
@@ -308,7 +288,6 @@ export const AuthForms = () => {
                     </Box>
                 </Collapse>
 
-                {/* Campos comuns */}
                 <TextField
                     label="E-mail"
                     variant="outlined"
@@ -334,8 +313,6 @@ export const AuthForms = () => {
                     helperText={errors.password ? "Campo obrigatório" : ""}
                     color={(Boolean(errors.password) || authError.includes("senha")) ? "error" : "primary"}
                 />
-
-                {/* Campo de confirmação de senha para registro */}
                 <Collapse in={!isLogin} timeout={500}>
                     <TextField
                         label="Confirme sua senha"
@@ -369,7 +346,6 @@ export const AuthForms = () => {
                 </Button>
             </Stack>
 
-            {/* Links inferiores */}
             <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
                 <Link href="#" color="secondary" underline="hover" onClick={handlePasswordReset}>
                     Esqueceu sua senha?

@@ -1,17 +1,32 @@
 "use client";
 
-import React, { useState } from "react";
-import { Box } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, CircularProgress } from "@mui/material";
 import TopAppBar from "../components/TopAppBar";
 import Sidebar from "../components/Sidebar";
 import DashboardTemplate from "../components/DashboardTemplate";
 import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
 import PacienteTemplate from "../components/pacienteTemplate";
 import AgendaMedica from "../components/organismsComponents/agendaComponente";
-import PrescriptionsPage from "../components/ReceitasTemplate";
 import PatientsTable from "../components/organismsComponents/patientTable";
+import { useAuth } from "../components/authProvider";
+import { useRouter } from "next/navigation";
 
 export default function AppLayout({ children }) {
+    // Obter dados de autenticação
+    const auth = useAuth();
+    const user = auth?.user;
+    const loading = auth?.loading || false;
+    const logout = auth?.logout;
+    const router = useRouter();
+
+    // Verificar autenticação quando o componente carrega
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/');
+        }
+    }, [loading, user, router]);
+
     // Define o estado inicial para "Dashboard"
     const [activePage, setActivePage] = useState("Dashboard");
 
@@ -49,9 +64,36 @@ export default function AppLayout({ children }) {
         setActivePage("Pacientes");
     };
 
+    // Mostrar loading enquanto verifica autenticação
+    if (loading) {
+        return (
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                }}
+            >
+                <CircularProgress color="primary" />
+            </Box>
+        );
+    }
+
+    // Se não estiver autenticado, não renderizar nada (redirecionamento ocorre pelo useEffect)
+    if (!user) {
+        return null;
+    }
+
     return (
         <Box display="flex" height="100vh" overflow="hidden">
-            <Sidebar initialSelected={activePage} onMenuSelect={handleMenuSelect} />
+            <Sidebar
+                initialSelected={activePage}
+                onMenuSelect={handleMenuSelect}
+                onLogout={logout}
+                userName={user?.fullName?.split(' ')[0] || "Médico"}
+                userRole={user?.especialidade || "Cirurgião"}
+            />
             <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
                 <Box sx={{ flexShrink: 0 }}>
                     <TopAppBar label={activePage} onPacienteClick={handlePacienteTopAppBarClick} />

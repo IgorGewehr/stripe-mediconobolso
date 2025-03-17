@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 
-const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRole = "Cirurgião", onMenuSelect }) => {
+const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRole = "Cirurgião", onMenuSelect, onLogout }) => {
     const [selected, setSelected] = useState(initialSelected);
 
     const principalItems = [
@@ -16,14 +16,20 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
     const suporteItems = [
         { label: "Central de Ajuda", icon: "/centralajuda.svg" },
         { label: "Reportar", icon: "/reportar.svg" },
+        { label: "Logout", icon: "/logout.svg", isLogout: true }, // Novo item de logout
     ];
 
-    const handleMenuClick = (label) => {
+    const handleMenuClick = (label, isLogout) => {
+        if (isLogout && onLogout) {
+            onLogout();
+            return;
+        }
+
         setSelected(label);
         if (onMenuSelect) onMenuSelect(label);
     };
 
-    const buttonStyles = (isSelected, label) => ({
+    const buttonStyles = (isSelected, label, isLogout) => ({
         display: "flex",
         alignItems: "center",
         justifyContent: "flex-start",
@@ -38,11 +44,13 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         my: 0.5,
         borderRadius: "18px",
         transition: "background-color 0.2s ease, color 0.2s ease",
-        color: isSelected ? "#FFF" : "#111E5A",
+        color: isSelected ? "#FFF" : (isLogout ? "#DB4437" : "#111E5A"),
         backgroundColor: isSelected ? "#4285F4" : "transparent",
         opacity: isSelected ? 0.77 : 1,
         "&:hover": {
-            backgroundColor: isSelected ? "#4285F4" : "rgba(66, 133, 244, 0.08)",
+            backgroundColor: isSelected
+                ? "#4285F4"
+                : (isLogout ? "rgba(219, 68, 55, 0.08)" : "rgba(66, 133, 244, 0.08)"),
         },
     });
 
@@ -66,23 +74,40 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         <Box
             sx={{
                 backgroundColor: "#F8FAFF",
-                height: "100vh",
-                width: "240px",
+                height: "100%", // Mudado para 100% ao invés de 100vh
+                width: "100%", // Mudado para 100% para respeitar o container pai
                 position: "relative",
                 pl: "30px",
                 pr: "16px",
                 pt: "30px",
+                pb: "16px", // Adicionado padding-bottom para evitar cortes no final
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
+                overflowX: "hidden", // Evitar rolagem horizontal
             }}
         >
-            <Box sx={{ display: "flex", alignItems: "center", mb: 4, ml: 0 }}>
+            {/* Logo e título */}
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    mb: 4,
+                    ml: 0,
+                    flexShrink: 0, // Impede que esta seção encolha
+                }}
+            >
                 <Box
                     component="img"
                     src="/ico.svg"
                     alt="Logo"
-                    sx={{ width: "47px", height: "44px", flexShrink: 0, ml: "4px" }}
+                    sx={{
+                        width: "47px",
+                        height: "44px",
+                        flexShrink: 0,
+                        ml: "4px",
+                        objectFit: "contain", // Garante que a imagem seja exibida completamente
+                    }}
                 />
                 <Box sx={{ ml: "10px" }}>
                     <Typography
@@ -92,6 +117,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                             fontSize: "18px",
                             fontWeight: 500,
                             lineHeight: 1.2,
+                            whiteSpace: "nowrap", // Impede quebra de linha no título
                         }}
                     >
                         Médico
@@ -105,6 +131,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                             fontWeight: 500,
                             lineHeight: 1.2,
                             opacity: 0.9,
+                            whiteSpace: "nowrap", // Impede quebra de linha no subtítulo
                         }}
                     >
                         NO BOLSO
@@ -112,7 +139,8 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                 </Box>
             </Box>
 
-            <Box sx={{ flex: 1 }}>
+            {/* Menus - com overflow auto para permitir rolagem quando necessário */}
+            <Box sx={{ flex: 1, overflowY: "auto" }}>
                 <Typography sx={categoryLabelStyle}>
                     Principal
                 </Typography>
@@ -144,9 +172,9 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                         return (
                             <Button
                                 key={item.label}
-                                onClick={() => handleMenuClick(item.label)}
+                                onClick={() => handleMenuClick(item.label, item.isLogout)}
                                 variant="text"
-                                sx={buttonStyles(isSelected, item.label)}
+                                sx={buttonStyles(isSelected, item.label, item.isLogout)}
                                 startIcon={
                                     <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
                                 }
@@ -158,6 +186,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                 </Box>
             </Box>
 
+            {/* Perfil do usuário */}
             <Box
                 sx={{
                     display: "flex",
@@ -165,10 +194,11 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     py: 1.8,
                     px: 1.5,
                     mt: 2,
-                    mb: 2,
+                    mb: 0, // Ajustado para 0, já que temos padding no container principal
                     borderRadius: "12px",
                     border: "1px solid rgba(66, 133, 244, 0.15)",
                     backgroundColor: "rgba(248, 250, 255, 0.8)",
+                    flexShrink: 0, // Impede que esta seção encolha
                 }}
             >
                 <Box
@@ -183,7 +213,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                         flexShrink: 0,
                     }}
                 />
-                <Box sx={{ ml: 1.2, flex: 1 }}>
+                <Box sx={{ ml: 1.2, flex: 1, minWidth: 0 }}>
                     <Typography
                         sx={{
                             color: "#111E5A",
@@ -191,6 +221,9 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                             fontSize: "13px",
                             fontWeight: 600,
                             lineHeight: 1.2,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
                         }}
                     >
                         Dr. {userName}
@@ -202,6 +235,9 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                             fontSize: "11px",
                             fontWeight: 400,
                             lineHeight: 1.2,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
                         }}
                     >
                         {userRole}
@@ -214,6 +250,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     sx={{
                         width: "14px",
                         height: "14px",
+                        flexShrink: 0,
                     }}
                 />
             </Box>
