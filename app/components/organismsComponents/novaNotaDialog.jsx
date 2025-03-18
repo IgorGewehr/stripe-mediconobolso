@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -9,10 +11,13 @@ import {
     Button,
     Paper,
     Divider,
-    styled,
-    InputBase,
-    Chip,
-    Tooltip
+    Menu,
+    MenuItem,
+    Tooltip,
+    CircularProgress,
+    Fade,
+    Slide,
+    alpha
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -23,470 +28,1122 @@ import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import TextFormatIcon from '@mui/icons-material/TextFormat';
 import InsertLinkIcon from '@mui/icons-material/InsertLink';
 import PdfIcon from '@mui/icons-material/PictureAsPdf';
+import ImageIcon from '@mui/icons-material/Image';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import FirebaseService from '../../../lib/FirebaseService';
+import { useAuth } from '../authProvider';
 
+// Theme creation for defining colors, fonts, and formats
 const theme = createTheme({
     palette: {
         primary: {
-            main: '#3461FF',
+            main: '#1852FE',
+            light: '#ECF1FF',
         },
         grey: {
             100: '#F6F7F9',
             200: '#EAECEF',
             400: '#94A3B8',
             500: '#64748B',
+            800: '#344054',
+        },
+        success: {
+            main: '#22C55E',
+        },
+        error: {
+            main: '#F04438',
+            light: '#FEE4E2',
         }
     },
     typography: {
-        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+        fontFamily: '"Gellix", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     },
     shape: {
         borderRadius: 8,
     },
+    components: {
+        MuiDialog: {
+            styleOverrides: {
+                paper: {
+                    borderRadius: 20,
+                }
+            }
+        },
+        MuiButton: {
+            styleOverrides: {
+                root: {
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderRadius: 50,
+                }
+            }
+        },
+        MuiTextField: {
+            styleOverrides: {
+                root: {
+                    '& .MuiInputBase-root': {
+                        borderRadius: 8,
+                    }
+                }
+            }
+        }
+    }
 });
 
-const StyledDialog = styled(Dialog)(({ theme }) => ({
-    '& .MuiDialog-paper': {
-        width: '1338px',
-        height: '882px',
-        flexShrink: 0,
-        borderRadius: '50px',
-        border: '1px solid #EAECEF',
-        background: '#FFF',
-        boxShadow: '0px 4px 10px 0px rgba(0, 0, 0, 0.07)',
-        margin: 0,
-        maxWidth: 'none',
-        maxHeight: 'none',
-    },
-    '& .MuiBackdrop-root': {
-        backdropFilter: 'blur(4px)',
-    },
-}));
+// Styled Dialog with smoother transitions
+const StyledDialog = ({ open, onClose, children, ...props }) => (
+    <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="md"
+        sx={{
+            '& .MuiDialog-paper': {
+                borderRadius: '16px',
+                border: '1px solid #EAECEF',
+                background: '#FFF',
+                boxShadow: '0px 4px 40px 0px rgba(0, 0, 0, 0.1)',
+                maxHeight: '90vh',
+                margin: '16px',
+                width: 'calc(100% - 32px)',
+                maxWidth: '900px',
+                overflow: 'hidden',
+            },
+            '& .MuiBackdrop-root': {
+                backdropFilter: 'blur(4px)',
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            },
+        }}
+        TransitionComponent={Fade}
+        transitionDuration={250}
+        {...props}
+    >
+        {children}
+    </Dialog>
+);
 
-const StyledButton = styled(Button)(({ theme }) => ({
-    borderRadius: '50px',
-    textTransform: 'none',
-    fontWeight: 600,
-    padding: '10px 20px',
-    boxShadow: 'none',
-    minHeight: '48px',
-    '&.Mui-disabled': {
-        backgroundColor: theme.palette.primary.main,
-        color: '#fff',
-        opacity: 0.8,
-    },
-}));
+// Custom styled buttons
+const PrimaryButton = ({ children, loading, success, ...props }) => (
+    <Button
+        variant="contained"
+        color="primary"
+        sx={{
+            height: 44,
+            px: 3,
+            fontWeight: 600,
+            fontSize: '15px',
+            boxShadow: 'none',
+            '&:hover': { boxShadow: '0 4px 8px rgba(24, 82, 254, 0.2)' },
+            position: 'relative',
+            overflow: 'hidden',
+            transition: 'all 0.2s ease',
+        }}
+        {...props}
+    >
+        {loading ? (
+            <CircularProgress size={20} color="inherit" />
+        ) : success ? (
+            <Fade in={success}>
+                <CheckCircleOutlineIcon />
+            </Fade>
+        ) : (
+            children
+        )}
+    </Button>
+);
 
-const AttachmentChip = styled(Box)(({ theme }) => ({
-    display: 'inline-flex',
-    alignItems: 'center',
-    backgroundColor: '#F6F7F9',
-    padding: '8px 12px',
-    borderRadius: '4px',
-    margin: '0 12px 12px 0',
-    fontWeight: 500,
-    fontSize: '14px',
-    color: '#64748B',
-}));
+const SecondaryButton = ({ children, ...props }) => (
+    <Button
+        variant="outlined"
+        sx={{
+            height: 44,
+            px: 3,
+            fontWeight: 600,
+            fontSize: '15px',
+            borderColor: '#D0D5DD',
+            color: theme.palette.grey[800],
+            '&:hover': {
+                borderColor: '#B0B7C3',
+                backgroundColor: 'rgba(52, 64, 84, 0.04)'
+            }
+        }}
+        {...props}
+    >
+        {children}
+    </Button>
+);
 
-const BackButton = styled(IconButton)(({ theme }) => ({
-    width: '44px',
-    height: '44px',
-    borderRadius: '50%',
-    backgroundColor: '#F6F7F9',
-    '&:hover': {
-        backgroundColor: '#EAECEF'
-    },
-}));
+// Attachment chip with better styling
+const AttachmentChip = ({ file, onOpen, onRemove, disabled }) => {
+    const getFileIcon = (fileType) => {
+        if (fileType && fileType.startsWith('image/')) {
+            return <ImageIcon fontSize="small" sx={{ color: '#34D399' }} />;
+        }
+        return <PdfIcon fontSize="small" sx={{ color: '#F24E1E' }} />;
+    };
 
-const PatientNoteDialog = ({ open, onClose }) => {
+    return (
+        <Box
+            sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                backgroundColor: '#F6F7F9',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                margin: '0 8px 8px 0',
+                fontWeight: 500,
+                fontSize: '14px',
+                color: '#64748B',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                    backgroundColor: '#EAECEF',
+                }
+            }}
+        >
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                }}
+                onClick={onOpen}
+            >
+                <Box sx={{ mr: 1.5 }}>
+                    {getFileIcon(file.fileType)}
+                </Box>
+                <Typography sx={{ color: '#475467', fontWeight: 500 }}>
+                    {file.fileName}
+                </Typography>
+                <Typography
+                    component="span"
+                    sx={{
+                        fontSize: '13px',
+                        color: '#94A3B8',
+                        ml: 1,
+                        fontWeight: 400
+                    }}
+                >
+                    {file.fileSize}
+                </Typography>
+            </Box>
+            <IconButton
+                size="small"
+                onClick={onRemove}
+                disabled={disabled}
+                sx={{
+                    ml: 1,
+                    p: 0.5,
+                    color: '#94A3B8',
+                    '&:hover': {
+                        color: '#F04438',
+                        backgroundColor: alpha('#F04438', 0.1),
+                    }
+                }}
+            >
+                <CloseIcon fontSize="small" sx={{ fontSize: '16px' }} />
+            </IconButton>
+        </Box>
+    );
+};
+
+// Enhanced consultation dropdown component
+const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }) => {
+    const [anchorEl, setAnchorEl] = useState(null);
+    const open = Boolean(anchorEl);
+
+    const handleClick = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handleSelectConsultation = (consultation) => {
+        onSelect(consultation);
+        handleClose();
+    };
+
+    return (
+        <>
+            <Button
+                variant={selectedDate ? "contained" : "outlined"}
+                color="primary"
+                endIcon={<KeyboardArrowDownIcon />}
+                onClick={handleClick}
+                disabled={loading}
+                sx={{
+                    height: 44,
+                    px: 3,
+                    minWidth: '220px',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    borderRadius: '50px',
+                    backgroundColor: selectedDate ? undefined : 'transparent',
+                }}
+            >
+                {selectedDate ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CalendarTodayIcon sx={{ fontSize: 18, mr: 1 }} />
+                        {format(
+                            selectedDate instanceof Date ? selectedDate : selectedDate.toDate(),
+                            "dd/MM/yyyy",
+                            { locale: ptBR }
+                        )}
+                    </Box>
+                ) : (
+                    "Escolha a consulta"
+                )}
+            </Button>
+
+            <Menu
+                anchorEl={anchorEl}
+                open={open}
+                onClose={handleClose}
+                PaperProps={{
+                    elevation: 3,
+                    sx: {
+                        mt: 1,
+                        maxHeight: 300,
+                        width: 280,
+                        borderRadius: 2,
+                        boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
+                        '& .MuiList-root': {
+                            py: 1,
+                        }
+                    },
+                }}
+                transformOrigin={{ horizontal: 'center', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'center', vertical: 'bottom' }}
+            >
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                        <CircularProgress size={24} />
+                    </Box>
+                ) : consultations.length > 0 ? (
+                    consultations.map((cons, index) => (
+                        <MenuItem
+                            key={cons.id || index}
+                            onClick={() => handleSelectConsultation(cons)}
+                            sx={{
+                                py: 1.5,
+                                px: 2,
+                                '&:hover': { backgroundColor: '#F6F7F9' },
+                                borderBottom: index !== consultations.length - 1 ? '1px solid #F6F7F9' : 'none'
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                <CalendarTodayIcon sx={{ fontSize: 18, color: '#1852FE', mr: 2 }} />
+                                <Typography sx={{ color: '#111828', fontWeight: 500 }}>
+                                    {format(
+                                        cons.consultationDate instanceof Date
+                                            ? cons.consultationDate
+                                            : cons.consultationDate.toDate(),
+                                        "dd/MM/yyyy",
+                                        { locale: ptBR }
+                                    )}
+                                </Typography>
+                            </Box>
+                        </MenuItem>
+                    ))
+                ) : (
+                    <MenuItem disabled sx={{ py: 2, justifyContent: 'center' }}>
+                        <Typography sx={{ color: '#94A3B8', fontWeight: 500 }}>
+                            Nenhuma consulta encontrada
+                        </Typography>
+                    </MenuItem>
+                )}
+            </Menu>
+        </>
+    );
+};
+
+// Main component for patient notes dialog
+const PatientNoteDialog = ({
+                               open,
+                               onClose,
+                               note = null,
+                               patientId,
+                               onSave,
+                               onDelete
+                           }) => {
+    const { user } = useAuth();
+    const isEditMode = !!note;
+
     const [title, setTitle] = useState('');
-    const [content, setContent] = useState('Paciente mencionou aumento de fadiga e dores muscular');
-    const [attachments, setAttachments] = useState([
-        { name: 'ecs-rodrigo.pdf', size: '1.2MB' },
-        { name: 'pas-rodrigo.pdf', size: '1.5MB' }
-    ]);
-    const [isQuickNote, setIsQuickNote] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
+    const [content, setContent] = useState('');
+    const [noteType, setNoteType] = useState('Rápida');
+    const [attachments, setAttachments] = useState([]);
+    const [consultationDate, setConsultationDate] = useState(null);
 
-    const handleFileUpload = () => {
-        // Create a file input element
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
+    const [isDeleteConfirm, setIsDeleteConfirm] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(null);
+    const [consultations, setConsultations] = useState([]);
+    const [isLoadingConsultations, setIsLoadingConsultations] = useState(false);
+
+    useEffect(() => {
+        if (note) {
+            setTitle(note.noteTitle || '');
+            setContent(note.noteText || '');
+            setNoteType(note.noteType || 'Rápida');
+            setAttachments(note.attachments || []);
+            setConsultationDate(note.consultationDate ? note.consultationDate.toDate() : null);
+        } else {
+            setTitle('');
+            setContent('');
+            setNoteType('Rápida');
+            setAttachments([]);
+            setConsultationDate(null);
+        }
+        setIsLoading(false);
+        setIsSaved(false);
+        setIsDeleteConfirm(false);
+    }, [note, open]);
+
+    // Load consultations when the dialog opens or when type changes to 'Consulta'
+    useEffect(() => {
+        if (open && noteType === 'Consulta') {
+            loadConsultations();
+        }
+    }, [open, noteType, patientId, user]);
+
+    const loadConsultations = async () => {
+        if (!user || !patientId) return;
+
+        setIsLoadingConsultations(true);
+        try {
+            const cons = await FirebaseService.listConsultations(user.uid, patientId);
+            setConsultations(cons);
+        } catch (error) {
+            console.error("Erro ao carregar consultas:", error);
+        } finally {
+            setIsLoadingConsultations(false);
+        }
+    };
+
+    const getCurrentDate = () => {
+        return format(new Date(), "dd/MM/yyyy", { locale: ptBR });
+    };
+
+    const handleFileUpload = async () => {
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
-        fileInput.accept = '.pdf,.doc,.docx,.jpg,.png';
-
-        // Trigger click to open file explorer
+        fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
         fileInput.click();
 
-        // Handle file selection
-        fileInput.onchange = (e) => {
+        fileInput.onchange = async (e) => {
             const file = e.target.files[0];
-            if (file) {
-                setAttachments([...attachments, {
-                    name: file.name,
-                    size: `${(file.size / (1024 * 1024)).toFixed(1)}MB`
-                }]);
+            if (!file) return;
+
+            if (isEditMode && note.id) {
+                setIsLoading(true);
+                setUploadProgress('Fazendo upload do arquivo...');
+                try {
+                    const fileInfo = await FirebaseService.uploadNoteAttachment(
+                        file,
+                        user.uid,
+                        patientId,
+                        note.id
+                    );
+                    setAttachments(prev => [...prev, fileInfo]);
+                } catch (error) {
+                    console.error("Erro ao fazer upload do arquivo:", error);
+                    alert("Erro ao fazer upload do arquivo. Tente novamente.");
+                } finally {
+                    setIsLoading(false);
+                    setUploadProgress(null);
+                }
+            } else {
+                const fileInfo = {
+                    fileName: file.name,
+                    fileType: file.type,
+                    fileSize: formatFileSize(file.size),
+                    file: file,
+                    uploadedAt: new Date()
+                };
+                setAttachments(prev => [...prev, fileInfo]);
             }
         };
     };
 
-    const handleRemoveAttachment = (index) => {
-        const newAttachments = [...attachments];
-        newAttachments.splice(index, 1);
-        setAttachments(newAttachments);
+    const formatFileSize = (sizeInBytes) => {
+        if (sizeInBytes < 1024) {
+            return sizeInBytes + ' bytes';
+        } else if (sizeInBytes < 1024 * 1024) {
+            return (sizeInBytes / 1024).toFixed(1) + 'KB';
+        } else if (sizeInBytes < 1024 * 1024 * 1024) {
+            return (sizeInBytes / (1024 * 1024)).toFixed(1) + 'MB';
+        } else {
+            return (sizeInBytes / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
+        }
     };
 
-    const handleSave = () => {
-        setIsSaving(true);
-        // Simulate saving process
-        setTimeout(() => {
-            setIsSaving(false);
+    const handleOpenAttachment = (attachment) => {
+        if (attachment && attachment.fileUrl) {
+            window.open(attachment.fileUrl, '_blank');
+        }
+    };
+
+    const handleRemoveAttachment = async (index) => {
+        if (isEditMode && note.id) {
+            setIsLoading(true);
+            try {
+                const attachment = attachments[index];
+                if (attachment.fileUrl) {
+                    await FirebaseService.removeNoteAttachment(
+                        user.uid,
+                        patientId,
+                        note.id,
+                        attachment.fileUrl,
+                        index
+                    );
+                }
+                const newAttachments = [...attachments];
+                newAttachments.splice(index, 1);
+                setAttachments(newAttachments);
+            } catch (error) {
+                console.error("Erro ao remover anexo:", error);
+                alert("Erro ao remover anexo. Tente novamente.");
+            } finally {
+                setIsLoading(false);
+            }
+        } else {
+            const newAttachments = [...attachments];
+            newAttachments.splice(index, 1);
+            setAttachments(newAttachments);
+        }
+    };
+
+    const handleSelectConsultation = (consultation) => {
+        const consDate = consultation.consultationDate instanceof Date
+            ? consultation.consultationDate
+            : consultation.consultationDate.toDate();
+        setConsultationDate(consDate);
+    };
+
+    const handleSave = async () => {
+        if (!title.trim()) {
+            alert("Por favor, insira um título para a nota.");
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const noteData = {
+                noteTitle: title,
+                noteText: content,
+                noteType: noteType,
+                consultationDate: consultationDate
+            };
+            if (isEditMode && note.id) {
+                await FirebaseService.updateNote(
+                    user.uid,
+                    patientId,
+                    note.id,
+                    noteData
+                );
+                if (onSave) {
+                    onSave({
+                        ...note,
+                        ...noteData,
+                        lastModified: new Date()
+                    });
+                }
+            } else {
+                const noteId = await FirebaseService.createNote(
+                    user.uid,
+                    patientId,
+                    noteData
+                );
+                const uploadedAttachments = [];
+                for (const attachment of attachments) {
+                    if (attachment.file) {
+                        const fileInfo = await FirebaseService.uploadNoteAttachment(
+                            attachment.file,
+                            user.uid,
+                            patientId,
+                            noteId
+                        );
+                        uploadedAttachments.push(fileInfo);
+                    }
+                }
+                if (onSave) {
+                    onSave({
+                        id: noteId,
+                        ...noteData,
+                        attachments: uploadedAttachments,
+                        createdAt: new Date()
+                    });
+                }
+            }
+            setIsSaved(true);
+            setTimeout(() => {
+                onClose();
+            }, 1500);
+        } catch (error) {
+            console.error("Erro ao salvar nota:", error);
+            alert("Erro ao salvar nota. Tente novamente.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleConfirmDelete = () => {
+        setIsDeleteConfirm(true);
+    };
+
+    const handleDelete = async () => {
+        if (!isEditMode || !note.id) return;
+        setIsLoading(true);
+        try {
+            await FirebaseService.deleteNote(
+                user.uid,
+                patientId,
+                note.id
+            );
+            if (onDelete) {
+                onDelete(note.id);
+            }
             onClose();
-        }, 1500);
+        } catch (error) {
+            console.error("Erro ao deletar nota:", error);
+            alert("Erro ao deletar nota. Tente novamente.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
         <ThemeProvider theme={theme}>
-            <StyledDialog
-                open={open}
-                onClose={onClose}
-                fullWidth
-                maxWidth="xl"
-                aria-labelledby="patient-note-dialog"
-            >
-                <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <StyledDialog open={open} onClose={isLoading ? null : onClose}>
+                <DialogContent sx={{
+                    p: 0,
+                    maxHeight: '90vh', // define a altura máxima do diálogo
+                    overflowY: 'auto', // permite a rolagem vertical
+                    // Estilização customizada da scrollbar para navegadores que suportam WebKit
+                    scrollbarWidth: 'thin', // para Firefox
+                    scrollbarColor: '#B0B0B0 #E0E0E0', // thumb e track
+                    '&::-webkit-scrollbar': {
+                        width: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                        backgroundColor: theme.palette.grey[100],
+                        borderRadius: '8px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                        backgroundColor: theme.palette.primary.main,
+                        borderRadius: '8px',
+                        border: `2px solid ${theme.palette.grey[100]}`,
+                    },
+                }}
+                >
                     {/* Header */}
-                    <Box sx={{ p: 3, pl: 4, display: 'flex', alignItems: 'center' }}>
-                        <BackButton onClick={onClose}>
+                    <Box sx={{
+                        p: 2.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderBottom: '1px solid #EAECEF',
+                    }}>
+                        <IconButton
+                            onClick={onClose}
+                            disabled={isLoading}
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: '50%',
+                                backgroundColor: '#F6F7F9',
+                                color: '#64748B',
+                                '&:hover': {
+                                    backgroundColor: '#EAECEF',
+                                    color: '#475467'
+                                }
+                            }}
+                        >
                             <ArrowBackIcon />
-                        </BackButton>
+                        </IconButton>
+
+                        {isEditMode && !isDeleteConfirm ? (
+                            <Button
+                                variant="text"
+                                color="error"
+                                startIcon={<DeleteOutlineIcon />}
+                                onClick={handleConfirmDelete}
+                                disabled={isLoading}
+                                sx={{
+                                    color: '#F04438',
+                                    textTransform: 'none',
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    '&:hover': {
+                                        backgroundColor: alpha('#F04438', 0.08),
+                                    }
+                                }}
+                            >
+                                Excluir nota
+                            </Button>
+                        ) : isEditMode && isDeleteConfirm ? (
+                            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                                <Typography sx={{ color: 'error.main', fontWeight: 500 }}>
+                                    Confirmar exclusão?
+                                </Typography>
+                                <Button
+                                    variant="outlined"
+                                    color="inherit"
+                                    onClick={() => setIsDeleteConfirm(false)}
+                                    disabled={isLoading}
+                                    sx={{
+                                        height: 36,
+                                        borderRadius: 18,
+                                        borderColor: '#D0D5DD',
+                                        color: '#475467',
+                                        px: 2,
+                                        '&:hover': {
+                                            borderColor: '#B0B7C3',
+                                        }
+                                    }}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    onClick={handleDelete}
+                                    disabled={isLoading}
+                                    sx={{
+                                        height: 36,
+                                        borderRadius: 18,
+                                        px: 2,
+                                        boxShadow: 'none',
+                                    }}
+                                >
+                                    Confirmar
+                                </Button>
+                            </Box>
+                        ) : null}
                     </Box>
 
                     {/* Main Content */}
-                    <Box
-                        sx={{
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: 'calc(100% - 65px)', // accounting for header height
+                        overflow: 'hidden',
+                    }}>
+                        <Box sx={{
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            flex: 1,
-                            px: 6,
-                            pt: 0,
-                            pb: 4,
-                            maxWidth: '1070px',
-                            mx: 'auto',
-                            width: '100%'
-                        }}
-                    >
-                        {/* Icon and Title */}
-                        <Box sx={{ textAlign: 'center', mb: 6 }}>
-                            <Box
-                                component="img"
-                                src="/newnota.svg"
-                                alt="New Note"
-                                sx={{
-                                    width: '37.398px',
-                                    height: '41.553px',
-                                    mb: 3
-                                }}
-                            />
-                            <Typography
-                                variant="h4"
-                                sx={{
-                                    fontSize: '32px',
-                                    fontWeight: 700,
-                                    color: '#101828'
-                                }}
-                            >
-                                Criar nova nota
-                            </Typography>
-                        </Box>
-
-                        {/* Note Type Selector */}
-                        <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            mb: 5,
+                            px: { xs: 2.5, sm: 4 },
+                            pt: 4,
+                            pb: 3,
                             width: '100%',
-                            justifyContent: 'center',
-                            '& > *': { mx: 1 }
+                            maxWidth: '900px',
+                            mx: 'auto',
                         }}>
-                            <Box sx={{ position: 'relative' }}>
-                                <StyledButton
-                                    variant={isQuickNote ? "contained" : "outlined"}
-                                    color="primary"
+                            {/* Icon and Title */}
+                            <Box sx={{ textAlign: 'center', mb: 4 }}>
+                                <Box
+                                    component="img"
+                                    src="/receitas.svg"
+                                    alt="Nota"
                                     sx={{
-                                        px: 4,
-                                        minWidth: '160px',
+                                        width: 36,
+                                        height: 36,
+                                        mb: 2
+                                    }}
+                                />
+                                <Typography
+                                    variant="h4"
+                                    sx={{
+                                        fontSize: '28px',
+                                        fontWeight: 600,
+                                        color: '#101828'
+                                    }}
+                                >
+                                    {isEditMode ? 'Editar nota' : 'Criar nova nota'}
+                                </Typography>
+                            </Box>
+
+                            {/* Note Type Selector */}
+                            <Box sx={{
+                                display: 'flex',
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                alignItems: 'center',
+                                mb: 4,
+                                width: '100%',
+                                justifyContent: 'center',
+                                gap: { xs: 2, sm: 3 }
+                            }}>
+                                <Button
+                                    variant={noteType === 'Rápida' ? "contained" : "outlined"}
+                                    color="primary"
+                                    onClick={() => setNoteType('Rápida')}
+                                    disabled={isLoading}
+                                    sx={{
+                                        height: 44,
+                                        px: 3,
+                                        minWidth: '130px',
                                         fontWeight: 600,
                                         fontSize: '15px',
+                                        borderRadius: '50px',
+                                        position: 'relative',
                                     }}
-                                    onClick={() => setIsQuickNote(true)}
                                 >
                                     Nota Rápida
-                                </StyledButton>
-                                <IconButton
-                                    size="small"
-                                    sx={{
-                                        position: 'absolute',
-                                        right: -10,
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        backgroundColor: '#3461FF',
-                                        color: 'white',
-                                        width: 24,
-                                        height: 24,
-                                        '&:hover': { backgroundColor: '#2951E3' }
-                                    }}
-                                >
-                                    <AddIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                            </Box>
-
-                            <Typography sx={{ color: '#94A3B8', mx: 2, fontWeight: 500 }}>ou</Typography>
-
-                            <StyledButton
-                                variant={!isQuickNote ? "contained" : "outlined"}
-                                color="primary"
-                                endIcon={<KeyboardArrowDownIcon />}
-                                sx={{
-                                    px: 4,
-                                    minWidth: '200px',
-                                    fontWeight: 600,
-                                    fontSize: '15px',
-                                }}
-                                onClick={() => setIsQuickNote(false)}
-                            >
-                                Escolha a consulta
-                            </StyledButton>
-                        </Box>
-
-                        {/* Note Editor */}
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                width: '100%',
-                                flex: 1,
-                                border: '1px solid #EAECEF',
-                                borderRadius: '20px',
-                                overflow: 'hidden',
-                                display: 'flex',
-                                flexDirection: 'column'
-                            }}
-                        >
-                            {/* Title area */}
-                            <Box sx={{ p: 4, pb: 3, borderBottom: '1px solid #EAECEF' }}>
-                                <InputBase
-                                    fullWidth
-                                    placeholder="Digite aqui o título..."
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    sx={{
-                                        fontSize: '18px',
-                                        fontWeight: 500,
-                                        color: '#101828',
-                                        mb: 1,
-                                        '&::placeholder': {
-                                            color: '#94A3B8',
-                                            opacity: 1
-                                        }
-                                    }}
-                                />
-                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                                    {/* Quick add button */}
                                     <Box
-                                        component="span"
                                         sx={{
-                                            width: 8,
-                                            height: 8,
+                                            position: 'absolute',
+                                            right: -8,
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            width: 22,
+                                            height: 22,
                                             borderRadius: '50%',
-                                            backgroundColor: '#3461FF',
-                                            display: 'inline-block',
-                                            mr: 1
-                                        }}
-                                    />
-                                    <Typography
-                                        variant="body2"
-                                        sx={{
-                                            color: '#64748B',
-                                            fontSize: '14px',
-                                            fontWeight: 500
+                                            backgroundColor: noteType === 'Rápida' ? '#fff' : '#1852FE',
+                                            color: noteType === 'Rápida' ? '#1852FE' : '#fff',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            border: noteType === 'Rápida' ? '1px solid #1852FE' : 'none',
+                                            boxShadow: '0 2px 5px rgba(24, 82, 254, 0.2)',
                                         }}
                                     >
-                                        Data de criação: 04/12/2024
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            {/* Content area */}
-                            <Box sx={{ p: 4, flex: 1 }}>
-                                <TextField
-                                    fullWidth
-                                    multiline
-                                    variant="standard"
-                                    value={content}
-                                    onChange={(e) => setContent(e.target.value)}
-                                    InputProps={{
-                                        disableUnderline: true,
-                                    }}
-                                    sx={{
-                                        '& .MuiInputBase-input': {
-                                            fontSize: '16px',
-                                            lineHeight: 1.5,
-                                            color: '#475467'
-                                        }
-                                    }}
-                                />
-                            </Box>
-
-                            {/* Formatting toolbar */}
-                            <Box
-                                sx={{
-                                    display: 'flex',
-                                    borderTop: '1px solid #EAECEF',
-                                    p: 1.5,
-                                    px: 2.5
-                                }}
-                            >
-                                <Tooltip title="Lista com marcadores">
-                                    <IconButton size="small" sx={{ color: '#64748B' }}>
-                                        <FormatListBulletedIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Lista numerada">
-                                    <IconButton size="small" sx={{ color: '#64748B' }}>
-                                        <FormatListNumberedIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
-                                <Divider orientation="vertical" flexItem sx={{ mx: 1.5 }} />
-                                <Tooltip title="Negrito">
-                                    <IconButton size="small" sx={{ color: '#64748B' }}>
-                                        <FormatBoldIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Itálico">
-                                    <IconButton size="small" sx={{ color: '#64748B' }}>
-                                        <FormatItalicIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Cor do texto">
-                                    <IconButton size="small" sx={{ color: '#64748B' }}>
-                                        <TextFormatIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
-                                <Divider orientation="vertical" flexItem sx={{ mx: 1.5 }} />
-                                <Tooltip title="Inserir link">
-                                    <IconButton size="small" sx={{ color: '#64748B' }}>
-                                        <InsertLinkIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-
-                            {/* Attachments */}
-                            {attachments.length > 0 && (
-                                <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EAECEF' }}>
-                                    {attachments.map((file, index) => (
-                                        <AttachmentChip key={index}>
-                                            <PdfIcon fontSize="small" sx={{ mr: 1, color: '#F24E1E' }} />
-                                            {file.name}
-                                            <Typography
-                                                component="span"
-                                                sx={{
-                                                    fontSize: '14px',
-                                                    color: '#94A3B8',
-                                                    ml: 1,
-                                                    fontWeight: 400
-                                                }}
-                                            >
-                                                {file.size}
-                                            </Typography>
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => handleRemoveAttachment(index)}
-                                                sx={{
-                                                    ml: 1,
-                                                    p: 0.5,
-                                                    color: '#94A3B8'
-                                                }}
-                                            >
-                                                <CloseIcon fontSize="small" sx={{ fontSize: '16px' }} />
-                                            </IconButton>
-                                        </AttachmentChip>
-                                    ))}
-                                </Box>
-                            )}
-
-                            {/* Actions */}
-                            <Box
-                                sx={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    borderTop: '1px solid #EAECEF',
-                                    p: 3
-                                }}
-                            >
-                                <Button
-                                    variant="outlined"
-                                    color="primary"
-                                    onClick={handleFileUpload}
-                                    sx={{
-                                        borderRadius: '8px',
-                                        textTransform: 'none',
-                                        fontWeight: 600,
-                                        fontSize: '15px',
-                                        borderColor: '#D0D5DD',
-                                        color: '#344054',
-                                        '&:hover': {
-                                            borderColor: '#B0B7C3',
-                                            backgroundColor: 'rgba(52, 64, 84, 0.04)'
-                                        }
-                                    }}
-                                >
-                                    Adicionar Exame
+                                        <AddIcon sx={{ fontSize: 16 }} />
+                                    </Box>
                                 </Button>
 
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={handleSave}
+                                <Typography sx={{ color: '#94A3B8', mx: { xs: 0, sm: 2 }, fontWeight: 500, fontSize: '15px' }}>
+                                    ou
+                                </Typography>
+
+                                {/* Enhanced Consultation Selector */}
+                                <Box sx={{ position: 'relative', zIndex: 2 }}>
+                                    <ConsultationSelector
+                                        consultations={consultations}
+                                        selectedDate={consultationDate}
+                                        onSelect={handleSelectConsultation}
+                                        loading={isLoadingConsultations}
+                                    />
+                                </Box>
+                            </Box>
+
+                            {/* Main Editor Content */}
+                            <Box sx={{
+                                width: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                flex: 1,
+                                overflow: 'hidden',
+                                pb: 1,
+                            }}>
+                                <Paper
+                                    elevation={0}
                                     sx={{
-                                        borderRadius: '8px',
-                                        minWidth: '120px',
-                                        fontWeight: 600,
-                                        fontSize: '15px',
-                                        textTransform: 'none',
-                                        py: '10px'
+                                        width: '100%',
+                                        flex: 1,
+                                        border: '1px solid #EAECEF',
+                                        borderRadius: '16px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        overflow: 'hidden',
+                                        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
+                                        minHeight: '420px',
+                                        position: 'relative',
                                     }}
-                                    disabled={isSaving}
                                 >
-                                    {isSaving ? (
-                                        <Box
-                                            component="img"
-                                            src="/checkmark.svg"
-                                            alt="Saved"
-                                            sx={{
-                                                width: 20,
-                                                height: 20
+                                    {/* Loading overlay */}
+                                    {isLoading && uploadProgress && (
+                                        <Box sx={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            bgcolor: 'rgba(255,255,255,0.9)',
+                                            zIndex: 10,
+                                            borderRadius: '16px',
+                                        }}>
+                                            <CircularProgress size={40} />
+                                            <Typography sx={{ mt: 2, fontSize: '15px', fontWeight: 500 }}>
+                                                {uploadProgress}
+                                            </Typography>
+                                        </Box>
+                                    )}
+
+                                    {/* Title Area */}
+                                    <Box sx={{ p: 3, pb: 2, borderBottom: '1px solid #EAECEF' }}>
+                                        <TextField
+                                            fullWidth
+                                            placeholder="Digite aqui o título..."
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            disabled={isLoading}
+                                            variant="standard"
+                                            InputProps={{
+                                                disableUnderline: true,
+                                                sx: {
+                                                    fontSize: '18px',
+                                                    fontWeight: 500,
+                                                    color: '#101828',
+                                                    '&::placeholder': {
+                                                        color: '#94A3B8',
+                                                        opacity: 1
+                                                    }
+                                                }
                                             }}
                                         />
-                                    ) : (
-                                        <>
-                                            <Box
-                                                component="img"
-                                                src="/salvar.svg"
-                                                alt="Save"
-                                                sx={{
-                                                    width: 20,
-                                                    height: 20,
-                                                    mr: 1.5
-                                                }}
-                                            />
-                                            Salvar
-                                        </>
+
+                                        {/* Date information */}
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 2 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <Box
+                                                    component="span"
+                                                    sx={{
+                                                        width: 6,
+                                                        height: 6,
+                                                        borderRadius: '50%',
+                                                        backgroundColor: '#1852FE',
+                                                        display: 'inline-block',
+                                                        mr: 1
+                                                    }}
+                                                />
+                                                <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                        color: '#64748B',
+                                                        fontSize: '13px',
+                                                        fontWeight: 500
+                                                    }}
+                                                >
+                                                    {isEditMode && note.createdAt
+                                                        ? `Criado em: ${format(
+                                                            note.createdAt instanceof Date
+                                                                ? note.createdAt
+                                                                : note.createdAt.toDate(),
+                                                            "dd/MM/yyyy",
+                                                            { locale: ptBR }
+                                                        )}`
+                                                        : `Data de criação: ${getCurrentDate()}`
+                                                    }
+                                                </Typography>
+                                            </Box>
+
+                                            {isEditMode && note.lastModified && (
+                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                    <Box
+                                                        component="span"
+                                                        sx={{
+                                                            width: 6,
+                                                            height: 6,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: '#F59E0B',
+                                                            display: 'inline-block',
+                                                            mr: 1
+                                                        }}
+                                                    />
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{
+                                                            color: '#64748B',
+                                                            fontSize: '13px',
+                                                            fontWeight: 500
+                                                        }}
+                                                    >
+                                                        {`Última modificação: ${format(
+                                                            note.lastModified instanceof Date
+                                                                ? note.lastModified
+                                                                : note.lastModified.toDate(),
+                                                            "dd/MM/yyyy",
+                                                            { locale: ptBR }
+                                                        )}`}
+                                                    </Typography>
+                                                </Box>
+                                            )}
+
+                                            {consultationDate && (
+                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                    <Box
+                                                        component="span"
+                                                        sx={{
+                                                            width: 6,
+                                                            height: 6,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: '#22C55E',
+                                                            display: 'inline-block',
+                                                            mr: 1
+                                                        }}
+                                                    />
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{
+                                                            color: '#64748B',
+                                                            fontSize: '13px',
+                                                            fontWeight: 500,
+                                                            display: 'flex',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        <CalendarTodayIcon sx={{ fontSize: 14, mr: 0.5, color: '#64748B' }} />
+                                                        {`Consulta: ${format(
+                                                            consultationDate instanceof Date
+                                                                ? consultationDate
+                                                                : consultationDate.toDate(),
+                                                            "dd/MM/yyyy",
+                                                            { locale: ptBR }
+                                                        )}`}
+                                                    </Typography>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    </Box>
+
+                                    {/* Content Area */}
+                                    <Box sx={{
+                                        p: 3,
+                                        flex: 1,
+                                        overflowY: 'auto',
+                                        '&::-webkit-scrollbar': {
+                                            width: '4px',
+                                        },
+                                        '&::-webkit-scrollbar-thumb': {
+                                            backgroundColor: 'rgba(0,0,0,0.2)',
+                                            borderRadius: '4px',
+                                        }
+                                    }}>
+                                        <TextField
+                                            fullWidth
+                                            multiline
+                                            variant="standard"
+                                            placeholder="Digite aqui o conteúdo da sua nota..."
+                                            value={content}
+                                            onChange={(e) => setContent(e.target.value)}
+                                            disabled={isLoading}
+                                            InputProps={{
+                                                disableUnderline: true,
+                                            }}
+                                            sx={{
+                                                minHeight: '200px',
+                                                '& .MuiInputBase-root': {
+                                                    fontSize: '15px',
+                                                    lineHeight: 1.6,
+                                                    color: '#475467'
+                                                }
+                                            }}
+                                        />
+                                    </Box>
+
+                                    {/* Formatting Toolbar */}
+                                    <Box sx={{
+                                        display: 'flex',
+                                        borderTop: '1px solid #EAECEF',
+                                        p: 1.5,
+                                        px: 3,
+                                        gap: 1,
+                                        bgcolor: alpha('#F6F7F9', 0.5)
+                                    }}>
+                                        <Tooltip title="Lista com marcadores">
+                                            <IconButton size="small" sx={{ color: '#64748B' }} disabled={isLoading}>
+                                                <FormatListBulletedIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Lista numerada">
+                                            <IconButton size="small" sx={{ color: '#64748B' }} disabled={isLoading}>
+                                                <FormatListNumberedIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                                        <Tooltip title="Negrito">
+                                            <IconButton size="small" sx={{ color: '#64748B' }} disabled={isLoading}>
+                                                <FormatBoldIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Itálico">
+                                            <IconButton size="small" sx={{ color: '#64748B' }} disabled={isLoading}>
+                                                <FormatItalicIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Cor do texto">
+                                            <IconButton size="small" sx={{ color: '#64748B' }} disabled={isLoading}>
+                                                <TextFormatIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                                        <Tooltip title="Inserir link">
+                                            <IconButton size="small" sx={{ color: '#64748B' }} disabled={isLoading}>
+                                                <InsertLinkIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </Box>
+
+                                    {/* Attachments Section */}
+                                    {attachments.length > 0 && (
+                                        <Box sx={{
+                                            p: 3,
+                                            pt: 2,
+                                            borderTop: '1px solid #EAECEF',
+                                            bgcolor: '#FCFCFD'
+                                        }}>
+                                            <Typography sx={{ fontSize: '14px', fontWeight: 500, color: '#475467', mb: 1.5 }}>
+                                                Anexos ({attachments.length})
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
+                                                {attachments.map((file, index) => (
+                                                    <AttachmentChip
+                                                        key={index}
+                                                        file={file}
+                                                        onOpen={() => handleOpenAttachment(file)}
+                                                        onRemove={() => handleRemoveAttachment(index)}
+                                                        disabled={isLoading}
+                                                    />
+                                                ))}
+                                            </Box>
+                                        </Box>
                                     )}
-                                </Button>
+
+                                    {/* Actions Footer */}
+                                    <Box sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        p: 3,
+                                        pt: 2,
+                                        borderTop: '1px solid #EAECEF',
+                                        bgcolor: attachments.length > 0 ? '#fff' : '#FCFCFD'
+                                    }}>
+                                        <SecondaryButton
+                                            onClick={handleFileUpload}
+                                            disabled={isLoading}
+                                            startIcon={<AttachFileOutlinedIcon />}
+                                        >
+                                            Adicionar Anexo
+                                        </SecondaryButton>
+
+                                        <PrimaryButton
+                                            onClick={handleSave}
+                                            disabled={isLoading || !title.trim()}
+                                            loading={isLoading}
+                                            success={isSaved}
+                                        >
+                                            {isSaved ? "Salvado com sucesso!" : "Salvar nota"}
+                                        </PrimaryButton>
+                                    </Box>
+                                </Paper>
                             </Box>
-                        </Paper>
+                        </Box>
                     </Box>
                 </DialogContent>
             </StyledDialog>

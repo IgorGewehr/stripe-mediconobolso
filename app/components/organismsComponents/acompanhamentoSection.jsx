@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import {useState} from "react";
 import {
     Box,
     Typography,
@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useRouter } from "next/navigation";
+import AnamneseDialog from "./anamneseDialog";
 
 // Paleta de cores (pode extrair para outro arquivo se quiser)
 const themeColors = {
@@ -116,16 +117,17 @@ function AcompanhamentoCard({ tipo, icone, onClick }) {
 }
 
 // Seção que agrupa os 3 cards
-export default function AcompanhamentoSection({ pacienteId }) {
+export default function AcompanhamentoSection({ pacienteId, doctorId, patientData }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("md"));
     const router = useRouter();
 
-    // Handlers para cada card
+    const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
+
+    // Handler para abrir o diálogo de anamnese
     const handleAnamneseClick = (isAdd) => {
-        // Redirecionar para a página de nova anamnese ou lista de anamneses
         console.log(`Clicou em Anamnese ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
-        // router.push(`/anamnese/${pacienteId}${isAdd ? "/nova" : ""}`);
+        setOpenAnamneseDialog(true);
     };
 
     const handleReceitasClick = (isAdd) => {
@@ -180,6 +182,14 @@ export default function AcompanhamentoSection({ pacienteId }) {
                     />
                 </Grid>
             </Grid>
+            {/* Renderiza o diálogo de anamnese */}
+            <AnamneseDialog
+                open={openAnamneseDialog}
+                onClose={() => setOpenAnamneseDialog(false)}
+                patientId={pacienteId}
+                doctorId={doctorId}
+                patientData={patientData}
+            />
         </Box>
     );
 }

@@ -471,7 +471,6 @@ export default function PacienteCadastroTemplate() {
             </ActionButtonsContainer>
 
             {/* Snackbar de feedback */}
-            // Substitua o Snackbar atual por este
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={6000}

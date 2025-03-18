@@ -16,6 +16,8 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
     const [loading, setLoading] = useState(!!pacienteId); // Se recebemos apenas o ID, começamos carregando
     const [error, setError] = useState(null);
 
+    const doctorId = user.uid;
+
     // Efeito para carregar dados se apenas o ID for fornecido
     useEffect(() => {
         // Se já temos os dados completos do paciente, não precisamos carregar
@@ -172,7 +174,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                 }}
             >
                 {/* Accompaniment Section */}
-                <AcompanhamentoSection pacienteId={pacienteId || pacienteData.id} />
+                <AcompanhamentoSection pacienteId={pacienteId || pacienteData.id} doctorId={doctorId} />
 
                 {/* Notes Section */}
                 <NotasSection notas={notasData.length > 0 ? notasData : undefined} pacienteId={pacienteId || pacienteData.id} />

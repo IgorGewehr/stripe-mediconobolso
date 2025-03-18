@@ -7,38 +7,43 @@ import {
     CardContent,
     Button,
     IconButton,
-    Grid,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    CircularProgress
+    Chip,
+    CircularProgress,
+    Skeleton,
+    Tooltip,
+    Fade
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import CloseIcon from "@mui/icons-material/Close";
+import ImageIcon from "@mui/icons-material/Image";
+import FileIcon from "@mui/icons-material/InsertDriveFile";
 import { useAuth } from "../authProvider";
 import FirebaseService from "../../../lib/FirebaseService";
-import { format } from "date-fns";
+import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import PatientNoteDialog from "./novaNotaDialog";
 
-// Paleta de cores (pode extrair para outro arquivo se quiser)
+// Paleta de cores
 const themeColors = {
     primary: "#1852FE",
     textPrimary: "#111E5A",
     textSecondary: "#666",
     borderColor: "rgba(0, 0, 0, 0.10)",
+    bgLight: "#F4F7FD",
+    success: "#10B981",
+    warning: "#FBBF24",
+    error: "#EF4444",
 };
 
 // Botão para criar nova ficha
-function CriarNovaFichaButton({ onClick }) {
+function CriarNovaFichaButton({ onClick, disabled }) {
     return (
         <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={onClick}
+            disabled={disabled}
             sx={{
                 height: 46,
                 padding: "0 24px",
@@ -52,6 +57,10 @@ function CriarNovaFichaButton({ onClick }) {
                 "&:hover": {
                     backgroundColor: "#0d47e0",
                 },
+                "&.Mui-disabled": {
+                    backgroundColor: "#A0AEC0",
+                    color: "#FFF",
+                }
             }}
         >
             Criar nova ficha
@@ -59,157 +68,263 @@ function CriarNovaFichaButton({ onClick }) {
     );
 }
 
-// Card de cada anotação
-function AnotacoesCard({ nota, onOpen }) {
+// Card de anotação melhorado
+// Card de anotação redesenhado conforme imagem de exemplo
+function NotaCard({ nota, onOpen }) {
+    // Formatar data
+    const formatDate = (date) => {
+        if (!date) return "";
+        const dateObj = date instanceof Date ? date : date.toDate();
+        return format(dateObj, "dd/MM/yyyy", { locale: ptBR });
+    };
+
+    // Formatar data para criar o texto
+    const getCreatedText = (date) => {
+        if (!date) return "";
+        return `Criado em ${formatDate(date)}`;
+    };
+
+    // Funções para renderizar ícones específicos por tipo de arquivo
+    const getFileIcon = (fileType) => {
+        if (!fileType) return <FileIcon fontSize="small" />;
+        if (fileType.startsWith('image/')) return <ImageIcon fontSize="small" sx={{ color: "#10B981" }} />;
+        if (fileType.includes('pdf')) return <PictureAsPdfIcon fontSize="small" sx={{ color: "#EF4444" }} />;
+        return <FileIcon fontSize="small" sx={{ color: "#3B82F6" }} />;
+    };
+
+    // Determina o tipo de arquivo para exibir o ícone correto
+    const getFileType = (fileName) => {
+        if (!fileName) return "application/octet-stream";
+        if (fileName.endsWith('.pdf')) return "application/pdf";
+        if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png')) return "image/jpeg";
+        return "application/octet-stream";
+    };
+
     return (
         <Card
             sx={{
                 width: "100%",
-                borderRadius: "20px",
-                border: `1px solid ${themeColors.borderColor}`,
-                boxShadow: "0px 8px 24px 0px rgba(0, 0, 0, 0.04)",
-                mb: 2,
+                borderRadius: "12px",
+                border: `1px solid #EAECEF`,
+                boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.04)",
+                mb: 1.5,
                 cursor: "pointer",
+                transition: "all 0.2s ease-in-out",
                 "&:hover": {
-                    boxShadow: "0px 12px 28px 0px rgba(0, 0, 0, 0.08)",
-                    transform: "translateY(-2px)",
-                    transition: "all 0.2s ease-in-out"
-                },
+                    boxShadow: "0px 3px 8px rgba(0, 0, 0, 0.08)",
+                    borderColor: "#D0D5DD",
+                }
             }}
             onClick={() => onOpen(nota)}
         >
-            <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Box sx={{ display: "flex", flexDirection: "column", width: "60%" }}>
-                        {/* Consulta com bolinha azul */}
-                        <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                            <FiberManualRecordIcon sx={{ color: themeColors.primary, fontSize: 8, mr: 1 }} />
-                            <Typography
-                                variant="caption"
-                                sx={{
-                                    color: themeColors.textSecondary,
-                                    fontFamily: "Gellix",
-                                    fontSize: 12,
-                                }}
-                            >
-                                Consulta: {nota.data}
-                            </Typography>
-                        </Box>
-
-                        {/* Título */}
-                        <Typography
-                            variant="h6"
+            <Box sx={{
+                display: "flex",
+                width: "100%",
+                p: 0,
+                minHeight: "72px"
+            }}>
+                {/* Coluna esquerda - Data da consulta */}
+                <Box sx={{
+                    width: "130px",
+                    borderRight: "1px solid #EAECEF",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    px: 2,
+                    py: 1.5,
+                    bgcolor: "#FBFCFD"
+                }}>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+                        <FiberManualRecordIcon
                             sx={{
-                                color: themeColors.textPrimary,
-                                fontFamily: "Gellix",
-                                fontSize: 18,
-                                fontWeight: 500,
-                                mb: 1,
+                                color: nota.noteType === "Consulta" ? themeColors.success : themeColors.primary,
+                                fontSize: 8,
+                                mr: 0.75
                             }}
-                        >
-                            {nota.titulo}
-                        </Typography>
-
-                        {/* Descrição */}
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                color: themeColors.textSecondary,
-                                fontFamily: "Gellix",
-                                fontSize: 14,
-                                mb: 1,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                display: "-webkit-box",
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: "vertical",
-                            }}
-                        >
-                            {nota.descricao}
-                        </Typography>
-
-                        {/* Criado em */}
+                        />
                         <Typography
                             variant="caption"
                             sx={{
-                                color: themeColors.textSecondary,
+                                color: nota.noteType === "Consulta" ? themeColors.success : themeColors.primary,
                                 fontFamily: "Gellix",
                                 fontSize: 12,
-                                mt: "auto",
+                                fontWeight: 600
                             }}
                         >
-                            Criado em {nota.criado}
+                            {nota.noteType === "Consulta" ? "Consulta:" : "Nota Rápida:"}
                         </Typography>
                     </Box>
+                    <Typography
+                        sx={{
+                            color: "#111E5A",
+                            fontFamily: "Gellix",
+                            fontSize: 13,
+                            fontWeight: 500,
+                            ml: 1.75 // Alinhado com o texto após o ícone acima
+                        }}
+                    >
+                        {nota.consultationDate ? formatDate(nota.consultationDate) : formatDate(nota.createdAt)}
+                    </Typography>
+                    <Typography
+                        variant="caption"
+                        sx={{
+                            color: themeColors.textSecondary,
+                            fontFamily: "Gellix",
+                            fontSize: 11,
+                            ml: 1.75,
+                            mt: 0.5
+                        }}
+                    >
+                        {getCreatedText(nota.createdAt)}
+                    </Typography>
+                </Box>
 
-                    {/* Lado direito com botão +2 e anexo PDF */}
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                        {nota.quantidadeAnexos > 0 && (
-                            <Box
-                                sx={{
-                                    backgroundColor: themeColors.primary,
-                                    borderRadius: "50%",
-                                    width: 32,
-                                    height: 32,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: "#FFF",
-                                    fontFamily: "Gellix",
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                }}
-                            >
-                                +{nota.quantidadeAnexos}
-                            </Box>
-                        )}
+                {/* Coluna central - Conteúdo principal */}
+                <Box sx={{
+                    flex: 1,
+                    px: 2.5,
+                    py: 1.5,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    overflow: "hidden"
+                }}>
+                    {/* Título */}
+                    <Typography
+                        variant="h6"
+                        sx={{
+                            color: "#111E5A",
+                            fontFamily: "Gellix",
+                            fontSize: 16,
+                            fontWeight: 600,
+                            mb: 0.75,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                        }}
+                    >
+                        {nota.noteTitle}
+                    </Typography>
 
-                        {nota.anexo && (
-                            <Box sx={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                maxWidth: "100px"
-                            }}>
+                    {/* Conteúdo - Prévia do texto */}
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: "#666",
+                            fontFamily: "Gellix",
+                            fontSize: 14,
+                            lineHeight: 1.4,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: "vertical",
+                        }}
+                    >
+                        {nota.noteText}
+                    </Typography>
+                </Box>
+
+                {/* Coluna direita - Anexos */}
+                {nota.attachments && nota.attachments.length > 0 && (
+                    <Box sx={{
+                        width: "100px",
+                        borderLeft: "1px solid #EAECEF",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        p: 1.5,
+                        bgcolor: "#FBFCFD",
+                    }}>
+                        {/* Badge com o número de anexos */}
+                        <Chip
+                            label={`${nota.attachments.length} anexo${nota.attachments.length > 1 ? 's' : ''}`}
+                            size="small"
+                            sx={{
+                                backgroundColor: "#ECF1FF",
+                                color: themeColors.primary,
+                                fontWeight: 500,
+                                fontSize: 11,
+                                mb: 1,
+                                height: '22px',
+                                borderRadius: "12px",
+                            }}
+                        />
+
+                        {/* Ícones dos anexos */}
+                        <Box sx={{ display: "flex", gap: 0.75, justifyContent: "center" }}>
+                            {/* Mostra até dois anexos com ícones */}
+                            {nota.attachments.slice(0, 2).map((anexo, index) => (
+                                <Box
+                                    key={index}
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: "4px",
+                                        backgroundColor: "#F6F7F9",
+                                        border: "1px solid #EAECEF",
+                                    }}
+                                >
+                                    {getFileIcon(anexo.fileType || getFileType(anexo.fileName))}
+                                </Box>
+                            ))}
+
+                            {/* Indicador de mais anexos */}
+                            {nota.attachments.length > 2 && (
                                 <Box
                                     sx={{
-                                        backgroundColor: "#F5F5F5",
-                                        borderRadius: "4px",
-                                        p: 1,
                                         display: "flex",
+                                        alignItems: "center",
                                         justifyContent: "center",
-                                        mb: 0.5,
-                                    }}
-                                >
-                                    <PictureAsPdfIcon sx={{ color: "#E74C3C", fontSize: 24 }} />
-                                </Box>
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        color: themeColors.textSecondary,
-                                        fontFamily: "Gellix",
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: "4px",
+                                        backgroundColor: "#ECF1FF",
+                                        color: themeColors.primary,
+                                        fontWeight: 600,
                                         fontSize: 12,
-                                        textAlign: "center",
-                                        width: "100%",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
                                     }}
                                 >
-                                    {nota.anexo.nome}
-                                </Typography>
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        color: themeColors.textSecondary,
-                                        fontFamily: "Gellix",
-                                        fontSize: 10,
-                                    }}
-                                >
-                                    {nota.anexo.tamanho}
-                                </Typography>
-                            </Box>
-                        )}
+                                    +{nota.attachments.length - 2}
+                                </Box>
+                            )}
+                        </Box>
+                    </Box>
+                )}
+            </Box>
+        </Card>
+    );
+}
+
+// Skeletons para carregamento
+function NotaCardSkeleton() {
+    return (
+        <Card
+            sx={{
+                width: "100%",
+                borderRadius: "16px",
+                border: `1px solid ${themeColors.borderColor}`,
+                boxShadow: "0px 4px 16px 0px rgba(0, 0, 0, 0.03)",
+                mb: 1.5,
+            }}
+        >
+            <CardContent sx={{ p: 2 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Box sx={{ display: "flex", flexDirection: "column", width: "70%" }}>
+                        <Skeleton variant="text" width={120} height={16} sx={{ mb: 0.5 }} />
+                        <Skeleton variant="text" width="90%" height={24} sx={{ mb: 0.5 }} />
+                        <Skeleton variant="text" width="100%" height={18} />
+                        <Skeleton variant="text" width="80%" height={18} sx={{ mb: 0.5 }} />
+                        <Skeleton variant="text" width={160} height={14} sx={{ mt: 0.5 }} />
+                    </Box>
+                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", width: "20%" }}>
+                        <Skeleton variant="rounded" width={60} height={22} sx={{ mb: 1 }} />
+                        <Skeleton variant="rounded" width={120} height={28} sx={{ mb: 0.5 }} />
+                        <Skeleton variant="rounded" width={120} height={28} />
                     </Box>
                 </Box>
             </CardContent>
@@ -217,337 +332,190 @@ function AnotacoesCard({ nota, onOpen }) {
     );
 }
 
-// Componente de modal para nova anotação
-function NovaAnotacaoModal({ open, handleClose, patientId, onSave }) {
-    const [titulo, setTitulo] = useState('');
-    const [descricao, setDescricao] = useState('');
-    const [loading, setLoading] = useState(false);
-    const { user } = useAuth();
-
-    const handleSave = async () => {
-        if (!titulo || !descricao) {
-            // Validação simples
-            alert("Por favor, preencha todos os campos");
-            return;
-        }
-
-        if (!user || !user.uid || !patientId) {
-            alert("Erro: Informações do usuário ou paciente ausentes");
-            return;
-        }
-
-        setLoading(true);
-        try {
-            // Formatar data atual
-            const hoje = format(new Date(), 'dd/MM/yyyy');
-            const criadoEm = format(new Date(), "dd 'de' MMMM'/'yyyy", { locale: ptBR });
-
-            // Criar objeto de anotação
-            const novaNota = {
-                titulo,
-                descricao,
-                data: hoje,
-                createdAt: new Date(),
-            };
-
-            // Salvar no Firebase
-            // Aqui você pode usar a função apropriada do seu FirebaseService
-            // Exemplo: await FirebaseService.createAnamnese(user.uid, patientId, novaNota);
-
-            // Simulando sucesso após 1 segundo
-            setTimeout(() => {
-                if (onSave) {
-                    onSave({
-                        id: Date.now(), // Temporário, seria substituído pelo ID do Firebase
-                        ...novaNota,
-                        criado: criadoEm
-                    });
-                }
-                handleClose();
-                setLoading(false);
-                setTitulo('');
-                setDescricao('');
-            }, 1000);
-
-        } catch (error) {
-            console.error("Erro ao salvar anotação:", error);
-            alert("Erro ao salvar a anotação. Tente novamente.");
-            setLoading(false);
-        }
-    };
-
+// Estado vazio, sem notas
+function EmptyState({ onCreate }) {
     return (
-        <Dialog
-            open={open}
-            onClose={loading ? null : handleClose}
-            maxWidth="md"
-            fullWidth
-            PaperProps={{
-                sx: {
-                    borderRadius: "20px",
-                    p: 1
-                }
+        <Box
+            sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                py: 3, // Reduzido para ficar mais compacto
+                px: 2,
+                backgroundColor: "#F8F9FA",
+                borderRadius: "16px",
+                border: `1px dashed ${themeColors.borderColor}`,
+                mt: 1, // Reduzido para aproximar do header
+                mb: 1
             }}
         >
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6" sx={{ fontFamily: 'Gellix', fontWeight: 500 }}>
-                    Nova Anotação
-                </Typography>
-                <IconButton onClick={handleClose} disabled={loading}>
-                    <CloseIcon />
-                </IconButton>
-            </DialogTitle>
-
-            <DialogContent dividers>
-                <TextField
-                    autoFocus
-                    margin="dense"
-                    label="Título"
-                    fullWidth
-                    variant="outlined"
-                    value={titulo}
-                    onChange={(e) => setTitulo(e.target.value)}
-                    disabled={loading}
-                    sx={{ mb: 2 }}
-                />
-                <TextField
-                    margin="dense"
-                    label="Descrição"
-                    multiline
-                    rows={6}
-                    fullWidth
-                    variant="outlined"
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    disabled={loading}
-                />
-            </DialogContent>
-
-            <DialogActions sx={{ p: 2 }}>
-                <Button
-                    onClick={handleClose}
-                    variant="outlined"
-                    disabled={loading}
-                    sx={{
-                        borderRadius: '99px',
-                        textTransform: 'none'
-                    }}
-                >
-                    Cancelar
-                </Button>
-                <Button
-                    onClick={handleSave}
-                    variant="contained"
-                    disabled={loading}
-                    sx={{
-                        borderRadius: '99px',
-                        backgroundColor: themeColors.primary,
-                        textTransform: 'none'
-                    }}
-                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
-                >
-                    {loading ? "Salvando..." : "Salvar"}
-                </Button>
-            </DialogActions>
-        </Dialog>
+            <Box
+                component="img"
+                src="/receitas.svg"
+                alt="Sem anotações"
+                sx={{
+                    width: 80, // Reduzido para mais compacto
+                    height: 80,
+                    mb: 2,
+                    opacity: 0.8
+                }}
+            />
+            <Typography
+                variant="h6"
+                sx={{
+                    fontFamily: "Gellix",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: themeColors.textPrimary,
+                    mb: 1,
+                    textAlign: "center"
+                }}
+            >
+                Nenhuma anotação encontrada
+            </Typography>
+            <Typography
+                variant="body2"
+                sx={{
+                    fontFamily: "Gellix",
+                    fontSize: 14,
+                    color: themeColors.textSecondary,
+                    mb: 2,
+                    textAlign: "center",
+                    maxWidth: "380px"
+                }}
+            >
+                Registre informações importantes sobre o paciente para acompanhar o progresso do tratamento e manter um histórico detalhado.
+            </Typography>
+            <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={onCreate}
+                sx={{
+                    borderRadius: "99px",
+                    backgroundColor: themeColors.primary,
+                    color: "#FFF",
+                    fontFamily: "Gellix",
+                    textTransform: "none",
+                    px: 3,
+                    py: 1
+                }}
+            >
+                Criar primeira anotação
+            </Button>
+        </Box>
     );
 }
 
-// Dialog para visualizar anotação
-function VisualizarAnotacaoDialog({ nota, open, handleClose }) {
-    if (!nota) return null;
-
-    return (
-        <Dialog
-            open={open}
-            onClose={handleClose}
-            maxWidth="md"
-            fullWidth
-            PaperProps={{
-                sx: {
-                    borderRadius: "20px",
-                    p: 1
-                }
-            }}
-        >
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6" sx={{ fontFamily: 'Gellix', fontWeight: 500 }}>
-                    {nota.titulo}
-                </Typography>
-                <IconButton onClick={handleClose}>
-                    <CloseIcon />
-                </IconButton>
-            </DialogTitle>
-
-            <DialogContent dividers>
-                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 2 }}>
-                    Consulta: {nota.data} • Criado em {nota.criado}
-                </Typography>
-
-                <Typography variant="body1" sx={{ mb: 3 }}>
-                    {nota.descricao}
-                </Typography>
-
-                {nota.anexo && (
-                    <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <PictureAsPdfIcon sx={{ color: "#E74C3C", fontSize: 32 }} />
-                            <Box>
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                    {nota.anexo.nome}
-                                </Typography>
-                                <Typography variant="caption" color="textSecondary">
-                                    {nota.anexo.tamanho}
-                                </Typography>
-                            </Box>
-                            <Button
-                                variant="outlined"
-                                size="small"
-                                sx={{ ml: 'auto', borderRadius: '99px', textTransform: 'none' }}
-                            >
-                                Download
-                            </Button>
-                        </Box>
-                    </Box>
-                )}
-            </DialogContent>
-
-            <DialogActions sx={{ p: 2 }}>
-                <Button
-                    onClick={handleClose}
-                    variant="outlined"
-                    sx={{ borderRadius: '99px', textTransform: 'none' }}
-                >
-                    Fechar
-                </Button>
-                <Button
-                    variant="contained"
-                    sx={{
-                        borderRadius: '99px',
-                        backgroundColor: themeColors.primary,
-                        textTransform: 'none'
-                    }}
-                >
-                    Editar
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-}
-
-// Seção de notas
-export default function NotasSection({ notas = [], pacienteId }) {
+// Seção principal de notas
+export default function NotasSection({ pacienteId }) {
+    // Estados
     const [notasData, setNotasData] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [openNovaAnotacao, setOpenNovaAnotacao] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [openDialog, setOpenDialog] = useState(false);
     const [selectedNota, setSelectedNota] = useState(null);
-    const [openViewNota, setOpenViewNota] = useState(false);
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [successAction, setSuccessAction] = useState("");
+
+    // Context
     const { user } = useAuth();
 
-    // Carregar notas do paciente
+    // Efeito para carregar as notas
     useEffect(() => {
-        if (notas.length > 0) {
-            // Se já recebemos as notas como prop, usamos elas
-            setNotasData(notas);
-        } else if (pacienteId && user?.uid) {
-            // Caso contrário, carregamos do Firebase
+        if (pacienteId && user?.uid) {
             const fetchNotas = async () => {
                 try {
-                    setLoading(true);
-                    // Aqui você poderia carregar as anamneses ou outro tipo de anotação
-                    // const anotacoesData = await FirebaseService.listAnamneses(user.uid, pacienteId);
+                    setIsLoading(true);
+                    const notes = await FirebaseService.listNotes(user.uid, pacienteId);
 
-                    // Como não temos a implementação real, usaremos dados de exemplo
-                    // Transformar os dados recebidos no formato esperado pelo componente
-                    // setNotasData(anotacoesData.map(...));
+                    // Ordenar por data de criação, mais recentes primeiro
+                    const sortedNotes = notes.sort((a, b) => {
+                        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+                        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+                        return dateB - dateA;
+                    });
 
-                    // Simulação de carregamento
-                    setTimeout(() => {
-                        setNotasData(notasExemplo);
-                        setLoading(false);
-                    }, 1000);
+                    setNotasData(sortedNotes);
                 } catch (error) {
-                    console.error("Erro ao carregar anotações:", error);
-                    setLoading(false);
+                    console.error("Erro ao carregar notas:", error);
+                    setError("Não foi possível carregar as notas. Tente novamente mais tarde.");
+                } finally {
+                    setIsLoading(false);
                 }
             };
 
             fetchNotas();
         }
-    }, [notas, pacienteId, user]);
+    }, [pacienteId, user]);
 
-    const handleOpenNovaAnotacao = () => {
-        setOpenNovaAnotacao(true);
+    // Função para abrir o dialog de criação de nova nota
+    const handleOpenCreateDialog = () => {
+        setSelectedNota(null);
+        setOpenDialog(true);
     };
 
-    const handleCloseNovaAnotacao = () => {
-        setOpenNovaAnotacao(false);
-    };
-
-    const handleSaveAnotacao = (novaNota) => {
-        setNotasData(prev => [novaNota, ...prev]);
-    };
-
-    const handleOpenViewNota = (nota) => {
+    // Função para abrir o dialog de edição/visualização de nota existente
+    const handleOpenEditDialog = (nota) => {
         setSelectedNota(nota);
-        setOpenViewNota(true);
+        setOpenDialog(true);
     };
 
-    const handleCloseViewNota = () => {
-        setOpenViewNota(false);
+    // Fechar o dialog
+    const handleCloseDialog = () => {
+        setOpenDialog(false);
     };
 
-    // Dados de exemplo para testar
-    const notasExemplo = [
-        {
-            id: 1,
-            titulo: "Lorem Título 1",
-            data: "23/11/2024",
-            descricao: "Paciente relatou melhora significativa após o início do uso de Dipirona 1g e Paracetamol 750mg conforme prescrição.",
-            criado: "24 de Dezembro/2024",
-            quantidadeAnexos: 2,
-            anexo: {
-                nome: "pas-nelio.pdf",
-                tamanho: "74mb"
-            }
-        },
-        {
-            id: 2,
-            titulo: "Lorem Título 2",
-            data: "23/11/2024",
-            descricao: "Paciente relatou melhora significativa após o início do uso de Dipirona 1g e Paracetamol 750mg conforme prescrição.",
-            criado: "24 de Dezembro/2024",
-            quantidadeAnexos: 2,
-            anexo: {
-                nome: "pas-nelio.pdf",
-                tamanho: "74mb"
-            }
-        },
-        {
-            id: 3,
-            titulo: "Lorem Título 3",
-            data: "23/11/2024",
-            descricao: "Paciente relatou melhora significativa após o início do uso de Dipirona 1g e Paracetamol 750mg conforme prescrição.",
-            criado: "24 de Dezembro/2024",
-            quantidadeAnexos: 2,
-            anexo: {
-                nome: "pas-nelio.pdf",
-                tamanho: "74mb"
-            }
-        },
-        {
-            id: 4,
-            titulo: "Lorem Título 4",
-            data: "23/11/2024",
-            descricao: "Paciente relatou melhora significativa após o início do uso de Dipirona 1g e Paracetamol 750mg conforme prescrição.",
-            criado: "24 de Dezembro/2024",
-            quantidadeAnexos: 2,
-            anexo: {
-                nome: "pas-nelio.pdf",
-                tamanho: "74mb"
-            }
+    // Handler para criar ou atualizar nota
+    const handleSaveNote = (notaData) => {
+        // Se estamos editando uma nota existente
+        if (selectedNota && selectedNota.id) {
+            // Atualizar a nota no estado local
+            setNotasData(prevNotas => {
+                const index = prevNotas.findIndex(n => n.id === selectedNota.id);
+                if (index !== -1) {
+                    const updatedNotas = [...prevNotas];
+                    updatedNotas[index] = {
+                        ...prevNotas[index],
+                        ...notaData
+                    };
+                    return updatedNotas;
+                }
+                return prevNotas;
+            });
+
+            // Mostrar mensagem de sucesso
+            setSuccessAction("atualizada");
+            setShowSuccessMessage(true);
+            setTimeout(() => setShowSuccessMessage(false), 3000);
+
+        } else {
+            // Adicionar a nova nota ao estado local
+            setNotasData(prevNotas => [notaData, ...prevNotas]);
+
+            // Mostrar mensagem de sucesso
+            setSuccessAction("criada");
+            setShowSuccessMessage(true);
+            setTimeout(() => setShowSuccessMessage(false), 3000);
         }
-    ];
+
+        // Fechar o dialog
+        setOpenDialog(false);
+    };
+
+    // Handler para deletar nota
+    const handleDeleteNote = (noteId) => {
+        // Remover a nota do estado local
+        setNotasData(prevNotas => prevNotas.filter(n => n.id !== noteId));
+
+        // Mostrar mensagem de sucesso
+        setSuccessAction("excluída");
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+
+        // Fechar o dialog
+        setOpenDialog(false);
+    };
 
     return (
         <Box
@@ -565,7 +533,6 @@ export default function NotasSection({ notas = [], pacienteId }) {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    mb: 3,
                     width: "100%",
                 }}
             >
@@ -574,74 +541,130 @@ export default function NotasSection({ notas = [], pacienteId }) {
                     sx={{
                         color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: 26,
-                        fontWeight: 500,
+                        fontSize: 24,
+                        fontWeight: 600,
                     }}
                 >
                     Anotações
                 </Typography>
-                <CriarNovaFichaButton onClick={handleOpenNovaAnotacao} />
+                <CriarNovaFichaButton
+                    onClick={handleOpenCreateDialog}
+                    disabled={isLoading}
+                />
             </Box>
 
-            {/* Lista de notas - um card por linha */}
+            {/* Mensagem de sucesso */}
+            <Fade in={showSuccessMessage}>
+                <Box
+                    sx={{
+                        p: 1.5,
+                        mb: 1.5,
+                        backgroundColor: "#E6F7F0",
+                        color: "#10B981",
+                        borderRadius: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        fontFamily: "Gellix",
+                    }}
+                >
+                    <Box
+                        component="img"
+                        src="/checkmark.svg"
+                        alt="Sucesso"
+                        sx={{
+                            width: 18,
+                            height: 18,
+                            mr: 1
+                        }}
+                    />
+                    Nota {successAction} com sucesso!
+                </Box>
+            </Fade>
+
+            {/* Lista de notas */}
             <Box
                 sx={{
                     width: "100%",
-                    maxHeight: "300px",
+                    maxHeight: "480px",
                     overflowY: "auto",
                     paddingRight: 1,
                     // Estilos para a barra de rolagem
                     "&::-webkit-scrollbar": {
-                        width: "6px",
+                        width: "5px",
                         borderRadius: "3px",
                     },
                     "&::-webkit-scrollbar-thumb": {
-                        backgroundColor: "rgba(0,0,0,0.2)",
+                        backgroundColor: "rgba(0,0,0,0.15)",
                         borderRadius: "3px",
                     },
                     "&::-webkit-scrollbar-track": {
-                        backgroundColor: "rgba(0,0,0,0.05)",
+                        backgroundColor: "rgba(0,0,0,0.03)",
                         borderRadius: "3px",
                     },
                 }}
             >
-                {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                        <CircularProgress />
-                    </Box>
-                ) : notasData.length === 0 ? (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography variant="body1" color="textSecondary">
-                            Nenhuma anotação encontrada para este paciente.
-                        </Typography>
+                {isLoading ? (
+                    // Skeletons para carregamento
+                    Array(3).fill().map((_, index) => (
+                        <NotaCardSkeleton key={index} />
+                    ))
+                ) : error ? (
+                    // Mensagem de erro
+                    <Box
+                        sx={{
+                            p: 2,
+                            borderRadius: "12px",
+                            backgroundColor: "#FEE2E2",
+                            display: "flex",
+                            alignItems: "center",
+                            color: "#EF4444",
+                            mt: 1
+                        }}
+                    >
+                        <Box
+                            component="img"
+                            src="/error-icon.svg"
+                            alt="Erro"
+                            sx={{
+                                width: 20,
+                                height: 20,
+                                mr: 1
+                            }}
+                        />
+                        <Typography variant="body2">{error}</Typography>
                         <Button
-                            variant="text"
-                            onClick={handleOpenNovaAnotacao}
-                            sx={{ mt: 1, textTransform: 'none', color: themeColors.primary }}
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            sx={{ ml: "auto", textTransform: "none", borderRadius: "20px", fontSize: 12 }}
+                            onClick={() => window.location.reload()}
                         >
-                            Criar primeira anotação
+                            Tentar novamente
                         </Button>
                     </Box>
+                ) : notasData.length === 0 ? (
+                    // Estado vazio - sem notas
+                    <EmptyState onCreate={handleOpenCreateDialog} />
                 ) : (
+                    // Lista de notas
                     notasData.map((nota) => (
-                        <AnotacoesCard key={nota.id} nota={nota} onOpen={handleOpenViewNota} />
+                        <NotaCard
+                            key={nota.id}
+                            nota={nota}
+                            onOpen={handleOpenEditDialog}
+                        />
                     ))
                 )}
             </Box>
 
-            {/* Modal para nova anotação */}
-            <NovaAnotacaoModal
-                open={openNovaAnotacao}
-                handleClose={handleCloseNovaAnotacao}
+            {/* Dialog para criar/editar nota */}
+            <PatientNoteDialog
+                open={openDialog}
+                onClose={handleCloseDialog}
+                note={selectedNota}
                 patientId={pacienteId}
-                onSave={handleSaveAnotacao}
-            />
-
-            {/* Dialog para visualizar anotação */}
-            <VisualizarAnotacaoDialog
-                nota={selectedNota}
-                open={openViewNota}
-                handleClose={handleCloseViewNota}
+                onSave={handleSaveNote}
+                onDelete={handleDeleteNote}
             />
         </Box>
     );

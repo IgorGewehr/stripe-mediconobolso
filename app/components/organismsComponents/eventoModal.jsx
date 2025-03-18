@@ -198,10 +198,11 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                 const options = patientsData.map(patient => ({
                     id: patient.id,
                     name: patient.patientName,
-                    gender: patient.patientGender,
+                    gender: patient.patientGender, // se necessário
                     age: patient.patientAge,
-                    phone: patient.patientPhone,
-                    email: patient.patientEmail
+                    phone: patient.phone,
+                    email: patient.patientEmail,
+                    fotoPerfil: patient.patientPhotoUrl // adicionado
                 }));
 
                 setPatientOptions(options);
@@ -382,21 +383,20 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     const renderPatientOption = (props, option) => {
         if (!option) return null;
 
-        // Extrair a propriedade key dos props e remover do restante
         const { key, ...otherProps } = props;
-
         return (
             <Box component="li" key={key} {...otherProps}>
                 <PatientItem>
-                    <PatientAvatar>
-                        {option.name ? option.name.charAt(0).toUpperCase() : <PersonIcon />}
+                    <PatientAvatar src={option.fotoPerfil || undefined}>
+                        {option.fotoPerfil
+                            ? ''
+                            : (option.name ? option.name.charAt(0).toUpperCase() : <PersonIcon />)}
                     </PatientAvatar>
                     <Box>
                         <Typography variant="body1">{option.name}</Typography>
                         <Typography variant="caption" color="text.secondary">
-                            {option.gender || 'Não informado'}
+                            {option.phone ? `Contato: ${option.phone}` : "Telefone não informado"}
                             {option.age ? `, ${option.age} anos` : ''}
-                            {option.phone ? ` • ${option.phone}` : ''}
                         </Typography>
                     </Box>
                 </PatientItem>
