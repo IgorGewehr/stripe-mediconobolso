@@ -412,17 +412,19 @@ const PatientNoteDialog = ({
 
     // Load consultations when the dialog opens or when type changes to 'Consulta'
     useEffect(() => {
-        if (open && noteType === 'Consulta') {
+        if (open && patientId && user) {
             loadConsultations();
         }
-    }, [open, noteType, patientId, user]);
+    }, [open, patientId, user, noteType]);
 
     const loadConsultations = async () => {
         if (!user || !patientId) return;
 
         setIsLoadingConsultations(true);
         try {
-            const cons = await FirebaseService.listConsultations(user.uid, patientId);
+            console.log("Carregando consultas para paciente:", patientId); // Log para depuração
+            const cons = await FirebaseService.listPatientConsultations(user.uid, patientId);
+            console.log("Consultas carregadas:", cons); // Log para depuração
             setConsultations(cons);
         } catch (error) {
             console.error("Erro ao carregar consultas:", error);
@@ -525,6 +527,9 @@ const PatientNoteDialog = ({
     };
 
     const handleSelectConsultation = (consultation) => {
+        // Adicione esta linha para definir o tipo da nota como "Consulta"
+        setNoteType("Consulta");
+
         const consDate = consultation.consultationDate instanceof Date
             ? consultation.consultationDate
             : consultation.consultationDate.toDate();
