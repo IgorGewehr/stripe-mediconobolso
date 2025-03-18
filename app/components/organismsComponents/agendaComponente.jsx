@@ -55,6 +55,7 @@ import {
     formatISO
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import PeriodSelector from "../basicComponents/periodSelector";
 
 // Main component
 const AgendaMedica = () => {
@@ -73,7 +74,8 @@ const AgendaMedica = () => {
     const [showEventoModal, setShowEventoModal] = useState(false);
     const [eventoSelecionado, setEventoSelecionado] = useState(null);
     const [notification, setNotification] = useState({ open: false, message: '', type: 'info' });
-    const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+    // Modificando para que o sidebar comece fechado
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     // Constants
@@ -1627,19 +1629,20 @@ const AgendaMedica = () => {
                 open={sidebarOpen}
                 onClose={toggleSidebar}
                 sx={{
-                    width: sidebarCollapsed ? 60 : 280,
+                    width: sidebarOpen ? (sidebarCollapsed ? 60 : 280) : 0,
                     flexShrink: 0,
-                    transition: 'width 0.3s ease',
                     '& .MuiDrawer-paper': {
                         width: sidebarCollapsed ? 60 : 280,
                         boxSizing: 'border-box',
                         borderRight: '1px solid #EAECEF',
                         boxShadow: 'none',
-                        transition: 'width 0.3s ease',
-                        overflowX: 'hidden'
+                        transition: 'width 0.3s ease, transform 0.5s ease',
+                        overflowX: 'hidden',
+                        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)'
                     },
                 }}
             >
+
                 <Box
                     sx={{
                         p: sidebarCollapsed ? 1 : 3,
@@ -1658,21 +1661,22 @@ const AgendaMedica = () => {
                     <Box sx={{ flexGrow: 1 }} />
 
                     <IconButton
-                        onClick={() => setSidebarCollapsed(prev => !prev)}
+                        onClick={toggleSidebar}
                         sx={{
-                            bgcolor: '#1852FE',
-                            color: 'white',
+                            p: 0.5,
+                            borderRadius: '50%',
+                            border: '1.522px solid rgba(0, 0, 0, 0.20)',
+                            backgroundColor: 'white',
                             '&:hover': {
-                                bgcolor: '#1852FE'
-                            },
-                            mr: 1 // margem direita para afastar um pouco do limite da tela, se desejar
+                                backgroundColor: 'rgba(0, 0, 0, 0.05)'
+                            }
                         }}
                     >
                         <Box
                             component="img"
-                            src={sidebarCollapsed ? "/rightarrow.svg" : "/leftarrowblack.svg"}
-                            alt="Toggle Sidebar"
-                            sx={{ width: 24, height: 24 }}
+                            src={sidebarOpen ? '/leftarrowblack.svg' : '/rightarrow.svg'}
+                            alt="Toggle Calendar Sidebar"
+                            sx={{ width: 20, height: 20 }}
                         />
                     </IconButton>
                 </Box>
@@ -1799,12 +1803,12 @@ const AgendaMedica = () => {
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <ViewSelector />
+                        <PeriodSelector changeView={changeView} />
 
                         {!isMobile && (
                             <Button
                                 variant="contained"
-                                color="success"
+                                color= "#1852FE"
                                 startIcon={<Add />}
                                 onClick={handleCreateEvent}
                                 sx={{

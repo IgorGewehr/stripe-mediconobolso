@@ -897,7 +897,7 @@ export default function PacienteCard({ paciente }) {
     return (
         <Box
             sx={{
-                position: "relative",
+                position: expanded ? "absolute" : "relative", // Usa posição absoluta quando expandido
                 width: expanded ? "770px" : "350px",
                 transition: "width 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                 marginBottom: "20px",
@@ -906,21 +906,22 @@ export default function PacienteCard({ paciente }) {
                 height: 'max-content',
                 minHeight: "0",
                 maxHeight: "none",
-                alignSelf: "flex-start", // Força alinhamento no topo
+                alignSelf: "flex-start",
+                zIndex: expanded ? 10 : 1, // Aumenta o z-index quando expandido
             }}
         >
             <Paper
-                elevation={3}
+                elevation={expanded ? 8 : 3} // Aumenta a sombra quando expandido para dar sensação de estar acima
                 sx={{
                     display: "flex",
                     flexDirection: "row",
                     backgroundColor: "#fff",
                     borderRadius: "40px",
-                    overflow: "visible", // Alterado de "hidden" para "visible"
+                    overflow: "visible",
                     border: `1px solid ${themeColors.borderColor}`,
                     width: '100%',
                     height: 'auto',
-                    maxHeight: "none", // Removida a limitação de altura máxima
+                    maxHeight: "none",
                     minHeight: "0",
                 }}
             >
@@ -935,7 +936,6 @@ export default function PacienteCard({ paciente }) {
                             visibility: "visible",
                             transform: "translateX(0)",
                             opacity: expanded ? 1 : 0,
-                            // Atraso na animação de opacidade para aparecer após a expansão da largura
                             transitionProperty: "width, opacity",
                             transitionDuration: "0.3s, 0.2s",
                             transitionDelay: "0s, 0.25s",
@@ -945,7 +945,7 @@ export default function PacienteCard({ paciente }) {
                             flexGrow: 1,
                             height: 'auto',
                             minHeight: "0",
-                            maxHeight: "none", // Removida a limitação de altura máxima
+                            maxHeight: "none",
                         }}
                     >
                         <Card2 paciente={paciente} />

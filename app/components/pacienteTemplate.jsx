@@ -139,8 +139,8 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                 backgroundColor: "#F4F9FF",
                 p: "10px",
                 boxSizing: "border-box",
-                position: "relative",
-                alignItems: "flex-start", // Importante para alinhamento superior
+                position: "relative", // Importante para posicionar os elementos filhos
+                alignItems: "flex-start",
                 height: "auto",
                 minHeight: "0",
                 overflow: "visible", // Permite que o conteúdo ultrapasse sem scroll
@@ -151,9 +151,10 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                     position: "relative",
                     flexShrink: 0,
                     zIndex: 2,
-                    alignSelf: "flex-start", // Força o card a ficar no topo
-                    height: "max-content", // Define altura baseada no conteúdo
-                    maxHeight: "none", // Remove limitação de altura máxima
+                    alignSelf: "flex-start",
+                    height: "max-content",
+                    maxHeight: "none",
+                    width: "350px", // Define uma largura fixa para o espaço ocupado pelo card
                 }}
             >
                 <PacienteCard paciente={pacienteData} />
@@ -167,10 +168,11 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                     p: 3,
                     width: "100%",
                     boxSizing: "border-box",
-                    alignSelf: "flex-start", // Mantém esse container alinhado com o topo
+                    alignSelf: "flex-start",
                     zIndex: 1,
-                    height: "auto", // Ajusta altura automaticamente
-                    minHeight: "0", // Remove altura mínima
+                    height: "auto",
+                    minHeight: "0",
+                    marginLeft: "0px", // Mantem a margem fixa quando o card se expande
                 }}
             >
                 {/* Accompaniment Section */}
