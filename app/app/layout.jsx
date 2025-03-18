@@ -8,9 +8,9 @@ import DashboardTemplate from "../components/DashboardTemplate";
 import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
 import PacienteTemplate from "../components/pacienteTemplate";
 import AgendaMedica from "../components/organismsComponents/agendaComponente";
-import PatientsTable from "../components/organismsComponents/patientTable";
 import { useAuth } from "../components/authProvider";
 import { useRouter } from "next/navigation";
+import Dashboard from "../components/DashboardTemplate";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -53,21 +53,36 @@ export default function AppLayout({ children }) {
         setActivePage("Dashboard");
     };
 
+    // Expor o handler globalmente para que os componentes possam acessá-lo
+    // Útil quando componentes aninhados precisam navegar
+    useEffect(() => {
+        // Expor handlers para uso global em componentes aninhados
+        window.handlePatientClick = handlePatientClick;
+        window.handleMenuSelect = handleMenuSelect;
+
+        // Limpeza ao desmontar o componente
+        return () => {
+            delete window.handlePatientClick;
+            delete window.handleMenuSelect;
+        };
+    }, []);
+
     const renderContent = () => {
         // Converte para lowercase para facilitar a comparação
         switch (activePage.toLowerCase()) {
             case "dashboard":
-                return <PatientsTable onPatientClick={handlePatientClick} />;
+                return <Dashboard onClickPatients={handlePatientClick}/>;
             case "pacientes":
                 return <PacienteCadastroTemplate />;
             case "receitas":
-                return <PatientsTable onPatientClick={handlePatientClick} />;
+                // Recebendo o handler de clique no paciente diretamente
+                return <Dashboard onClickPatients={handlePatientClick} />;
             case "agenda":
                 return <AgendaMedica />;
             case "patientprofile":
                 return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToPatients} />;
             default:
-                return <DashboardTemplate />;
+                return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
     };
 
