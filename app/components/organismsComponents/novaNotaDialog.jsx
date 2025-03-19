@@ -38,7 +38,7 @@ import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FirebaseService from '../../../lib/FirebaseService';
+import FirebaseService from '../../../lib/firebaseService';
 import { useAuth } from '../authProvider';
 
 // Theme creation for defining colors, fonts, and formats
