@@ -12,10 +12,9 @@ import {useAuth} from "./authProvider";
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 function CheckoutContent({ selectedPlan, onPlanChange }) {
-    // Obtém o usuário autenticado
     const auth = useAuth();
-    const user = auth?.user;
-    const uid = user.uid;
+    const user = auth.user;
+    const uid = user ? user.uid : '';
 
     // Carrega dados adicionais do usuário (nome, email, etc.) do Firestore
     const [userInfo, setUserInfo] = useState(null);
