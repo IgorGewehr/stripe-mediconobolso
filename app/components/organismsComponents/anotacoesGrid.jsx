@@ -19,7 +19,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ImageIcon from "@mui/icons-material/Image";
 import FileIcon from "@mui/icons-material/InsertDriveFile";
 import { useAuth } from "../authProvider";
-import FirebaseService from "../../../lib/FirebaseService";
+import FirebaseService from "../../../lib/firebaseService";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PatientNoteDialog from "./novaNotaDialog";
