@@ -31,8 +31,8 @@ import {
     MoreVert as MoreVertIcon,
     Assignment as AssignmentIcon
 } from '@mui/icons-material';
-import FirebaseService from '../../../lib/FirebaseService';
-import { consultationModel } from '../../../lib/ModelObjects';
+import FirebaseService from '../../../lib/firebaseService';
+import { consultationModel } from '../../../lib/modelObjects';
 import { useAuth } from '../authProvider';
 
 // Estilos personalizados
