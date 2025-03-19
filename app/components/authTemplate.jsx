@@ -1,4 +1,3 @@
-// AuthTemplate.jsx
 "use client";
 
 import React, { useEffect } from 'react';
@@ -33,6 +32,7 @@ const AuthTemplate = () => {
                     alignItems: 'center',
                     height: '100vh',
                     width: '100%',
+                    backgroundColor: 'white',
                 }}
             >
                 <CircularProgress color="primary" />
@@ -52,7 +52,7 @@ const AuthTemplate = () => {
                 flexDirection: { xs: 'column', md: 'row' },
                 m: 0,
                 p: 0,
-                backgroundColor: { xs: '#f5f5f5', md: 'transparent' },
+                backgroundColor: 'white',
             }}
         >
             <Box

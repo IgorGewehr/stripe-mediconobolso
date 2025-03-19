@@ -271,7 +271,7 @@ export const AuthForms = () => {
                             label="Nome Completo"
                             variant="outlined"
                             fullWidth
-                            sx={{ mb: 1.5, borderRadius: { xs: 1, sm: 2 } }}
+                            sx={{ mb: 1.5 }}
                             name="fullName"
                             value={formData.fullName}
                             onChange={handleInputChange}
@@ -287,7 +287,7 @@ export const AuthForms = () => {
                             InputProps={{
                                 startAdornment: <InputAdornment position="start">+55</InputAdornment>,
                             }}
-                            sx={{ mb: 1.5, borderRadius: { xs: 1, sm: 2 } }}
+                            sx={{ mb: 1.5 }}
                             name="phone"
                             value={formData.phone}
                             onChange={handleInputChange}
@@ -301,7 +301,6 @@ export const AuthForms = () => {
                             label="CPF"
                             variant="outlined"
                             fullWidth
-                            sx={{ borderRadius: { xs: 1, sm: 2 } }}
                             name="cpf"
                             value={formData.cpf}
                             onChange={handleInputChange}
@@ -318,7 +317,6 @@ export const AuthForms = () => {
                     label="E-mail"
                     variant="outlined"
                     fullWidth
-                    sx={{ borderRadius: { xs: 1, sm: 2 } }}
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
@@ -332,7 +330,6 @@ export const AuthForms = () => {
                     type="password"
                     variant="outlined"
                     fullWidth
-                    sx={{ borderRadius: { xs: 1, sm: 2 } }}
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -17,21 +17,22 @@ import {
     IconButton,
     TextField,
     InputAdornment,
-    ToggleButtonGroup,
-    ToggleButton,
+    Button,
     Skeleton,
     useTheme,
     alpha,
     Popover,
-    Button,
+    Grid,
     FormControl,
     Select,
     MenuItem,
-    Radio,
-    RadioGroup,
-    FormControlLabel,
-    useMediaQuery
+    useMediaQuery,
+    Tooltip,
+    ButtonGroup,
+    Divider,
+    Badge
 } from '@mui/material';
+
 import {
     Search as SearchIcon,
     ChevronRight as ChevronRightIcon,
@@ -41,22 +42,32 @@ import {
     Male as MaleIcon,
     VideoCall as VideoCallIcon,
     Close as CloseIcon,
-    CalendarToday as CalendarTodayIcon
+    CalendarToday as CalendarTodayIcon,
+    Event as EventIcon,
+    EventAvailable as EventAvailableIcon,
+    FilterAlt as FilterAltIcon,
+    MoreVert as MoreVertIcon,
+    ArrowDropDown as ArrowDropDownIcon
 } from '@mui/icons-material';
-import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears } from 'date-fns';
+
+import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, formatDistance, isAfter, isBefore, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import FirebaseService from "../../../lib/firebaseService";
+import { useAuth } from "../authProvider";
+import PersonIcon from "@mui/icons-material/Person";
 
 // Constantes
 const PATIENT_CONDITIONS = [
     { label: 'Diabetes', value: 'diabetes', color: 'diabetes' },
+    { label: 'Hipertensão', value: 'hipertensao', color: 'hipertensao' },
     { label: 'Fumante', value: 'fumante', color: 'fumante' },
     { label: 'Internado', value: 'internado', color: 'internado' },
     { label: 'Idoso', value: 'idoso', color: 'idoso' },
     { label: 'Obeso', value: 'obeso', color: 'obeso' },
-    { label: 'Hipertensão', value: 'hipertensao', color: 'hipertensao' },
 ];
 
 const STATUS_OPTIONS = [
+    { label: 'Todos os status', value: '' },
     { label: 'Pendente', value: 'pendente' },
     { label: 'Reagendado', value: 'reagendado' },
     { label: 'Primeira Consulta', value: 'primeira consulta' },
@@ -74,27 +85,32 @@ const SortableHeaderCell = ({ label, field, sortConfig, onSortChange }) => {
             sx={{
                 cursor: 'pointer',
                 backgroundColor: '#F9FAFB',
-                color: '#A2ADB8',
-                fontWeight: 500,
+                color: '#647787',
+                fontWeight: 600,
                 fontSize: '0.75rem',
                 '&:hover': {
                     backgroundColor: alpha(theme.palette.primary.main, 0.05)
                 }
             }}
         >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                {label}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="caption" fontWeight={600}>{label}</Typography>
                 <Box
-                    component="img"
-                    src="/organizaricon.svg"
-                    alt="Organizar"
                     sx={{
-                        width: 12,
-                        height: 12,
-                        ml: 0.5,
-                        opacity: isActive ? 1 : 0.5
+                        display: 'flex',
+                        alignItems: 'center',
+                        opacity: isActive ? 1 : 0.4,
+                        transition: 'all 0.2s ease',
                     }}
-                />
+                >
+                    <ArrowDropDownIcon
+                        fontSize="small"
+                        sx={{
+                            transform: isActive && sortConfig.direction === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease'
+                        }}
+                    />
+                </Box>
             </Box>
         </TableCell>
     );
@@ -130,6 +146,7 @@ const FilterChip = ({ label, colorscheme, onDelete }) => {
                 color: '#111E5A',
                 borderRadius: '50px',
                 fontWeight: 500,
+                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
                 '& .MuiChip-deleteIcon': {
                     color: '#111E5A',
                     '&:hover': {
@@ -188,7 +205,7 @@ const FilterSection = ({ title, children, actionElement }) => {
     return (
         <Box sx={{ mb: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                <Typography variant="subtitle1" fontWeight={500}>{title}</Typography>
+                <Typography variant="subtitle1" fontWeight={600} color="#424242">{title}</Typography>
                 {actionElement}
             </Box>
             {children}
@@ -205,7 +222,7 @@ const ClearButton = ({ onClick }) => {
             variant="caption"
             sx={{
                 color: theme.palette.primary.main,
-                fontWeight: 500,
+                fontWeight: 600,
                 cursor: 'pointer',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
@@ -219,7 +236,7 @@ const ClearButton = ({ onClick }) => {
     );
 };
 
-const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters }) => {
+const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilters }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -357,8 +374,8 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters }) => {
                             },
                         }}
                     >
-                        <MenuItem value="">Selecionar Status</MenuItem>
-                        {STATUS_OPTIONS.map(option => (
+                        <MenuItem value="">Todos os status</MenuItem>
+                        {STATUS_OPTIONS.filter(option => option.value !== '').map(option => (
                             <MenuItem key={option.value} value={option.value}>
                                 {option.label}
                             </MenuItem>
@@ -367,25 +384,20 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters }) => {
                 </FormControl>
             </FilterSection>
 
-            {/* Filtro de Próxima Consulta */}
-            <FilterSection title="Próxima Consulta">
+            {/* Botões de Ação */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
                 <Button
-                    fullWidth
                     variant="outlined"
-                    endIcon={<CalendarTodayIcon />}
+                    color="inherit"
                     sx={{
                         borderRadius: '50px',
-                        justifyContent: 'space-between',
-                        textTransform: 'none',
-                        padding: '8px 16px',
+                        px: 3,
                     }}
+                    onClick={onClearFilters}
                 >
-                    Selecionar Data
+                    Limpar Filtros
                 </Button>
-            </FilterSection>
 
-            {/* Botão para aplicar filtros */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
                 <Button
                     variant="contained"
                     color="primary"
@@ -397,21 +409,23 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters }) => {
                             boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.15)',
                         }
                     }}
-                    onClick={onClearFilters}
+                    onClick={onApplyFilters}
                 >
-                    Limpar Filtros
+                    Aplicar Filtros
                 </Button>
             </Box>
         </Box>
     );
 };
 
-const PatientsListCard = ({ patients, loading, onPatientClick }) => {
+const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+    const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [filteredPatients, setFilteredPatients] = useState([]);
-    const [currentMode, setCurrentMode] = useState('pacientes');
+    const [viewOptions, setViewOptions] = useState('all'); // 'all', 'today', 'upcoming'
     const [sortConfig, setSortConfig] = useState({
         field: 'patientName',
         direction: 'asc'
@@ -422,35 +436,168 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
     const [activeFilters, setActiveFilters] = useState({
         gender: null,
         conditions: [],
-        status: null,
-        consultDateRange: {
-            first: null,
-            last: null,
-            next: null
-        }
+        status: null
     });
 
-    // Função auxiliar para extrair valores de data - memoizada para melhor performance
-    const getDateValue = useMemo(() => (patient, field) => {
-        if (!patient[field]) return null;
+    // Estado para consultas (caso não sejam fornecidas como props)
+    const [localConsultations, setLocalConsultations] = useState([]);
+    const [loadingConsultations, setLoadingConsultations] = useState(false);
 
-        if (patient[field] instanceof Date) {
-            return patient[field];
+    // Métricas para o card
+    const [metrics, setMetrics] = useState({
+        totalPatients: 0,
+        todayConsultations: 0,
+        upcomingConsultations: 0
+    });
+
+    // Carregar consultas se não foram fornecidas como props
+    useEffect(() => {
+        const fetchConsultations = async () => {
+            if (!user?.uid) return;
+            if (consultations && consultations.length > 0) {
+                setLocalConsultations(consultations);
+                return;
+            }
+
+            setLoadingConsultations(true);
+            try {
+                const consultationsData = await FirebaseService.listAllConsultations(user.uid);
+                setLocalConsultations(consultationsData);
+            } catch (error) {
+                console.error("Erro ao carregar consultas:", error);
+            } finally {
+                setLoadingConsultations(false);
+            }
+        };
+
+        fetchConsultations();
+    }, [user, consultations]);
+
+    // Função auxiliar para extrair valores de data
+    const getDateValue = useCallback((obj, field) => {
+        if (!obj || !obj[field]) return null;
+
+        if (obj[field] instanceof Date) {
+            return obj[field];
         }
 
-        if (typeof patient[field].toDate === 'function') {
-            return patient[field].toDate();
+        if (typeof obj[field].toDate === 'function') {
+            return obj[field].toDate();
         }
 
-        if (typeof patient[field] === 'string') {
-            const parsedDate = parseISO(patient[field]);
-            if (isValid(parsedDate)) {
-                return parsedDate;
+        if (typeof obj[field] === 'string') {
+            try {
+                const parsedDate = parseISO(obj[field]);
+                if (isValid(parsedDate)) {
+                    return parsedDate;
+                }
+            } catch (e) {
+                // Tenta outro formato
+                try {
+                    const parsedDate = parse(obj[field], 'dd/MM/yyyy', new Date());
+                    if (isValid(parsedDate)) {
+                        return parsedDate;
+                    }
+                } catch (e2) {
+                    console.warn(`Não foi possível parsear a data: ${obj[field]}`);
+                }
             }
         }
 
         return null;
     }, []);
+
+    // Mapeamento de pacientes e suas consultas
+    const patientConsultations = useMemo(() => {
+        const consultationsMap = {};
+        const allConsultations = consultations || localConsultations;
+
+        if (!patients || !allConsultations) return {};
+
+        // Agrupar consultas por paciente
+        allConsultations.forEach(consultation => {
+            const patientId = consultation.patientId;
+            if (!consultationsMap[patientId]) {
+                consultationsMap[patientId] = [];
+            }
+            consultationsMap[patientId].push(consultation);
+        });
+
+        return consultationsMap;
+    }, [patients, consultations, localConsultations]);
+
+    // Atualizar métricas quando os pacientes e consultas mudam
+    useEffect(() => {
+        if (!patients) return;
+        const allConsultations = consultations || localConsultations;
+        if (!allConsultations) return;
+
+        const today = startOfDay(new Date());
+        const tomorrow = addDays(today, 1);
+
+        // Contar consultas de hoje
+        const todayConsultations = allConsultations.filter(consultation => {
+            const consultDate = getDateValue(consultation, 'consultationDate');
+            if (!consultDate) return false;
+
+            const consultDay = startOfDay(consultDate);
+            return consultDay.getTime() === today.getTime();
+        }).length;
+
+        // Contar próximas consultas (futuras, excluindo hoje)
+        const upcomingConsultations = allConsultations.filter(consultation => {
+            const consultDate = getDateValue(consultation, 'consultationDate');
+            if (!consultDate) return false;
+
+            return isAfter(consultDate, tomorrow);
+        }).length;
+
+        setMetrics({
+            totalPatients: patients.length,
+            todayConsultations,
+            upcomingConsultations
+        });
+    }, [patients, consultations, localConsultations, getDateValue]);
+
+    // Obter próxima consulta para um paciente
+    const getPatientNextConsult = useCallback((patientId) => {
+        const patientConsultsList = patientConsultations[patientId] || [];
+        const now = new Date();
+
+        // Filtrar consultas futuras
+        const futureConsults = patientConsultsList
+            .filter(consult => {
+                const consultDate = getDateValue(consult, 'consultationDate');
+                return consultDate && isAfter(consultDate, now);
+            })
+            .sort((a, b) => {
+                const dateA = getDateValue(a, 'consultationDate');
+                const dateB = getDateValue(b, 'consultationDate');
+                return dateA - dateB;
+            });
+
+        return futureConsults.length > 0 ? futureConsults[0] : null;
+    }, [patientConsultations, getDateValue]);
+
+    // Obter última consulta para um paciente
+    const getPatientLastConsult = useCallback((patientId) => {
+        const patientConsultsList = patientConsultations[patientId] || [];
+        const now = new Date();
+
+        // Filtrar consultas passadas
+        const pastConsults = patientConsultsList
+            .filter(consult => {
+                const consultDate = getDateValue(consult, 'consultationDate');
+                return consultDate && isBefore(consultDate, now);
+            })
+            .sort((a, b) => {
+                const dateA = getDateValue(a, 'consultationDate');
+                const dateB = getDateValue(b, 'consultationDate');
+                return dateB - dateA; // Ordenação decrescente
+            });
+
+        return pastConsults.length > 0 ? pastConsults[0] : null;
+    }, [patientConsultations, getDateValue]);
 
     // Filtragem e ordenação dos pacientes
     useEffect(() => {
@@ -459,9 +606,39 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
             return;
         }
 
-        // Aplicar pesquisa
+        // Aplicar pesquisa e filtros
         let filtered = [...patients];
+        const allConsultations = consultations || localConsultations;
 
+        // Filtrar por consultas de hoje ou próximas
+        if (viewOptions === 'today') {
+            const today = startOfDay(new Date());
+
+            filtered = filtered.filter(patient => {
+                // Verificar consultas do paciente para hoje
+                const patientConsults = patientConsultations[patient.id] || [];
+                return patientConsults.some(consult => {
+                    const consultDate = getDateValue(consult, 'consultationDate');
+                    if (!consultDate) return false;
+
+                    const consultDay = startOfDay(consultDate);
+                    return consultDay.getTime() === today.getTime();
+                });
+            });
+        } else if (viewOptions === 'upcoming') {
+            const tomorrow = addDays(startOfDay(new Date()), 1);
+
+            filtered = filtered.filter(patient => {
+                // Verificar consultas futuras do paciente
+                const patientConsults = patientConsultations[patient.id] || [];
+                return patientConsults.some(consult => {
+                    const consultDate = getDateValue(consult, 'consultationDate');
+                    return consultDate && isAfter(consultDate, tomorrow);
+                });
+            });
+        }
+
+        // Aplicar pesquisa
         if (searchTerm) {
             const searchLower = searchTerm.toLowerCase();
             filtered = filtered.filter(patient =>
@@ -487,6 +664,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                 if (patient.isSmoker) patientConditions.push('fumante');
                 if (patient.chronicDiseases?.includes('Diabetes')) patientConditions.push('diabetes');
                 if (patient.chronicDiseases?.includes('Hipertensão')) patientConditions.push('hipertensao');
+                // Adicionar mais mapeamentos conforme necessário
 
                 // Verificar se alguma das condições filtradas está presente
                 return activeFilters.conditions.some(condition =>
@@ -499,9 +677,10 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
         if (activeFilters.status) {
             filtered = filtered.filter(patient => {
                 let status = 'pendente';
-                const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
-                const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
-                if (!lastConsultDate && nextConsultDate) {
+                const nextConsult = getPatientNextConsult(patient.id);
+                const lastConsult = getPatientLastConsult(patient.id);
+
+                if (!lastConsult && nextConsult) {
                     status = 'primeira consulta';
                 } else if (patient.consultationRescheduled) {
                     status = patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
@@ -513,17 +692,31 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
 
         // Aplicar ordenação
         filtered = [...filtered].sort((a, b) => {
-            let aValue = a[sortConfig.field];
-            let bValue = b[sortConfig.field];
+            let aValue, bValue;
 
-            // Tratamento especial para campos de data
+            // Tratamento especial para campos de consulta
+            if (sortConfig.field === 'lastConsultationDate') {
+                const lastConsultA = getPatientLastConsult(a.id);
+                const lastConsultB = getPatientLastConsult(b.id);
+
+                aValue = lastConsultA ? getDateValue(lastConsultA, 'consultationDate') : null;
+                bValue = lastConsultB ? getDateValue(lastConsultB, 'consultationDate') : null;
+            } else if (sortConfig.field === 'nextConsultationDate') {
+                const nextConsultA = getPatientNextConsult(a.id);
+                const nextConsultB = getPatientNextConsult(b.id);
+
+                aValue = nextConsultA ? getDateValue(nextConsultA, 'consultationDate') : null;
+                bValue = nextConsultB ? getDateValue(nextConsultB, 'consultationDate') : null;
+            } else {
+                aValue = a[sortConfig.field];
+                bValue = b[sortConfig.field];
+            }
+
+            // Ordenação para datas
             if (sortConfig.field === 'lastConsultationDate' || sortConfig.field === 'nextConsultationDate') {
-                aValue = getDateValue(a, sortConfig.field);
-                bValue = getDateValue(b, sortConfig.field);
-
+                if (!aValue && !bValue) return 0;
                 if (!aValue) return 1;
                 if (!bValue) return -1;
-                if (!aValue && !bValue) return 0;
 
                 return sortConfig.direction === 'asc'
                     ? aValue.getTime() - bValue.getTime()
@@ -547,7 +740,19 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
         });
 
         setFilteredPatients(filtered);
-    }, [patients, searchTerm, sortConfig, activeFilters, getDateValue]);
+    }, [
+        patients,
+        consultations,
+        localConsultations,
+        searchTerm,
+        sortConfig,
+        activeFilters,
+        viewOptions,
+        getDateValue,
+        patientConsultations,
+        getPatientNextConsult,
+        getPatientLastConsult
+    ]);
 
     // Formatação de datas
     const formatDate = (date) => {
@@ -564,20 +769,15 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
     const hasActiveFilters =
         activeFilters.gender !== null ||
         activeFilters.conditions.length > 0 ||
-        activeFilters.status !== null ||
-        activeFilters.consultDateRange.first !== null ||
-        activeFilters.consultDateRange.last !== null ||
-        activeFilters.consultDateRange.next !== null;
+        activeFilters.status !== null;
 
     // Manipuladores de eventos
     const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
     };
 
-    const handleModeChange = (event, newMode) => {
-        if (newMode !== null) {
-            setCurrentMode(newMode);
-        }
+    const handleViewOptionsChange = (option) => {
+        setViewOptions(option);
     };
 
     const handleSortChange = (field) => {
@@ -625,14 +825,6 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                 ...prev,
                 status: null
             }));
-        } else if (type === 'dateRange') {
-            setActiveFilters(prev => ({
-                ...prev,
-                consultDateRange: {
-                    ...prev.consultDateRange,
-                    [value]: null
-                }
-            }));
         }
     };
 
@@ -640,13 +832,12 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
         setActiveFilters({
             gender: null,
             conditions: [],
-            status: null,
-            consultDateRange: {
-                first: null,
-                last: null,
-                next: null
-            }
+            status: null
         });
+        handleFilterClose();
+    };
+
+    const handleApplyFilters = () => {
         handleFilterClose();
     };
 
@@ -656,8 +847,11 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
             <TableRow key={`skeleton-${index}`}>
                 <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Skeleton variant="circular" width={32} height={32} sx={{ mr: 2 }} />
-                        <Skeleton variant="text" width={120} />
+                        <Skeleton variant="circular" width={40} height={40} sx={{ mr: 2 }} />
+                        <Box>
+                            <Skeleton variant="text" width={120} />
+                            <Skeleton variant="text" width={80} height={12} />
+                        </Box>
                     </Box>
                 </TableCell>
                 <TableCell><Skeleton variant="circular" width={24} height={24} /></TableCell>
@@ -665,23 +859,26 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                 <TableCell><Skeleton variant="text" width={80} /></TableCell>
                 <TableCell><Skeleton variant="text" width={80} /></TableCell>
                 <TableCell><Skeleton variant="rectangular" width={90} height={24} sx={{ borderRadius: 12 }} /></TableCell>
-                <TableCell align="right"><Skeleton variant="circular" width={24} height={24} /></TableCell>
+                <TableCell align="right"><Skeleton variant="circular" width={32} height={32} /></TableCell>
             </TableRow>
         ));
     };
+
+    const isLoadingData = loading || loadingConsultations;
 
     return (
         <Card
             elevation={0}
             sx={{
-                borderRadius: '40px',
+                borderRadius: '24px',
                 border: '1px solid',
                 borderColor: theme.palette.divider,
-                backgroundColor: '#D8E8FF',
+                backgroundColor: '#fff',
                 overflow: 'hidden',
-                height: '400px', // altura fixa para o Card
+                height: '100%',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)'
             }}
         >
             <CardContent
@@ -693,92 +890,229 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                     '&:last-child': { pb: 0 },
                 }}
             >
-                {/* Cabeçalho e área de filtros */}
-                <Box sx={{ p: 3 }}>
+                {/* Cabeçalho com métricas e opções */}
+                <Box sx={{ p: 3, backgroundColor: alpha(theme.palette.primary.main, 0.05) }}>
                     <Box
                         sx={{
                             display: 'flex',
-                            flexDirection: isMobile ? 'column' : 'row',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            mb: 2,
-                            gap: 2
+                            mb: 2
                         }}
                     >
-                        {/* Título estilizado */}
-                        <Box
-                            sx={{
-                                borderRadius: '50px',
-                                backgroundColor: '#1852FE',
-                                padding: '8px 16px',
-                                display: 'flex',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <Typography variant="h5" fontSize="16px" fontWeight="bold" sx={{ color: '#D8E8FF' }}>
-                                Pacientes
-                            </Typography>
-                        </Box>
+                        <Typography variant="h6" fontWeight={600} color="primary">
+                            Pacientes
+                        </Typography>
 
-                        {/* Campo de busca */}
-                        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <TextField
-                                placeholder="Pesquise por pacientes..."
-                                value={searchTerm}
-                                onChange={handleSearchChange}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon />
-                                        </InputAdornment>
-                                    ),
-                                    sx: {
-                                        borderRadius: '50px',
-                                        backgroundColor: 'white',
-                                        '& .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: theme.palette.divider
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <ButtonGroup
+                                variant="outlined"
+                                aria-label="Filtro de visualização"
+                                sx={{
+                                    '& .MuiButton-root': {
+                                        borderRadius: 0,
+                                        '&:first-of-type': {
+                                            borderTopLeftRadius: '50px',
+                                            borderBottomLeftRadius: '50px',
+                                        },
+                                        '&:last-of-type': {
+                                            borderTopRightRadius: '50px',
+                                            borderBottomRightRadius: '50px',
                                         }
                                     }
                                 }}
-                                variant="outlined"
-                                size="small"
-                                fullWidth
-                            />
-
-                            <IconButton
-                                sx={{
-                                    backgroundColor: 'white',
-                                    border: `1px solid ${theme.palette.divider}`,
-                                    borderRadius: '50%',
-                                    width: 40,
-                                    height: 40,
-                                    color: hasActiveFilters ? theme.palette.primary.main : 'inherit',
-                                    transition: 'all 0.2s ease',
-                                    '&:hover': { backgroundColor: alpha(theme.palette.primary.light, 0.1) }
-                                }}
-                                onClick={handleFilterClick}
                             >
-                                <FilterListIcon />
-                            </IconButton>
-
-                            <IconButton
-                                sx={{
-                                    backgroundColor: 'white',
-                                    border: `1px solid ${theme.palette.divider}`,
-                                    borderRadius: '50%',
-                                    width: 40,
-                                    height: 40,
-                                    transition: 'all 0.2s ease',
-                                    '&:hover': { backgroundColor: alpha(theme.palette.primary.light, 0.1) }
-                                }}
-                            >
-                                <MenuIcon />
-                            </IconButton>
+                                <Button
+                                    onClick={() => handleViewOptionsChange('all')}
+                                    variant={viewOptions === 'all' ? 'contained' : 'outlined'}
+                                    size="small"
+                                >
+                                    Todos
+                                </Button>
+                                <Button
+                                    onClick={() => handleViewOptionsChange('today')}
+                                    variant={viewOptions === 'today' ? 'contained' : 'outlined'}
+                                    size="small"
+                                >
+                                    <Badge
+                                        badgeContent={metrics.todayConsultations}
+                                        color="error"
+                                        sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem' } }}
+                                    >
+                                        Hoje
+                                    </Badge>
+                                </Button>
+                                <Button
+                                    onClick={() => handleViewOptionsChange('upcoming')}
+                                    variant={viewOptions === 'upcoming' ? 'contained' : 'outlined'}
+                                    size="small"
+                                >
+                                    Próximos
+                                </Button>
+                            </ButtonGroup>
                         </Box>
                     </Box>
 
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                        {/* Métricas com cards mini */}
+                        <Grid item xs={4}>
+                            <Card elevation={0} sx={{
+                                p: 1.5,
+                                borderRadius: '16px',
+                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Avatar sx={{
+                                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                        color: theme.palette.primary.main,
+                                        width: 32,
+                                        height: 32,
+                                        mr: 1.5
+                                    }}>
+                                        <PersonIcon fontSize="small" />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Total de Pacientes
+                                        </Typography>
+                                        <Typography variant="h6" fontWeight={600}>
+                                            {isLoadingData ? <Skeleton width={30} /> : metrics.totalPatients}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={4}>
+                            <Card elevation={0} sx={{
+                                p: 1.5,
+                                borderRadius: '16px',
+                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Avatar sx={{
+                                        bgcolor: alpha(theme.palette.error.main, 0.1),
+                                        color: theme.palette.error.main,
+                                        width: 32,
+                                        height: 32,
+                                        mr: 1.5
+                                    }}>
+                                        <EventIcon fontSize="small" />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Consultas Hoje
+                                        </Typography>
+                                        <Typography variant="h6" fontWeight={600} color={metrics.todayConsultations > 0 ? "error.main" : "text.primary"}>
+                                            {isLoadingData ? <Skeleton width={30} /> : metrics.todayConsultations}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={4}>
+                            <Card elevation={0} sx={{
+                                p: 1.5,
+                                borderRadius: '16px',
+                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Avatar sx={{
+                                        bgcolor: alpha(theme.palette.success.main, 0.1),
+                                        color: theme.palette.success.main,
+                                        width: 32,
+                                        height: 32,
+                                        mr: 1.5
+                                    }}>
+                                        <EventAvailableIcon fontSize="small" />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Próximas
+                                        </Typography>
+                                        <Typography variant="h6" fontWeight={600} color={theme.palette.success.main}>
+                                            {isLoadingData ? <Skeleton width={30} /> : metrics.upcomingConsultations}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Card>
+                        </Grid>
+                    </Grid>
+
+                    {/* Barra de ferramentas com busca e filtros */}
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexDirection: isTablet ? 'column' : 'row',
+                            alignItems: isTablet ? 'stretch' : 'center',
+                            gap: 2
+                        }}
+                    >
+                        <TextField
+                            placeholder="Buscar pacientes por nome, e-mail ou CPF..."
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                            variant="outlined"
+                            fullWidth={isTablet}
+                            sx={{
+                                flex: isTablet ? '1' : '1 1 50%',
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '50px',
+                                    backgroundColor: '#fff',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                }
+                            }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon />
+                                    </InputAdornment>
+                                ),
+                            }}
+                            size="small"
+                        />
+
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                justifyContent: isTablet ? 'space-between' : 'flex-end',
+                                flex: isTablet ? '1' : '1 1 50%'
+                            }}
+                        >
+                            {hasActiveFilters && (
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<FilterAltIcon />}
+                                    onClick={handleClearFilters}
+                                    sx={{
+                                        borderRadius: '50px',
+                                    }}
+                                >
+                                    Limpar Filtros
+                                </Button>
+                            )}
+
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<FilterListIcon />}
+                                onClick={handleFilterClick}
+                                color={hasActiveFilters ? "primary" : "inherit"}
+                                sx={{
+                                    borderRadius: '50px',
+                                    fontWeight: hasActiveFilters ? 600 : 400
+                                }}
+                            >
+                                Filtrar
+                            </Button>
+                        </Box>
+                    </Box>
+
+                    {/* Chips de filtro ativos */}
                     {hasActiveFilters && (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
                             {activeFilters.gender && (
                                 <FilterChip
                                     label={`Gênero: ${activeFilters.gender}`}
@@ -822,19 +1156,11 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                 }}>
                     <TableContainer
                         sx={{
-                            backgroundColor: 'white',
-                            borderTopLeftRadius: '20px',
-                            borderTopRightRadius: '20px',
-                            borderBottomLeftRadius: 0,
-                            borderBottomRightRadius: 0,
                             height: '100%',
                             flex: 1,
                             display: 'flex',
                             flexDirection: 'column',
                             overflow: 'auto',
-                            border: `1px solid ${theme.palette.divider}`,
-                            marginBottom: 0,
-                            paddingBottom: 0,
                             '&::-webkit-scrollbar': {
                                 width: '8px',
                                 height: '8px',
@@ -852,7 +1178,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                             <TableHead>
                                 <TableRow>
                                     <SortableHeaderCell
-                                        label="Nome"
+                                        label="Paciente"
                                         field="patientName"
                                         sortConfig={sortConfig}
                                         onSortChange={handleSortChange}
@@ -887,43 +1213,72 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                         sortConfig={sortConfig}
                                         onSortChange={handleSortChange}
                                     />
-                                    <TableCell sx={{ backgroundColor: '#F9FAFB', width: 50 }}></TableCell>
+                                    <TableCell align="right" sx={{
+                                        backgroundColor: '#F9FAFB',
+                                        color: '#647787',
+                                        fontWeight: 600,
+                                        fontSize: '0.75rem'
+                                    }}>
+                                        Ações
+                                    </TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {loading ? (
+                                {isLoadingData ? (
                                     renderSkeletonRows()
                                 ) : filteredPatients.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                                            <Typography color="text.secondary">
-                                                Nenhum paciente encontrado
-                                            </Typography>
+                                        <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                                <Box
+                                                    component="img"
+                                                    src="/newpaciente.svg"
+                                                    alt="Nenhum paciente encontrado"
+                                                    sx={{
+                                                        height: 120,
+                                                        mb: 2,
+                                                        opacity: 0.6
+                                                    }}
+                                                />
+                                                <Typography variant="h6" color="text.secondary" gutterBottom>
+                                                    Nenhum paciente encontrado
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
+                                                    Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo paciente.
+                                                </Typography>
+                                            </Box>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     filteredPatients.map((patient) => {
                                         const patientName = patient.patientName || 'Sem nome';
-                                        // Usamos patient.gender para manter consistência com o filtro
                                         const gender = patient.gender || 'Não informado';
                                         let age = '-';
 
                                         // Cálculo da idade a partir do campo birthDate (formato "dd/MM/yyyy")
                                         if (patient.birthDate) {
-                                            const parsedBirthDate = parse(patient.birthDate, 'dd/MM/yyyy', new Date());
-                                            if (isValid(parsedBirthDate)) {
-                                                age = differenceInYears(new Date(), parsedBirthDate);
+                                            try {
+                                                const parsedBirthDate = parse(patient.birthDate, 'dd/MM/yyyy', new Date());
+                                                if (isValid(parsedBirthDate)) {
+                                                    age = differenceInYears(new Date(), parsedBirthDate);
+                                                }
+                                            } catch (e) {
+                                                console.warn(`Erro ao converter data: ${patient.birthDate}`);
                                             }
                                         }
 
-                                        const lastConsultDate = getDateValue(
-                                            patient,
-                                            'lastConsultationDate'
-                                        );
-                                        const nextConsultDate = getDateValue(
-                                            patient,
-                                            'nextConsultationDate'
-                                        );
+                                        const lastConsult = getPatientLastConsult(patient.id);
+                                        const lastConsultDate = lastConsult ?
+                                            getDateValue(lastConsult, 'consultationDate') :
+                                            null;
+
+                                        const nextConsult = getPatientNextConsult(patient.id);
+                                        const nextConsultDate = nextConsult ?
+                                            getDateValue(nextConsult, 'consultationDate') :
+                                            null;
+
+                                        const nextConsultDateFormatted = nextConsultDate ? formatDate(nextConsultDate) : '-';
+                                        const nextConsultIsToday = nextConsultDate ? isToday(nextConsultDate) : false;
 
                                         let status = 'pendente';
                                         if (!lastConsultDate && nextConsultDate) {
@@ -934,8 +1289,8 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                                 : 'reag. pendente';
                                         }
 
-                                        const isTelemedicine =
-                                            patient.consultationType === 'Telemedicina';
+                                        const isTelemedicine = patient.consultationType === 'Telemedicina' ||
+                                            (nextConsult && nextConsult.consultationType === 'Telemedicina');
 
                                         return (
                                             <TableRow
@@ -946,14 +1301,11 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                                     cursor: 'pointer',
                                                     transition: 'background-color 0.2s ease',
                                                     '&:hover': {
-                                                        backgroundColor: alpha(
-                                                            theme.palette.primary.main,
-                                                            0.03
-                                                        )
+                                                        backgroundColor: alpha(theme.palette.primary.main, 0.04)
                                                     },
                                                     '& td': {
-                                                        borderBottom: `1px solid ${theme.palette.divider}`,
-                                                        padding: '12px 16px'
+                                                        padding: '16px',
+                                                        borderBottom: `1px solid ${theme.palette.divider}`
                                                     }
                                                 }}
                                             >
@@ -963,51 +1315,50 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                                             src={patient.patientPhotoUrl}
                                                             alt={patientName}
                                                             sx={{
-                                                                width: 32,
-                                                                height: 32,
-                                                                mr: 1.5,
-                                                                fontSize: '0.875rem',
-                                                                backgroundColor: alpha(
-                                                                    theme.palette.primary.main,
-                                                                    0.1
-                                                                ),
+                                                                width: 40,
+                                                                height: 40,
+                                                                mr: 2,
+                                                                fontSize: '1rem',
+                                                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
                                                                 color: theme.palette.primary.main,
-                                                                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)'
+                                                                boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)'
                                                             }}
                                                         >
                                                             {patientName.charAt(0)}
                                                         </Avatar>
-                                                        <Typography variant="body2" fontWeight={500}>
-                                                            {patientName}
-                                                            {isTelemedicine && (
-                                                                <VideoCallIcon
-                                                                    fontSize="small"
-                                                                    sx={{
-                                                                        ml: 0.5,
-                                                                        color: theme.palette.primary.main,
-                                                                        verticalAlign: 'middle'
-                                                                    }}
-                                                                />
-                                                            )}
-                                                        </Typography>
+                                                        <Box>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                <Typography variant="body1" fontWeight={500}>
+                                                                    {patientName}
+                                                                </Typography>
+                                                                {isTelemedicine && (
+                                                                    <Tooltip title="Telemedicina">
+                                                                        <VideoCallIcon
+                                                                            fontSize="small"
+                                                                            sx={{
+                                                                                ml: 1,
+                                                                                color: theme.palette.info.main,
+                                                                            }}
+                                                                        />
+                                                                    </Tooltip>
+                                                                )}
+                                                            </Box>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {patient.patientEmail || 'Sem e-mail'}
+                                                            </Typography>
+                                                        </Box>
                                                     </Box>
                                                 </TableCell>
 
                                                 <TableCell>
                                                     {gender.toLowerCase() === 'masculino' ? (
-                                                        <Box
-                                                            component="img"
-                                                            src="/masculino.svg"
-                                                            alt="Masculino"
-                                                            sx={{ width: 24, height: 24 }}
-                                                        />
+                                                        <Tooltip title="Masculino">
+                                                            <MaleIcon sx={{ color: theme.palette.info.main }} />
+                                                        </Tooltip>
                                                     ) : gender.toLowerCase() === 'feminino' ? (
-                                                        <Box
-                                                            component="img"
-                                                            src="/feminino.svg"
-                                                            alt="Feminino"
-                                                            sx={{ width: 24, height: 24 }}
-                                                        />
+                                                        <Tooltip title="Feminino">
+                                                            <FemaleIcon sx={{ color: '#E91E63' }} />
+                                                        </Tooltip>
                                                     ) : (
                                                         '-'
                                                     )}
@@ -1018,15 +1369,46 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                                 </TableCell>
 
                                                 <TableCell>
-                                                    <Typography variant="body2">
-                                                        {formatDate(lastConsultDate)}
-                                                    </Typography>
+                                                    {lastConsultDate && isPast(lastConsultDate) ? (
+                                                        <>
+                                                            <Typography variant="body2">
+                                                                {formatDate(lastConsultDate)}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {formatDistance(lastConsultDate, new Date(), { addSuffix: true, locale: ptBR })}
+                                                            </Typography>
+                                                        </>
+                                                    ) : (
+                                                        <Typography variant="body2" color="text.secondary">-</Typography>
+                                                    )}
                                                 </TableCell>
 
                                                 <TableCell>
-                                                    <Typography variant="body2">
-                                                        {formatDate(nextConsultDate)}
-                                                    </Typography>
+                                                    {(() => {
+                                                        // Lógica para próxima consulta
+                                                        if (!nextConsultDate) {
+                                                            return <Typography variant="body2" color="text.secondary">-</Typography>;
+                                                        }
+
+                                                        const isNextToday = isToday(nextConsultDate);
+
+                                                        return (
+                                                            <Box>
+                                                                <Typography
+                                                                    variant="body2"
+                                                                    color={isNextToday ? 'error.main' : 'text.primary'}
+                                                                    fontWeight={isNextToday ? 600 : 400}
+                                                                >
+                                                                    {nextConsultDateFormatted}
+                                                                </Typography>
+                                                                {isNextToday && (
+                                                                    <Typography variant="caption" color="error.main" fontWeight={500}>
+                                                                        Hoje
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
+                                                        );
+                                                    })()}
                                                 </TableCell>
 
                                                 <TableCell>
@@ -1035,7 +1417,6 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                                         size="small"
                                                         sx={{
                                                             borderRadius: '12px',
-                                                            height: 24,
                                                             fontSize: '0.75rem',
                                                             fontWeight: 500,
                                                             backgroundColor:
@@ -1060,22 +1441,43 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                                 </TableCell>
 
                                                 <TableCell align="right">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handlePatientClick(patient.id);
-                                                        }}
-                                                        sx={{
-                                                            color: theme.palette.primary.main,
-                                                            transition: 'transform 0.2s ease',
-                                                            '&:hover': {
-                                                                transform: 'translateX(2px)'
-                                                            }
-                                                        }}
-                                                    >
-                                                        <ChevronRightIcon />
-                                                    </IconButton>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                        <Tooltip title="Ações">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    // Implementar menu de ações, se necessário
+                                                                }}
+                                                                sx={{
+                                                                    color: theme.palette.action.active,
+                                                                    '&:hover': {
+                                                                        backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <MoreVertIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        <Tooltip title="Ver perfil do paciente">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handlePatientClick(patient.id);
+                                                                }}
+                                                                sx={{
+                                                                    color: theme.palette.primary.main,
+                                                                    ml: 1,
+                                                                    '&:hover': {
+                                                                        backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <ChevronRightIcon />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </Box>
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -1111,6 +1513,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                         activeFilters={activeFilters}
                         onFilterChange={handleFilterChange}
                         onClearFilters={handleClearFilters}
+                        onApplyFilters={handleApplyFilters}
                     />
                 </Popover>
             </CardContent>
