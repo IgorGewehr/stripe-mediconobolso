@@ -18,6 +18,8 @@
     "@stripe/stripe-js": "^5.5.0",
     "date-fns": "^4.1.0",
     "firebase": "^11.4.0",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.482.0",
     "micro": "^10.0.0",
     "micro-cors": "0.1.1",

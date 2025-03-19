@@ -43,7 +43,7 @@ import {
     Close as CloseIcon,
     CalendarToday as CalendarTodayIcon
 } from '@mui/icons-material';
-import { format, isToday, isPast, parseISO, isValid } from 'date-fns';
+import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Constantes
@@ -474,7 +474,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
         // Aplicar filtro de gênero
         if (activeFilters.gender) {
             filtered = filtered.filter(patient =>
-                patient.patientGender === activeFilters.gender ||
+                patient.gender === activeFilters.gender ||
                 activeFilters.gender === 'Ambos'
             );
         }
@@ -499,7 +499,9 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
         if (activeFilters.status) {
             filtered = filtered.filter(patient => {
                 let status = 'pendente';
-                if (!patient.lastConsultationDate && patient.nextConsultationDate) {
+                const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
+                const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
+                if (!lastConsultDate && nextConsultDate) {
                     status = 'primeira consulta';
                 } else if (patient.consultationRescheduled) {
                     status = patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
@@ -688,7 +690,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    '&:last-child': { pb: 0 }, // Remove o padding padrão do último filho
+                    '&:last-child': { pb: 0 },
                 }}
             >
                 {/* Cabeçalho e área de filtros com padding */}
@@ -807,12 +809,12 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                     )}
                 </Box>
 
-                {/* Container flexível para a tabela - Solução para o problema de espaçamento */}
+                {/* Container flexível para a tabela */}
                 <Box sx={{
                     flexGrow: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'hidden' // Importante para garantir que não tenha scroll interno
+                    overflow: 'hidden'
                 }}>
                     <TableContainer
                         sx={{
@@ -853,7 +855,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                     />
                                     <SortableHeaderCell
                                         label="Gênero"
-                                        field="patientGender"
+                                        field="gender"
                                         sortConfig={sortConfig}
                                         onSortChange={handleSortChange}
                                     />
@@ -898,8 +900,17 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                 ) : (
                                     filteredPatients.map((patient) => {
                                         const patientName = patient.patientName || 'Sem nome';
-                                        const gender = patient.patientGender || 'Não informado';
-                                        const age = patient.patientAge || '-';
+                                        // Usamos patient.gender para manter consistência com o filtro
+                                        const gender = patient.gender || 'Não informado';
+                                        let age = '-';
+
+                                        // Cálculo da idade a partir do campo birthDate (formato "dd/MM/yyyy")
+                                        if (patient.birthDate) {
+                                            const parsedBirthDate = parse(patient.birthDate, 'dd/MM/yyyy', new Date());
+                                            if (isValid(parsedBirthDate)) {
+                                                age = differenceInYears(new Date(), parsedBirthDate);
+                                            }
+                                        }
 
                                         const lastConsultDate = getDateValue(
                                             patient,
@@ -945,7 +956,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                                 <TableCell>
                                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                         <Avatar
-                                                            src={patient.photoURL}
+                                                            src={patient.patientPhotoUrl}
                                                             alt={patientName}
                                                             sx={{
                                                                 width: 32,
@@ -979,14 +990,14 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                                 </TableCell>
 
                                                 <TableCell>
-                                                    {gender === 'Masculino' ? (
+                                                    {gender.toLowerCase() === 'masculino' ? (
                                                         <Box
                                                             component="img"
                                                             src="/masculino.svg"
                                                             alt="Masculino"
                                                             sx={{ width: 24, height: 24 }}
                                                         />
-                                                    ) : gender === 'Feminino' ? (
+                                                    ) : gender.toLowerCase() === 'feminino' ? (
                                                         <Box
                                                             component="img"
                                                             src="/feminino.svg"
@@ -1016,10 +1027,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
 
                                                 <TableCell>
                                                     <Chip
-                                                        label={
-                                                            status.charAt(0).toUpperCase() +
-                                                            status.slice(1)
-                                                        }
+                                                        label={status.charAt(0).toUpperCase() + status.slice(1)}
                                                         size="small"
                                                         sx={{
                                                             borderRadius: '12px',

@@ -188,7 +188,6 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 onClose={() => setOpenAnamneseDialog(false)}
                 patientId={pacienteId}
                 doctorId={doctorId}
-                patientData={patientData}
             />
         </Box>
     );

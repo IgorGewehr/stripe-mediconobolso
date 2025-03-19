@@ -40,6 +40,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from '../../../lib/firebaseService';
 import { useAuth } from '../authProvider';
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
 
 // Theme creation for defining colors, fonts, and formats
 const theme = createTheme({
@@ -390,6 +392,7 @@ const PatientNoteDialog = ({
     const [uploadProgress, setUploadProgress] = useState(null);
     const [consultations, setConsultations] = useState([]);
     const [isLoadingConsultations, setIsLoadingConsultations] = useState(false);
+    const [anamneseId, setAnamneseId] = useState(null);
 
     useEffect(() => {
         if (note) {
@@ -398,17 +401,41 @@ const PatientNoteDialog = ({
             setNoteType(note.noteType || 'Rápida');
             setAttachments(note.attachments || []);
             setConsultationDate(note.consultationDate ? note.consultationDate.toDate() : null);
+
+            // Se for uma nota de anamnese, guarda o ID da anamnese
+            if (note.noteType === 'Anamnese' && note.anamneseId) {
+                setAnamneseId(note.anamneseId);
+            } else {
+                setAnamneseId(null);
+            }
         } else {
+            // Reset dos campos para nova nota
             setTitle('');
             setContent('');
             setNoteType('Rápida');
             setAttachments([]);
             setConsultationDate(null);
+            setAnamneseId(null);
         }
         setIsLoading(false);
         setIsSaved(false);
         setIsDeleteConfirm(false);
     }, [note, open]);
+
+    const handleViewAnamnesis = () => {
+        // Procura o anexo PDF
+        const pdfAttachment = attachments.find(
+            att => att.fileType === 'application/pdf' ||
+                (att.fileName && att.fileName.toLowerCase().endsWith('.pdf'))
+        );
+
+        if (pdfAttachment && pdfAttachment.fileUrl) {
+            window.open(pdfAttachment.fileUrl, '_blank');
+        } else if (note && note.pdfUrl) {
+            // Caso o URL do PDF esteja diretamente na nota
+            window.open(note.pdfUrl, '_blank');
+        }
+    };
 
     // Load consultations when the dialog opens or when type changes to 'Consulta'
     useEffect(() => {
@@ -1016,7 +1043,40 @@ const PatientNoteDialog = ({
                                             )}
                                         </Box>
                                     </Box>
-
+                                    {isEditMode && noteType === 'Anamnese' && (
+                                        <Box sx={{
+                                            mt: 2,
+                                            mb: 3,
+                                            p: 2,
+                                            bgcolor: 'rgba(99, 102, 241, 0.08)',
+                                            borderRadius: '12px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between'
+                                        }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <HistoryEduIcon sx={{ color: '#6366F1', mr: 1.5 }} />
+                                                <Typography sx={{ color: '#111E5A', fontWeight: 500 }}>
+                                                    Esta nota foi gerada automaticamente a partir de uma anamnese.
+                                                </Typography>
+                                            </Box>
+                                            <Button
+                                                variant="outlined"
+                                                startIcon={<PictureAsPdfIcon />}
+                                                onClick={handleViewAnamnesis}
+                                                sx={{
+                                                    borderColor: '#6366F1',
+                                                    color: '#6366F1',
+                                                    '&:hover': {
+                                                        borderColor: '#4F46E5',
+                                                        bgcolor: 'rgba(99, 102, 241, 0.08)',
+                                                    }
+                                                }}
+                                            >
+                                                Ver Anamnese
+                                            </Button>
+                                        </Box>
+                                    )}
                                     {/* Content Area */}
                                     <Box sx={{
                                         p: 3,

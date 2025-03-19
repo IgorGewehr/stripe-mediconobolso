@@ -135,7 +135,20 @@ export default function AppLayout({ children }) {
             <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
                 <Box sx={{ flexShrink: 0 }}>
                     <TopAppBar
-                        title={activePage === "PatientProfile" ? "Perfil do Paciente" : activePage}
+                        title={
+                            activePage === "PatientProfile"
+                                ? "Perfil do Paciente"
+                                : activePage === "Dashboard"
+                                    ? (
+                                        <>
+                                            Bem vindo,{" "}
+                                            <span style={{color: "#1852FE"}}>
+                    Dr. {user?.fullName}
+                  </span>
+                                        </>
+                                    )
+                                    : activePage
+                        }
                         onPacienteClick={handlePacienteTopAppBarClick}
                         showBackButton={activePage === "PatientProfile"}
                         onBackClick={handleBackToPatients}

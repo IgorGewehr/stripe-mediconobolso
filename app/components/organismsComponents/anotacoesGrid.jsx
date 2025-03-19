@@ -23,6 +23,7 @@ import FirebaseService from "../../../lib/firebaseService";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PatientNoteDialog from "./novaNotaDialog";
+import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
 
 // Paleta de cores
 const themeColors = {
@@ -70,6 +71,7 @@ function CriarNovaFichaButton({ onClick, disabled }) {
 
 // Card de anotação melhorado
 // Card de anotação redesenhado conforme imagem de exemplo
+// Enhanced NotaCard function to highlight anamnesis notes
 function NotaCard({ nota, onOpen }) {
     // Formatar data
     const formatDate = (date) => {
@@ -100,20 +102,31 @@ function NotaCard({ nota, onOpen }) {
         return "application/octet-stream";
     };
 
+    // Check if it's an anamnesis note
+    const isAnamneseNote = nota.noteType === "Anamnese";
+
     return (
         <Card
             sx={{
                 width: "100%",
                 borderRadius: "12px",
-                border: `1px solid #EAECEF`,
-                boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.04)",
+                border: `1px solid ${isAnamneseNote ? "#6366F1" : "#EAECEF"}`,
+                boxShadow: isAnamneseNote
+                    ? "0px 2px 4px rgba(99, 102, 241, 0.15)"
+                    : "0px 1px 3px rgba(0, 0, 0, 0.04)",
                 mb: 1.5,
                 cursor: "pointer",
                 transition: "all 0.2s ease-in-out",
+                position: "relative",
                 "&:hover": {
-                    boxShadow: "0px 3px 8px rgba(0, 0, 0, 0.08)",
-                    borderColor: "#D0D5DD",
-                }
+                    boxShadow: isAnamneseNote
+                        ? "0px 4px 10px rgba(99, 102, 241, 0.2)"
+                        : "0px 3px 8px rgba(0, 0, 0, 0.08)",
+                    borderColor: isAnamneseNote ? "#6366F1" : "#D0D5DD",
+                },
+                ...(isAnamneseNote && {
+                    background: "linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, rgba(255, 255, 255, 0) 100%)",
+                })
             }}
             onClick={() => onOpen(nota)}
         >
@@ -132,12 +145,14 @@ function NotaCard({ nota, onOpen }) {
                     justifyContent: "center",
                     px: 2,
                     py: 1.5,
-                    bgcolor: "#FBFCFD"
+                    bgcolor: isAnamneseNote ? "rgba(99, 102, 241, 0.08)" : "#FBFCFD"
                 }}>
                     <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
                         <FiberManualRecordIcon
                             sx={{
-                                color: nota.noteType === "Consulta" ? themeColors.success : themeColors.primary,
+                                color: isAnamneseNote
+                                    ? "#6366F1"
+                                    : nota.noteType === "Consulta" ? themeColors.success : themeColors.primary,
                                 fontSize: 8,
                                 mr: 0.75
                             }}
@@ -145,13 +160,17 @@ function NotaCard({ nota, onOpen }) {
                         <Typography
                             variant="caption"
                             sx={{
-                                color: nota.noteType === "Consulta" ? themeColors.success : themeColors.primary,
+                                color: isAnamneseNote
+                                    ? "#6366F1"
+                                    : nota.noteType === "Consulta" ? themeColors.success : themeColors.primary,
                                 fontFamily: "Gellix",
                                 fontSize: 12,
                                 fontWeight: 600
                             }}
                         >
-                            {nota.noteType === "Consulta" ? "Consulta:" : "Nota Rápida:"}
+                            {isAnamneseNote
+                                ? "Anamnese:"
+                                : nota.noteType === "Consulta" ? "Consulta:" : "Nota Rápida:"}
                         </Typography>
                     </Box>
                     <Typography
@@ -193,7 +212,7 @@ function NotaCard({ nota, onOpen }) {
                     <Typography
                         variant="h6"
                         sx={{
-                            color: "#111E5A",
+                            color: isAnamneseNote ? "#6366F1" : "#111E5A",
                             fontFamily: "Gellix",
                             fontSize: 16,
                             fontWeight: 600,
@@ -235,15 +254,15 @@ function NotaCard({ nota, onOpen }) {
                         justifyContent: "center",
                         alignItems: "center",
                         p: 1.5,
-                        bgcolor: "#FBFCFD",
+                        bgcolor: isAnamneseNote ? "rgba(99, 102, 241, 0.05)" : "#FBFCFD",
                     }}>
                         {/* Badge com o número de anexos */}
                         <Chip
                             label={`${nota.attachments.length} anexo${nota.attachments.length > 1 ? 's' : ''}`}
                             size="small"
                             sx={{
-                                backgroundColor: "#ECF1FF",
-                                color: themeColors.primary,
+                                backgroundColor: isAnamneseNote ? "rgba(99, 102, 241, 0.15)" : "#ECF1FF",
+                                color: isAnamneseNote ? "#6366F1" : themeColors.primary,
                                 fontWeight: 500,
                                 fontSize: 11,
                                 mb: 1,
@@ -283,8 +302,8 @@ function NotaCard({ nota, onOpen }) {
                                         width: 32,
                                         height: 32,
                                         borderRadius: "4px",
-                                        backgroundColor: "#ECF1FF",
-                                        color: themeColors.primary,
+                                        backgroundColor: isAnamneseNote ? "rgba(99, 102, 241, 0.1)" : "#ECF1FF",
+                                        color: isAnamneseNote ? "#6366F1" : themeColors.primary,
                                         fontWeight: 600,
                                         fontSize: 12,
                                     }}
@@ -296,6 +315,29 @@ function NotaCard({ nota, onOpen }) {
                     </Box>
                 )}
             </Box>
+
+            {/* Anamnesis Badge (if applicable) */}
+            {isAnamneseNote && (
+                <Box
+                    sx={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        backgroundColor: "#6366F1",
+                        color: "white",
+                        borderRadius: "0 12px 0 12px",
+                        px: 1.5,
+                        py: 0.3,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                    }}
+                >
+                    <HistoryEduIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                    ANAMNESE
+                </Box>
+            )}
         </Card>
     );
 }
