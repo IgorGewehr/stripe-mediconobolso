@@ -12,6 +12,8 @@ import { useAuth } from "../components/authProvider";
 import { useRouter } from "next/navigation";
 import Dashboard from "../components/DashboardTemplate";
 
+
+
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
     const auth = useAuth();
