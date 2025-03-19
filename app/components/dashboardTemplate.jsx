@@ -7,11 +7,11 @@ import {
     useTheme,
     useMediaQuery
 } from '@mui/material';
-import MetricsCard from "./organismsComponents/MetricsCard";
-import ConsultationCard from "./organismsComponents/ConsultationCard";
-import PatientsListCard from "./organismsComponents/PatientsList";
+import MetricsCard from "./organismsComponents/metricsCard";
+import ConsultationCard from "./organismsComponents/consultationCard";
+import PatientsListCard from "./organismsComponents/patientsList";
 import { useAuth } from "./authProvider";
-import FirebaseService from "../../lib/FirebaseService";
+import FirebaseService from "../../lib/firebaseService";
 import { format, addDays, subDays, startOfDay, isAfter } from 'date-fns';
 
 const Dashboard = ({ onClickPatients }) => {
