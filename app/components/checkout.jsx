@@ -9,6 +9,7 @@ import { fetchClientSecret } from '../actions/stripe';
 import PlanCard from './organismsComponents/planSelector';
 import { useAuth } from "./authProvider";
 import { useRouter } from 'next/navigation';
+import {signOut} from "firebase/auth";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -22,7 +23,7 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
     // Função de logout
     const handleLogout = async () => {
         try {
-            await firebaseService.signOut();
+            await signOut(firebaseService.auth)
             router.push('/'); // Redirecionar para a página inicial após logout
         } catch (error) {
             console.error("Erro ao fazer logout:", error);
@@ -61,16 +62,6 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                 alignItems: 'center',
                 zIndex: 10
             }}>
-                <Box
-                    component="img"
-                    src="/logo.png"
-                    alt="Logo"
-                    sx={{
-                        width: 40,
-                        height: 'auto',
-                    }}
-                />
-
                 {/* Botão de logout */}
                 <Button
                     onClick={handleLogout}
