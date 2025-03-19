@@ -221,7 +221,8 @@ export const AuthForms = () => {
                 p: { xs: 2, sm: 0 },
                 backgroundColor: "white",
                 borderRadius: { xs: 0, sm: 2 },
-                boxShadow: { xs: 0, sm: 3 },
+                boxShadow: 0, // Remove a sombra
+                border: "none", // Garante que nenhuma borda seja aplicada
                 py: { xs: 3, sm: 4 }
             }}
         >
