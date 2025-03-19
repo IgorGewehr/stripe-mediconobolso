@@ -1,7 +1,8 @@
+// AuthTemplate.jsx
 "use client";
 
 import React, { useEffect } from 'react';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, useMediaQuery, useTheme } from '@mui/material';
 import AuthForms from './organismsComponents/authForms';
 import { useAuth } from './authProvider';
 import { useRouter } from 'next/navigation';
@@ -9,6 +10,8 @@ import { useRouter } from 'next/navigation';
 const AuthTemplate = () => {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     useEffect(() => {
         if (user) {
@@ -21,7 +24,7 @@ const AuthTemplate = () => {
     }, [user, router]);
 
     // Enquanto o contexto de autenticação estiver carregando
-    if (loading) {
+    if (loading || user) {
         return (
             <Box
                 sx={{
@@ -29,22 +32,7 @@ const AuthTemplate = () => {
                     justifyContent: 'center',
                     alignItems: 'center',
                     height: '100vh',
-                }}
-            >
-                <CircularProgress color="primary" />
-            </Box>
-        );
-    }
-
-    // Se o usuário estiver autenticado, exibe o spinner enquanto o redirecionamento ocorre
-    if (user) {
-        return (
-            <Box
-                sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100vh',
+                    width: '100%',
                 }}
             >
                 <CircularProgress color="primary" />
@@ -61,8 +49,10 @@ const AuthTemplate = () => {
                 height: '100vh',
                 overflow: 'hidden',
                 display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
                 m: 0,
                 p: 0,
+                backgroundColor: { xs: '#f5f5f5', md: 'transparent' },
             }}
         >
             <Box
@@ -85,24 +75,28 @@ const AuthTemplate = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     m: 0,
-                    p: 0,
-                    marginLeft: '40px',
+                    p: { xs: 2, sm: 3 },
+                    marginLeft: { md: '40px' },
+                    width: '100%',
                 }}
             >
                 <AuthForms />
             </Box>
-            <Box
-                sx={{
-                    flex: 1,
-                    height: '100vh',
-                    m: 0,
-                    p: 0,
-                    backgroundImage: 'url("/fundo.jpg")',
-                    backgroundSize: 'contain',
-                    backgroundPosition: 'right bottom',
-                    backgroundRepeat: 'no-repeat',
-                }}
-            />
+            {!isMobile && (
+                <Box
+                    sx={{
+                        flex: 1,
+                        height: '100vh',
+                        m: 0,
+                        p: 0,
+                        display: { xs: 'none', md: 'block' },
+                        backgroundImage: 'url("/fundo.jpg")',
+                        backgroundSize: 'contain',
+                        backgroundPosition: 'right bottom',
+                        backgroundRepeat: 'no-repeat',
+                    }}
+                />
+            )}
         </Box>
     );
 };

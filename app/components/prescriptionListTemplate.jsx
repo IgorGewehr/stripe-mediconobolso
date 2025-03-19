@@ -32,9 +32,6 @@ import {
     Tooltip,
     useMediaQuery,
     Paper,
-    AppBar,
-    Toolbar,
-    Drawer,
     FormControl,
     Select,
     InputLabel,
@@ -46,9 +43,7 @@ import {
     DialogActions,
     CircularProgress,
     Alert,
-    AlertTitle,
-    Collapse,
-    Autocomplete, ButtonGroup
+    ButtonGroup
 } from '@mui/material';
 
 import {
@@ -60,60 +55,47 @@ import {
     MoreVert as MoreVertIcon,
     Add as AddIcon,
     Close as CloseIcon,
-    Female as FemaleIcon,
-    Male as MaleIcon,
-    ScheduleSend as ScheduleSendIcon,
-    EventAvailable as EventAvailableIcon,
-    CalendarToday as CalendarTodayIcon,
     KeyboardArrowRight as KeyboardArrowRightIcon,
-    KeyboardArrowDown as KeyboardArrowDownIcon,
+    CalendarToday as CalendarTodayIcon,
+    Edit as EditIcon,
     Download as DownloadIcon,
-    Upload as UploadIcon,
-    CheckCircleOutline as CheckCircleOutlineIcon,
+    ContentCopy as ContentCopyIcon,
+    Medication as MedicationIcon,
     StarBorder as StarBorderIcon,
     Star as StarIcon,
-    History as HistoryIcon,
-    Phone as PhoneIcon,
-    Videocam as VideocamIcon,
-    ContactPhone as ContactPhoneIcon,
-    AddCircleOutline as AddCircleOutlineIcon,
-    FilterAlt as FilterAltIcon,
-    VideoCall as VideoCallIcon,
+    CheckCircleOutline as CheckCircleOutlineIcon,
+    ErrorOutline as ErrorOutlineIcon,
+    HealthAndSafety as HealthAndSafetyIcon,
+    AccessTime as AccessTimeIcon,
+    Schedule as ScheduleIcon,
+    Person as PersonIcon,
     ArrowDropDown as ArrowDropDownIcon,
-    EventNote as EventNoteIcon
+    FileCopy as FileCopyIcon,
+    Archive as ArchiveIcon,
+    Print as PrintIcon,
+    Warning as WarningIcon,
+    FilterAlt as FilterAltIcon
 } from '@mui/icons-material';
 
-import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, subDays, addDays, isAfter, isBefore, formatDistance } from 'date-fns';
+import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, differenceInMonths, differenceInDays, subDays, addDays, isAfter, isBefore, formatDistance, isWithinInterval, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from "../../lib/firebaseService";
 import { useAuth } from "./authProvider";
 
 // Constantes para o componente
-const PATIENT_CONDITIONS = [
-    { label: 'Diabetes', value: 'diabetes', color: 'diabetes' },
-    { label: 'Hipertensão', value: 'hipertensao', color: 'hipertensao' },
-    { label: 'Fumante', value: 'fumante', color: 'fumante' },
-    { label: 'Internado', value: 'internado', color: 'internado' },
-    { label: 'Idoso', value: 'idoso', color: 'idoso' },
-    { label: 'Obeso', value: 'obeso', color: 'obeso' },
-    { label: 'Alergia', value: 'alergia', color: 'alergia' },
-    { label: 'Cardiopatia', value: 'cardiopatia', color: 'cardiopatia' },
-    { label: 'Asma', value: 'asma', color: 'asma' },
+const PRESCRIPTION_STATUS = [
+    { label: 'Ativa', value: 'ativa', color: 'success' },
+    { label: 'Pendente', value: 'pendente', color: 'warning' },
+    { label: 'Renovada', value: 'renovada', color: 'info' },
+    { label: 'Suspensa', value: 'suspensa', color: 'error' },
+    { label: 'Concluída', value: 'concluida', color: 'default' },
 ];
 
-const APPOINTMENT_TYPES = [
-    { label: 'Consulta', value: 'consulta', icon: <EventAvailableIcon fontSize="small" /> },
-    { label: 'Retorno', value: 'retorno', icon: <HistoryIcon fontSize="small" /> },
-    { label: 'Teleconsulta', value: 'teleconsulta', icon: <VideocamIcon fontSize="small" /> },
-    { label: 'Emergência', value: 'emergencia', icon: <PhoneIcon fontSize="small" /> },
-];
-
-const STATUS_OPTIONS = [
-    { label: 'Todos os status', value: '' },
-    { label: 'Pendente', value: 'pendente' },
-    { label: 'Reagendado', value: 'reagendado' },
-    { label: 'Primeira Consulta', value: 'primeira consulta' },
-    { label: 'Reag. Pendente', value: 'reag. pendente' },
+const MEDICATION_TYPES = [
+    { label: 'Controlados', value: 'controlado', icon: <WarningIcon fontSize="small" /> },
+    { label: 'Antibióticos', value: 'antibiotico', icon: <MedicationIcon fontSize="small" /> },
+    { label: 'Contínuos', value: 'continuo', icon: <AccessTimeIcon fontSize="small" /> },
+    { label: 'Temporários', value: 'temporario', icon: <ScheduleIcon fontSize="small" /> },
 ];
 
 const VIEWS = {
@@ -122,10 +104,10 @@ const VIEWS = {
 };
 
 const TABS = {
-    ALL: 'todos',
-    ACTIVE: 'ativos',
-    UPCOMING: 'proximas_consultas',
-    FAVORITE: 'favoritos',
+    ALL: 'todas',
+    ACTIVE: 'ativas',
+    EXPIRING: 'a_vencer',
+    CONTROLLED: 'controlados',
     RECENT: 'recentes',
 };
 
@@ -179,18 +161,11 @@ const FilterChip = ({ label, colorscheme, onDelete }) => {
 
     const getBackgroundColor = () => {
         switch (colorscheme) {
-            case 'diabetes': return '#FFF9C4';
-            case 'fumante': return '#E0F7FA';
-            case 'internado': return '#E8EAF6';
-            case 'idoso': return '#F3E5F5';
-            case 'obeso': return '#FCE4EC';
-            case 'hipertensao': return '#E8F5E9';
-            case 'alergia': return '#FFECB3';
-            case 'cardiopatia': return '#FFCDD2';
-            case 'asma': return '#E1F5FE';
-            case 'genero': return '#E3F2FD';
-            case 'consultas': return '#E1F5FE';
-            case 'primeira-consulta': return '#E8F5E9';
+            case 'status': return '#E8F5E9';
+            case 'type': return '#E3F2FD';
+            case 'date': return '#FFF8E1';
+            case 'patient': return '#F3E5F5';
+            case 'medication': return '#E0F7FA';
             default: return '#F5F5F5';
         }
     };
@@ -218,21 +193,17 @@ const FilterChip = ({ label, colorscheme, onDelete }) => {
     );
 };
 
-// Componente para chips de condição do paciente no seletor de filtros
-const ConditionChip = ({ label, colorscheme, onClick, selected }) => {
+// Componente para chips de condição no seletor de filtros
+const OptionChip = ({ label, colorscheme, onClick, selected, icon }) => {
     const theme = useTheme();
 
     const getBackgroundColor = () => {
         switch (colorscheme) {
-            case 'diabetes': return '#FFF9C4';
-            case 'fumante': return '#E0F7FA';
-            case 'internado': return '#E8EAF6';
-            case 'idoso': return '#F3E5F5';
-            case 'obeso': return '#FCE4EC';
-            case 'hipertensao': return '#E8F5E9';
-            case 'alergia': return '#FFECB3';
-            case 'cardiopatia': return '#FFCDD2';
-            case 'asma': return '#E1F5FE';
+            case 'status': return '#E8F5E9';
+            case 'type': return '#E3F2FD';
+            case 'date': return '#FFF8E1';
+            case 'patient': return '#F3E5F5';
+            case 'medication': return '#E0F7FA';
             default: return '#F5F5F5';
         }
     };
@@ -240,6 +211,7 @@ const ConditionChip = ({ label, colorscheme, onClick, selected }) => {
     return (
         <Chip
             label={label}
+            icon={icon}
             onClick={onClick}
             onDelete={selected ? onClick : undefined}
             deleteIcon={selected ? <CloseIcon fontSize="small" /> : undefined}
@@ -311,29 +283,30 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
     const [startDate, setStartDate] = useState(activeFilters.dateRange?.start || '');
     const [endDate, setEndDate] = useState(activeFilters.dateRange?.end || '');
 
-    const handleGenderChange = (gender) => {
-        onFilterChange('gender', gender === activeFilters.gender ? null : gender);
-    };
-
-    const handleConditionToggle = (condition) => {
-        const conditions = [...activeFilters.conditions];
-        const index = conditions.indexOf(condition);
+    const handleStatusToggle = (status) => {
+        const statuses = [...activeFilters.statuses];
+        const index = statuses.indexOf(status);
 
         if (index === -1) {
-            conditions.push(condition);
+            statuses.push(status);
         } else {
-            conditions.splice(index, 1);
+            statuses.splice(index, 1);
         }
 
-        onFilterChange('conditions', conditions);
+        onFilterChange('statuses', statuses);
     };
 
-    const handleStatusChange = (event) => {
-        onFilterChange('status', event.target.value === '' ? null : event.target.value);
-    };
+    const handleMedicationTypeToggle = (type) => {
+        const types = [...activeFilters.medicationTypes];
+        const index = types.indexOf(type);
 
-    const handleAppointmentTypeChange = (event) => {
-        onFilterChange('appointmentType', event.target.value === '' ? null : event.target.value);
+        if (index === -1) {
+            types.push(type);
+        } else {
+            types.splice(index, 1);
+        }
+
+        onFilterChange('medicationTypes', types);
     };
 
     const handleDateRangeChange = () => {
@@ -362,160 +335,64 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
             maxHeight: '80vh',
             overflow: 'auto',
         }}>
-            {/* Filtro de Gênero */}
+            {/* Filtro de Status */}
             <FilterSection
-                title="Gênero"
-                actionElement={
-                    activeFilters.gender &&
-                    <ClearButton onClick={() => onFilterChange('gender', null)} />
-                }
-            >
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <Button
-                        variant={activeFilters.gender === 'Ambos' ? 'contained' : 'outlined'}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Ambos' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.dark' : alpha('#000', 0.04) }
-                        }}
-                        onClick={() => handleGenderChange('Ambos')}
-                    >
-                        Ambos
-                    </Button>
-                    <Button
-                        variant={activeFilters.gender === 'Masculino' ? 'contained' : 'outlined'}
-                        startIcon={<MaleIcon />}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Masculino' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.dark' : alpha('#000', 0.04) }
-                        }}
-                        onClick={() => handleGenderChange('Masculino')}
-                    >
-                        Masculino
-                    </Button>
-                    <Button
-                        variant={activeFilters.gender === 'Feminino' ? 'contained' : 'outlined'}
-                        startIcon={<FemaleIcon />}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Feminino' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.dark' : alpha('#000', 0.04) }
-                        }}
-                        onClick={() => handleGenderChange('Feminino')}
-                    >
-                        Feminino
-                    </Button>
-                </Box>
-            </FilterSection>
-
-            {/* Filtro de Condição do Paciente */}
-            <FilterSection
-                title="Condição do Paciente"
+                title="Status da Receita"
                 actionElement={
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                            {activeFilters.conditions.length} Selecionadas
+                            {activeFilters.statuses.length} Selecionados
                         </Typography>
-                        {activeFilters.conditions.length > 0 && (
-                            <ClearButton onClick={() => onFilterChange('conditions', [])} />
+                        {activeFilters.statuses.length > 0 && (
+                            <ClearButton onClick={() => onFilterChange('statuses', [])} />
                         )}
                     </Box>
                 }
             >
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {PATIENT_CONDITIONS.map(condition => (
-                        <ConditionChip
-                            key={condition.value}
-                            label={condition.label}
-                            colorscheme={condition.color}
-                            onClick={() => handleConditionToggle(condition.value)}
-                            selected={activeFilters.conditions.includes(condition.value)}
+                    {PRESCRIPTION_STATUS.map(status => (
+                        <OptionChip
+                            key={status.value}
+                            label={status.label}
+                            colorscheme="status"
+                            onClick={() => handleStatusToggle(status.value)}
+                            selected={activeFilters.statuses.includes(status.value)}
                         />
                     ))}
                 </Box>
             </FilterSection>
 
-            {/* Filtro de Status */}
+            {/* Filtro de Tipo de Medicação */}
             <FilterSection
-                title="Status"
+                title="Tipo de Medicamento"
                 actionElement={
-                    activeFilters.status &&
-                    <ClearButton onClick={() => onFilterChange('status', null)} />
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                            {activeFilters.medicationTypes.length} Selecionados
+                        </Typography>
+                        {activeFilters.medicationTypes.length > 0 && (
+                            <ClearButton onClick={() => onFilterChange('medicationTypes', [])} />
+                        )}
+                    </Box>
                 }
             >
-                <FormControl fullWidth variant="outlined" size="small">
-                    <Select
-                        value={activeFilters.status || ''}
-                        onChange={handleStatusChange}
-                        displayEmpty
-                        sx={{
-                            borderRadius: '50px',
-                            '.MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
-                        }}
-                        MenuProps={{
-                            PaperProps: {
-                                sx: {
-                                    borderRadius: '16px',
-                                    mt: 1,
-                                },
-                            },
-                        }}
-                    >
-                        {STATUS_OPTIONS.map(option => (
-                            <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {MEDICATION_TYPES.map(type => (
+                        <OptionChip
+                            key={type.value}
+                            label={type.label}
+                            icon={type.icon}
+                            colorscheme="medication"
+                            onClick={() => handleMedicationTypeToggle(type.value)}
+                            selected={activeFilters.medicationTypes.includes(type.value)}
+                        />
+                    ))}
+                </Box>
             </FilterSection>
 
-            {/* Filtro de Tipo de Consulta */}
+            {/* Filtro de Período */}
             <FilterSection
-                title="Tipo de Consulta"
-                actionElement={
-                    activeFilters.appointmentType &&
-                    <ClearButton onClick={() => onFilterChange('appointmentType', null)} />
-                }
-            >
-                <FormControl fullWidth variant="outlined" size="small">
-                    <Select
-                        value={activeFilters.appointmentType || ''}
-                        onChange={handleAppointmentTypeChange}
-                        displayEmpty
-                        sx={{
-                            borderRadius: '50px',
-                            '.MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
-                        }}
-                        MenuProps={{
-                            PaperProps: {
-                                sx: {
-                                    borderRadius: '16px',
-                                    mt: 1,
-                                },
-                            },
-                        }}
-                    >
-                        <MenuItem value="">Todos os tipos</MenuItem>
-                        {APPOINTMENT_TYPES.map(option => (
-                            <MenuItem key={option.value} value={option.value} sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Box component="span" sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                                    {option.icon}
-                                </Box>
-                                {option.label}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            </FilterSection>
-
-            {/* Filtro de Período de Consulta */}
-            <FilterSection
-                title="Período de Consulta"
+                title="Período da Prescrição"
                 actionElement={
                     activeFilters.dateRange &&
                     <ClearButton onClick={() => {
@@ -561,6 +438,36 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                 </Grid>
             </FilterSection>
 
+            {/* Filtro de Paciente */}
+            <FilterSection
+                title="Buscar por Paciente"
+                actionElement={
+                    activeFilters.patientName &&
+                    <ClearButton onClick={() => onFilterChange('patientName', '')} />
+                }
+            >
+                <TextField
+                    fullWidth
+                    placeholder="Nome do paciente"
+                    value={activeFilters.patientName}
+                    onChange={(e) => onFilterChange('patientName', e.target.value)}
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: '50px',
+                        },
+                    }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <PersonIcon fontSize="small" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+            </FilterSection>
+
             {/* Botões de Ação */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
                 <Button
@@ -596,52 +503,55 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
 };
 
 // Componente principal da página
-const PatientsListPage = ({ onPatientClick }) => {
+const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewPrescription }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
     const { user } = useAuth();
 
     // Estados principais
-    const [patients, setPatients] = useState([]);
-    const [filteredPatients, setFilteredPatients] = useState([]);
+    const [prescriptions, setPrescriptions] = useState([]);
+    const [patientsMap, setPatientsMap] = useState({});
+    const [filteredPrescriptions, setFilteredPrescriptions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState(VIEWS.TABLE);
     const [currentTab, setCurrentTab] = useState(TABS.ALL);
     const [page, setPage] = useState(1);
-    const [favoritePatients, setFavoritePatients] = useState([]);
-    const [consultations, setConsultations] = useState([]);
+    const [favoritePrescriptions, setFavoritePrescriptions] = useState([]);
 
     // Estados para paginação
     const rowsPerPage = 10;
-    const paginatedPatients = useMemo(() => {
+    const paginatedPrescriptions = useMemo(() => {
         const startIndex = (page - 1) * rowsPerPage;
-        return filteredPatients.slice(startIndex, startIndex + rowsPerPage);
-    }, [filteredPatients, page, rowsPerPage]);
+        return filteredPrescriptions.slice(startIndex, startIndex + rowsPerPage);
+    }, [filteredPrescriptions, page, rowsPerPage]);
 
     // Estados para sorting
     const [sortConfig, setSortConfig] = useState({
-        field: 'patientName',
-        direction: 'asc'
+        field: 'prescriptionDate',
+        direction: 'desc'
     });
 
     // Estados para filtros
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
     const [activeFilters, setActiveFilters] = useState({
-        gender: null,
-        conditions: [],
-        status: null,
-        appointmentType: null,
-        dateRange: null
+        statuses: [],
+        medicationTypes: [],
+        dateRange: null,
+        patientName: '',
     });
+
+    // Menu Actions
+    const [actionMenuAnchorEl, setActionMenuAnchorEl] = useState(null);
+    const [selectedPrescriptionId, setSelectedPrescriptionId] = useState(null);
 
     // Metrics (Estatísticas)
     const [metrics, setMetrics] = useState({
-        totalPatients: 0,
-        activePatients: 0,
-        newPatients: 0,
-        upcomingAppointments: 0
+        totalPrescriptions: 0,
+        activePrescriptions: 0,
+        expiringPrescriptions: 0,
+        controlledMedications: 0
     });
 
     // Carregar dados iniciais
@@ -651,25 +561,28 @@ const PatientsListPage = ({ onPatientClick }) => {
         const loadData = async () => {
             setLoading(true);
             try {
-                // Carrega a lista de pacientes
-                const patientsData = await FirebaseService.getPatientsByDoctor(user.uid);
-                setPatients(patientsData);
+                // Carrega a lista de prescrições
+                const prescriptionsData = await FirebaseService.listAllPrescriptions(user.uid);
+                setPrescriptions(prescriptionsData);
 
-                // Carrega as consultas para referência
-                const consultationsData = await FirebaseService.listAllConsultations(user.uid);
-                setConsultations(consultationsData);
+                // Carrega informações de pacientes para referência
+                const patients = await FirebaseService.listPatients(user.uid);
+                const patientsMapData = {};
+                patients.forEach(patient => {
+                    patientsMapData[patient.id] = patient;
+                });
+                setPatientsMap(patientsMapData);
 
                 // Calcula métricas
-                calculateMetrics(patientsData, consultationsData);
+                calculateMetrics(prescriptionsData);
 
-                // Atualiza os favoritos com base no campo "favorite"
-                const favPatients = patientsData
-                    .filter(patient => patient.favorite === true)
-                    .map(patient => patient.id);
-                setFavoritePatients(favPatients);
-
+                // Define favoritos (mock - em produção, isso viria do banco de dados)
+                const favPrescriptions = prescriptionsData
+                    .filter((p, index) => index % 5 === 0) // Simples exemplo - na vida real, isso viria do Firebase
+                    .map(p => p.id);
+                setFavoritePrescriptions(favPrescriptions);
             } catch (error) {
-                console.error("Erro ao carregar dados de pacientes:", error);
+                console.error("Erro ao carregar dados de prescrições:", error);
             } finally {
                 setLoading(false);
             }
@@ -679,45 +592,45 @@ const PatientsListPage = ({ onPatientClick }) => {
     }, [user]);
 
     // Calcula métricas baseadas nos dados
-    const calculateMetrics = (patientsData, consultationsData) => {
+    const calculateMetrics = (prescriptionsData) => {
         const today = new Date();
-        const thirtyDaysAgo = subDays(today, 30);
+        const thirtyDaysFromNow = addDays(today, 30);
 
-        // Pacientes ativos (com consulta nos últimos 6 meses)
-        const sixMonthsAgo = subDays(today, 180);
-        const activePatients = patientsData.filter(patient => {
-            const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
-            return lastConsultDate && isAfter(lastConsultDate, sixMonthsAgo);
+        // Prescrições ativas
+        const activePrescriptions = prescriptionsData.filter(prescription =>
+            prescription.status?.toLowerCase() === 'ativa'
+        );
+
+        // Prescrições a expirar nos próximos 30 dias
+        const expiringPrescriptions = prescriptionsData.filter(prescription => {
+            const expirationDate = getDateValue(prescription, 'expirationDate');
+            return expirationDate &&
+                isAfter(expirationDate, today) &&
+                isBefore(expirationDate, thirtyDaysFromNow);
         });
 
-        // Pacientes novos (adicionados nos últimos 30 dias)
-        const newPatients = patientsData.filter(patient => {
-            const createdAt = getDateValue(patient, 'createdAt');
-            return createdAt && isAfter(createdAt, thirtyDaysAgo);
-        });
-
-        // Consultas agendadas futuras
-        const upcomingAppointments = consultationsData.filter(consult => {
-            const consultDate = getDateValue(consult, 'consultationDate');
-            return consultDate && isAfter(consultDate, today);
+        // Prescrições com medicamentos controlados
+        const controlledMedications = prescriptionsData.filter(prescription => {
+            const medications = prescription.medications || [];
+            return medications.some(med => med.isControlled);
         });
 
         setMetrics({
-            totalPatients: patientsData.length,
-            activePatients: activePatients.length,
-            newPatients: newPatients.length,
-            upcomingAppointments: upcomingAppointments.length
+            totalPrescriptions: prescriptionsData.length,
+            activePrescriptions: activePrescriptions.length,
+            expiringPrescriptions: expiringPrescriptions.length,
+            controlledMedications: controlledMedications.length
         });
     };
 
-    // Efeito para filtragem e ordenação de pacientes
+    // Efeito para filtragem e ordenação de prescrições
     useEffect(() => {
-        if (!patients) {
-            setFilteredPatients([]);
+        if (!prescriptions) {
+            setFilteredPrescriptions([]);
             return;
         }
 
-        let filtered = [...patients];
+        let filtered = [...prescriptions];
 
         // Aplicar filtro de abas
         filtered = applyTabFilter(filtered);
@@ -725,11 +638,18 @@ const PatientsListPage = ({ onPatientClick }) => {
         // Aplicar pesquisa por texto
         if (searchTerm) {
             const searchLower = searchTerm.toLowerCase();
-            filtered = filtered.filter(patient =>
-                (patient.patientName || '').toLowerCase().includes(searchLower) ||
-                (patient.patientEmail || '').toLowerCase().includes(searchLower) ||
-                (patient.patientCPF || '').includes(searchTerm)
-            );
+            filtered = filtered.filter(prescription => {
+                // Verificar no nome do paciente
+                const patientName = patientsMap[prescription.patientId]?.patientName || '';
+                if (patientName.toLowerCase().includes(searchLower)) return true;
+
+                // Verificar nos medicamentos
+                const medications = prescription.medications || [];
+                return medications.some(med =>
+                    med.medicationName?.toLowerCase().includes(searchLower) ||
+                    med.activeIngredient?.toLowerCase().includes(searchLower)
+                );
+            });
         }
 
         // Aplicar outros filtros ativos
@@ -738,9 +658,9 @@ const PatientsListPage = ({ onPatientClick }) => {
         // Aplicar ordenação
         filtered = applySorting(filtered);
 
-        setFilteredPatients(filtered);
+        setFilteredPrescriptions(filtered);
         setPage(1); // Resetar para primeira página quando os filtros mudam
-    }, [patients, searchTerm, sortConfig, activeFilters, currentTab, favoritePatients]);
+    }, [prescriptions, searchTerm, sortConfig, activeFilters, currentTab, favoritePrescriptions, patientsMap]);
 
     // Função auxiliar para extrair valores de data
     const getDateValue = (obj, field) => {
@@ -778,116 +698,97 @@ const PatientsListPage = ({ onPatientClick }) => {
     };
 
     // Aplicar filtro baseado na aba selecionada
-    const applyTabFilter = (patients) => {
+    const applyTabFilter = (prescriptions) => {
         const today = new Date();
+        const thirtyDaysFromNow = addDays(today, 30);
 
         switch (currentTab) {
             case TABS.ACTIVE:
-                // Pacientes com consulta nos últimos 6 meses
-                const sixMonthsAgo = subDays(today, 180);
-                return patients.filter(patient => {
-                    const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
-                    return lastConsultDate && isAfter(lastConsultDate, sixMonthsAgo);
-                });
-
-            case TABS.UPCOMING:
-                // Pacientes com consultas futuras
-                return patients.filter(patient => {
-                    const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
-                    return nextConsultDate && isAfter(nextConsultDate, today);
-                });
-
-            case TABS.FAVORITE:
-                // Pacientes marcados como favoritos
-                return patients.filter(patient =>
-                    favoritePatients.includes(patient.id)
+                // Prescrições com status ativa
+                return prescriptions.filter(prescription =>
+                    prescription.status?.toLowerCase() === 'ativa'
                 );
 
+            case TABS.EXPIRING:
+                // Prescrições a expirar nos próximos 30 dias
+                return prescriptions.filter(prescription => {
+                    const expirationDate = getDateValue(prescription, 'expirationDate');
+                    return expirationDate &&
+                        isAfter(expirationDate, today) &&
+                        isBefore(expirationDate, thirtyDaysFromNow);
+                });
+
+            case TABS.CONTROLLED:
+                // Prescrições com medicações controladas
+                return prescriptions.filter(prescription => {
+                    const medications = prescription.medications || [];
+                    return medications.some(med => med.isControlled);
+                });
+
             case TABS.RECENT:
-                // Pacientes adicionados nos últimos 30 dias
-                const thirtyDaysAgo = subDays(today, 30);
-                return patients.filter(patient => {
-                    const createdAt = getDateValue(patient, 'createdAt');
-                    return createdAt && isAfter(createdAt, thirtyDaysAgo);
+                // Prescrições adicionadas nos últimos 7 dias
+                const sevenDaysAgo = subDays(today, 7);
+                return prescriptions.filter(prescription => {
+                    const createdAt = getDateValue(prescription, 'createdAt');
+                    return createdAt && isAfter(createdAt, sevenDaysAgo);
                 });
 
             default:
-                return patients;
+                return prescriptions;
         }
     };
 
     // Aplicar todos os filtros ativos
-    const applyActiveFilters = (patients) => {
-        let filtered = [...patients];
+    const applyActiveFilters = (prescriptions) => {
+        let filtered = [...prescriptions];
 
-        // Filtro de gênero
-        if (activeFilters.gender) {
-            filtered = filtered.filter(patient =>
-                patient.gender === activeFilters.gender ||
-                activeFilters.gender === 'Ambos'
+        // Filtro de status
+        if (activeFilters.statuses.length > 0) {
+            filtered = filtered.filter(prescription =>
+                activeFilters.statuses.includes(prescription.status?.toLowerCase())
             );
         }
 
-        // Filtro de condições
-        if (activeFilters.conditions.length > 0) {
-            filtered = filtered.filter(patient => {
-                // Mapear condições para um array no formato do paciente
-                const patientConditions = [];
-                if (patient.isSmoker) patientConditions.push('fumante');
-                if (patient.chronicDiseases?.includes('Diabetes')) patientConditions.push('diabetes');
-                if (patient.chronicDiseases?.includes('Hipertensão')) patientConditions.push('hipertensao');
-                // Adicionar mais mapeamentos conforme necessário
-
-                // Verificar se alguma das condições filtradas está presente
-                return activeFilters.conditions.some(condition =>
-                    patientConditions.includes(condition)
-                );
+        // Filtro de tipos de medicamento
+        if (activeFilters.medicationTypes.length > 0) {
+            filtered = filtered.filter(prescription => {
+                const medications = prescription.medications || [];
+                return medications.some(med => {
+                    if (activeFilters.medicationTypes.includes('controlado') && med.isControlled) {
+                        return true;
+                    }
+                    if (activeFilters.medicationTypes.includes('antibiotico') && med.isAntibiotic) {
+                        return true;
+                    }
+                    if (activeFilters.medicationTypes.includes('continuo') && med.isContinuous) {
+                        return true;
+                    }
+                    if (activeFilters.medicationTypes.includes('temporario') && !med.isContinuous) {
+                        return true;
+                    }
+                    return false;
+                });
             });
         }
 
-        // Filtro de status
-        if (activeFilters.status) {
-            filtered = filtered.filter(patient => {
-                let status = 'pendente';
-                const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
-                const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
-
-                if (!lastConsultDate && nextConsultDate) {
-                    status = 'primeira consulta';
-                } else if (patient.consultationRescheduled) {
-                    status = patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
-                }
-
-                return status.toLowerCase() === activeFilters.status.toLowerCase();
-            });
-        }
-
-        // Filtro de tipo de consulta
-        if (activeFilters.appointmentType) {
-            filtered = filtered.filter(patient => {
-                // Verificar tipo no campo consultationType
-                return patient.consultationType?.toLowerCase() === activeFilters.appointmentType;
-            });
-        }
-
-        // Filtro de período de consulta
+        // Filtro de período
         if (activeFilters.dateRange) {
             const { start, end } = activeFilters.dateRange;
 
             if (start || end) {
-                filtered = filtered.filter(patient => {
-                    const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
-                    if (!nextConsultDate) return false;
+                filtered = filtered.filter(prescription => {
+                    const prescriptionDate = getDateValue(prescription, 'prescriptionDate');
+                    if (!prescriptionDate) return false;
 
                     const startDate = start ? new Date(start) : null;
                     const endDate = end ? new Date(end) : null;
 
                     if (startDate && endDate) {
-                        return isAfter(nextConsultDate, startDate) && isBefore(nextConsultDate, endDate);
+                        return isAfter(prescriptionDate, startDate) && isBefore(prescriptionDate, endDate);
                     } else if (startDate) {
-                        return isAfter(nextConsultDate, startDate);
+                        return isAfter(prescriptionDate, startDate);
                     } else if (endDate) {
-                        return isBefore(nextConsultDate, endDate);
+                        return isBefore(prescriptionDate, endDate);
                     }
 
                     return true;
@@ -895,17 +796,26 @@ const PatientsListPage = ({ onPatientClick }) => {
             }
         }
 
+        // Filtro de paciente
+        if (activeFilters.patientName) {
+            const patientSearch = activeFilters.patientName.toLowerCase();
+            filtered = filtered.filter(prescription => {
+                const patientName = patientsMap[prescription.patientId]?.patientName || '';
+                return patientName.toLowerCase().includes(patientSearch);
+            });
+        }
+
         return filtered;
     };
 
     // Aplicar ordenação
-    const applySorting = (patients) => {
-        return [...patients].sort((a, b) => {
+    const applySorting = (prescriptions) => {
+        return [...prescriptions].sort((a, b) => {
             let aValue = a[sortConfig.field];
             let bValue = b[sortConfig.field];
 
             // Tratamento especial para campos de data
-            if (sortConfig.field === 'lastConsultationDate' || sortConfig.field === 'nextConsultationDate') {
+            if (sortConfig.field === 'prescriptionDate' || sortConfig.field === 'expirationDate' || sortConfig.field === 'createdAt') {
                 aValue = getDateValue(a, sortConfig.field);
                 bValue = getDateValue(b, sortConfig.field);
 
@@ -916,6 +826,12 @@ const PatientsListPage = ({ onPatientClick }) => {
                 return sortConfig.direction === 'asc'
                     ? aValue.getTime() - bValue.getTime()
                     : bValue.getTime() - aValue.getTime();
+            }
+
+            // Tratamento para campo "patientName" que deve buscar do mapa de pacientes
+            if (sortConfig.field === 'patientName') {
+                aValue = patientsMap[a.patientId]?.patientName || '';
+                bValue = patientsMap[b.patientId]?.patientName || '';
             }
 
             // Ordenação de texto
@@ -946,13 +862,30 @@ const PatientsListPage = ({ onPatientClick }) => {
         }
     };
 
+    // Calcular status de expiração para prescrições
+    const getExpirationStatus = (expirationDate) => {
+        if (!expirationDate) return { status: 'no-expiration', label: 'Sem validade' };
+
+        const today = new Date();
+        const expiresIn = differenceInDays(expirationDate, today);
+
+        if (expiresIn < 0) {
+            return { status: 'expired', label: 'Expirada' };
+        } else if (expiresIn <= 7) {
+            return { status: 'critical', label: `Expira em ${expiresIn} dias` };
+        } else if (expiresIn <= 30) {
+            return { status: 'warning', label: `Expira em ${expiresIn} dias` };
+        } else {
+            return { status: 'ok', label: `Válida por ${expiresIn} dias` };
+        }
+    };
+
     // Verificar se existem filtros ativos
     const hasActiveFilters =
-        activeFilters.gender !== null ||
-        activeFilters.conditions.length > 0 ||
-        activeFilters.status !== null ||
-        activeFilters.appointmentType !== null ||
-        activeFilters.dateRange !== null;
+        activeFilters.statuses.length > 0 ||
+        activeFilters.medicationTypes.length > 0 ||
+        activeFilters.dateRange !== null ||
+        activeFilters.patientName !== '';
 
     // Handlers
     const handleSearchChange = (event) => {
@@ -974,9 +907,9 @@ const PatientsListPage = ({ onPatientClick }) => {
         }));
     };
 
-    const handlePatientClick = (patientId) => {
-        if (onPatientClick) {
-            onPatientClick(patientId);
+    const handlePrescriptionClick = (prescriptionId) => {
+        if (onPrescriptionClick) {
+            onPrescriptionClick(prescriptionId);
         }
     };
 
@@ -984,25 +917,73 @@ const PatientsListPage = ({ onPatientClick }) => {
         setPage(value);
     };
 
-    const handleToggleFavorite = async (patientId) => {
-        // Verifica se o paciente já está marcado como favorito
-        const isCurrentlyFavorite = favoritePatients.includes(patientId);
+    const handleToggleFavorite = async (prescriptionId) => {
+        // Verifica se a prescrição já está marcada como favorita
+        const isCurrentlyFavorite = favoritePrescriptions.includes(prescriptionId);
         const newFavoriteStatus = !isCurrentlyFavorite;
 
         // Atualiza o estado local de forma otimista
-        setFavoritePatients(prev =>
+        setFavoritePrescriptions(prev =>
             newFavoriteStatus
-                ? [...prev, patientId]
-                : prev.filter(id => id !== patientId)
+                ? [...prev, prescriptionId]
+                : prev.filter(id => id !== prescriptionId)
         );
 
         try {
-            // Atualiza o status no Firebase
-            await FirebaseService.updateFavoriteStatus(user.uid, patientId, newFavoriteStatus);
+            // Em produção, atualizaria no Firebase
+            // await FirebaseService.updatePrescriptionFavoriteStatus(user.uid, prescriptionId, newFavoriteStatus);
+            console.log(`Prescrição ${prescriptionId} ${newFavoriteStatus ? 'adicionada aos' : 'removida dos'} favoritos`);
         } catch (error) {
-            console.error("Erro ao atualizar favorito no Firebase:", error);
-            // Se necessário, reverta o estado local
+            console.error("Erro ao atualizar favorito:", error);
+            // Reverter estado local em caso de erro
+            setFavoritePrescriptions(prev =>
+                isCurrentlyFavorite
+                    ? [...prev, prescriptionId]
+                    : prev.filter(id => id !== prescriptionId)
+            );
         }
+    };
+
+    // Handlers para Menu de Ações
+    const handleMenuOpen = (event, prescriptionId) => {
+        event.stopPropagation();
+        setSelectedPrescriptionId(prescriptionId);
+        setActionMenuAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = () => {
+        setActionMenuAnchorEl(null);
+    };
+
+    const handleEditPrescription = () => {
+        handleMenuClose();
+        if (onEditPrescription && selectedPrescriptionId) {
+            onEditPrescription(selectedPrescriptionId);
+        }
+    };
+
+    const handleDuplicatePrescription = () => {
+        handleMenuClose();
+        // Implementar a lógica para duplicar a prescrição
+        console.log(`Duplicar prescrição ${selectedPrescriptionId}`);
+    };
+
+    const handlePrintPrescription = () => {
+        handleMenuClose();
+        // Implementar a lógica para imprimir a prescrição
+        console.log(`Imprimir prescrição ${selectedPrescriptionId}`);
+    };
+
+    const handleDownloadPrescription = () => {
+        handleMenuClose();
+        // Implementar a lógica para baixar a prescrição
+        console.log(`Baixar prescrição ${selectedPrescriptionId}`);
+    };
+
+    const handleArchivePrescription = () => {
+        handleMenuClose();
+        // Implementar a lógica para arquivar a prescrição
+        console.log(`Arquivar prescrição ${selectedPrescriptionId}`);
     };
 
     // Handlers de filtro
@@ -1022,41 +1003,35 @@ const PatientsListPage = ({ onPatientClick }) => {
     };
 
     const handleRemoveFilter = (type, value) => {
-        if (type === 'gender') {
+        if (type === 'status') {
             setActiveFilters(prev => ({
                 ...prev,
-                gender: null
+                statuses: prev.statuses.filter(s => s !== value)
             }));
-        } else if (type === 'condition') {
+        } else if (type === 'medicationType') {
             setActiveFilters(prev => ({
                 ...prev,
-                conditions: prev.conditions.filter(c => c !== value)
-            }));
-        } else if (type === 'status') {
-            setActiveFilters(prev => ({
-                ...prev,
-                status: null
-            }));
-        } else if (type === 'appointmentType') {
-            setActiveFilters(prev => ({
-                ...prev,
-                appointmentType: null
+                medicationTypes: prev.medicationTypes.filter(t => t !== value)
             }));
         } else if (type === 'dateRange') {
             setActiveFilters(prev => ({
                 ...prev,
                 dateRange: null
             }));
+        } else if (type === 'patientName') {
+            setActiveFilters(prev => ({
+                ...prev,
+                patientName: ''
+            }));
         }
     };
 
     const handleClearFilters = () => {
         setActiveFilters({
-            gender: null,
-            conditions: [],
-            status: null,
-            appointmentType: null,
-            dateRange: null
+            statuses: [],
+            medicationTypes: [],
+            dateRange: null,
+            patientName: '',
         });
         handleFilterClose();
     };
@@ -1071,18 +1046,19 @@ const PatientsListPage = ({ onPatientClick }) => {
             <TableRow key={`skeleton-${index}`}>
                 <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Skeleton variant="circular" width={40} height={40} sx={{ mr: 2 }} />
+                        <Box sx={{ mr: 2 }}>
+                            <Skeleton variant="circular" width={40} height={40} />
+                        </Box>
                         <Box>
                             <Skeleton variant="text" width={120} />
                             <Skeleton variant="text" width={80} height={12} />
                         </Box>
                     </Box>
                 </TableCell>
-                <TableCell><Skeleton variant="circular" width={24} height={24} /></TableCell>
-                <TableCell><Skeleton variant="text" width={30} /></TableCell>
-                <TableCell><Skeleton variant="text" width={80} /></TableCell>
+                <TableCell><Skeleton variant="text" width={120} /></TableCell>
                 <TableCell><Skeleton variant="text" width={80} /></TableCell>
                 <TableCell><Skeleton variant="rectangular" width={90} height={24} sx={{ borderRadius: 12 }} /></TableCell>
+                <TableCell><Skeleton variant="text" width={120} /></TableCell>
                 <TableCell align="right">
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <Skeleton variant="circular" width={32} height={32} sx={{ ml: 1 }} />
@@ -1139,13 +1115,13 @@ const PatientsListPage = ({ onPatientClick }) => {
                 }}>
                     <CardContent>
                         <Typography variant="subtitle2" color="text.secondary">
-                            Total de Pacientes
+                            Total de Receitas
                         </Typography>
                         <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: theme.palette.primary.main }}>
-                            {loading ? <Skeleton width={60} /> : metrics.totalPatients}
+                            {loading ? <Skeleton width={60} /> : metrics.totalPrescriptions}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            {loading ? <Skeleton width={120} /> : '+3 pacientes nesta semana'}
+                            {loading ? <Skeleton width={120} /> : '+5 receitas nesta semana'}
                         </Typography>
                     </CardContent>
                 </Card>
@@ -1159,17 +1135,17 @@ const PatientsListPage = ({ onPatientClick }) => {
                 }}>
                     <CardContent>
                         <Typography variant="subtitle2" color="text.secondary">
-                            Pacientes Ativos
+                            Receitas Ativas
                         </Typography>
                         <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#4CAF50' }}>
-                            {loading ? <Skeleton width={60} /> : metrics.activePatients}
+                            {loading ? <Skeleton width={60} /> : metrics.activePrescriptions}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                             {loading ? (
                                 <Skeleton width={120} />
                             ) : (
                                 <>
-                                    <span style={{ color: '#4CAF50' }}>{Math.round((metrics.activePatients / metrics.totalPatients) * 100) || 0}%</span> do total de pacientes
+                                    <span style={{ color: '#4CAF50' }}>{Math.round((metrics.activePrescriptions / metrics.totalPrescriptions) * 100) || 0}%</span> do total de receitas
                                 </>
                             )}
                         </Typography>
@@ -1185,13 +1161,13 @@ const PatientsListPage = ({ onPatientClick }) => {
                 }}>
                     <CardContent>
                         <Typography variant="subtitle2" color="text.secondary">
-                            Novos Pacientes (30 dias)
+                            Receitas a Vencer
                         </Typography>
-                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#2196F3' }}>
-                            {loading ? <Skeleton width={60} /> : metrics.newPatients}
+                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#FF9800' }}>
+                            {loading ? <Skeleton width={60} /> : metrics.expiringPrescriptions}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            {loading ? <Skeleton width={120} /> : 'Média de 3 por semana'}
+                            {loading ? <Skeleton width={120} /> : 'Nos próximos 30 dias'}
                         </Typography>
                     </CardContent>
                 </Card>
@@ -1205,13 +1181,13 @@ const PatientsListPage = ({ onPatientClick }) => {
                 }}>
                     <CardContent>
                         <Typography variant="subtitle2" color="text.secondary">
-                            Consultas Agendadas
+                            Medicações Controladas
                         </Typography>
-                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#FF9800' }}>
-                            {loading ? <Skeleton width={60} /> : metrics.upcomingAppointments}
+                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#F44336' }}>
+                            {loading ? <Skeleton width={60} /> : metrics.controlledMedications}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            {loading ? <Skeleton width={120} /> : `Próxima: ${metrics.upcomingAppointments > 0 ? 'Hoje' : 'Nenhuma'}`}
+                            {loading ? <Skeleton width={120} /> : 'Receitas com controle especial'}
                         </Typography>
                     </CardContent>
                 </Card>
@@ -1250,9 +1226,9 @@ const PatientsListPage = ({ onPatientClick }) => {
                 <Tab
                     label={
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            Todos os Pacientes
+                            Todas as Receitas
                             <Chip
-                                label={metrics.totalPatients}
+                                label={metrics.totalPrescriptions}
                                 size="small"
                                 sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
                             />
@@ -1263,9 +1239,9 @@ const PatientsListPage = ({ onPatientClick }) => {
                 <Tab
                     label={
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            Ativos
+                            Ativas
                             <Chip
-                                label={metrics.activePatients}
+                                label={metrics.activePrescriptions}
                                 size="small"
                                 sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
                             />
@@ -1276,38 +1252,33 @@ const PatientsListPage = ({ onPatientClick }) => {
                 <Tab
                     label={
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            Próximas Consultas
+                            A Vencer
                             <Chip
-                                label={metrics.upcomingAppointments}
+                                label={metrics.expiringPrescriptions}
                                 size="small"
                                 sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
                             />
                         </Box>
                     }
-                    value={TABS.UPCOMING}
+                    value={TABS.EXPIRING}
                 />
                 <Tab
                     label={
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            Favoritos
+                            Controlados
                             <Chip
-                                label={favoritePatients.length}
+                                label={metrics.controlledMedications}
                                 size="small"
                                 sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
                             />
                         </Box>
                     }
-                    value={TABS.FAVORITE}
+                    value={TABS.CONTROLLED}
                 />
                 <Tab
                     label={
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             Recentes
-                            <Chip
-                                label={metrics.newPatients}
-                                size="small"
-                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
-                            />
                         </Box>
                     }
                     value={TABS.RECENT}
@@ -1328,7 +1299,7 @@ const PatientsListPage = ({ onPatientClick }) => {
             }}
         >
             <TextField
-                placeholder="Buscar pacientes por nome, e-mail ou CPF..."
+                placeholder="Buscar por paciente, medicamento ou princípio ativo..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 variant="outlined"
@@ -1419,6 +1390,24 @@ const PatientsListPage = ({ onPatientClick }) => {
                             <GridViewIcon fontSize="small" />
                         </Button>
                     </ButtonGroup>
+
+                    <Button
+                        size="small"
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={onNewPrescription}
+                        color="primary"
+                        sx={{
+                            borderRadius: '50px',
+                            px: 2,
+                            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+                            '&:hover': {
+                                boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.15)',
+                            }
+                        }}
+                    >
+                        Nova Receita
+                    </Button>
                 </Box>
             </Box>
         </Box>
@@ -1430,49 +1419,47 @@ const PatientsListPage = ({ onPatientClick }) => {
 
         return (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {activeFilters.gender && (
-                    <FilterChip
-                        label={`Gênero: ${activeFilters.gender}`}
-                        colorscheme="genero"
-                        onDelete={() => handleRemoveFilter('gender')}
-                    />
-                )}
-
-                {activeFilters.conditions.map((condition) => {
-                    const conditionInfo = PATIENT_CONDITIONS.find(
-                        (c) => c.value === condition
+                {activeFilters.statuses.map((status) => {
+                    const statusInfo = PRESCRIPTION_STATUS.find(
+                        (s) => s.value === status
                     );
                     return (
                         <FilterChip
-                            key={condition}
-                            label={conditionInfo ? conditionInfo.label : condition}
-                            colorscheme={condition}
-                            onDelete={() => handleRemoveFilter('condition', condition)}
+                            key={status}
+                            label={`Status: ${statusInfo ? statusInfo.label : status}`}
+                            colorscheme="status"
+                            onDelete={() => handleRemoveFilter('status', status)}
                         />
                     );
                 })}
 
-                {activeFilters.status && (
-                    <FilterChip
-                        label={`Status: ${activeFilters.status.charAt(0).toUpperCase() + activeFilters.status.slice(1)}`}
-                        colorscheme="default"
-                        onDelete={() => handleRemoveFilter('status')}
-                    />
-                )}
-
-                {activeFilters.appointmentType && (
-                    <FilterChip
-                        label={`Tipo: ${activeFilters.appointmentType.charAt(0).toUpperCase() + activeFilters.appointmentType.slice(1)}`}
-                        colorscheme="consultas"
-                        onDelete={() => handleRemoveFilter('appointmentType')}
-                    />
-                )}
+                {activeFilters.medicationTypes.map((type) => {
+                    const typeInfo = MEDICATION_TYPES.find(
+                        (t) => t.value === type
+                    );
+                    return (
+                        <FilterChip
+                            key={type}
+                            label={`Tipo: ${typeInfo ? typeInfo.label : type}`}
+                            colorscheme="medication"
+                            onDelete={() => handleRemoveFilter('medicationType', type)}
+                        />
+                    );
+                })}
 
                 {activeFilters.dateRange && (
                     <FilterChip
                         label={`Período: ${activeFilters.dateRange.start || '...'} - ${activeFilters.dateRange.end || '...'}`}
-                        colorscheme="default"
+                        colorscheme="date"
                         onDelete={() => handleRemoveFilter('dateRange')}
+                    />
+                )}
+
+                {activeFilters.patientName && (
+                    <FilterChip
+                        label={`Paciente: ${activeFilters.patientName}`}
+                        colorscheme="patient"
+                        onDelete={() => handleRemoveFilter('patientName')}
                     />
                 )}
             </Box>
@@ -1496,32 +1483,26 @@ const PatientsListPage = ({ onPatientClick }) => {
                             onSortChange={handleSortChange}
                         />
                         <SortableHeaderCell
-                            label="Gênero"
-                            field="gender"
+                            label="Data da Prescrição"
+                            field="prescriptionDate"
                             sortConfig={sortConfig}
                             onSortChange={handleSortChange}
                         />
                         <SortableHeaderCell
-                            label="Idade"
-                            field="patientAge"
-                            sortConfig={sortConfig}
-                            onSortChange={handleSortChange}
-                        />
-                        <SortableHeaderCell
-                            label="Última Consulta"
-                            field="lastConsultationDate"
-                            sortConfig={sortConfig}
-                            onSortChange={handleSortChange}
-                        />
-                        <SortableHeaderCell
-                            label="Próxima Consulta"
-                            field="nextConsultationDate"
+                            label="Validade"
+                            field="expirationDate"
                             sortConfig={sortConfig}
                             onSortChange={handleSortChange}
                         />
                         <SortableHeaderCell
                             label="Status"
                             field="status"
+                            sortConfig={sortConfig}
+                            onSortChange={handleSortChange}
+                        />
+                        <SortableHeaderCell
+                            label="Medicamentos"
+                            field="medicationCount"
                             sortConfig={sortConfig}
                             onSortChange={handleSortChange}
                         />
@@ -1538,76 +1519,57 @@ const PatientsListPage = ({ onPatientClick }) => {
                 <TableBody>
                     {loading ? (
                         renderSkeletonRows()
-                    ) : paginatedPatients.length === 0 ? (
+                    ) : paginatedPrescriptions.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                            <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                                 <Box sx={{ textAlign: 'center' }}>
-                                    <Box
-                                        component="img"
-                                        src="/newpaciente.svg"
-                                        alt="Nenhum paciente encontrado"
+                                    <HealthAndSafetyIcon
                                         sx={{
-                                            height: 120,
-                                            mb: 2,
-                                            opacity: 0.6
+                                            fontSize: 64,
+                                            color: alpha(theme.palette.primary.main, 0.3),
+                                            mb: 2
                                         }}
                                     />
                                     <Typography variant="h6" color="text.secondary" gutterBottom>
-                                        Nenhum paciente encontrado
+                                        Nenhuma receita encontrada
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
-                                        Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo paciente.
+                                        Tente ajustar seus filtros ou termos de busca para encontrar receitas, ou crie uma nova receita.
                                     </Typography>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<AddIcon />}
+                                        color="primary"
+                                        onClick={onNewPrescription}
+                                        sx={{ mt: 2, borderRadius: '50px' }}
+                                    >
+                                        Nova Receita
+                                    </Button>
                                 </Box>
                             </TableCell>
                         </TableRow>
                     ) : (
-                        paginatedPatients.map((patient) => {
-                            const patientName = patient.patientName || 'Sem nome';
-                            const gender = patient.gender || 'Não informado';
-                            let age = '-';
+                        paginatedPrescriptions.map((prescription) => {
+                            const patientData = patientsMap[prescription.patientId] || {};
+                            const patientName = patientData.patientName || 'Paciente não encontrado';
+                            const patientAvatar = patientData.patientPhotoUrl;
 
-                            // Cálculo da idade a partir do campo birthDate (formato "dd/MM/yyyy")
-                            if (patient.birthDate) {
-                                try {
-                                    const parsedBirthDate = parse(patient.birthDate, 'dd/MM/yyyy', new Date());
-                                    if (isValid(parsedBirthDate)) {
-                                        age = differenceInYears(new Date(), parsedBirthDate);
-                                    }
-                                } catch (e) {
-                                    console.warn(`Erro ao converter data: ${patient.birthDate}`);
-                                }
-                            }
+                            const prescriptionDate = getDateValue(prescription, 'prescriptionDate');
+                            const expirationDate = getDateValue(prescription, 'expirationDate');
+                            const isFavorite = favoritePrescriptions.includes(prescription.id);
 
-                            const lastConsultDate = getDateValue(
-                                patient,
-                                'lastConsultationDate'
-                            );
+                            const status = prescription.status || 'pendente';
+                            const medications = prescription.medications || [];
 
-                            const nextConsultDate = getDateValue(
-                                patient,
-                                'nextConsultationDate'
-                            );
+                            const hasControlledMeds = medications.some(med => med.isControlled);
 
-                            const nextConsultDateFormatted = nextConsultDate ? formatDate(nextConsultDate) : '-';
-                            const nextConsultIsToday = nextConsultDate ? isToday(nextConsultDate) : false;
-
-                            let status = 'pendente';
-                            if (!lastConsultDate && nextConsultDate) {
-                                status = 'primeira consulta';
-                            } else if (patient.consultationRescheduled) {
-                                status = patient.consultationConfirmed
-                                    ? 'reagendado'
-                                    : 'reag. pendente';
-                            }
-
-                            const isTelemedicine = patient.consultationType === 'Telemedicina';
-                            const isFavorite = favoritePatients.includes(patient.id);
+                            // Calcular o status da validade
+                            const expirationStatus = getExpirationStatus(expirationDate);
 
                             return (
                                 <TableRow
-                                    key={patient.id}
-                                    onClick={() => handlePatientClick(patient.id)}
+                                    key={prescription.id}
+                                    onClick={() => handlePrescriptionClick(prescription.id)}
                                     sx={{
                                         cursor: 'pointer',
                                         transition: 'background-color 0.2s ease',
@@ -1623,7 +1585,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                                     <TableCell>
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                             <Avatar
-                                                src={patient.patientPhotoUrl}
+                                                src={patientAvatar}
                                                 alt={patientName}
                                                 sx={{
                                                     width: 40,
@@ -1642,133 +1604,115 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                     <Typography variant="body1" fontWeight={500}>
                                                         {patientName}
                                                     </Typography>
-                                                    {isTelemedicine && (
-                                                        <Tooltip title="Telemedicina">
-                                                            <VideoCallIcon
+                                                    {hasControlledMeds && (
+                                                        <Tooltip title="Contém medicamentos controlados">
+                                                            <WarningIcon
                                                                 fontSize="small"
                                                                 sx={{
                                                                     ml: 1,
-                                                                    color: theme.palette.info.main,
+                                                                    color: '#FF9800',
                                                                 }}
                                                             />
                                                         </Tooltip>
                                                     )}
                                                 </Box>
                                                 <Typography variant="caption" color="text.secondary">
-                                                    {patient.patientEmail || 'Sem e-mail'}
+                                                    {medications.map(m => m.medicationName).slice(0, 2).join(', ')}
+                                                    {medications.length > 2 && ', ...'}
                                                 </Typography>
                                             </Box>
                                         </Box>
                                     </TableCell>
 
                                     <TableCell>
-                                        {gender.toLowerCase() === 'masculino' ? (
-                                            <Tooltip title="Masculino">
-                                                <MaleIcon sx={{ color: theme.palette.info.main }} />
-                                            </Tooltip>
-                                        ) : gender.toLowerCase() === 'feminino' ? (
-                                            <Tooltip title="Feminino">
-                                                <FemaleIcon sx={{ color: '#E91E63' }} />
-                                            </Tooltip>
-                                        ) : (
-                                            '-'
+                                        <Typography variant="body2">
+                                            {formatDate(prescriptionDate)}
+                                        </Typography>
+                                        {prescriptionDate && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                {formatDistance(prescriptionDate, new Date(), { addSuffix: true, locale: ptBR })}
+                                            </Typography>
                                         )}
                                     </TableCell>
 
                                     <TableCell>
-                                        <Typography variant="body2">{age}</Typography>
-                                    </TableCell>
-
-                                    <TableCell>
-                                        {lastConsultDate && isPast(lastConsultDate) ? (
-                                            <>
-                                                <Typography variant="body2">
-                                                    {formatDate(lastConsultDate)}
+                                        {expirationDate ? (
+                                            <Box>
+                                                <Typography
+                                                    variant="body2"
+                                                    color={
+                                                        expirationStatus.status === 'expired' ? 'error.main' :
+                                                            expirationStatus.status === 'critical' ? 'error.main' :
+                                                                expirationStatus.status === 'warning' ? 'warning.main' :
+                                                                    'text.primary'
+                                                    }
+                                                    fontWeight={
+                                                        expirationStatus.status === 'expired' ||
+                                                        expirationStatus.status === 'critical' ?
+                                                            600 : 400
+                                                    }
+                                                >
+                                                    {formatDate(expirationDate)}
                                                 </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {formatDistance(lastConsultDate, new Date(), { addSuffix: true, locale: ptBR })}
+                                                <Typography
+                                                    variant="caption"
+                                                    color={
+                                                        expirationStatus.status === 'expired' ? 'error.main' :
+                                                            expirationStatus.status === 'critical' ? 'error.main' :
+                                                                expirationStatus.status === 'warning' ? 'warning.main' :
+                                                                    'text.secondary'
+                                                    }
+                                                >
+                                                    {expirationStatus.label}
                                                 </Typography>
-                                            </>
+                                            </Box>
                                         ) : (
-                                            <Typography variant="body2" color="text.secondary">-</Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Sem validade
+                                            </Typography>
                                         )}
-                                    </TableCell>
-
-                                    <TableCell>
-                                        {(() => {
-                                            // Cria um array de todas as datas de consulta futuras
-                                            const futureDates = [];
-
-                                            if (nextConsultDate && isAfter(nextConsultDate, new Date())) {
-                                                futureDates.push({
-                                                    date: nextConsultDate
-                                                });
-                                            }
-
-                                            if (lastConsultDate && isAfter(lastConsultDate, new Date())) {
-                                                futureDates.push({
-                                                    date: lastConsultDate
-                                                });
-                                            }
-
-                                            // Ordena as datas futuras (mais próxima primeiro)
-                                            futureDates.sort((a, b) => a.date - b.date);
-
-                                            // Se não há datas futuras
-                                            if (futureDates.length === 0) {
-                                                return <Typography variant="body2" color="text.secondary">-</Typography>;
-                                            }
-
-                                            // Pega a data mais próxima
-                                            const nextDate = futureDates[0].date;
-                                            const isNextToday = isToday(nextDate);
-
-                                            return (
-                                                <Box>
-                                                    <Typography
-                                                        variant="body2"
-                                                        color={isNextToday ? 'error.main' : 'text.primary'}
-                                                        fontWeight={isNextToday ? 600 : 400}
-                                                    >
-                                                        {formatDate(nextDate)}
-                                                    </Typography>
-                                                    {isNextToday && (
-                                                        <Typography variant="caption" color="error.main" fontWeight={500}>
-                                                            Hoje
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            );
-                                        })()}
                                     </TableCell>
 
                                     <TableCell>
                                         <Chip
                                             label={status.charAt(0).toUpperCase() + status.slice(1)}
                                             size="small"
+                                            color={
+                                                status === 'ativa' ? 'success' :
+                                                    status === 'pendente' ? 'warning' :
+                                                        status === 'renovada' ? 'info' :
+                                                            status === 'suspensa' ? 'error' :
+                                                                'default'
+                                            }
+                                            variant="outlined"
                                             sx={{
                                                 borderRadius: '12px',
                                                 fontSize: '0.75rem',
                                                 fontWeight: 500,
-                                                backgroundColor:
-                                                    status === 'pendente'
-                                                        ? '#F5F5F5'
-                                                        : status === 'reagendado'
-                                                            ? '#F3E5F5'
-                                                            : status === 'primeira consulta'
-                                                                ? '#E3F2FD'
-                                                                : '#FFF8E1',
-                                                color:
-                                                    status === 'pendente'
-                                                        ? '#757575'
-                                                        : status === 'reagendado'
-                                                            ? '#9C27B0'
-                                                            : status === 'primeira consulta'
-                                                                ? '#2196F3'
-                                                                : '#FF9800',
                                                 boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)'
                                             }}
                                         />
+                                    </TableCell>
+
+                                    <TableCell>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <Typography variant="body2">
+                                                {medications.length} {medications.length === 1 ? 'medicamento' : 'medicamentos'}
+                                            </Typography>
+                                            {hasControlledMeds && (
+                                                <Chip
+                                                    label="Controlado"
+                                                    size="small"
+                                                    color="warning"
+                                                    sx={{
+                                                        ml: 1,
+                                                        height: 20,
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: 600,
+                                                    }}
+                                                />
+                                            )}
+                                        </Box>
                                     </TableCell>
 
                                     <TableCell align="right">
@@ -1778,7 +1722,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                     size="small"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        handleToggleFavorite(patient.id);
+                                                        handleToggleFavorite(prescription.id);
                                                     }}
                                                     sx={{
                                                         color: isFavorite ? '#FFC107' : 'action.disabled',
@@ -1787,19 +1731,15 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                     {isFavorite ? <StarIcon /> : <StarBorderIcon />}
                                                 </IconButton>
                                             </Tooltip>
-                                            <Tooltip title="Ver perfil do paciente">
+                                            <Tooltip title="Mais ações">
                                                 <IconButton
                                                     size="small"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handlePatientClick(patient.id);
-                                                    }}
+                                                    onClick={(e) => handleMenuOpen(e, prescription.id)}
                                                     sx={{
-                                                        color: theme.palette.primary.main,
                                                         ml: 1
                                                     }}
                                                 >
-                                                    <KeyboardArrowRightIcon />
+                                                    <MoreVertIcon />
                                                 </IconButton>
                                             </Tooltip>
                                         </Box>
@@ -1811,7 +1751,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                 </TableBody>
             </Table>
 
-            {filteredPatients.length > 0 && (
+            {filteredPrescriptions.length > 0 && (
                 <Box sx={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -1820,11 +1760,11 @@ const PatientsListPage = ({ onPatientClick }) => {
                     borderTop: `1px solid ${theme.palette.divider}`
                 }}>
                     <Typography variant="body2" color="text.secondary">
-                        Mostrando {Math.min(rowsPerPage, filteredPatients.length)} de {filteredPatients.length} pacientes
+                        Mostrando {Math.min(rowsPerPage, filteredPrescriptions.length)} de {filteredPrescriptions.length} receitas
                     </Typography>
 
                     <Pagination
-                        count={Math.ceil(filteredPatients.length / rowsPerPage)}
+                        count={Math.ceil(filteredPrescriptions.length / rowsPerPage)}
                         page={page}
                         onChange={handlePageChange}
                         color="primary"
@@ -1841,7 +1781,7 @@ const PatientsListPage = ({ onPatientClick }) => {
         <Grid container spacing={3}>
             {loading ? (
                 renderSkeletonCards()
-            ) : paginatedPatients.length === 0 ? (
+            ) : paginatedPrescriptions.length === 0 ? (
                 <Grid item xs={12}>
                     <Box sx={{
                         textAlign: 'center',
@@ -1850,69 +1790,56 @@ const PatientsListPage = ({ onPatientClick }) => {
                         borderRadius: '24px',
                         boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
                     }}>
-                        <Box
-                            component="img"
-                            src="/newpaciente.svg"
-                            alt="Nenhum paciente encontrado"
+                        <HealthAndSafetyIcon
                             sx={{
-                                height: 120,
-                                mb: 2,
-                                opacity: 0.6
+                                fontSize: 64,
+                                color: alpha(theme.palette.primary.main, 0.3),
+                                mb: 2
                             }}
                         />
                         <Typography variant="h6" color="text.secondary" gutterBottom>
-                            Nenhum paciente encontrado
+                            Nenhuma receita encontrada
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
-                            Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo paciente.
+                            Tente ajustar seus filtros ou termos de busca para encontrar receitas, ou crie uma nova receita.
                         </Typography>
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            color="primary"
+                            onClick={onNewPrescription}
+                            sx={{ mt: 2, borderRadius: '50px' }}
+                        >
+                            Nova Receita
+                        </Button>
                     </Box>
                 </Grid>
             ) : (
-                paginatedPatients.map(patient => {
-                    const patientName = patient.patientName || 'Sem nome';
-                    const gender = patient.gender || 'Não informado';
-                    let age = '-';
+                paginatedPrescriptions.map(prescription => {
+                    const patientData = patientsMap[prescription.patientId] || {};
+                    const patientName = patientData.patientName || 'Paciente não encontrado';
+                    const patientAvatar = patientData.patientPhotoUrl;
 
-                    // Cálculo da idade a partir do campo birthDate (formato "dd/MM/yyyy")
-                    if (patient.birthDate) {
-                        try {
-                            const parsedBirthDate = parse(patient.birthDate, 'dd/MM/yyyy', new Date());
-                            if (isValid(parsedBirthDate)) {
-                                age = differenceInYears(new Date(), parsedBirthDate);
-                            }
-                        } catch (e) {
-                            console.warn(`Erro ao converter data: ${patient.birthDate}`);
-                        }
-                    }
+                    const prescriptionDate = getDateValue(prescription, 'prescriptionDate');
+                    const expirationDate = getDateValue(prescription, 'expirationDate');
+                    const isFavorite = favoritePrescriptions.includes(prescription.id);
 
-                    const lastConsultDate = getDateValue(
-                        patient,
-                        'lastConsultationDate'
-                    );
+                    const status = prescription.status || 'pendente';
+                    const medications = prescription.medications || [];
 
-                    const nextConsultDate = getDateValue(
-                        patient,
-                        'nextConsultationDate'
-                    );
+                    const hasControlledMeds = medications.some(med => med.isControlled);
 
-                    const nextConsultDateFormatted = nextConsultDate ? formatDate(nextConsultDate) : '-';
-                    const nextConsultIsToday = nextConsultDate ? isToday(nextConsultDate) : false;
+                    // Calcular o status da validade
+                    const expirationStatus = getExpirationStatus(expirationDate);
 
-                    let status = 'pendente';
-                    if (!lastConsultDate && nextConsultDate) {
-                        status = 'primeira consulta';
-                    } else if (patient.consultationRescheduled) {
-                        status = patient.consultationConfirmed
-                            ? 'reagendado'
-                            : 'reag. pendente';
-                    }
-
-                    const isTelemedicine = patient.consultationType === 'Telemedicina';
-                    const isFavorite = favoritePatients.includes(patient.id);
+                    // Formatar as instruções gerais (limitadas)
+                    const generalInstructions = prescription.generalInstructions || '';
+                    const truncatedInstructions = generalInstructions.length > 100
+                        ? generalInstructions.substring(0, 100) + '...'
+                        : generalInstructions;
 
                     return (
-                        <Grid item xs={12} sm={6} md={4} lg={3} key={patient.id}>
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={prescription.id}>
                             <Card sx={{
                                 height: '100%',
                                 display: 'flex',
@@ -1926,12 +1853,12 @@ const PatientsListPage = ({ onPatientClick }) => {
                                     cursor: 'pointer'
                                 }
                             }}
-                                  onClick={() => handlePatientClick(patient.id)}
+                                  onClick={() => handlePrescriptionClick(prescription.id)}
                             >
                                 <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                                         <Avatar
-                                            src={patient.patientPhotoUrl}
+                                            src={patientAvatar}
                                             alt={patientName}
                                             sx={{
                                                 width: 50,
@@ -1950,27 +1877,27 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                 <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ maxWidth: '80%' }}>
                                                     {patientName}
                                                 </Typography>
-                                                {isTelemedicine && (
-                                                    <Tooltip title="Telemedicina">
-                                                        <VideoCallIcon
+                                                {hasControlledMeds && (
+                                                    <Tooltip title="Contém medicamentos controlados">
+                                                        <WarningIcon
                                                             fontSize="small"
                                                             sx={{
                                                                 ml: 0.5,
-                                                                color: theme.palette.info.main,
+                                                                color: '#FF9800',
                                                             }}
                                                         />
                                                     </Tooltip>
                                                 )}
                                             </Box>
                                             <Typography variant="caption" color="text.secondary" display="block" noWrap>
-                                                {patient.patientEmail || 'Sem e-mail'}
+                                                {formatDate(prescriptionDate)}
                                             </Typography>
                                         </Box>
                                         <IconButton
                                             size="small"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleToggleFavorite(patient.id);
+                                                handleToggleFavorite(prescription.id);
                                             }}
                                             sx={{
                                                 color: isFavorite ? '#FFC107' : 'action.disabled',
@@ -1984,148 +1911,106 @@ const PatientsListPage = ({ onPatientClick }) => {
 
                                     <Box sx={{ mb: 'auto' }}>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                {gender.toLowerCase() === 'masculino' ? (
-                                                    <Tooltip title="Masculino">
-                                                        <MaleIcon sx={{ color: theme.palette.info.main, mr: 0.5, fontSize: '1rem' }} />
-                                                    </Tooltip>
-                                                ) : gender.toLowerCase() === 'feminino' ? (
-                                                    <Tooltip title="Feminino">
-                                                        <FemaleIcon sx={{ color: '#E91E63', mr: 0.5, fontSize: '1rem' }} />
-                                                    </Tooltip>
-                                                ) : (
-                                                    '-'
-                                                )}
-                                                <Typography variant="body2">{age} anos</Typography>
-                                            </Box>
                                             <Chip
                                                 label={status.charAt(0).toUpperCase() + status.slice(1)}
                                                 size="small"
+                                                color={
+                                                    status === 'ativa' ? 'success' :
+                                                        status === 'pendente' ? 'warning' :
+                                                            status === 'renovada' ? 'info' :
+                                                                status === 'suspensa' ? 'error' :
+                                                                    'default'
+                                                }
+                                                variant="outlined"
                                                 sx={{
-                                                    height: 20,
-                                                    fontSize: '0.65rem',
-                                                    fontWeight: 600,
-                                                    backgroundColor:
-                                                        status === 'pendente'
-                                                            ? '#F5F5F5'
-                                                            : status === 'reagendado'
-                                                                ? '#F3E5F5'
-                                                                : status === 'primeira consulta'
-                                                                    ? '#E3F2FD'
-                                                                    : '#FFF8E1',
-                                                    color:
-                                                        status === 'pendente'
-                                                            ? '#757575'
-                                                            : status === 'reagendado'
-                                                                ? '#9C27B0'
-                                                                : status === 'primeira consulta'
-                                                                    ? '#2196F3'
-                                                                    : '#FF9800',
+                                                    borderRadius: '12px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 500,
+                                                    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)'
                                                 }}
                                             />
+
+                                            {/* Validade */}
+                                            {expirationDate && (
+                                                <Chip
+                                                    label={expirationStatus.label}
+                                                    size="small"
+                                                    color={
+                                                        expirationStatus.status === 'expired' ? 'error' :
+                                                            expirationStatus.status === 'critical' ? 'error' :
+                                                                expirationStatus.status === 'warning' ? 'warning' :
+                                                                    'default'
+                                                    }
+                                                    sx={{
+                                                        height: 20,
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: 600,
+                                                    }}
+                                                />
+                                            )}
                                         </Box>
 
+                                        {/* Lista de medicamentos */}
                                         <Box sx={{ mt: 2 }}>
-                                            {/* Exibição da última consulta (no passado) */}
-                                            {lastConsultDate && isPast(lastConsultDate) && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                                                    <EventNoteIcon fontSize="small" sx={{ color: 'text.secondary', mr: 1 }} />
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        Última: {formatDate(lastConsultDate)}
-                                                        <Typography variant="caption" component="span" color="text.secondary" sx={{ ml: 0.5 }}>
-                                                            ({formatDistance(lastConsultDate, new Date(), { addSuffix: true, locale: ptBR })})
+                                            <Typography variant="body2" fontWeight={600}>
+                                                Medicamentos ({medications.length})
+                                            </Typography>
+                                            <Box sx={{ mt: 1 }}>
+                                                {medications.slice(0, 3).map((medication, index) => (
+                                                    <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                                                        <MedicationIcon fontSize="small" sx={{
+                                                            color: medication.isControlled ? 'warning.main' : 'text.secondary',
+                                                            mr: 1
+                                                        }} />
+                                                        <Typography variant="body2" color="text.secondary" noWrap>
+                                                            {medication.medicationName}
+                                                            {medication.dosage && ` - ${medication.dosage}`}
                                                         </Typography>
+                                                    </Box>
+                                                ))}
+                                                {medications.length > 3 && (
+                                                    <Typography variant="body2" color="text.secondary" sx={{
+                                                        fontStyle: 'italic',
+                                                        mt: 0.5
+                                                    }}>
+                                                        +{medications.length - 3} medicamentos
                                                     </Typography>
-                                                </Box>
-                                            )}
-
-                                            {/* Exibição das duas próximas consultas (ordenadas) */}
-                                            {/* Aqui estamos considerando tanto nextConsultationDate quanto lastConsultationDate
-        se for no futuro (às vezes lastConsultationDate pode ser uma data futura) */}
-                                            {(() => {
-                                                // Cria um array de todas as datas de consulta futuras
-                                                const futureDates = [];
-
-                                                if (nextConsultDate && isAfter(nextConsultDate, new Date())) {
-                                                    futureDates.push({
-                                                        date: nextConsultDate,
-                                                        isNext: true
-                                                    });
-                                                }
-
-                                                if (lastConsultDate && isAfter(lastConsultDate, new Date())) {
-                                                    futureDates.push({
-                                                        date: lastConsultDate,
-                                                        isNext: false
-                                                    });
-                                                }
-
-                                                // Ordena as datas futuras (mais próxima primeiro)
-                                                futureDates.sort((a, b) => a.date - b.date);
-
-                                                // Retorna as datas formatadas
-                                                return futureDates.map((dateObj, index) => {
-                                                    const isToday = isValid(dateObj.date) && format(dateObj.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-
-                                                    return (
-                                                        <Box
-                                                            key={index}
-                                                            sx={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                mb: index < futureDates.length - 1 ? 0.5 : 0
-                                                            }}
-                                                        >
-                                                            <CalendarTodayIcon
-                                                                fontSize="small"
-                                                                sx={{
-                                                                    color: isToday ? 'error.main' : 'text.secondary',
-                                                                    mr: 1
-                                                                }}
-                                                            />
-                                                            <Typography
-                                                                variant="body2"
-                                                                color={isToday ? 'error.main' : 'text.secondary'}
-                                                                fontWeight={isToday || index === 0 ? 600 : 400}
-                                                            >
-                                                                {index === 0 ? "Próxima: " : "Agendada: "}
-                                                                {formatDate(dateObj.date)}
-                                                                {isToday && " (Hoje)"}
-                                                            </Typography>
-                                                        </Box>
-                                                    );
-                                                });
-                                            })()}
-
-                                            {/* Mensagem quando não há consultas */}
-                                            {!lastConsultDate && !nextConsultDate && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                    <CalendarTodayIcon fontSize="small" sx={{ color: 'text.secondary', mr: 1 }} />
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        Sem consultas agendadas
-                                                    </Typography>
-                                                </Box>
-                                            )}
+                                                )}
+                                            </Box>
                                         </Box>
+
+                                        {/* Instruções gerais (se tiver) */}
+                                        {generalInstructions && (
+                                            <Box sx={{ mt: 2 }}>
+                                                <Typography variant="body2" fontWeight={600}>
+                                                    Instruções
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                    {truncatedInstructions}
+                                                </Typography>
+                                            </Box>
+                                        )}
                                     </Box>
 
                                     <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}`, justifyContent: 'space-between' }}>
                                         <Button
                                             size="small"
-                                            startIcon={<EventAvailableIcon />}
+                                            startIcon={<EditIcon />}
                                             variant="outlined"
                                             sx={{ borderRadius: '50px', fontSize: '0.75rem' }}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                // Função para agendamento
+                                                if (onEditPrescription) {
+                                                    onEditPrescription(prescription.id);
+                                                }
                                             }}
                                         >
-                                            Agendar
+                                            Editar
                                         </Button>
 
                                         <Button
                                             size="small"
-                                            endIcon={<KeyboardArrowRightIcon />}
+                                            startIcon={<PrintIcon />}
                                             variant="contained"
                                             color="primary"
                                             sx={{
@@ -2133,9 +2018,12 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                 fontSize: '0.75rem',
                                                 boxShadow: '0 2px 8px 0 rgba(0,118,255,0.25)',
                                             }}
-                                            onClick={() => handlePatientClick(patient.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                console.log(`Imprimir receita ${prescription.id}`);
+                                            }}
                                         >
-                                            Ver Perfil
+                                            Imprimir
                                         </Button>
                                     </Box>
                                 </CardContent>
@@ -2145,7 +2033,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                 })
             )}
 
-            {filteredPatients.length > 0 && (
+            {filteredPrescriptions.length > 0 && (
                 <Grid item xs={12}>
                     <Box sx={{
                         display: 'flex',
@@ -2158,7 +2046,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                         boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
                     }}>
                         <Pagination
-                            count={Math.ceil(filteredPatients.length / rowsPerPage)}
+                            count={Math.ceil(filteredPrescriptions.length / rowsPerPage)}
                             page={page}
                             onChange={handlePageChange}
                             color="primary"
@@ -2217,8 +2105,44 @@ const PatientsListPage = ({ onPatientClick }) => {
                     onApplyFilters={handleApplyFilters}
                 />
             </Popover>
+
+            {/* Menu de ações */}
+            <Menu
+                anchorEl={actionMenuAnchorEl}
+                open={Boolean(actionMenuAnchorEl)}
+                onClose={handleMenuClose}
+                PaperProps={{
+                    sx: {
+                        borderRadius: '16px',
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                        minWidth: '180px'
+                    }
+                }}
+            >
+                <MenuItem onClick={handleEditPrescription}>
+                    <EditIcon fontSize="small" sx={{ mr: 1.5 }} />
+                    Editar
+                </MenuItem>
+                <MenuItem onClick={handleDuplicatePrescription}>
+                    <ContentCopyIcon fontSize="small" sx={{ mr: 1.5 }} />
+                    Duplicar
+                </MenuItem>
+                <MenuItem onClick={handlePrintPrescription}>
+                    <PrintIcon fontSize="small" sx={{ mr: 1.5 }} />
+                    Imprimir
+                </MenuItem>
+                <MenuItem onClick={handleDownloadPrescription}>
+                    <DownloadIcon fontSize="small" sx={{ mr: 1.5 }} />
+                    Baixar PDF
+                </MenuItem>
+                <Divider sx={{ my: 1 }} />
+                <MenuItem onClick={handleArchivePrescription}>
+                    <ArchiveIcon fontSize="small" sx={{ mr: 1.5 }} />
+                    Arquivar
+                </MenuItem>
+            </Menu>
         </Box>
     );
 };
 
-export default PatientsListPage;
+export default PrescriptionsListPage;

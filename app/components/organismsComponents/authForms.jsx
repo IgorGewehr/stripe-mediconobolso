@@ -12,11 +12,12 @@ import {
     Collapse,
     Alert,
     Snackbar,
+    useMediaQuery,
+    useTheme,
 } from "@mui/material";
 import React, { useState } from "react";
 import firebaseService from "../../../lib/firebaseService";
 import { useRouter } from "next/navigation";
-// Importe o hook de autenticação criado
 import { useAuth } from "../authProvider";
 
 export const AuthForms = () => {
@@ -34,6 +35,8 @@ export const AuthForms = () => {
     const [passwordResetSent, setPasswordResetSent] = useState(false);
     const router = useRouter();
     const { setUserId } = useAuth();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     // Funções auxiliares para formatação e validação
     const formatPhone = (phone) => {
@@ -174,7 +177,7 @@ export const AuthForms = () => {
         try {
             if (isLogin) {
                 await firebaseService.login(formData.email, formData.password);
-                // O redirecionamento agora é gerenciado pelo AuthProvider em vez de aqui
+                // O redirecionamento é gerenciado pelo AuthProvider
             } else {
                 const userData = {
                     fullName: formData.fullName,
@@ -184,7 +187,7 @@ export const AuthForms = () => {
                     assinouPlano: false,
                 };
                 await firebaseService.signUp(formData.email, formData.password, userData);
-                // O redirecionamento agora é gerenciado pelo AuthProvider
+                // O redirecionamento é gerenciado pelo AuthProvider
             }
         } catch (error) {
             console.error("Erro na autenticação:", error);
@@ -210,8 +213,17 @@ export const AuthForms = () => {
             flexDirection="column"
             alignItems="center"
             justifyContent="center"
-            gap={3}
-            sx={{ width: "100%", maxWidth: 400, mx: "auto" }}
+            gap={2}
+            sx={{
+                width: "100%",
+                maxWidth: { xs: "100%", sm: 400 },
+                mx: "auto",
+                p: { xs: 2, sm: 0 },
+                backgroundColor: "white",
+                borderRadius: { xs: 0, sm: 2 },
+                boxShadow: { xs: 0, sm: 3 },
+                py: { xs: 3, sm: 4 }
+            }}
         >
             <Snackbar
                 open={passwordResetSent}
@@ -226,10 +238,21 @@ export const AuthForms = () => {
 
             <Slide direction="down" in={true} mountOnEnter unmountOnExit timeout={500}>
                 <Box display="flex" flexDirection="column" alignItems="center" gap={1} width="100%">
-                    <Typography variant="h4" component="h1" sx={{ color: "primary.main" }}>
+                    <Typography variant="h4" component="h1" sx={{
+                        color: "primary.main",
+                        fontSize: { xs: '1.75rem', sm: '2rem' }
+                    }}>
                         {isLogin ? "Entrar" : "Registre-se"}
                     </Typography>
-                    <Typography variant="subtitle1" color="text.secondary">
+                    <Typography
+                        variant="subtitle1"
+                        color="text.secondary"
+                        sx={{
+                            textAlign: 'center',
+                            px: 2,
+                            fontSize: { xs: '0.875rem', sm: '1rem' }
+                        }}
+                    >
                         Tudo que um médico precisa num só lugar!
                     </Typography>
                 </Box>
@@ -241,20 +264,21 @@ export const AuthForms = () => {
                 </Alert>
             )}
 
-            <Stack spacing={2} width="100%">
+            <Stack spacing={1.5} width="100%">
                 <Collapse in={!isLogin} timeout={500}>
                     <Box>
                         <TextField
                             label="Nome Completo"
                             variant="outlined"
                             fullWidth
-                            sx={{ borderRadius: 8, mb: 2 }}
+                            sx={{ mb: 1.5, borderRadius: { xs: 1, sm: 2 } }}
                             name="fullName"
                             value={formData.fullName}
                             onChange={handleInputChange}
                             error={Boolean(errors.fullName)}
                             helperText={errors.fullName ? "Campo obrigatório" : ""}
                             color={errors.fullName ? "error" : "primary"}
+                            size={isMobile ? "small" : "medium"}
                         />
                         <TextField
                             label="Telefone"
@@ -263,7 +287,7 @@ export const AuthForms = () => {
                             InputProps={{
                                 startAdornment: <InputAdornment position="start">+55</InputAdornment>,
                             }}
-                            sx={{ borderRadius: 8, mb: 2 }}
+                            sx={{ mb: 1.5, borderRadius: { xs: 1, sm: 2 } }}
                             name="phone"
                             value={formData.phone}
                             onChange={handleInputChange}
@@ -271,12 +295,13 @@ export const AuthForms = () => {
                             error={Boolean(errors.phone)}
                             helperText={errors.phone ? "Campo obrigatório" : ""}
                             color={errors.phone ? "error" : "primary"}
+                            size={isMobile ? "small" : "medium"}
                         />
                         <TextField
                             label="CPF"
                             variant="outlined"
                             fullWidth
-                            sx={{ borderRadius: 8 }}
+                            sx={{ borderRadius: { xs: 1, sm: 2 } }}
                             name="cpf"
                             value={formData.cpf}
                             onChange={handleInputChange}
@@ -284,6 +309,7 @@ export const AuthForms = () => {
                             error={Boolean(errors.cpf)}
                             helperText={errors.cpf || ""}
                             color={errors.cpf ? "error" : "primary"}
+                            size={isMobile ? "small" : "medium"}
                         />
                     </Box>
                 </Collapse>
@@ -292,26 +318,28 @@ export const AuthForms = () => {
                     label="E-mail"
                     variant="outlined"
                     fullWidth
-                    sx={{ borderRadius: 8 }}
+                    sx={{ borderRadius: { xs: 1, sm: 2 } }}
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
                     error={Boolean(errors.email) || authError.includes("Email")}
                     helperText={errors.email ? (typeof errors.email === "string" ? errors.email : "Campo obrigatório") : ""}
                     color={(Boolean(errors.email) || authError.includes("Email")) ? "error" : "primary"}
+                    size={isMobile ? "small" : "medium"}
                 />
                 <TextField
                     label="Senha"
                     type="password"
                     variant="outlined"
                     fullWidth
-                    sx={{ borderRadius: 8 }}
+                    sx={{ borderRadius: { xs: 1, sm: 2 } }}
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     error={Boolean(errors.password) || authError.includes("senha")}
                     helperText={errors.password ? "Campo obrigatório" : ""}
                     color={(Boolean(errors.password) || authError.includes("senha")) ? "error" : "primary"}
+                    size={isMobile ? "small" : "medium"}
                 />
                 <Collapse in={!isLogin} timeout={500}>
                     <TextField
@@ -319,7 +347,7 @@ export const AuthForms = () => {
                         type="password"
                         variant="outlined"
                         fullWidth
-                        sx={{ borderRadius: 8 }}
+                        sx={{ borderRadius: { xs: 1, sm: 2 } }}
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
@@ -332,6 +360,7 @@ export const AuthForms = () => {
                                 : ""
                         }
                         color={errors.confirmPassword ? "error" : "primary"}
+                        size={isMobile ? "small" : "medium"}
                     />
                 </Collapse>
 
@@ -340,21 +369,52 @@ export const AuthForms = () => {
                     color="primary"
                     fullWidth
                     onClick={handleSubmit}
-                    sx={{ borderRadius: 8, py: 1.5 }}
+                    sx={{
+                        borderRadius: { xs: 4, sm: 8 },
+                        py: { xs: 1, sm: 1.5 },
+                        mt: 1
+                    }}
                 >
                     {isLogin ? "Entrar" : "Registrar"}
                 </Button>
             </Stack>
 
-            <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
-                <Link href="#" color="secondary" underline="hover" onClick={handlePasswordReset}>
+            <Box
+                display="flex"
+                flexDirection="column"
+                alignItems="center"
+                gap={1}
+                sx={{ mt: 1 }}
+            >
+                <Link
+                    href="#"
+                    color="secondary"
+                    underline="hover"
+                    onClick={handlePasswordReset}
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                >
                     Esqueceu sua senha?
                 </Link>
-                <Box display="flex" alignItems="center" gap={0.5}>
-                    <Typography variant="body2">
+                <Box
+                    display="flex"
+                    alignItems="center"
+                    gap={0.5}
+                    flexWrap="wrap"
+                    justifyContent="center"
+                >
+                    <Typography
+                        variant="body2"
+                        sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                    >
                         {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}
                     </Typography>
-                    <Link href="#" color="primary" underline="hover" onClick={handleToggleForm}>
+                    <Link
+                        href="#"
+                        color="primary"
+                        underline="hover"
+                        onClick={handleToggleForm}
+                        sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                    >
                         {isLogin ? "Registre-se" : "Entre aqui"}
                     </Link>
                 </Box>
