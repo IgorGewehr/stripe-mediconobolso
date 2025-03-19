@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { Box, CircularProgress } from "@mui/material";
-import TopAppBar from "../components/TopAppBar";
-import Sidebar from "../components/Sidebar";
-import DashboardTemplate from "../components/DashboardTemplate";
+import TopAppBar from "../components/topAppBar";
+import Sidebar from "../components/sidebar";
+import DashboardTemplate from "../components/dashboardTemplate";
 import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
 import PacienteTemplate from "../components/pacienteTemplate";
 import AgendaMedica from "../components/organismsComponents/agendaComponente";
 import { useAuth } from "../components/authProvider";
 import { useRouter } from "next/navigation";
-import Dashboard from "../components/DashboardTemplate";
+import Dashboard from "../components/dashboardTemplate";
 
 
 
