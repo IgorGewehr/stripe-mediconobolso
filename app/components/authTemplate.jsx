@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import AuthForms from './organismsComponents/authForms';
-import ComingSoon from './organismsComponents/comingSoon';
 import { useAuth } from './authProvider';
 import { useRouter } from 'next/navigation';
 
@@ -21,6 +20,7 @@ const AuthTemplate = () => {
         }
     }, [user, router]);
 
+    // Enquanto o contexto de autenticação estiver carregando
     if (loading) {
         return (
             <Box
@@ -36,13 +36,23 @@ const AuthTemplate = () => {
         );
     }
 
-    let content;
-    if (!user) {
-        content = <AuthForms />;
-    } else if (user && user.assinouPlano) {
-        content = <ComingSoon />;
+    // Se o usuário estiver autenticado, exibe o spinner enquanto o redirecionamento ocorre
+    if (user) {
+        return (
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                }}
+            >
+                <CircularProgress color="primary" />
+            </Box>
+        );
     }
 
+    // Se não houver usuário autenticado, exibe os formulários de autenticação
     return (
         <Box
             sx={{
@@ -68,7 +78,6 @@ const AuthTemplate = () => {
                     zIndex: 10,
                 }}
             />
-
             <Box
                 sx={{
                     flex: 1,
@@ -80,9 +89,8 @@ const AuthTemplate = () => {
                     marginLeft: '40px',
                 }}
             >
-                {content}
+                <AuthForms />
             </Box>
-
             <Box
                 sx={{
                     flex: 1,
