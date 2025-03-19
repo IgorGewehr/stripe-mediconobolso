@@ -11,8 +11,7 @@ import AgendaMedica from "../components/organismsComponents/agendaComponente";
 import { useAuth } from "../components/authProvider";
 import { useRouter } from "next/navigation";
 import Dashboard from "../components/dashboardTemplate";
-
-
+import PatientsListPage from "../components/patientsListTemplate";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -89,7 +88,8 @@ export default function AppLayout({ children }) {
             case "dashboard":
                 return <Dashboard onClickPatients={handlePatientClick}/>;
             case "pacientes":
-                return <PacienteCadastroTemplate />;
+                // Substituimos o PacienteCadastroTemplate pelo novo PatientsListPage
+                return <PatientsListPage onPatientClick={handlePatientClick} />;
             case "receitas":
                 // Recebendo o handler de clique no paciente diretamente
                 return <Dashboard onClickPatients={handlePatientClick} />;
@@ -97,6 +97,8 @@ export default function AppLayout({ children }) {
                 return <AgendaMedica />;
             case "patientprofile":
                 return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToDashboard} />;
+            case "criar novo paciente":
+                return <PacienteCadastroTemplate/>
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
@@ -113,7 +115,7 @@ export default function AppLayout({ children }) {
 
     // Callback para o botão "Paciente" da TopAppBar
     const handlePacienteTopAppBarClick = () => {
-        setActivePage("Pacientes");
+        setActivePage("Criar novo paciente");
     };
 
     // Mostrar loading enquanto verifica autenticação
@@ -170,13 +172,20 @@ export default function AppLayout({ children }) {
                                                 {", confira sua agenda"}
                                             </>
                                         )
-                                        : activePage
+                                        : activePage === "Pacientes"
+                                            ? (
+                                                <>
+                                                <span style={{color: "#1852FE"}}>
+                                                    Dr. {user?.fullName}
+                                                </span>
+                                                    {", gerencie seus pacientes"}
+                                                </>
+                                            )
+                                            : activePage
                         }
                         onPacienteClick={handlePacienteTopAppBarClick}
                         onAgendamentoClick={handleAgendamentoClick}
-                        // Removido o prop showBackButton para que o botão sempre apareça
-                        // showBackButton={activePage === "PatientProfile"}
-                        // Alterado para sempre usar handleBackToDashboard
+                        // Sempre usa handleBackToDashboard para o botão de voltar
                         onBackClick={handleBackToDashboard}
                     />
                 </Box>
