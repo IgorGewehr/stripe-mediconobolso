@@ -38,7 +38,7 @@ import {
     Person,
     ArrowForward
 } from '@mui/icons-material';
-import FirebaseService from '../../../lib/FirebaseService';
+import FirebaseService from '../../../lib/firebaseService';
 import { useAuth } from '../authProvider';
 import EventoModal from './eventoModal';
 import {
