@@ -6,7 +6,7 @@ import PacienteCard from "./organismsComponents/cardPaciente";
 import AcompanhamentoSection from "./organismsComponents/acompanhamentoSection";
 import NotasSection from "./organismsComponents/anotacoesGrid";
 import { useAuth } from "./authProvider";
-import FirebaseService from "../../lib/FirebaseService";
+import FirebaseService from "../../lib/firebaseService";
 
 // Main component
 export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
