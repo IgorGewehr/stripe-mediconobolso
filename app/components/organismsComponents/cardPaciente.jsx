@@ -216,12 +216,13 @@ function Card1({ paciente, expanded, onToggle }) {
                     sx={{
                         height: 44,
                         borderRadius: 99,
-                        backgroundColor: themeColors.primary,
-                        color: "#FFF",
+                        backgroundColor: "#FFF",
+                        color: "#111E5A",
                         fontFamily: "Gellix",
                         fontSize: 14,
                         fontWeight: 500,
                         textTransform: "none",
+                        border: "1px solid #111E5A",
                         mb: 3,
                         "&:hover": {
                             backgroundColor: "#0d47e0",

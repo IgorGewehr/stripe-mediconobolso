@@ -26,8 +26,8 @@ function AcompanhamentoCard({ tipo, icone, onClick }) {
         <Card
             sx={{
                 width: "100%",
-                maxWidth: "240px",
-                height: "240px",
+                maxWidth: "200px",
+                height: "200px",
                 borderRadius: "20px",
                 boxShadow: "0px 8px 24px 0px rgba(0, 0, 0, 0.04)",
                 position: "relative",
@@ -61,9 +61,10 @@ function AcompanhamentoCard({ tipo, icone, onClick }) {
                     src={icone}
                     alt={tipo}
                     sx={{
-                        width: 130.4,
-                        height: 150,
-                        mb: 2,
+                        mt: "10px",
+                        width: 115,
+                        height: 125,
+                        mb: 1,
                     }}
                 />
 
@@ -84,7 +85,7 @@ function AcompanhamentoCard({ tipo, icone, onClick }) {
                         sx={{
                             color: themeColors.textPrimary,
                             fontFamily: "Gellix",
-                            fontSize: 25,
+                            fontSize: 24,
                             fontWeight: 500,
                             textAlign: "start", // Garante o alinhamento do texto à esquerda
                             flexGrow: 1,
@@ -95,8 +96,8 @@ function AcompanhamentoCard({ tipo, icone, onClick }) {
 
                     <IconButton
                         sx={{
-                            width: 36,
-                            height: 36,
+                            width: 28,
+                            height: 28,
                             backgroundColor: themeColors.primary,
                             color: "#FFF",
                             "&:hover": {
@@ -159,15 +160,15 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
             </Typography>
 
             {/* Grid de cards */}
-            <Grid container spacing={3}>
-                <Grid item xs={12} sm={6} md={4}>
+            <Grid container spacing={1}>
+                <Grid item xs={12} sm={6} md={3.4}>
                     <AcompanhamentoCard
                         tipo="Anamnese"
                         icone="/anamnesecard.svg"
                         onClick={handleAnamneseClick}
                     />
                 </Grid>
-                <Grid item xs={12} sm={6} md={4}>
+                <Grid item xs={12} sm={6} md={3.4}>
                     <AcompanhamentoCard
                         tipo="Receitas"
                         icone="/receitascard.svg"

@@ -37,10 +37,10 @@ export default function AppLayout({ children }) {
 
     // Estilo de escala para o conteúdo
     const contentScaleStyle = {
-        transform: 'scale(0.9)',
+        transform: 'scale(0.95)',
         transformOrigin: 'top left',
-        width: '111.11%', // Compensar a redução (100% / 0.9 ≈ 111.11%)
-        height: '111.11%',
+        width: '105.26%', // Corrigido o valor (100% / 0.95 ≈ 105.26%)
+        height: '105.26%',
     };
 
     // Handler para quando um paciente é clicado na tabela
@@ -50,9 +50,21 @@ export default function AppLayout({ children }) {
     };
 
     // Handler para voltar da visualização do paciente para a tabela de pacientes
+    // Este handler foi mantido para compatibilidade mas não é mais usado no TopAppBar
     const handleBackToPatients = () => {
         setSelectedPatientId(null);
+        setActivePage("dashboard");
+    };
+
+    // Handler global para o botão Back - sempre leva ao Dashboard
+    const handleBackToDashboard = () => {
+        setSelectedPatientId(null);
         setActivePage("Dashboard");
+    };
+
+    // Handler para o botão de agendamento
+    const handleAgendamentoClick = () => {
+        setActivePage("Agenda");
     };
 
     // Expor o handler globalmente para que os componentes possam acessá-lo
@@ -61,11 +73,13 @@ export default function AppLayout({ children }) {
         // Expor handlers para uso global em componentes aninhados
         window.handlePatientClick = handlePatientClick;
         window.handleMenuSelect = handleMenuSelect;
+        window.handleBackToDashboard = handleBackToDashboard;
 
         // Limpeza ao desmontar o componente
         return () => {
             delete window.handlePatientClick;
             delete window.handleMenuSelect;
+            delete window.handleBackToDashboard;
         };
     }, []);
 
@@ -82,7 +96,7 @@ export default function AppLayout({ children }) {
             case "agenda":
                 return <AgendaMedica />;
             case "patientprofile":
-                return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToPatients} />;
+                return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToDashboard} />;
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
@@ -124,7 +138,7 @@ export default function AppLayout({ children }) {
     }
 
     return (
-        <Box display="flex" height="100vh" overflow="hidden">
+        <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF"}}>
             <Sidebar
                 initialSelected={activePage}
                 onMenuSelect={handleMenuSelect}
@@ -143,15 +157,27 @@ export default function AppLayout({ children }) {
                                         <>
                                             Bem vindo,{" "}
                                             <span style={{color: "#1852FE"}}>
-                    Dr. {user?.fullName}
-                  </span>
+                                                Dr. {user?.fullName}
+                                            </span>
                                         </>
                                     )
-                                    : activePage
+                                    : activePage === "Agenda"
+                                        ? (
+                                            <>
+                                            <span style={{color: "#1852FE"}}>
+                                                Dr. {user?.fullName}
+                                            </span>
+                                                {", confira sua agenda"}
+                                            </>
+                                        )
+                                        : activePage
                         }
                         onPacienteClick={handlePacienteTopAppBarClick}
-                        showBackButton={activePage === "PatientProfile"}
-                        onBackClick={handleBackToPatients}
+                        onAgendamentoClick={handleAgendamentoClick}
+                        // Removido o prop showBackButton para que o botão sempre apareça
+                        // showBackButton={activePage === "PatientProfile"}
+                        // Alterado para sempre usar handleBackToDashboard
+                        onBackClick={handleBackToDashboard}
                     />
                 </Box>
                 <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>

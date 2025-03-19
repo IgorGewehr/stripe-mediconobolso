@@ -583,7 +583,7 @@ export default function NotasSection({ pacienteId }) {
                     sx={{
                         color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: 24,
+                        fontSize: "30px",
                         fontWeight: 600,
                     }}
                 >

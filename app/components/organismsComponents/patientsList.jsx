@@ -674,7 +674,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
         <Card
             elevation={0}
             sx={{
-                borderRadius: '20px',
+                borderRadius: '40px',
                 border: '1px solid',
                 borderColor: theme.palette.divider,
                 backgroundColor: '#D8E8FF',
@@ -693,27 +693,35 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                     '&:last-child': { pb: 0 },
                 }}
             >
-                {/* Cabeçalho e área de filtros com padding */}
+                {/* Cabeçalho e área de filtros */}
                 <Box sx={{ p: 3 }}>
                     <Box
                         sx={{
                             display: 'flex',
+                            flexDirection: isMobile ? 'column' : 'row',
                             justifyContent: 'space-between',
                             alignItems: 'center',
                             mb: 2,
-                            flexWrap: isMobile ? 'wrap' : 'nowrap',
-                            gap: isMobile ? 2 : 0
+                            gap: 2
                         }}
                     >
-                        <Typography variant="h5" fontWeight="bold">
-                            Pacientes
-                        </Typography>
-                        <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2,
-                            width: isMobile ? '100%' : 'auto'
-                        }}>
+                        {/* Título estilizado */}
+                        <Box
+                            sx={{
+                                borderRadius: '50px',
+                                backgroundColor: '#1852FE',
+                                padding: '8px 16px',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <Typography variant="h5" fontSize="16px" fontWeight="bold" sx={{ color: '#D8E8FF' }}>
+                                Pacientes
+                            </Typography>
+                        </Box>
+
+                        {/* Campo de busca */}
+                        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
                             <TextField
                                 placeholder="Pesquise por pacientes..."
                                 value={searchTerm}
@@ -733,8 +741,8 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                     }
                                 }}
                                 variant="outlined"
-                                sx={{ width: isMobile ? '100%' : 300 }}
                                 size="small"
+                                fullWidth
                             />
 
                             <IconButton
@@ -746,9 +754,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                     height: 40,
                                     color: hasActiveFilters ? theme.palette.primary.main : 'inherit',
                                     transition: 'all 0.2s ease',
-                                    '&:hover': {
-                                        backgroundColor: alpha(theme.palette.primary.light, 0.1)
-                                    }
+                                    '&:hover': { backgroundColor: alpha(theme.palette.primary.light, 0.1) }
                                 }}
                                 onClick={handleFilterClick}
                             >
@@ -763,9 +769,7 @@ const PatientsListCard = ({ patients, loading, onPatientClick }) => {
                                     width: 40,
                                     height: 40,
                                     transition: 'all 0.2s ease',
-                                    '&:hover': {
-                                        backgroundColor: alpha(theme.palette.primary.light, 0.1)
-                                    }
+                                    '&:hover': { backgroundColor: alpha(theme.palette.primary.light, 0.1) }
                                 }}
                             >
                                 <MenuIcon />

@@ -355,7 +355,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                         <Box sx={{ mb: 1.5 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Avatar
-                                    src={patientData?.photoURL}
+                                    src={patientData?.patientPhotoUrl}
                                     alt={patientData?.patientName || nextConsultation.nome || "Paciente"}
                                     sx={{
                                         width: 42,

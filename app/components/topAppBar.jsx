@@ -62,9 +62,11 @@ const ActionButton = ({ label, icon, isPrimary = false, onClick }) => {
     );
 };
 
-const BackButton = () => {
+// Modificado para sempre receber onClick
+const BackButton = ({ onClick }) => {
     return (
         <Button
+            onClick={onClick}
             sx={{
                 minWidth: "30px",
                 width: "30px",
@@ -95,14 +97,20 @@ const BackButton = () => {
 
 const TopAppBar = ({
                        title = "Perfil do Paciente",
-                       showBackButton = true,
                        variant = "standard",
                        onPacienteClick,
-                       onBackClick
+                       onBackClick,
+                       onAgendamentoClick
                    }) => {
     const handlePacienteClick = () => {
         if (onPacienteClick) {
             onPacienteClick();
+        }
+    };
+
+    const handleAgendamentoClick = () => {
+        if (onAgendamentoClick) {
+            onAgendamentoClick();
         }
     };
 
@@ -113,7 +121,7 @@ const TopAppBar = ({
                     <>
                         <ActionButton label="Receita" icon="newreceita" isPrimary={true} />
                         <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
-                        <ActionButton label="Agendamento" icon="newagendamento" />
+                        <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} />
                     </>
                 );
             case "import":
@@ -125,7 +133,7 @@ const TopAppBar = ({
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <ActionButton label="Receita" icon="newreceita" isPrimary={true} />
                         <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
-                        <ActionButton label="Agendamento" icon="newagendamento" />
+                        <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} />
                     </Box>
                 );
         }
@@ -146,7 +154,8 @@ const TopAppBar = ({
             }}
         >
             <Box sx={{ display: "flex", alignItems: "center" }}>
-                {showBackButton && <BackButton onClick={onBackClick} />}
+                {/* BackButton sempre visível e sempre usa onBackClick */}
+                <BackButton onClick={onBackClick} />
                 <Typography
                     sx={{
                         color: "#111E5A",

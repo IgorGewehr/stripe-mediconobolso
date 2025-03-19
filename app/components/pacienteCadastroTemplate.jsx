@@ -90,7 +90,7 @@ const ActionButton = styled(Button)(({ theme, variant }) => ({
             : "none",
     ...(variant === "contained"
         ? {
-            backgroundColor: "#111E5A",
+            backgroundColor: "#1852FE",
             color: "white",
             "&:hover": {
                 backgroundColor: "#0A144A",
