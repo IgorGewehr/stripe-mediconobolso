@@ -31,14 +31,6 @@ export async function fetchClientSecret({ plan, uid, email }) {
     subscription_data: {
       trial_period_days: 7, // Adiciona período de teste de 7 dias
     },
-    payment_method_types: ['card'],
-    payment_method_options: {
-      card: {
-        installments: {
-          enabled: true, // Habilita parcelamento
-        },
-      },
-    },
   });
 
   return session.client_secret;

@@ -7,12 +7,14 @@ import { loadStripe } from '@stripe/stripe-js';
 import firebaseService from '../../lib/firebaseService';
 import { fetchClientSecret } from '../actions/stripe';
 import PlanCard from './organismsComponents/planSelector';
+import {useAuth} from "./authProvider";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 function CheckoutContent({ selectedPlan, onPlanChange }) {
     // Obtém o usuário autenticado
-    const currentUser = firebaseService.auth.currentUser;
+    const auth = useAuth();
+    const currentUser = auth?.user;
     const uid = currentUser ? currentUser.uid : '';
 
     // Carrega dados adicionais do usuário (nome, email, etc.) do Firestore
