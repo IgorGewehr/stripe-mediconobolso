@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, Button } from '@mui/material';
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import firebaseService from '../../lib/firebaseService';
 import { fetchClientSecret } from '../actions/stripe';
 import PlanCard from './organismsComponents/planSelector';
-import {useAuth} from "./authProvider";
+import { useAuth } from "./authProvider";
+import { useRouter } from 'next/navigation';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -16,6 +17,17 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
     const auth = useAuth();
     const currentUser = auth?.user;
     const uid = currentUser ? currentUser.uid : '';
+    const router = useRouter();
+
+    // Função de logout
+    const handleLogout = async () => {
+        try {
+            await firebaseService.signOut();
+            router.push('/'); // Redirecionar para a página inicial após logout
+        } catch (error) {
+            console.error("Erro ao fazer logout:", error);
+        }
+    };
 
     // Carrega dados adicionais do usuário (nome, email, etc.) do Firestore
     const [userInfo, setUserInfo] = useState(null);
@@ -40,19 +52,59 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
 
     return (
         <Box sx={{ display: 'flex', width: '100vw', height: '100vh' }}>
-            <Box
-                component="img"
-                src="/logo.png"
-                alt="Logo"
-                sx={{
-                    position: 'absolute',
-                    top: 20,
-                    left: 20,
-                    width: 40,
-                    height: 'auto',
-                    zIndex: 10,
-                }}
-            />
+            {/* Logo e botão de logout */}
+            <Box sx={{
+                position: 'absolute',
+                top: 20,
+                left: 20,
+                display: 'flex',
+                alignItems: 'center',
+                zIndex: 10
+            }}>
+                <Box
+                    component="img"
+                    src="/logo.png"
+                    alt="Logo"
+                    sx={{
+                        width: 40,
+                        height: 'auto',
+                    }}
+                />
+
+                {/* Botão de logout */}
+                <Button
+                    onClick={handleLogout}
+                    variant="text"
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        fontFamily: 'Gellix, sans-serif',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        ml: 3,
+                        px: 2,
+                        py: 0.5,
+                        borderRadius: '18px',
+                        color: '#DB4437',
+                        backgroundColor: 'transparent',
+                        '&:hover': {
+                            backgroundColor: 'rgba(219, 68, 55, 0.08)',
+                        },
+                    }}
+                    startIcon={
+                        <Box
+                            component="img"
+                            src="/logout.svg"
+                            alt="Logout"
+                            sx={{ width: '18px', height: '18px', mr: 0.8 }}
+                        />
+                    }
+                >
+                    Sair
+                </Button>
+            </Box>
 
             {/* Painel Esquerdo: Exibe o PlanCard com o toggle para mudar o plano */}
             <Box
