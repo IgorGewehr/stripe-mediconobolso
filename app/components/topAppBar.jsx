@@ -100,7 +100,8 @@ const TopAppBar = ({
                        variant = "standard",
                        onPacienteClick,
                        onBackClick,
-                       onAgendamentoClick
+                       onAgendamentoClick,
+                       onReceitaClick
                    }) => {
     const handlePacienteClick = () => {
         if (onPacienteClick) {
@@ -114,12 +115,18 @@ const TopAppBar = ({
         }
     };
 
+    const handleReceitaClick = () => {
+        if (onReceitaClick) {
+            onReceitaClick();
+        }
+    };
+
     const renderButtons = () => {
         switch (variant) {
             case "patient-profile":
                 return (
                     <>
-                        <ActionButton label="Receita" icon="newreceita" isPrimary={true} />
+                        <ActionButton label="Receita" icon="newreceita" isPrimary={true} onClick={handleReceitaClick} />
                         <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
                         <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} />
                     </>
@@ -131,7 +138,7 @@ const TopAppBar = ({
             default:
                 return (
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <ActionButton label="Receita" icon="newreceita" isPrimary={true} />
+                        <ActionButton label="Receita" icon="newreceita" isPrimary={true} onClick={handleReceitaClick} />
                         <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
                         <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} />
                     </Box>

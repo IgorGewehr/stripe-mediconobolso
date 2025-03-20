@@ -67,6 +67,10 @@ export default function AppLayout({ children }) {
         setActivePage("Agenda");
     };
 
+    const handleReceitaClick = () => {
+        setActivePage("Receitas");
+    };
+
     // Expor o handler globalmente para que os componentes possam acessá-lo
     // Útil quando componentes aninhados precisam navegar
     useEffect(() => {
@@ -74,12 +78,14 @@ export default function AppLayout({ children }) {
         window.handlePatientClick = handlePatientClick;
         window.handleMenuSelect = handleMenuSelect;
         window.handleBackToDashboard = handleBackToDashboard;
+        window.handleReceitaClick = handleReceitaClick;
 
         // Limpeza ao desmontar o componente
         return () => {
             delete window.handlePatientClick;
             delete window.handleMenuSelect;
             delete window.handleBackToDashboard;
+            delete window.handleReceitaClick;
         };
     }, []);
 
@@ -147,7 +153,7 @@ export default function AppLayout({ children }) {
                 onMenuSelect={handleMenuSelect}
                 onLogout={logout}
                 userName={user?.fullName?.split(' ')[0] || "Médico"}
-                userRole={user?.especialidade || "Cirurgião"}
+                userRole={user?.especialidade || ""}
             />
             <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
                 <Box sx={{ flexShrink: 0 }}>
@@ -188,6 +194,7 @@ export default function AppLayout({ children }) {
                         onAgendamentoClick={handleAgendamentoClick}
                         // Sempre usa handleBackToDashboard para o botão de voltar
                         onBackClick={handleBackToDashboard}
+                        onReceitaClick={handleReceitaClick}
                     />
                 </Box>
                 <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
