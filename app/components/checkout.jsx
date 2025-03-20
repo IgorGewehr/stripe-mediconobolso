@@ -16,8 +16,8 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
 function CheckoutContent({ selectedPlan, onPlanChange }) {
     // Obtém o usuário autenticado
     const auth = useAuth();
-    const currentUser = auth?.user;
-    const uid = currentUser ? currentUser.uid : '';
+    const user = auth?.user;
+    const uid = user.uid;
     const router = useRouter();
 
     // Função de logout

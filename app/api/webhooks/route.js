@@ -42,14 +42,20 @@ export async function POST(req) {
         case 'checkout.session.completed': {
           const session = event.data.object;
           console.log(`Checkout session completed, status: ${session.payment_status}`);
-          await firebaseService.editUserData(uid, { assinouPlano: true });
+          // Atualiza o status de assinatura para "true" no documento do usuário,
+          // utilizando o uid que foi passado na metadata da sessão.
+          if (session.metadata && session.metadata.uid) {
+            await firebaseService.editUserData(session.metadata.uid, { assinouPlano: true });
+          }
           break;
         }
         case 'customer.subscription.deleted': {
           const subscription = event.data.object;
           console.log(`Subscription canceled for customer: ${subscription.customer}`);
           // Se a assinatura for cancelada, atualize o status para "false"
-          await firebaseService.editUserData(uid, { assinouPlano: false });
+          if (subscription.metadata && subscription.metadata.uid) {
+            await firebaseService.editUserData(subscription.metadata.uid, { assinouPlano: false });
+          }
           break;
         }
         case 'invoice.payment_failed': {
@@ -61,8 +67,10 @@ export async function POST(req) {
         case 'customer.subscription.created': {
           const subscription = event.data.object;
           console.log(`Subscription created for customer: ${subscription.customer}`);
-
-          await firebaseService.editUserData(uid, { assinouPlano: true });
+          // Atualiza o status para assinouPlano mesmo que seja período de testes gratuitos
+          if (subscription.metadata && subscription.metadata.uid) {
+            await firebaseService.editUserData(subscription.metadata.uid, { assinouPlano: true });
+          }
           break;
         }
         default:
