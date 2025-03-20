@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { Box, CircularProgress, Button } from '@mui/material';
+import { Box, CircularProgress, Button, Typography } from '@mui/material';
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import firebaseService from '../../lib/firebaseService';
@@ -9,44 +9,99 @@ import { fetchClientSecret } from '../actions/stripe';
 import PlanCard from './organismsComponents/planSelector';
 import { useAuth } from "./authProvider";
 import { useRouter } from 'next/navigation';
-import {signOut} from "firebase/auth";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 function CheckoutContent({ selectedPlan, onPlanChange }) {
-    // Obtém o usuário autenticado
-    const auth = useAuth();
-    const user = auth?.user;
-    const uid = user.uid;
+    // Obtém o usuário autenticado e a função de logout do AuthProvider
+    const { user, loading, logout } = useAuth();
     const router = useRouter();
+    const [userInfo, setUserInfo] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Função de logout
+    // Função de logout que usa o logout do AuthProvider
     const handleLogout = async () => {
         try {
-            await signOut(firebaseService.auth)
-            router.push('/'); // Redirecionar para a página inicial após logout
+            await logout(); // Usa a função de logout do AuthProvider que já faz o redirecionamento
         } catch (error) {
             console.error("Erro ao fazer logout:", error);
+            // Caso falhe, tenta redirecionar manualmente
+            router.push('/');
         }
     };
 
     // Carrega dados adicionais do usuário (nome, email, etc.) do Firestore
-    const [userInfo, setUserInfo] = useState(null);
     useEffect(() => {
         async function loadUserInfo() {
-            if (uid) {
-                const data = await firebaseService.getUserData(uid);
-                setUserInfo(data);
+            // Verifica primeiro se o usuário foi carregado pelo provider e não está mais em loading
+            if (!loading) {
+                if (!user) {
+                    // Se não há usuário após carregar, redireciona para login
+                    router.push('/');
+                    return;
+                }
+
+                try {
+                    // Garantindo que temos um UID válido
+                    if (user.uid) {
+                        const data = await firebaseService.getUserData(user.uid);
+                        if (data) {
+                            setUserInfo(data);
+                        } else {
+                            setError("Não foi possível carregar os dados do usuário");
+                        }
+                    } else {
+                        setError("UID do usuário não disponível");
+                    }
+                } catch (err) {
+                    console.error("Erro ao carregar dados do usuário:", err);
+                    setError("Erro ao carregar dados do usuário");
+                } finally {
+                    setIsLoading(false);
+                }
             }
         }
-        loadUserInfo();
-    }, [uid]);
 
-    // Enquanto os dados do usuário não são carregados, exibe um spinner
-    if (!userInfo) {
+        loadUserInfo();
+    }, [user, loading, router]);
+
+    // Exibe um loading enquanto autenticação e dados do usuário estão carregando
+    if (loading || isLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+                <CircularProgress color="primary" />
+                <Typography sx={{ mt: 2 }}>Carregando informações...</Typography>
+            </Box>
+        );
+    }
+
+    // Mostra erro se algo deu errado
+    if (error) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+                <Typography color="error">{error}</Typography>
+                <Button
+                    variant="contained"
+                    sx={{ mt: 2 }}
+                    onClick={() => router.push('/')}
+                >
+                    Voltar para Login
+                </Button>
+            </Box>
+        );
+    }
+
+    // Se não há usuário ou userInfo, não prossegue
+    if (!user || !userInfo) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <CircularProgress color="primary" />
+                <Button
+                    variant="contained"
+                    onClick={() => router.push('/')}
+                >
+                    Fazer Login
+                </Button>
             </Box>
         );
     }
@@ -125,12 +180,19 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                     key={selectedPlan} // Quando o plano muda, forçamos a remount do checkout
                     stripe={stripePromise}
                     options={{
-                        fetchClientSecret: () =>
-                            fetchClientSecret({
-                                plan: selectedPlan,
-                                uid,
-                                email: userInfo.email,
-                            }),
+                        fetchClientSecret: async () => {
+                            try {
+                                return await fetchClientSecret({
+                                    plan: selectedPlan,
+                                    uid: user.uid,
+                                    email: userInfo.email,
+                                });
+                            } catch (err) {
+                                console.error("Erro ao buscar client secret:", err);
+                                setError("Erro ao iniciar checkout do Stripe");
+                                return null;
+                            }
+                        },
                     }}
                 >
                     <EmbeddedCheckout />
