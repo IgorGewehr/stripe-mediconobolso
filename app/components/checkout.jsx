@@ -176,27 +176,56 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                     p: 2,
                 }}
             >
-                <EmbeddedCheckoutProvider
-                    key={selectedPlan} // Quando o plano muda, forçamos a remount do checkout
-                    stripe={stripePromise}
-                    options={{
-                        fetchClientSecret: async () => {
-                            try {
-                                return await fetchClientSecret({
-                                    plan: selectedPlan,
-                                    uid: user.uid,
-                                    email: userInfo.email,
-                                });
-                            } catch (err) {
-                                console.error("Erro ao buscar client secret:", err);
-                                setError("Erro ao iniciar checkout do Stripe");
-                                return null;
-                            }
-                        },
-                    }}
-                >
-                    <EmbeddedCheckout />
-                </EmbeddedCheckoutProvider>
+                {/* Verificação explícita de UID antes de mostrar o checkout */}
+                {user && user.uid && userInfo && userInfo.email ? (
+                    <EmbeddedCheckoutProvider
+                        key={selectedPlan} // Quando o plano muda, forçamos a remount do checkout
+                        stripe={stripePromise}
+                        options={{
+                            fetchClientSecret: async () => {
+                                try {
+                                    // Log para depuração
+                                    console.log(`Iniciando checkout para UID: ${user.uid}, Email: ${userInfo.email}`);
+
+                                    return await fetchClientSecret({
+                                        plan: selectedPlan,
+                                        uid: user.uid,
+                                        email: userInfo.email,
+                                    });
+                                } catch (err) {
+                                    console.error("Erro ao buscar client secret:", err);
+                                    setError(`Erro ao iniciar checkout do Stripe: ${err.message}`);
+                                    return null;
+                                }
+                            },
+                        }}
+                    >
+                        <EmbeddedCheckout />
+                    </EmbeddedCheckoutProvider>
+                ) : (
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: '100%',
+                        p: 3
+                    }}>
+                        <Typography variant="h6" sx={{ mb: 2 }}>
+                            Não foi possível iniciar o checkout
+                        </Typography>
+                        <Typography variant="body1" sx={{ mb: 3 }}>
+                            Informações do usuário incompletas: {!user ? "Usuário não autenticado" : !user.uid ? "UID não encontrado" : "Email não encontrado"}
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => router.push('/')}
+                        >
+                            Voltar para página inicial
+                        </Button>
+                    </Box>
+                )}
             </Box>
         </Box>
     );
