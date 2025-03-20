@@ -246,13 +246,8 @@ export default function PacienteCadastroTemplate() {
         if (!formData.infoBasicas.dataNascimento) {
             newErrors.dataNascimento = "Data de nascimento é obrigatória";
         }
-        if (!formData.infoBasicas.email) {
-            newErrors.email = "Email é obrigatório";
-        } else if (!/\S+@\S+\.\S+/.test(formData.infoBasicas.email)) {
+        if (!/\S+@\S+\.\S+/.test(formData.infoBasicas.email)) {
             newErrors.email = "Email inválido";
-        }
-        if (!formData.infoBasicas.telefone) {
-            newErrors.telefone = "Telefone é obrigatório";
         }
 
         setErrors(newErrors);

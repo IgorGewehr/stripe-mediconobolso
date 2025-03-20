@@ -4,7 +4,7 @@ import { Box, CircularProgress, Typography, Button } from "@mui/material";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PacienteCard from "./organismsComponents/cardPaciente";
 import AcompanhamentoSection from "./organismsComponents/acompanhamentoSection";
-import NotasSection from "./organismsComponents/anotacoesGrid";
+import NotasSection from "./organismsComponents/notasSection";
 import { useAuth } from "./authProvider";
 import FirebaseService from "../../lib/firebaseService";
 

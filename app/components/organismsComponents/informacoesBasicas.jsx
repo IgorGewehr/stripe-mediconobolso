@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import {
     Box,
@@ -28,7 +26,6 @@ const FormLabel = styled(Typography)(() => ({
     marginBottom: "8px",
 }));
 
-// Aplica o border-radius e borda para todos os campos
 const StyledTextField = styled(TextField)(() => ({
     "& .MuiOutlinedInput-root": {
         borderRadius: "999px",
@@ -48,7 +45,6 @@ const StyledTextField = styled(TextField)(() => ({
     },
 }));
 
-// Mesmo estilo para os selects
 const StyledSelect = styled(TextField)(() => ({
     "& .MuiOutlinedInput-root": {
         borderRadius: "999px",
@@ -102,8 +98,7 @@ const PhotoUploadButton = styled(Button)(() => ({
     justifyContent: "center",
 }));
 
-// Formata o valor digitado no campo de data de nascimento.
-// Ex.: "19122001" => "19/12/2001"
+// Função para formatar a data de nascimento
 const formatBirthDate = (value) => {
     const digits = value.replace(/\D/g, "").slice(0, 8);
     let formatted = "";
@@ -122,7 +117,6 @@ const formatBirthDate = (value) => {
 function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrigger }) {
     const [photoPreview, setPhotoPreview] = useState(null);
 
-    // Adicione este useEffect para resetar o photoPreview quando resetTrigger mudar
     useEffect(() => {
         if (resetTrigger > 0) {
             setPhotoPreview(null);
@@ -156,7 +150,6 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
         updateFormData({ dataNascimento: formatted });
     };
 
-    // Funções manuais para formatação dos demais campos
     const formatCPF = (value) => {
         const digits = value.replace(/\D/g, "").slice(0, 11);
         let formatted = digits.substring(0, Math.min(3, digits.length));
@@ -270,7 +263,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                     />
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                    <FormLabel>Email*</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <StyledTextField
                         fullWidth
                         id="email"
@@ -278,8 +271,6 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                         placeholder="contato@paciente.com"
                         value={formData?.email || ""}
                         onChange={handleChange}
-                        error={!!errors.email}
-                        helperText={errors.email}
                         variant="outlined"
                         InputProps={{
                             startAdornment: (
@@ -291,7 +282,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                     />
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                    <FormLabel>Telefone*</FormLabel>
+                    <FormLabel>Telefone</FormLabel>
                     <StyledTextField
                         fullWidth
                         id="telefone"
@@ -299,8 +290,6 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                         placeholder="(00) 00000-0000"
                         value={formData?.telefone || ""}
                         onChange={handleTelefoneChange}
-                        error={!!errors.telefone}
-                        helperText={errors.telefone}
                         variant="outlined"
                         InputProps={{
                             startAdornment: (
@@ -314,7 +303,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
 
                 {/* SEGUNDA LINHA: Tipo Sanguíneo, Gênero e Data de Nascimento */}
                 <Grid item xs={12} sm={4}>
-                    <FormLabel>Tipo Sanguíneo*</FormLabel>
+                    <FormLabel>Tipo Sanguíneo</FormLabel>
                     <FormControl fullWidth>
                         <StyledSelect
                             select
@@ -322,7 +311,6 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                             name="tipoSanguineo"
                             value={formData?.tipoSanguineo || ""}
                             onChange={handleChange}
-                            error={!!errors.tipoSanguineo}
                         >
                             <MenuItem value="" disabled>
                                 Selecione um...
@@ -339,7 +327,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                     </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                    <FormLabel>Gênero*</FormLabel>
+                    <FormLabel>Gênero</FormLabel>
                     <Grid container spacing={1}>
                         <Grid item xs={6}>
                             <GenderButton
@@ -362,7 +350,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                     </Grid>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                    <FormLabel>Data de Nascimento*</FormLabel>
+                    <FormLabel>Data de Nascimento</FormLabel>
                     <StyledTextField
                         fullWidth
                         id="dataNascimento"
@@ -370,8 +358,6 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                         placeholder="DD/MM/AAAA"
                         value={formData?.dataNascimento || ""}
                         onChange={handleBirthDateChange}
-                        error={!!errors.dataNascimento}
-                        helperText={errors.dataNascimento}
                         variant="outlined"
                         InputProps={{
                             startAdornment: (

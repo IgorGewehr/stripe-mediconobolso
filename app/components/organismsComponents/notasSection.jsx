@@ -11,19 +11,28 @@ import {
     CircularProgress,
     Skeleton,
     Tooltip,
-    Fade
+    Fade,
+    ButtonGroup,
+    Badge,
+    Divider
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ImageIcon from "@mui/icons-material/Image";
 import FileIcon from "@mui/icons-material/InsertDriveFile";
+import LocalPharmacyIcon from "@mui/icons-material/LocalPharmacy";
+import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
+import NotesIcon from "@mui/icons-material/Notes";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import { useAuth } from "../authProvider";
 import FirebaseService from "../../../lib/firebaseService";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PatientNoteDialog from "./novaNotaDialog";
-import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
+import AnamneseDialog from "./anamneseDialog";
+import ReceitaDialog from "./receitasDialog";
+import ReceitaNotaCard from "../basicComponents/receitasNotaCard";
 
 // Paleta de cores
 const themeColors = {
@@ -35,44 +44,55 @@ const themeColors = {
     success: "#10B981",
     warning: "#FBBF24",
     error: "#EF4444",
+    anamnese: "#6366F1",
+    receita: "#22C55E",
 };
 
-// Botão para criar nova ficha
-function CriarNovaFichaButton({ onClick, disabled }) {
+// Botão para criar novas fichas
+function ActionButton({ onClick, disabled, color, startIcon, children, variant = "contained" }) {
     return (
         <Button
-            variant="contained"
-            startIcon={<AddIcon />}
+            variant={variant}
+            startIcon={startIcon}
             onClick={onClick}
             disabled={disabled}
             sx={{
-                height: 46,
-                padding: "0 24px",
+                height: 44,
+                padding: "0 20px",
                 borderRadius: "99px",
-                backgroundColor: themeColors.primary,
-                color: "#FFF",
+                backgroundColor: variant === "contained" ? color : "transparent",
+                color: variant === "contained" ? "#FFF" : color,
                 fontFamily: "Gellix",
                 fontSize: 14,
                 fontWeight: 500,
                 textTransform: "none",
+                borderColor: variant === "outlined" ? color : "transparent",
                 "&:hover": {
-                    backgroundColor: "#0d47e0",
+                    backgroundColor: variant === "contained" ? `${color}DD` : `${color}10`,
+                    borderColor: variant === "outlined" ? `${color}DD` : "transparent",
                 },
                 "&.Mui-disabled": {
-                    backgroundColor: "#A0AEC0",
-                    color: "#FFF",
+                    backgroundColor: variant === "contained" ? "#A0AEC0" : "transparent",
+                    color: variant === "contained" ? "#FFF" : "#A0AEC0",
+                    borderColor: variant === "outlined" ? "#A0AEC0" : "transparent",
                 }
             }}
         >
-            Criar nova ficha
+            {children}
         </Button>
     );
 }
 
-// Card de anotação melhorado
-// Card de anotação redesenhado conforme imagem de exemplo
-// Enhanced NotaCard function to highlight anamnesis notes
+// Card de anotação melhorado para exibir de forma diferente para cada tipo
 function NotaCard({ nota, onOpen }) {
+    // Verifica o tipo de nota e renderiza o componente apropriado
+    if (nota.noteType === "Receita") {
+        return <ReceitaNotaCard nota={nota} onOpen={onOpen} />;
+    }
+
+    // Se é uma anamnese, usa um estilo especial
+    const isAnamneseNote = nota.noteType === "Anamnese";
+
     // Formatar data
     const formatDate = (date) => {
         if (!date) return "";
@@ -102,15 +122,12 @@ function NotaCard({ nota, onOpen }) {
         return "application/octet-stream";
     };
 
-    // Check if it's an anamnesis note
-    const isAnamneseNote = nota.noteType === "Anamnese";
-
     return (
         <Card
             sx={{
                 width: "100%",
                 borderRadius: "12px",
-                border: `1px solid ${isAnamneseNote ? "#6366F1" : "#EAECEF"}`,
+                border: `1px solid ${isAnamneseNote ? themeColors.anamnese : "#EAECEF"}`,
                 boxShadow: isAnamneseNote
                     ? "0px 2px 4px rgba(99, 102, 241, 0.15)"
                     : "0px 1px 3px rgba(0, 0, 0, 0.04)",
@@ -122,7 +139,7 @@ function NotaCard({ nota, onOpen }) {
                     boxShadow: isAnamneseNote
                         ? "0px 4px 10px rgba(99, 102, 241, 0.2)"
                         : "0px 3px 8px rgba(0, 0, 0, 0.08)",
-                    borderColor: isAnamneseNote ? "#6366F1" : "#D0D5DD",
+                    borderColor: isAnamneseNote ? themeColors.anamnese : "#D0D5DD",
                 },
                 ...(isAnamneseNote && {
                     background: "linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, rgba(255, 255, 255, 0) 100%)",
@@ -151,7 +168,7 @@ function NotaCard({ nota, onOpen }) {
                         <FiberManualRecordIcon
                             sx={{
                                 color: isAnamneseNote
-                                    ? "#6366F1"
+                                    ? themeColors.anamnese
                                     : nota.noteType === "Consulta" ? themeColors.success : themeColors.primary,
                                 fontSize: 8,
                                 mr: 0.75
@@ -161,7 +178,7 @@ function NotaCard({ nota, onOpen }) {
                             variant="caption"
                             sx={{
                                 color: isAnamneseNote
-                                    ? "#6366F1"
+                                    ? themeColors.anamnese
                                     : nota.noteType === "Consulta" ? themeColors.success : themeColors.primary,
                                 fontFamily: "Gellix",
                                 fontSize: 12,
@@ -212,7 +229,7 @@ function NotaCard({ nota, onOpen }) {
                     <Typography
                         variant="h6"
                         sx={{
-                            color: isAnamneseNote ? "#6366F1" : "#111E5A",
+                            color: isAnamneseNote ? themeColors.anamnese : "#111E5A",
                             fontFamily: "Gellix",
                             fontSize: 16,
                             fontWeight: 600,
@@ -262,7 +279,7 @@ function NotaCard({ nota, onOpen }) {
                             size="small"
                             sx={{
                                 backgroundColor: isAnamneseNote ? "rgba(99, 102, 241, 0.15)" : "#ECF1FF",
-                                color: isAnamneseNote ? "#6366F1" : themeColors.primary,
+                                color: isAnamneseNote ? themeColors.anamnese : themeColors.primary,
                                 fontWeight: 500,
                                 fontSize: 11,
                                 mb: 1,
@@ -303,7 +320,7 @@ function NotaCard({ nota, onOpen }) {
                                         height: 32,
                                         borderRadius: "4px",
                                         backgroundColor: isAnamneseNote ? "rgba(99, 102, 241, 0.1)" : "#ECF1FF",
-                                        color: isAnamneseNote ? "#6366F1" : themeColors.primary,
+                                        color: isAnamneseNote ? themeColors.anamnese : themeColors.primary,
                                         fontWeight: 600,
                                         fontSize: 12,
                                     }}
@@ -323,7 +340,7 @@ function NotaCard({ nota, onOpen }) {
                         position: "absolute",
                         top: 0,
                         right: 0,
-                        backgroundColor: "#6366F1",
+                        backgroundColor: themeColors.anamnese,
                         color: "white",
                         borderRadius: "0 12px 0 12px",
                         px: 1.5,
@@ -429,22 +446,15 @@ function EmptyState({ onCreate }) {
             >
                 Registre informações importantes sobre o paciente para acompanhar o progresso do tratamento e manter um histórico detalhado.
             </Typography>
-            <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={onCreate}
-                sx={{
-                    borderRadius: "99px",
-                    backgroundColor: themeColors.primary,
-                    color: "#FFF",
-                    fontFamily: "Gellix",
-                    textTransform: "none",
-                    px: 3,
-                    py: 1
-                }}
-            >
-                Criar primeira anotação
-            </Button>
+            <Box sx={{ display: "flex", gap: 1 }}>
+                <ActionButton
+                    onClick={onCreate}
+                    color={themeColors.primary}
+                    startIcon={<AddIcon />}
+                >
+                    Nova nota
+                </ActionButton>
+            </Box>
         </Box>
     );
 }
@@ -453,12 +463,29 @@ function EmptyState({ onCreate }) {
 export default function NotasSection({ pacienteId }) {
     // Estados
     const [notasData, setNotasData] = useState([]);
+    const [filteredNotas, setFilteredNotas] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [openDialog, setOpenDialog] = useState(false);
+
+    // Estados para controle de diálogos
+    const [openNoteDialog, setOpenNoteDialog] = useState(false);
+    const [openReceitaDialog, setOpenReceitaDialog] = useState(false);
+    const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
     const [selectedNota, setSelectedNota] = useState(null);
+    const [selectedReceita, setSelectedReceita] = useState(null);
+
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     const [successAction, setSuccessAction] = useState("");
+
+    // Filtros de visualização
+    const [activeFilter, setActiveFilter] = useState("todas");
+
+    // Métricas para badges
+    const [metrics, setMetrics] = useState({
+        notas: 0,
+        anamneses: 0,
+        receitas: 0
+    });
 
     // Context
     const { user } = useAuth();
@@ -466,46 +493,133 @@ export default function NotasSection({ pacienteId }) {
     // Efeito para carregar as notas
     useEffect(() => {
         if (pacienteId && user?.uid) {
-            const fetchNotas = async () => {
-                try {
-                    setIsLoading(true);
-                    const notes = await FirebaseService.listNotes(user.uid, pacienteId);
-
-                    // Ordenar por data de criação, mais recentes primeiro
-                    const sortedNotes = notes.sort((a, b) => {
-                        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-                        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
-                        return dateB - dateA;
-                    });
-
-                    setNotasData(sortedNotes);
-                } catch (error) {
-                    console.error("Erro ao carregar notas:", error);
-                    setError("Não foi possível carregar as notas. Tente novamente mais tarde.");
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-
             fetchNotas();
         }
     }, [pacienteId, user]);
 
+    // Efeito para aplicar filtros
+    useEffect(() => {
+        applyFilters();
+    }, [notasData, activeFilter]);
+
+    // Função para buscar as notas do Firebase
+    const fetchNotas = async () => {
+        try {
+            setIsLoading(true);
+            const notes = await FirebaseService.listNotes(user.uid, pacienteId);
+
+            // Ordenar por data de criação, mais recentes primeiro
+            const sortedNotes = notes.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+                return dateB - dateA;
+            });
+
+            setNotasData(sortedNotes);
+
+            // Calcular métricas
+            calculateMetrics(sortedNotes);
+
+        } catch (error) {
+            console.error("Erro ao carregar notas:", error);
+            setError("Não foi possível carregar as notas. Tente novamente mais tarde.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Calcular métricas para os badges
+    const calculateMetrics = (notas) => {
+        const notasCount = notas.filter(nota => nota.noteType !== "Anamnese" && nota.noteType !== "Receita").length;
+        const anamnesesCount = notas.filter(nota => nota.noteType === "Anamnese").length;
+        const receitasCount = notas.filter(nota => nota.noteType === "Receita").length;
+
+        setMetrics({
+            notas: notasCount,
+            anamneses: anamnesesCount,
+            receitas: receitasCount
+        });
+    };
+
+    // Aplicar filtros às notas
+    const applyFilters = () => {
+        if (activeFilter === "todas") {
+            setFilteredNotas(notasData);
+            return;
+        }
+
+        if (activeFilter === "notas") {
+            setFilteredNotas(notasData.filter(nota =>
+                nota.noteType !== "Anamnese" && nota.noteType !== "Receita"
+            ));
+            return;
+        }
+
+        if (activeFilter === "anamneses") {
+            setFilteredNotas(notasData.filter(nota => nota.noteType === "Anamnese"));
+            return;
+        }
+
+        if (activeFilter === "receitas") {
+            setFilteredNotas(notasData.filter(nota => nota.noteType === "Receita"));
+            return;
+        }
+    };
+
     // Função para abrir o dialog de criação de nova nota
-    const handleOpenCreateDialog = () => {
+    const handleOpenCreateNoteDialog = () => {
         setSelectedNota(null);
-        setOpenDialog(true);
+        setOpenNoteDialog(true);
+    };
+
+    // Função para abrir o dialog de criação de nova receita
+    const handleOpenCreateReceitaDialog = () => {
+        setSelectedReceita(null);
+        setOpenReceitaDialog(true);
+    };
+
+    // Função para abrir o dialog de criação de anamnese
+    const handleOpenCreateAnamneseDialog = () => {
+        setOpenAnamneseDialog(true);
     };
 
     // Função para abrir o dialog de edição/visualização de nota existente
-    const handleOpenEditDialog = (nota) => {
+    const handleOpenNota = (nota) => {
+        // Verificar o tipo de nota e abrir o diálogo correspondente
+        if (nota.noteType === "Anamnese") {
+            // Abrir diálogo de anamnese se for uma anamnese
+            setOpenAnamneseDialog(true);
+            return;
+        }
+
+        if (nota.noteType === "Receita" && nota.prescriptionId) {
+            // Abrir diálogo de receita se for uma receita e tiver ID de prescrição
+            setSelectedReceita({
+                id: nota.prescriptionId,
+                patientId: pacienteId
+            });
+            setOpenReceitaDialog(true);
+            return;
+        }
+
+        // Caso contrário, abre o diálogo padrão de nota
         setSelectedNota(nota);
-        setOpenDialog(true);
+        setOpenNoteDialog(true);
     };
 
-    // Fechar o dialog
-    const handleCloseDialog = () => {
-        setOpenDialog(false);
+    // Fechar os diálogos
+    const handleCloseNoteDialog = () => {
+        setOpenNoteDialog(false);
+        setSelectedNota(null);
+    };
+
+    const handleCloseReceitaDialog = () => {
+        setOpenReceitaDialog(false);
+        setSelectedReceita(null);
+    };
+
+    const handleCloseAnamneseDialog = () => {
+        setOpenAnamneseDialog(false);
     };
 
     // Handler para criar ou atualizar nota
@@ -542,7 +656,38 @@ export default function NotasSection({ pacienteId }) {
         }
 
         // Fechar o dialog
-        setOpenDialog(false);
+        setOpenNoteDialog(false);
+
+        // Aplicar filtros novamente
+        calculateMetrics([...notasData, notaData]);
+    };
+
+    // Handler para salvar receita
+    const handleSaveReceita = (receitaId) => {
+        // Atualizamos as notas após salvar a receita para incluir a nova nota criada
+        fetchNotas();
+
+        // Mostrar mensagem de sucesso
+        setSuccessAction("criada");
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+
+        // Fechar o dialog
+        setOpenReceitaDialog(false);
+    };
+
+    // Handler para salvar anamnese
+    const handleSaveAnamnese = (anamneseId) => {
+        // Atualizamos as notas após salvar a anamnese para incluir a nova nota
+        fetchNotas();
+
+        // Mostrar mensagem de sucesso
+        setSuccessAction("criada");
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+
+        // Fechar o dialog
+        setOpenAnamneseDialog(false);
     };
 
     // Handler para deletar nota
@@ -556,7 +701,43 @@ export default function NotasSection({ pacienteId }) {
         setTimeout(() => setShowSuccessMessage(false), 3000);
 
         // Fechar o dialog
-        setOpenDialog(false);
+        setOpenNoteDialog(false);
+
+        // Atualizar métricas
+        calculateMetrics(notasData.filter(n => n.id !== noteId));
+    };
+
+    // Atualizar filtro ativo
+    const handleFilterChange = (filter) => {
+        setActiveFilter(filter);
+    };
+
+    // Definir o texto do botão "Criar nova nota" com base no filtro atual
+    const getActionButtonText = () => {
+        switch (activeFilter) {
+            case "notas":
+                return "Nova nota";
+            case "anamneses":
+                return "Nova anamnese";
+            case "receitas":
+                return "Nova receita";
+            default:
+                return "Nova nota";
+        }
+    };
+
+    // Definir o handler para o botão de ação principal com base no filtro atual
+    const handlePrimaryAction = () => {
+        switch (activeFilter) {
+            case "notas":
+                return handleOpenCreateNoteDialog();
+            case "anamneses":
+                return handleOpenCreateAnamneseDialog();
+            case "receitas":
+                return handleOpenCreateReceitaDialog();
+            default:
+                return handleOpenCreateNoteDialog();
+        }
     };
 
     return (
@@ -569,13 +750,14 @@ export default function NotasSection({ pacienteId }) {
                 height: "auto",
             }}
         >
-            {/* Header: título e botão */}
+            {/* Header: título e botões */}
             <Box
                 sx={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     width: "100%",
+                    mb: 2
                 }}
             >
                 <Typography
@@ -589,10 +771,163 @@ export default function NotasSection({ pacienteId }) {
                 >
                     Anotações
                 </Typography>
-                <CriarNovaFichaButton
-                    onClick={handleOpenCreateDialog}
+
+
+            </Box>
+
+            {/* Filtros de visualização */}
+            <Box sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                mb: 2
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <FilterAltIcon sx={{ mr: 1, color: themeColors.primary, fontSize: 18 }} />
+                    <Typography variant="body2" sx={{ color: themeColors.textSecondary, mr: 2, fontWeight: 500 }}>
+                        Filtrar por:
+                    </Typography>
+
+                    <ButtonGroup
+                        variant="outlined"
+                        aria-label="Filtro de visualização"
+                        sx={{
+                            '& .MuiButton-root': {
+                                borderColor: '#E2E8F0',
+                                color: themeColors.textSecondary,
+                                fontWeight: 500,
+                                fontSize: '14px',
+                                height: '36px',
+
+                                '&.Mui-selected, &.active': {
+                                    backgroundColor: themeColors.primary,
+                                    color: '#fff',
+                                    borderColor: themeColors.primary,
+                                },
+
+                                '&:first-of-type': {
+                                    borderTopLeftRadius: '50px',
+                                    borderBottomLeftRadius: '50px',
+                                },
+                                '&:last-of-type': {
+                                    borderTopRightRadius: '50px',
+                                    borderBottomRightRadius: '50px',
+                                }
+                            }
+                        }}
+                    >
+                        <Button
+                            onClick={() => handleFilterChange('todas')}
+                            className={activeFilter === 'todas' ? 'active' : ''}
+                            sx={{
+                                backgroundColor: activeFilter === 'todas' ? themeColors.primary : 'transparent',
+                                color: activeFilter === 'todas' ? '#fff' : themeColors.textSecondary,
+                                '&:hover': {
+                                    backgroundColor: activeFilter === 'todas' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
+                                }
+                            }}
+                        >
+                            Todas
+                            <Badge
+                                badgeContent={notasData.length}
+                                color="error"
+                                sx={{
+                                    ml: 1,
+                                    '& .MuiBadge-badge': {
+                                        fontSize: '0.6rem',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                    }
+                                }}
+                            />
+                        </Button>
+                        <Button
+                            onClick={() => handleFilterChange('notas')}
+                            className={activeFilter === 'notas' ? 'active' : ''}
+                            sx={{
+                                backgroundColor: activeFilter === 'notas' ? themeColors.primary : 'transparent',
+                                color: activeFilter === 'notas' ? '#fff' : themeColors.textSecondary,
+                                '&:hover': {
+                                    backgroundColor: activeFilter === 'notas' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
+                                }
+                            }}
+                        >
+                            Notas
+                            <Badge
+                                badgeContent={metrics.notas}
+                                color="error"
+                                sx={{
+                                    ml: 1,
+                                    '& .MuiBadge-badge': {
+                                        fontSize: '0.6rem',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                    }
+                                }}
+                            />
+                        </Button>
+                        <Button
+                            onClick={() => handleFilterChange('anamneses')}
+                            className={activeFilter === 'anamneses' ? 'active' : ''}
+                            sx={{
+                                backgroundColor: activeFilter === 'anamneses' ? themeColors.primary : 'transparent',
+                                color: activeFilter === 'anamneses' ? '#fff' : themeColors.textSecondary,
+                                '&:hover': {
+                                    backgroundColor: activeFilter === 'anamneses' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
+                                }
+                            }}
+                        >
+                            Anamneses
+                            <Badge
+                                badgeContent={metrics.anamneses}
+                                color="error"
+                                sx={{
+                                    ml: 1,
+                                    '& .MuiBadge-badge': {
+                                        fontSize: '0.6rem',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                    }
+                                }}
+                            />
+                        </Button>
+                        <Button
+                            onClick={() => handleFilterChange('receitas')}
+                            className={activeFilter === 'receitas' ? 'active' : ''}
+                            sx={{
+                                backgroundColor: activeFilter === 'receitas' ? themeColors.primary : 'transparent',
+                                color: activeFilter === 'receitas' ? '#fff' : themeColors.textSecondary,
+                                '&:hover': {
+                                    backgroundColor: activeFilter === 'receitas' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
+                                }
+                            }}
+                        >
+                            Receitas
+                            <Badge
+                                badgeContent={metrics.receitas}
+                                color="error"
+                                sx={{
+                                    ml: 1,
+                                    '& .MuiBadge-badge': {
+                                        fontSize: '0.6rem',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                    }
+                                }}
+                            />
+                        </Button>
+                    </ButtonGroup>
+                </Box>
+
+                {/* Botão de ação contextual */}
+                <ActionButton
+                    onClick={handlePrimaryAction}
+                    color={themeColors.primary}
+                    startIcon={<AddIcon />}
                     disabled={isLoading}
-                />
+                >
+                    {getActionButtonText()}
+                </ActionButton>
             </Box>
 
             {/* Mensagem de sucesso */}
@@ -679,21 +1014,21 @@ export default function NotasSection({ pacienteId }) {
                             color="error"
                             size="small"
                             sx={{ ml: "auto", textTransform: "none", borderRadius: "20px", fontSize: 12 }}
-                            onClick={() => window.location.reload()}
+                            onClick={() => fetchNotas()}
                         >
                             Tentar novamente
                         </Button>
                     </Box>
-                ) : notasData.length === 0 ? (
+                ) : filteredNotas.length === 0 ? (
                     // Estado vazio - sem notas
-                    <EmptyState onCreate={handleOpenCreateDialog} />
+                    <EmptyState onCreate={handlePrimaryAction} />
                 ) : (
                     // Lista de notas
-                    notasData.map((nota) => (
+                    filteredNotas.map((nota) => (
                         <NotaCard
                             key={nota.id}
                             nota={nota}
-                            onOpen={handleOpenEditDialog}
+                            onOpen={handleOpenNota}
                         />
                     ))
                 )}
@@ -701,12 +1036,31 @@ export default function NotasSection({ pacienteId }) {
 
             {/* Dialog para criar/editar nota */}
             <PatientNoteDialog
-                open={openDialog}
-                onClose={handleCloseDialog}
+                open={openNoteDialog}
+                onClose={handleCloseNoteDialog}
                 note={selectedNota}
                 patientId={pacienteId}
                 onSave={handleSaveNote}
                 onDelete={handleDeleteNote}
+            />
+
+            {/* Dialog para criar/editar receita */}
+            <ReceitaDialog
+                open={openReceitaDialog}
+                onClose={handleCloseReceitaDialog}
+                patientId={pacienteId}
+                doctorId={user?.uid}
+                receitaId={selectedReceita?.id}
+                onSave={handleSaveReceita}
+            />
+
+            {/* Dialog para criar anamnese */}
+            <AnamneseDialog
+                open={openAnamneseDialog}
+                onClose={handleCloseAnamneseDialog}
+                patientId={pacienteId}
+                doctorId={user?.uid}
+                onSave={handleSaveAnamnese}
             />
         </Box>
     );

@@ -90,6 +90,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         >
             {/* Logo e título */}
             <Box
+                onClick={() => handleMenuClick("Dashboard")}
                 sx={{
                     display: "flex",
                     alignItems: "center",

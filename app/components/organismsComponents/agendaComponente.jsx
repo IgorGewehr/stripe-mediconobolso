@@ -52,7 +52,9 @@ import {
     startOfDay,
     addMinutes,
     parseJSON,
-    formatISO
+    formatISO,
+    parse,
+
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PeriodSelector from "../basicComponents/periodSelector";
@@ -89,8 +91,6 @@ const AgendaMedica = () => {
     const timeSlots = useMemo(() => {
         return Array.from({ length: 24 }, (_, i) => i); // 0h a 23h
     }, []);
-
-
 
 
 
@@ -418,16 +418,16 @@ const AgendaMedica = () => {
         let date;
 
         if (dateValue instanceof Date) {
-            // Se já for um objeto Date, usa diretamente
             date = dateValue;
         } else if (dateValue && typeof dateValue.toDate === 'function') {
-            // Se for um Timestamp do Firebase, converte para Date
+            // Se for um Timestamp do Firebase
             date = dateValue.toDate();
-        } else if (dateValue && typeof dateValue === 'string') {
-            // Se for uma string, usa parseISO ou new Date
+        } else if (typeof dateValue === 'string') {
             try {
-                date = parseISO(dateValue);
-            } catch (e) {
+                // Interpreta a data como local, usando o formato 'yyyy-MM-dd'
+                date = parse(dateValue, 'yyyy-MM-dd', new Date());
+            } catch (error) {
+                // Fallback para o construtor Date, se necessário
                 date = new Date(dateValue);
             }
         } else {
@@ -435,8 +435,7 @@ const AgendaMedica = () => {
             date = new Date();
         }
 
-        // Retorna uma data com apenas ano, mês e dia (sem componente de hora)
-        // para evitar problemas de fuso horário
+        // Retorna a data zerando o horário para evitar problemas de fuso
         return startOfDay(date);
     };
 

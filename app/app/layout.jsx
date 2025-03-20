@@ -12,6 +12,7 @@ import { useAuth } from "../components/authProvider";
 import { useRouter } from "next/navigation";
 import Dashboard from "../components/dashboardTemplate";
 import PatientsListPage from "../components/patientsListTemplate";
+import PrescriptionsPage from "../components/receitasTemplate";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -92,7 +93,7 @@ export default function AppLayout({ children }) {
                 return <PatientsListPage onPatientClick={handlePatientClick} />;
             case "receitas":
                 // Recebendo o handler de clique no paciente diretamente
-                return <Dashboard onClickPatients={handlePatientClick} />;
+                return <PrescriptionsPage />;
             case "agenda":
                 return <AgendaMedica />;
             case "patientprofile":

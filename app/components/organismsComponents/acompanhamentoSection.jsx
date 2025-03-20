@@ -13,6 +13,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import { useRouter } from "next/navigation";
 import AnamneseDialog from "./anamneseDialog";
+import ReceitaDialog from "./receitasDialog";
 
 // Paleta de cores (pode extrair para outro arquivo se quiser)
 const themeColors = {
@@ -124,6 +125,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
     const router = useRouter();
 
     const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
+    const [openReceitaDialog, setOpenReceitaDialog] = useState(false);
 
     // Handler para abrir o diálogo de anamnese
     const handleAnamneseClick = (isAdd) => {
@@ -132,9 +134,15 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
     };
 
     const handleReceitasClick = (isAdd) => {
-        // Redirecionar para a página de nova receita ou lista de receitas
+        // Abre o dialog de Receita
         console.log(`Clicou em Receitas ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
-        // router.push(`/receitas/${pacienteId}${isAdd ? "/nova" : ""}`);
+        setOpenReceitaDialog(true);
+    };
+
+    const handleSaveReceita = (receitaId) => {
+        console.log(`Receita ${receitaId} salva com sucesso!`);
+        setOpenReceitaDialog(false);
+        // Aqui você poderia atualizar o estado da aplicação ou fazer outras operações necessárias
     };
 
     const handleExamesClick = (isAdd) => {
@@ -189,6 +197,15 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 onClose={() => setOpenAnamneseDialog(false)}
                 patientId={pacienteId}
                 doctorId={doctorId}
+            />
+
+            {/* Renderiza o diálogo de receita */}
+            <ReceitaDialog
+                open={openReceitaDialog}
+                onClose={() => setOpenReceitaDialog(false)}
+                patientId={pacienteId}
+                doctorId={doctorId}
+                onSave={handleSaveReceita}
             />
         </Box>
     );

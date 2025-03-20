@@ -23,7 +23,7 @@ import {
     Slide,
     useTheme,
     useMediaQuery,
-    CircularProgress
+    CircularProgress, Tooltip
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -41,6 +41,10 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import AccessibilityNewIcon from "@mui/icons-material/AccessibilityNew";
+import TextIncreaseIcon from "@mui/icons-material/TextIncrease";
+import TextDecreaseIcon from "@mui/icons-material/TextDecrease";
+import FormatSizeIcon from "@mui/icons-material/FormatSize";
 // Firebase service
 import firebaseService from "../../../lib/firebaseService";
 
@@ -58,6 +62,34 @@ const FullScreenDialog = styled(Dialog)(({ theme }) => ({
         backgroundColor: "rgba(255, 255, 255, 0.10)",
         backdropFilter: "blur(4px)",
     },
+}));
+
+const FontSizeControl = styled(Box)(({ theme }) => ({
+    position: "fixed",
+    bottom: theme.spacing(4),
+    right: theme.spacing(4),
+    zIndex: 1200,
+    display: "flex",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: "28px",
+    padding: theme.spacing(0.5, 1.5, 0.5, 2),
+    boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.08)",
+    border: "1px solid #EAECEF",
+    transition: "all 0.2s ease-in-out",
+    "&:hover": {
+        boxShadow: "0px 6px 16px rgba(0, 0, 0, 0.12)",
+    }
+}));
+
+const FontSizeButton = styled(IconButton)(({ theme }) => ({
+    color: "#111E5A",
+    "&:hover": {
+        backgroundColor: "rgba(17, 30, 90, 0.08)",
+    },
+    "&.Mui-disabled": {
+        color: "rgba(17, 30, 90, 0.38)",
+    }
 }));
 
 const DialogHeader = styled(Box)(({ theme }) => ({
@@ -251,6 +283,50 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
     const [loading, setLoading] = useState(true);
     const [patientData, setPatientData] = useState(null);
     const [error, setError] = useState(null);
+    const [fontSizeScale, setFontSizeScale] = useState(1);
+
+    const MIN_SCALE = 1;
+    const MAX_SCALE = 2;
+    const SCALE_STEP = 0.1;
+
+    // Função para aumentar a fonte
+    const increaseFontSize = () => {
+        if (fontSizeScale < MAX_SCALE) {
+            setFontSizeScale(prev => Math.min(prev + SCALE_STEP, MAX_SCALE));
+        }
+    };
+
+    // Função para diminuir a fonte
+    const decreaseFontSize = () => {
+        if (fontSizeScale > MIN_SCALE) {
+            setFontSizeScale(prev => Math.max(prev - SCALE_STEP, MIN_SCALE));
+        }
+    };
+
+    // Função para resetar a fonte
+    const resetFontSize = () => {
+        setFontSizeScale(1);
+    };
+
+    // Estilo dinâmico com base no tamanho da fonte
+    const fontSizeStyle = {
+        fontSize: `${fontSizeScale}rem`,
+        "& .MuiTypography-root": {
+            fontSize: `${fontSizeScale}rem`,
+        },
+        "& .MuiInputBase-input": {
+            fontSize: `${fontSizeScale}rem`,
+        },
+        "& .MuiInputLabel-root": {
+            fontSize: `${fontSizeScale}rem`,
+        },
+        "& .MuiButton-root": {
+            fontSize: `${fontSizeScale}rem`,
+        },
+        "& .MuiChip-label": {
+            fontSize: `${0.8 * fontSizeScale}rem`,
+        },
+    };
 
     // Carregar dados do paciente quando o componente for montado
     useEffect(() => {
@@ -1427,6 +1503,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
                             fontFamily: "Gellix, sans-serif",
                             fontWeight: 600,
                             color: "#111E5A",
+                            fontSize: `${1.5 * fontSizeScale}rem`
                         }}
                     >
                         Nova Anamnese
@@ -1436,18 +1513,36 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
                         sx={{
                             fontFamily: "Gellix, sans-serif",
                             color: "rgba(17, 30, 90, 0.7)",
+                            fontSize: `${1 * fontSizeScale}rem`
                         }}
                     >
                         {patientData ? `Paciente: ${getPatientName()}` : "Preencha os dados da anamnese"}
                     </Typography>
                 </Box>
-                <CloseButton onClick={() => onClose()}>
-                    <CloseIcon />
-                </CloseButton>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Tooltip title="Ajustar tamanho da fonte" placement="bottom">
+                        <IconButton
+                            sx={{
+                                mr: 1,
+                                color: "#3366FF",
+                                backgroundColor: "rgba(51, 102, 255, 0.08)",
+                                "&:hover": {
+                                    backgroundColor: "rgba(51, 102, 255, 0.12)",
+                                }
+                            }}
+                            onClick={resetFontSize}
+                        >
+                            <FormatSizeIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <CloseButton onClick={() => onClose()}>
+                        <CloseIcon />
+                    </CloseButton>
+                </Box>
             </DialogHeader>
 
             {/* Body */}
-            <DialogBody>
+            <DialogBody sx={fontSizeStyle}>
                 <Box sx={{ p: 3 }}>
                     {/* Seção 1: Informações Principais */}
                     <SectionContainer>
@@ -2035,36 +2130,77 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
                 </Box>
             </DialogBody>
 
-            {/* Footer */}
-            <ActionButtonsContainer>
-                <ActionButton
-                    variant="outlined"
-                    disabled={isSubmitting}
-                    onClick={() => onClose()}
-                >
-                    Cancelar
-                </ActionButton>
-                <ActionButton
-                    variant="contained"
-                    onClick={handleSaveAnamnese}
-                    disabled={isSubmitting}
-                    startIcon={<LocalHospitalIcon />}
-                >
-                    {isSubmitting ? "Salvando..." : "Salvar Anamnese"}
-                </ActionButton>
-            </ActionButtonsContainer>
+            <>
+                {/* Footer */}
+                <ActionButtonsContainer>
+                    <ActionButton
+                        variant="outlined"
+                        disabled={isSubmitting}
+                        onClick={() => onClose()}
+                        sx={{ fontSize: `${fontSizeScale}rem` }}
+                    >
+                        Cancelar
+                    </ActionButton>
+                    <ActionButton
+                        variant="contained"
+                        onClick={handleSaveAnamnese}
+                        disabled={isSubmitting}
+                        startIcon={<LocalHospitalIcon />}
+                        sx={{ fontSize: `${fontSizeScale}rem` }}
+                    >
+                        {isSubmitting ? "Salvando..." : "Salvar Anamnese"}
+                    </ActionButton>
+                </ActionButtonsContainer>
 
-            {/* Snackbar de feedback */}
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={6000}
-                onClose={handleCloseSnackbar}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            >
-                <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
+                {/* Controle de tamanho de fonte flutuante */}
+                <FontSizeControl>
+                    <Typography
+                        sx={{
+                            mr: 1.5,
+                            fontWeight: 500,
+                            color: "#111E5A",
+                            fontSize: `${0.9 * fontSizeScale}rem`
+                        }}
+                    >
+                        Tamanho do texto
+                    </Typography>
+                    <FontSizeButton
+                        size="small"
+                        onClick={decreaseFontSize}
+                        disabled={fontSizeScale <= MIN_SCALE}
+                        aria-label="Diminuir tamanho da fonte"
+                    >
+                        <TextDecreaseIcon />
+                    </FontSizeButton>
+                    <FontSizeButton
+                        size="small"
+                        onClick={resetFontSize}
+                        aria-label="Restaurar tamanho da fonte padrão"
+                    >
+                        <AccessibilityNewIcon />
+                    </FontSizeButton>
+                    <FontSizeButton
+                        size="small"
+                        onClick={increaseFontSize}
+                        disabled={fontSizeScale >= MAX_SCALE}
+                        aria-label="Aumentar tamanho da fonte"
+                    >
+                        <TextIncreaseIcon />
+                    </FontSizeButton>
+                </FontSizeControl>
+
+                {/* Snackbar de feedback */}
+                <Snackbar
+                    open={snackbar.open}
+                    autoHideDuration={6000}
+                    onClose={handleCloseSnackbar}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+                >
+                    <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
+                        {snackbar.message}
+                    </Alert>
+                </Snackbar>
+            </>
         </FullScreenDialog>
     );
 }
