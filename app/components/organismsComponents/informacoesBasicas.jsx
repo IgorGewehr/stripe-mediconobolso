@@ -100,6 +100,7 @@ const PhotoUploadButton = styled(Button)(() => ({
 
 // Função para formatar a data de nascimento
 const formatBirthDate = (value) => {
+    if (!value) return "";
     const digits = value.replace(/\D/g, "").slice(0, 8);
     let formatted = "";
     if (digits.length > 0) {
@@ -114,7 +115,7 @@ const formatBirthDate = (value) => {
     return formatted;
 };
 
-function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrigger }) {
+function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrigger = 0 }) {
     const [photoPreview, setPhotoPreview] = useState(null);
 
     useEffect(() => {
@@ -151,6 +152,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
     };
 
     const formatCPF = (value) => {
+        if (!value) return "";
         const digits = value.replace(/\D/g, "").slice(0, 11);
         let formatted = digits.substring(0, Math.min(3, digits.length));
         if (digits.length >= 4) {
@@ -166,10 +168,12 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
     };
 
     const handleCPFChange = (e) => {
-        updateFormData({ cpf: formatCPF(e.target.value) });
+        const { value } = e.target;
+        updateFormData({ cpf: formatCPF(value) });
     };
 
     const formatTelefone = (value) => {
+        if (!value) return "";
         const digits = value.replace(/\D/g, "").slice(0, 11);
         let formatted = "";
         if (digits.length > 0) {
@@ -185,10 +189,12 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
     };
 
     const handleTelefoneChange = (e) => {
-        updateFormData({ telefone: formatTelefone(e.target.value) });
+        const { value } = e.target;
+        updateFormData({ telefone: formatTelefone(value) });
     };
 
     const formatCEP = (value) => {
+        if (!value) return "";
         const digits = value.replace(/\D/g, "").slice(0, 8);
         let formatted = digits.substring(0, Math.min(5, digits.length));
         if (digits.length > 5) {
@@ -198,7 +204,8 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
     };
 
     const handleCEPChange = (e) => {
-        updateFormData({ cep: formatCEP(e.target.value) });
+        const { value } = e.target;
+        updateFormData({ cep: formatCEP(value) });
     };
 
     return (

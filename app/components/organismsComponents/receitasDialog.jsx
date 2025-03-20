@@ -56,6 +56,7 @@ import 'jspdf-autotable';
 import FirebaseService from "../../../lib/firebaseService";
 import { useAuth } from "../authProvider";
 import Autocomplete from '@mui/material/Autocomplete';
+import BookmarkIcon from "@mui/icons-material/Bookmark";
 
 // Tema principal
 const theme = createTheme({
@@ -513,15 +514,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
             setSnackbar({
                 open: true,
                 message: "Por favor, informe um título para a receita.",
-                severity: "error"
-            });
-            return false;
-        }
-
-        if (receitaData.medicamentos.length === 0) {
-            setSnackbar({
-                open: true,
-                message: "Adicione pelo menos um medicamento à receita.",
                 severity: "error"
             });
             return false;
@@ -1539,7 +1531,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                             size="small"
                                                                             variant="outlined"
                                                                             color="secondary"
-                                                                            startIcon={<SaveOutlinedIcon />}
+                                                                            startIcon={<BookmarkIcon />}
                                                                             onClick={async () => {
                                                                                 try {
                                                                                     // Verificar se o nome do medicamento está preenchido
@@ -1654,14 +1646,14 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                             const pdf = generateReceitaPDF();
                             pdf.save(`receita_${getPatientName().replace(/\s+/g, '_')}.pdf`);
                         }}
-                        disabled={isSubmitting || receitaData.medicamentos.length === 0}
+                        disabled={isSubmitting}
                     >
                         Visualizar PDF
                     </SecondaryButton>
 
                     <PrimaryButton
                         onClick={handleSaveReceita}
-                        disabled={isSubmitting || receitaData.medicamentos.length === 0}
+                        disabled={isSubmitting}
                         loading={isSubmitting}
                         success={isSaved}
                     >

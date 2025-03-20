@@ -640,6 +640,10 @@ export default function NotasSection({ pacienteId }) {
             setTimeout(() => setShowSuccessMessage(false), 3000);
 
         } else {
+            setNotasData(prevNotas => Array.isArray(prevNotas) ? [notaData, ...prevNotas] : [notaData]);
+
+            // Calcular métricas com array seguro
+            calculateMetrics(Array.isArray(notasData) ? [...notasData, notaData] : [notaData]);
             // Adicionar a nova nota ao estado local
             setNotasData(prevNotas => [notaData, ...prevNotas]);
 
