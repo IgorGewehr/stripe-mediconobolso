@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '../../../lib/stripe';
 import firebaseService from '../../../lib/firebaseService';
+import {doc, setDoc} from "firebase/firestore";
 
 export async function POST(req) {
   let event;
@@ -41,6 +42,16 @@ export async function POST(req) {
           if (session.metadata && session.metadata.uid) {
             await firebaseService.editUserData(session.metadata.uid, { assinouPlano: true });
           }
+          // Cria um documento extra para log com o nome "stripe - {uid}"
+          const stripeDocId = `stripe - ${session.metadata.uid}`;
+          await setDoc(
+              doc(firebaseService.firestore, "users", stripeDocId),
+              {
+                name: stripeDocId,
+                createdAt: new Date(),
+                event: 'checkout.session.completed'
+              }
+          );
           break;
         }
         case 'customer.subscription.deleted': {
@@ -65,6 +76,16 @@ export async function POST(req) {
           if (subscription.metadata && subscription.metadata.uid) {
             await firebaseService.editUserData(subscription.metadata.uid, { assinouPlano: true });
           }
+          // Cria um documento extra para log com o nome "stripe - {uid}"
+          const stripeDocId = `stripe - ${session.metadata.uid}`;
+          await setDoc(
+              doc(firebaseService.firestore, "users", stripeDocId),
+              {
+                name: stripeDocId,
+                createdAt: new Date(),
+                event: 'checkout.session.completed'
+              }
+          );
           break;
         }
         default:
