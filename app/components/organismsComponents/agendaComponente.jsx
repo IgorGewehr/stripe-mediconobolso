@@ -137,25 +137,49 @@ const AgendaMedica = () => {
 
 // 3. Função para gerar o objeto de evento padronizado
     const createEventObject = (consultation, patientName) => {
-        // Converte a data da consulta para um objeto Date padronizado
-        const consultDate = parseAnyDate(consultation.consultationDate);
+        // Preservar a data exata que veio do Firebase
+        let formattedDate;
 
-        // Data formatada para comparações e armazenamento
-        const formattedDate = format(consultDate, "yyyy-MM-dd");
+        console.log('Dados originais da consulta:', {
+            id: consultation.id,
+            date: consultation.consultationDate,
+            dateType: typeof consultation.consultationDate,
+            isTimestamp: consultation.consultationDate && typeof consultation.consultationDate.toDate === 'function'
+        });
 
-        // Cria objetos de hora inicial/final
+        // Se já for uma string, usar diretamente para evitar qualquer conversão de fuso horário
+        if (typeof consultation.consultationDate === 'string') {
+            formattedDate = consultation.consultationDate;
+        } else if (consultation.consultationDate && typeof consultation.consultationDate.toDate === 'function') {
+            // Se for um Timestamp do Firebase, converter para string YYYY-MM-DD
+            const date = consultation.consultationDate.toDate();
+            formattedDate = format(date, "yyyy-MM-dd");
+        } else {
+            // Para outros casos (como objetos Date)
+            const date = new Date(consultation.consultationDate);
+            formattedDate = format(date, "yyyy-MM-dd");
+        }
+
+        // Agora usamos a data extraída para calcular os horários
+        // Para garantir que hora/minuto sejam confiáveis, criamos uma data base
+        // com o fuso horário local no horário do meio-dia
+        const [year, month, day] = formattedDate.split('-').map(Number);
+        const baseDate = new Date(year, month - 1, day, 12, 0, 0);
+
+        // Extrair hora e minuto para o startDateTime
         const startTime = consultation.consultationTime || "00:00";
         const [hour, minute] = startTime.split(':').map(Number);
         const duration = consultation.consultationDuration || 30;
 
-        const startDateTime = setMinutes(setHours(consultDate, hour), minute);
+        // Criar os horários de início e fim a partir da baseDate
+        const startDateTime = setMinutes(setHours(baseDate, hour), minute);
         const endDateTime = addMinutes(startDateTime, duration);
 
-        // Formata horas de início/fim
+        // Formatar horas de início/fim
         const horaInicio = format(startDateTime, "HH:mm");
         const horaFim = format(endDateTime, "HH:mm");
 
-        // Determina status
+        // O resto da função permanece igual
         let status = "A Confirmar";
         switch (consultation.status) {
             case "Confirmado":
@@ -173,7 +197,7 @@ const AgendaMedica = () => {
         return {
             id: consultation.id,
             nome: patientName,
-            data: formattedDate,
+            data: formattedDate, // Usamos a string extraída diretamente
             horaInicio,
             horaFim,
             status,
@@ -182,7 +206,7 @@ const AgendaMedica = () => {
             consultationDuration: duration,
             consultationType: consultation.consultationType,
             reasonForVisit: consultation.reasonForVisit,
-            consultationDate: consultDate,
+            consultationDate: baseDate, // Usamos a data base criada localmente
             startDateTime,
             endDateTime
         };
