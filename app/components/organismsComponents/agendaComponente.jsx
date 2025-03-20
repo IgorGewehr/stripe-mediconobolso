@@ -103,8 +103,7 @@ const AgendaMedica = () => {
         const d = date instanceof Date ? new Date(date) : new Date(date);
         d.setHours(12, 0, 0, 0);  // Define horário como 12:00 (meio-dia)
 
-        // Adiciona um dia para compensar o problema de fuso no Brasil
-        d.setDate(d.getDate() + 1);
+        // Não adicionar o dia extra - removido
 
         // Retorna apenas a parte da data (YYYY-MM-DD)
         return format(d, "yyyy-MM-dd");
@@ -189,32 +188,6 @@ const AgendaMedica = () => {
         };
     };
 
-    const addOneDay = (date) => {
-        if (!date) return null;
-
-        // Se for um objeto Date
-        if (date instanceof Date) {
-            const newDate = new Date(date);
-            newDate.setDate(newDate.getDate() + 1);
-            return newDate;
-        }
-
-        // Se for uma string no formato ISO ou yyyy-MM-dd
-        if (typeof date === 'string') {
-            const parsedDate = new Date(date);
-            parsedDate.setDate(parsedDate.getDate() + 1);
-            return parsedDate;
-        }
-
-        // Se for um objeto com método toDate (como Timestamp do Firebase)
-        if (date && typeof date.toDate === 'function') {
-            const firebaseDate = date.toDate();
-            firebaseDate.setDate(firebaseDate.getDate() + 1);
-            return firebaseDate;
-        }
-
-        return date; // Retorna sem modificar se não for nenhum dos casos acima
-    };
 
 
     // Memoized month days
@@ -293,8 +266,8 @@ const AgendaMedica = () => {
             // IMPORTANTE: Padronize a data antes de enviar ao Firebase
             const dataToSave = {
                 ...consultationData,
-                // Use a função utilitária para garantir formato consistente
-                consultationDate: formatDateForFirebase(consultationData.consultationDate)
+                // Não é mais necessária nenhuma transformação, passe o objeto Date diretamente
+                consultationDate: consultationData.consultationDate
             };
 
             // Create consultation in Firebase
@@ -362,8 +335,8 @@ const AgendaMedica = () => {
             // IMPORTANTE: Padronize a data antes de enviar ao Firebase
             const dataToSave = {
                 ...consultationData,
-                // Use a função utilitária para garantir formato consistente
-                consultationDate: formatDateForFirebase(consultationData.consultationDate)
+                // Não é mais necessária nenhuma transformação, passe o objeto Date diretamente
+                consultationDate: consultationData.consultationDate
             };
 
             // Update in Firebase
