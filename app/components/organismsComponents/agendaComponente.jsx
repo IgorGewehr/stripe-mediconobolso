@@ -93,6 +93,102 @@ const AgendaMedica = () => {
     }, []);
 
 
+    // Adicione essas funções no começo do componente
+
+// Função melhorada para garantir que a data esteja correta
+    const formatDateForFirebase = (date) => {
+        if (!date) return null;
+
+        // Cria uma cópia da data e define horário como meio-dia para evitar problemas de fuso
+        const d = date instanceof Date ? new Date(date) : new Date(date);
+        d.setHours(12, 0, 0, 0);  // Define horário como 12:00 (meio-dia)
+
+        // Adiciona um dia para compensar o problema de fuso no Brasil
+        d.setDate(d.getDate() + 1);
+
+        // Retorna apenas a parte da data (YYYY-MM-DD)
+        return format(d, "yyyy-MM-dd");
+    };
+
+// Função para garantir data correta ao ler do Firebase
+    const parseAnyDate = (dateValue) => {
+        if (!dateValue) return new Date();
+
+        let date;
+
+        if (dateValue instanceof Date) {
+            date = new Date(dateValue);
+        } else if (dateValue && typeof dateValue.toDate === 'function') {
+            date = dateValue.toDate();
+        } else if (typeof dateValue === 'string') {
+            // Para strings YYYY-MM-DD, define explicitamente com horário meio-dia
+            try {
+                const [year, month, day] = dateValue.split('-').map(Number);
+                date = new Date(year, month - 1, day, 12, 0, 0);
+            } catch (error) {
+                date = new Date(dateValue);
+                date.setHours(12, 0, 0, 0);
+            }
+        } else {
+            date = new Date();
+        }
+
+        return date;
+    };
+
+// 3. Função para gerar o objeto de evento padronizado
+    const createEventObject = (consultation, patientName) => {
+        // Converte a data da consulta para um objeto Date padronizado
+        const consultDate = parseAnyDate(consultation.consultationDate);
+
+        // Data formatada para comparações e armazenamento
+        const formattedDate = format(consultDate, "yyyy-MM-dd");
+
+        // Cria objetos de hora inicial/final
+        const startTime = consultation.consultationTime || "00:00";
+        const [hour, minute] = startTime.split(':').map(Number);
+        const duration = consultation.consultationDuration || 30;
+
+        const startDateTime = setMinutes(setHours(consultDate, hour), minute);
+        const endDateTime = addMinutes(startDateTime, duration);
+
+        // Formata horas de início/fim
+        const horaInicio = format(startDateTime, "HH:mm");
+        const horaFim = format(endDateTime, "HH:mm");
+
+        // Determina status
+        let status = "A Confirmar";
+        switch (consultation.status) {
+            case "Confirmado":
+            case "Concluída":
+                status = "Confirmado";
+                break;
+            case "Cancelada":
+                status = "Cancelado";
+                break;
+            case "Em Andamento":
+                status = "Em Andamento";
+                break;
+        }
+
+        return {
+            id: consultation.id,
+            nome: patientName,
+            data: formattedDate,
+            horaInicio,
+            horaFim,
+            status,
+            patientId: consultation.patientId,
+            doctorId: consultation.doctorId,
+            consultationDuration: duration,
+            consultationType: consultation.consultationType,
+            reasonForVisit: consultation.reasonForVisit,
+            consultationDate: consultDate,
+            startDateTime,
+            endDateTime
+        };
+    };
+
     const addOneDay = (date) => {
         if (!date) return null;
 
@@ -154,64 +250,11 @@ const AgendaMedica = () => {
                     }
                 });
 
-                // Process consultations into events
+                // Process consultations into events usando nossa função utilitária
                 const processedEvents = consultationsData.map(consultation => {
-                    // Get patient info
                     const patient = patientsMap[consultation.patientId];
                     const patientName = patient ? patient.patientName : "Paciente";
-
-                    // Corretamente converte o timestamp do Firebase para uma data JavaScript
-                    // corrigindo o problema da data aparecer no dia anterior
-                    const consultDate = parseConsultationDate(consultation.consultationDate);
-
-                    // Calculate end time
-                    const startTime = consultation.consultationTime || "00:00";
-                    let [hour, minute] = startTime.split(':').map(Number);
-                    const duration = consultation.consultationDuration || 30;
-
-                    // Cria um objeto de data completo incluindo hora/minuto
-                    const startDateTime = setMinutes(setHours(consultDate, hour), minute);
-                    const endDateTime = addMinutes(startDateTime, duration);
-
-                    // Formata as horas de início e fim
-                    const horaInicio = format(startDateTime, "HH:mm");
-                    const horaFim = format(endDateTime, "HH:mm");
-
-                    // Map status
-                    let status = "A Confirmar";
-                    switch (consultation.status) {
-                        case "Confirmado":
-                            status = "Confirmado";
-                            break;
-                        case "Cancelada":
-                            status = "Cancelado";
-                            break;
-                        case "Em Andamento":
-                            status = "Em Andamento";
-                            break;
-                        default:
-                            status = "A Confirmar";
-                    }
-
-                    // Formata a data para uso nos componentes
-                    const formattedDate = format(consultDate, "yyyy-MM-dd");
-
-                    return {
-                        id: consultation.id,
-                        nome: patientName,
-                        data: formattedDate,
-                        horaInicio: horaInicio,
-                        horaFim: horaFim,
-                        status,
-                        patientId: consultation.patientId,
-                        doctorId: consultation.doctorId,
-                        consultationDuration: consultation.consultationDuration,
-                        consultationType: consultation.consultationType,
-                        reasonForVisit: consultation.reasonForVisit,
-                        consultationDate: consultDate,
-                        startDateTime: startDateTime,
-                        endDateTime: endDateTime
-                    };
+                    return createEventObject(consultation, patientName);
                 });
 
                 setEventos(processedEvents);
@@ -247,78 +290,36 @@ const AgendaMedica = () => {
             const doctorId = user.uid;
             const patientId = consultationData.patientId;
 
-            const modifiedConsultationData = {
+            // IMPORTANTE: Padronize a data antes de enviar ao Firebase
+            const dataToSave = {
                 ...consultationData,
-                consultationDate: addOneDay(consultationData.consultationDate)
+                // Use a função utilitária para garantir formato consistente
+                consultationDate: formatDateForFirebase(consultationData.consultationDate)
             };
 
             // Create consultation in Firebase
-            const consultationId = await FirebaseService.createConsultation(doctorId, patientId, modifiedConsultationData);
+            const consultationId = await FirebaseService.createConsultation(
+                doctorId,
+                patientId,
+                dataToSave
+            );
 
             // Get patient name
             const patient = await FirebaseService.getPatient(doctorId, patientId);
 
-            // Converte corretamente a data
-            const consultDate = parseConsultationDate(consultationData.consultationDate);
+            // Crie o objeto de evento usando nossa função utilitária
+            const newEvent = createEventObject(
+                { ...dataToSave, id: consultationId },
+                patient ? patient.patientName : "Paciente"
+            );
 
-            // Cria objetos de data com hora/minuto
-            const startTime = consultationData.consultationTime;
-            let [hour, minute] = startTime.split(':').map(Number);
-            const duration = consultationData.consultationDuration;
-
-            const startDateTime = setMinutes(setHours(consultDate, hour), minute);
-            const endDateTime = addMinutes(startDateTime, duration);
-
-            // Formata as horas
-            const horaInicio = format(startDateTime, "HH:mm");
-            const horaFim = format(endDateTime, "HH:mm");
-
-            // Map status
-            let status = "A Confirmar";
-            switch (consultationData.status) {
-                case "Concluída":
-                    status = "Confirmado";
-                    break;
-                case "Cancelada":
-                    status = "Cancelado";
-                    break;
-                case "Em Andamento":
-                    status = "Em Andamento";
-                    break;
-                default:
-                    status = "A Confirmar";
-            }
-
-            // Formata a data para uso nos componentes
-            const formattedDate = format(consultDate, "yyyy-MM-dd");
-
-            // Add to local events
-            const newEvent = {
-                id: consultationId,
-                nome: patient ? patient.patientName : "Paciente",
-                data: formattedDate,
-                horaInicio: horaInicio,
-                horaFim: horaFim,
-                status,
-                patientId,
-                doctorId,
-                consultationDuration: consultationData.consultationDuration,
-                consultationType: consultationData.consultationType,
-                reasonForVisit: consultationData.reasonForVisit,
-                consultationDate: consultDate,
-                startDateTime: startDateTime,
-                endDateTime: endDateTime
-            };
-
-            // Update the state with the new event
+            // Atualize o estado
             setEventos(prev => {
                 const updated = [...prev, newEvent];
-                // Force immediate update of the UI
                 setTimeout(() => {
-                    // If in day or week view, navigate to the day of the new event
                     if (activeView !== 'month') {
-                        setSelectedDate(consultDate);
-                        setCurrentDate(consultDate);
+                        setSelectedDate(newEvent.consultationDate);
+                        setCurrentDate(newEvent.consultationDate);
                     }
                 }, 0);
                 return updated;
@@ -358,75 +359,37 @@ const AgendaMedica = () => {
             const patientId = consultationData.patientId;
             const consultationId = consultationData.id;
 
-            const modifiedConsultationData = {
+            // IMPORTANTE: Padronize a data antes de enviar ao Firebase
+            const dataToSave = {
                 ...consultationData,
-                consultationDate: addOneDay(consultationData.consultationDate)
+                // Use a função utilitária para garantir formato consistente
+                consultationDate: formatDateForFirebase(consultationData.consultationDate)
             };
 
-            // Update in Firebase com a data modificada
-            await FirebaseService.updateConsultation(doctorId, patientId, consultationId, modifiedConsultationData);
+            // Update in Firebase
+            await FirebaseService.updateConsultation(
+                doctorId,
+                patientId,
+                consultationId,
+                dataToSave
+            );
 
+            // Crie o objeto de evento atualizado usando nossa função utilitária
+            const updatedEvent = createEventObject(
+                dataToSave,
+                eventos.find(e => e.id === consultationId)?.nome || "Paciente"
+            );
 
-            // Converte corretamente a data
-            const consultDate = parseConsultationDate(consultationData.consultationDate);
-
-            // Cria objetos de data com hora/minuto
-            const startTime = consultationData.consultationTime;
-            let [hour, minute] = startTime.split(':').map(Number);
-            const duration = consultationData.consultationDuration;
-
-            const startDateTime = setMinutes(setHours(consultDate, hour), minute);
-            const endDateTime = addMinutes(startDateTime, duration);
-
-            // Formata as horas
-            const horaInicio = format(startDateTime, "HH:mm");
-            const horaFim = format(endDateTime, "HH:mm");
-
-            // Map status
-            let status = "A Confirmar";
-            switch (consultationData.status) {
-                case "Concluída":
-                    status = "Confirmado";
-                    break;
-                case "Cancelada":
-                    status = "Cancelado";
-                    break;
-                case "Em Andamento":
-                    status = "Em Andamento";
-                    break;
-                default:
-                    status = "A Confirmar";
-            }
-
-            // Formata a data para uso nos componentes
-            const formattedDate = format(consultDate, "yyyy-MM-dd");
-
-            // Update in local state and force refresh
+            // Atualize o estado
             setEventos(prev => {
                 const updated = prev.map(ev =>
-                    ev.id === consultationId
-                        ? {
-                            ...ev,
-                            data: formattedDate,
-                            horaInicio: horaInicio,
-                            horaFim: horaFim,
-                            status,
-                            consultationDuration: consultationData.consultationDuration,
-                            consultationType: consultationData.consultationType,
-                            reasonForVisit: consultationData.reasonForVisit,
-                            consultationDate: consultDate,
-                            startDateTime: startDateTime,
-                            endDateTime: endDateTime
-                        }
-                        : ev
+                    ev.id === consultationId ? updatedEvent : ev
                 );
 
-                // Force immediate update of the UI
                 setTimeout(() => {
-                    // If in day or week view, navigate to the day of the updated event
                     if (activeView !== 'month') {
-                        setSelectedDate(consultDate);
-                        setCurrentDate(consultDate);
+                        setSelectedDate(updatedEvent.consultationDate);
+                        setCurrentDate(updatedEvent.consultationDate);
                     }
                 }, 0);
 
@@ -572,44 +535,26 @@ const AgendaMedica = () => {
 
     // Find events for a specific date/hour - Improved for all views
     const findEvents = useCallback((day, hour = null) => {
-        // Format the dates consistently to avoid timezone issues
+        // Format the dates consistently
         const dayStart = startOfDay(day);
-        const dayEnd = addDays(dayStart, 1);
 
-        // Primeiro encontra todos os eventos do dia
+        // Encontra eventos do dia
         const dayEvents = eventos.filter(event => {
-            // Processa a data do evento se não estiver completa
-            let eventDate;
+            // Usa a data mais precisa disponível
+            const eventDate = event.startDateTime || event.consultationDate ||
+                parseAnyDate(event.data + "T" + event.horaInicio);
 
-            if (event.startDateTime) {
-                eventDate = event.startDateTime;
-            } else if (event.consultationDate) {
-                eventDate = event.consultationDate;
-            } else {
-                // Tenta construir a partir das partes
-                try {
-                    const [h, m] = event.horaInicio.split(':').map(Number);
-                    eventDate = new Date(event.data);
-                    eventDate.setHours(h, m, 0);
-                } catch (e) {
-                    // Fallback para string simples
-                    eventDate = new Date(event.data + "T" + event.horaInicio);
-                }
-            }
-
-            // Verifica se está no mesmo dia
             return isSameDay(eventDate, day);
         });
 
-        // Se não precisamos filtrar por hora, retorna todos os eventos do dia
+        // Se não precisa filtrar por hora
         if (hour === null) {
             return dayEvents;
         }
 
-        // Filtra eventos que começam na hora especificada (ignorando minutos)
+        // Filtra por hora
         return dayEvents.filter(event => {
-            const eventTime = event.horaInicio.split(':')[0];
-            const eventHour = parseInt(eventTime);
+            const eventHour = parseInt(event.horaInicio.split(':')[0]);
             return eventHour === hour;
         });
     }, [eventos]);
