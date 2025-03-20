@@ -93,6 +93,33 @@ const AgendaMedica = () => {
     }, []);
 
 
+    const addOneDay = (date) => {
+        if (!date) return null;
+
+        // Se for um objeto Date
+        if (date instanceof Date) {
+            const newDate = new Date(date);
+            newDate.setDate(newDate.getDate() + 1);
+            return newDate;
+        }
+
+        // Se for uma string no formato ISO ou yyyy-MM-dd
+        if (typeof date === 'string') {
+            const parsedDate = new Date(date);
+            parsedDate.setDate(parsedDate.getDate() + 1);
+            return parsedDate;
+        }
+
+        // Se for um objeto com método toDate (como Timestamp do Firebase)
+        if (date && typeof date.toDate === 'function') {
+            const firebaseDate = date.toDate();
+            firebaseDate.setDate(firebaseDate.getDate() + 1);
+            return firebaseDate;
+        }
+
+        return date; // Retorna sem modificar se não for nenhum dos casos acima
+    };
+
 
     // Memoized month days
     const daysInMonth = useMemo(() => {
@@ -220,8 +247,13 @@ const AgendaMedica = () => {
             const doctorId = user.uid;
             const patientId = consultationData.patientId;
 
+            const modifiedConsultationData = {
+                ...consultationData,
+                consultationDate: addOneDay(consultationData.consultationDate)
+            };
+
             // Create consultation in Firebase
-            const consultationId = await FirebaseService.createConsultation(doctorId, patientId, consultationData);
+            const consultationId = await FirebaseService.createConsultation(doctorId, patientId, modifiedConsultationData);
 
             // Get patient name
             const patient = await FirebaseService.getPatient(doctorId, patientId);
@@ -326,8 +358,14 @@ const AgendaMedica = () => {
             const patientId = consultationData.patientId;
             const consultationId = consultationData.id;
 
-            // Update in Firebase
-            await FirebaseService.updateConsultation(doctorId, patientId, consultationId, consultationData);
+            const modifiedConsultationData = {
+                ...consultationData,
+                consultationDate: addOneDay(consultationData.consultationDate)
+            };
+
+            // Update in Firebase com a data modificada
+            await FirebaseService.updateConsultation(doctorId, patientId, consultationId, modifiedConsultationData);
+
 
             // Converte corretamente a data
             const consultDate = parseConsultationDate(consultationData.consultationDate);
