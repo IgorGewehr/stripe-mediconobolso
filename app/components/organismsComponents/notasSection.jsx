@@ -585,12 +585,6 @@ export default function NotasSection({ pacienteId }) {
 
     // Função para abrir o dialog de edição/visualização de nota existente
     const handleOpenNota = (nota) => {
-        // Verificar o tipo de nota e abrir o diálogo correspondente
-        if (nota.noteType === "Anamnese") {
-            // Abrir diálogo de anamnese se for uma anamnese
-            setOpenAnamneseDialog(true);
-            return;
-        }
 
         if (nota.noteType === "Receita" && nota.prescriptionId) {
             // Abrir diálogo de receita se for uma receita e tiver ID de prescrição
