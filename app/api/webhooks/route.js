@@ -26,7 +26,8 @@ export async function POST(req) {
   const permittedEvents = [
     'checkout.session.completed',
     'customer.subscription.deleted',
-    'invoice.payment_failed'
+    'invoice.payment_failed',
+    'customer.subscription.created'
   ];
 
   if (permittedEvents.includes(event.type)) {
@@ -55,6 +56,15 @@ export async function POST(req) {
           const invoice = event.data.object;
           console.log(`Payment failed for customer: ${invoice.customer}`);
           // Aqui você pode notificar o usuário ou atualizar outros campos conforme a necessidade
+          break;
+        }
+        case 'customer.subscription.created': {
+          const subscription = event.data.object;
+          console.log(`Subscription created for customer: ${subscription.customer}`);
+          // Atualiza o status para assinouPlano mesmo que seja período de testes gratuitos
+          if (subscription.metadata && subscription.metadata.uid) {
+            await firebaseService.editUserData(subscription.metadata.uid, { assinouPlano: true });
+          }
           break;
         }
         default:
