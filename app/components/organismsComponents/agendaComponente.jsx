@@ -474,9 +474,6 @@ const AgendaMedica = () => {
             date = new Date();
         }
 
-        // Adiciona um dia à data para compensar o problema de timezone
-        date.setDate(date.getDate() + 1);
-
         // Retorna a data com o ajuste
         return date;
     };
