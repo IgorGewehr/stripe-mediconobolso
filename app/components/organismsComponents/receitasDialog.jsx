@@ -748,13 +748,19 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 pdfPath
             );
 
-            // 6. Atualiza a receita com a URL do PDF
-            await FirebaseService.updatePrescription(
-                doctorId,
-                patientId,
-                receitaId,
-                { pdfUrl }
-            );
+            const normalizedData = {
+                ...receitaData,
+                medications: receitaData.medicamentos.map(med => ({
+                    medicationName: med.nome,
+                    dosage: med.concentracao,
+                    frequency: med.posologia,
+                    duration: med.duracao,
+                    quantity: med.quantidade,
+                    observation: med.observacao
+                }))
+            };
+
+            await FirebaseService.createPrescription(doctorId, patientId, normalizedData);
 
             // 7. Cria uma nota associada à receita
             // Prepara o texto da nota (lista de medicamentos)

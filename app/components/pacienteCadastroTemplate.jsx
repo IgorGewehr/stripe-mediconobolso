@@ -240,14 +240,14 @@ export default function PacienteCadastroTemplate() {
     const validateForm = () => {
         const newErrors = {};
 
-        if (!formData.infoBasicas.nome) {
-            newErrors.nome = "Nome completo é obrigatório";
+        // Apenas validar se o nome está preenchido como obrigatório
+        if (!formData.infoBasicas.nome || formData.infoBasicas.nome.trim() === '') {
+            newErrors.nome = "Nome do paciente é obrigatório";
         }
-        if (!formData.infoBasicas.dataNascimento) {
-            newErrors.dataNascimento = "Data de nascimento é obrigatória";
-        }
-        if (!/\S+@\S+\.\S+/.test(formData.infoBasicas.email)) {
-            newErrors.email = "Email inválido";
+
+        // Validar o formato do email APENAS se um email foi fornecido
+        if (formData.infoBasicas.email && !/\S+@\S+\.\S+/.test(formData.infoBasicas.email)) {
+            newErrors.email = "Formato de email inválido";
         }
 
         setErrors(newErrors);
@@ -257,13 +257,15 @@ export default function PacienteCadastroTemplate() {
     // Função de submit
     const handleSubmit = async () => {
         if (!validateForm()) {
+            const errorFields = Object.keys(errors);
             setSnackbar({
                 open: true,
-                message: "Por favor, corrija os erros antes de enviar.",
+                message: `Verifique os campos obrigatórios: ${errorFields.join(", ")}`,
                 severity: "error",
             });
             return;
         }
+
 
         if (!user || !user.uid) {
             setSnackbar({

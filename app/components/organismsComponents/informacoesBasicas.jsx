@@ -279,6 +279,8 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                         value={formData?.email || ""}
                         onChange={handleChange}
                         variant="outlined"
+                        error={!!errors.email}
+                        helperText={errors.email}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
