@@ -1,4 +1,3 @@
-// actions/stripe.js
 'use server';
 
 import { headers } from 'next/headers';
@@ -30,6 +29,7 @@ export async function fetchClientSecret({ plan, uid, email }) {
     return_url: `${origin}/`, // redireciona para a home
     subscription_data: {
       trial_period_days: 7, // Adiciona período de teste de 7 dias
+      metadata: { uid }, // Também adiciona o uid nos metadados da subscription
     },
   });
 

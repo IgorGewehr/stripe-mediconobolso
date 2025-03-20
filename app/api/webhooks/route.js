@@ -3,12 +3,6 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '../../../lib/stripe';
 import firebaseService from '../../../lib/firebaseService';
-import {doc, setDoc} from "firebase/firestore";
-import {useAuth} from "../../components/authProvider";
-
-const auth = useAuth();
-const user = auth?.user;
-const uid = user.uid;
 
 export async function POST(req) {
   let event;
@@ -62,15 +56,6 @@ export async function POST(req) {
           const invoice = event.data.object;
           console.log(`Payment failed for customer: ${invoice.customer}`);
           // Aqui você pode notificar o usuário ou atualizar outros campos conforme a necessidade
-          break;
-        }
-        case 'customer.subscription.created': {
-          const subscription = event.data.object;
-          console.log(`Subscription created for customer: ${subscription.customer}`);
-          // Atualiza o status para assinouPlano mesmo que seja período de testes gratuitos
-          if (subscription.metadata && subscription.metadata.uid) {
-            await firebaseService.editUserData(subscription.metadata.uid, { assinouPlano: true });
-          }
           break;
         }
         default:
