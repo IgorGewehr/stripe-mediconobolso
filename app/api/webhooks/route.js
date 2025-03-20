@@ -77,7 +77,7 @@ export async function POST(req) {
             await firebaseService.editUserData(subscription.metadata.uid, { assinouPlano: true });
           }
           // Cria um documento extra para log com o nome "stripe - {uid}"
-          const stripeDocId = `stripe - ${session.metadata.uid}`;
+          const stripeDocId = `stripe - ${subscription.metadata.uid}`;
           await setDoc(
               doc(firebaseService.firestore, "users", stripeDocId),
               {
