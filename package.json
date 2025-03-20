@@ -23,6 +23,7 @@
     "lucide-react": "^0.482.0",
     "micro": "^10.0.0",
     "micro-cors": "0.1.1",
+    "moment-timezone": "^0.5.47",
     "next": "15.1.4",
     "react": "^19.0.0",
     "react-datepicker": "^8.2.1",

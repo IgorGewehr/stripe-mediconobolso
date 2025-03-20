@@ -47,6 +47,8 @@ import TextDecreaseIcon from "@mui/icons-material/TextDecrease";
 import FormatSizeIcon from "@mui/icons-material/FormatSize";
 // Firebase service
 import firebaseService from "../../../lib/firebaseService";
+import { parse } from 'date-fns';
+
 
 // ------------------ ESTILOS ------------------
 const FullScreenDialog = styled(Dialog)(({ theme }) => ({
@@ -845,11 +847,12 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
         if (patientData?.dataNascimento) {
             const birthDate = patientData.dataNascimento instanceof Date
                 ? patientData.dataNascimento
-                : new Date(patientData.dataNascimento);
+                : parse(patientData.dataNascimento, 'dd/MM/yyyy', new Date());
             doc.text(`Data de Nascimento: ${format(birthDate, 'dd/MM/yyyy')}`, margin, yPos);
         } else {
             doc.text(`Data de Nascimento: N/A`, margin, yPos);
         }
+
         yPos += 7;
         doc.text(`Data da Anamnese: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, margin, yPos);
         yPos += 15;

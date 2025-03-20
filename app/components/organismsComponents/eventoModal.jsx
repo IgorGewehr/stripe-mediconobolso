@@ -295,11 +295,22 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     };
 
     // Handler específico para mudança de data
+    // Em EventoModal.jsx, modifique o handleDateChange:
     const handleDateChange = (e) => {
-        setFormData(prev => ({
-            ...prev,
-            consultationDate: new Date(e.target.value)
-        }));
+        const dateParts = e.target.value.split('-');
+        if (dateParts.length === 3) {
+            // Criar uma nova data preservando exatamente o dia selecionado
+            const newDate = new Date(
+                parseInt(dateParts[0]),
+                parseInt(dateParts[1]) - 1,
+                parseInt(dateParts[2])
+            );
+
+            setFormData(prev => ({
+                ...prev,
+                consultationDate: newDate
+            }));
+        }
 
         if (errors.consultationDate) {
             setErrors(prev => ({ ...prev, consultationDate: undefined }));
@@ -376,7 +387,10 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     const formatDate = (date) => {
         if (!date) return '';
         const d = new Date(date);
-        return d.toISOString().split('T')[0];
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     // Renderização de cada item de paciente no dropdown

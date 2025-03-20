@@ -1,18 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
     Box,
     Typography,
     Button,
     IconButton,
     Popover,
-    TextField,
     Chip,
     Snackbar,
     Alert,
     CircularProgress,
-    Badge,
     Avatar,
     Paper,
     Tooltip,
@@ -20,8 +18,6 @@ import {
     useMediaQuery,
     alpha,
     Drawer,
-    Divider,
-    Stack
 } from '@mui/material';
 import {
     ChevronLeft,
@@ -35,26 +31,17 @@ import {
     ViewModule,
     Menu as MenuIcon,
     VideoCall,
-    Person,
     ArrowForward
 } from '@mui/icons-material';
 import FirebaseService from '../../../lib/firebaseService';
 import { useAuth } from '../authProvider';
 import EventoModal from './eventoModal';
+import moment from 'moment-timezone';
 import {
     format,
     isToday,
     isSameDay,
     parseISO,
-    addDays,
-    setHours,
-    setMinutes,
-    startOfDay,
-    addMinutes,
-    parseJSON,
-    formatISO,
-    parse,
-
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PeriodSelector from "../basicComponents/periodSelector";
@@ -76,7 +63,7 @@ const AgendaMedica = () => {
     const [showEventoModal, setShowEventoModal] = useState(false);
     const [eventoSelecionado, setEventoSelecionado] = useState(null);
     const [notification, setNotification] = useState({ open: false, message: '', type: 'info' });
-    // Modificando para que o sidebar comece fechado
+    // Sidebar começa fechado
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -92,94 +79,72 @@ const AgendaMedica = () => {
         return Array.from({ length: 24 }, (_, i) => i); // 0h a 23h
     }, []);
 
-
-    // Adicione essas funções no começo do componente
-
-// Função melhorada para garantir que a data esteja correta
+    // Funções para manipulação de datas
+    // Função simplificada para garantir formato de data consistente para o Firebase
     const formatDateForFirebase = (date) => {
-        if (!date) return null;
-
-        // Cria uma cópia da data e define horário como meio-dia para evitar problemas de fuso
-        const d = date instanceof Date ? new Date(date) : new Date(date);
-        d.setHours(12, 0, 0, 0);  // Define horário como 12:00 (meio-dia)
-
-        // Não adicionar o dia extra - removido
-
-        // Retorna apenas a parte da data (YYYY-MM-DD)
-        return format(d, "yyyy-MM-dd");
+        // Garantir que o dia local seja preservado
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
-// Função para garantir data correta ao ler do Firebase
+    // Função para converter qualquer valor de data para objeto Date
     const parseAnyDate = (dateValue) => {
         if (!dateValue) return new Date();
 
-        let date;
-
+        // Para objetos Date
         if (dateValue instanceof Date) {
-            date = new Date(dateValue);
-        } else if (dateValue && typeof dateValue.toDate === 'function') {
-            date = dateValue.toDate();
-        } else if (typeof dateValue === 'string') {
-            // Para strings YYYY-MM-DD, define explicitamente com horário meio-dia
-            try {
-                const [year, month, day] = dateValue.split('-').map(Number);
-                date = new Date(year, month - 1, day, 12, 0, 0);
-            } catch (error) {
-                date = new Date(dateValue);
-                date.setHours(12, 0, 0, 0);
-            }
-        } else {
-            date = new Date();
+            return dateValue;
         }
 
-        return date;
+        // Para Timestamps do Firebase
+        if (dateValue && typeof dateValue.toDate === 'function') {
+            return dateValue.toDate();
+        }
+
+        if (typeof dateValue === 'string') {
+            // Manter o dia exato sem conversão de fuso horário
+            const parts = dateValue.split('-');
+            if (parts.length === 3) {
+                // Criar data com o dia exato especificado
+                return new Date(parts[0], parts[1] - 1, parts[2]);
+            }
+            return new Date(dateValue);
+        }
+
+        return new Date();
     };
 
-// 3. Função para gerar o objeto de evento padronizado
+    // Função para criar objeto de evento padronizado
     const createEventObject = (consultation, patientName) => {
-        // Preservar a data exata que veio do Firebase
-        let formattedDate;
+        // Obter a data da consulta como objeto Date
+        const consultationDate = parseAnyDate(consultation.consultationDate);
 
-        console.log('Dados originais da consulta:', {
-            id: consultation.id,
-            date: consultation.consultationDate,
-            dateType: typeof consultation.consultationDate,
-            isTimestamp: consultation.consultationDate && typeof consultation.consultationDate.toDate === 'function'
-        });
+        // Usar a data consultationDate diretamente e preservar o dia
+        const formattedDate = formatDateForFirebase(consultationDate);
 
-        // Se já for uma string, usar diretamente para evitar qualquer conversão de fuso horário
-        if (typeof consultation.consultationDate === 'string') {
-            formattedDate = consultation.consultationDate;
-        } else if (consultation.consultationDate && typeof consultation.consultationDate.toDate === 'function') {
-            // Se for um Timestamp do Firebase, converter para string YYYY-MM-DD
-            const date = consultation.consultationDate.toDate();
-            formattedDate = format(date, "yyyy-MM-dd");
-        } else {
-            // Para outros casos (como objetos Date)
-            const date = new Date(consultation.consultationDate);
-            formattedDate = format(date, "yyyy-MM-dd");
-        }
-
-        // Agora usamos a data extraída para calcular os horários
-        // Para garantir que hora/minuto sejam confiáveis, criamos uma data base
-        // com o fuso horário local no horário do meio-dia
-        const [year, month, day] = formattedDate.split('-').map(Number);
-        const baseDate = new Date(year, month - 1, day, 12, 0, 0);
-
-        // Extrair hora e minuto para o startDateTime
+// Processar horário e duração
         const startTime = consultation.consultationTime || "00:00";
         const [hour, minute] = startTime.split(':').map(Number);
         const duration = consultation.consultationDuration || 30;
 
-        // Criar os horários de início e fim a partir da baseDate
-        const startDateTime = setMinutes(setHours(baseDate, hour), minute);
-        const endDateTime = addMinutes(startDateTime, duration);
+// Criar um novo objeto Date para o início e fim
+        const startDate = new Date(consultationDate);
+        startDate.setHours(hour, minute, 0);
+        const endDate = new Date(startDate);
+        endDate.setMinutes(startDate.getMinutes() + duration);
+
+// Criar momentos consistentes usando as datas criadas
+        const startMoment = moment(startDate);
+        const endMoment = moment(endDate);
 
         // Formatar horas de início/fim
-        const horaInicio = format(startDateTime, "HH:mm");
-        const horaFim = format(endDateTime, "HH:mm");
+        const horaInicio = startMoment.format('HH:mm');
+        const horaFim = endMoment.format('HH:mm');
 
-        // O resto da função permanece igual
+        // Definir status
         let status = "A Confirmar";
         switch (consultation.status) {
             case "Confirmado":
@@ -197,7 +162,7 @@ const AgendaMedica = () => {
         return {
             id: consultation.id,
             nome: patientName,
-            data: formattedDate, // Usamos a string extraída diretamente
+            data: formattedDate,
             horaInicio,
             horaFim,
             status,
@@ -206,13 +171,11 @@ const AgendaMedica = () => {
             consultationDuration: duration,
             consultationType: consultation.consultationType,
             reasonForVisit: consultation.reasonForVisit,
-            consultationDate: baseDate, // Usamos a data base criada localmente
-            startDateTime,
-            endDateTime
+            consultationDate: consultationDate,
+            startDateTime: startMoment.toDate(),
+            endDateTime: endMoment.toDate()
         };
     };
-
-
 
     // Memoized month days
     const daysInMonth = useMemo(() => {
@@ -247,10 +210,10 @@ const AgendaMedica = () => {
                     }
                 });
 
-                // Process consultations into events usando nossa função utilitária
+                // Process consultations into events
                 const processedEvents = consultationsData.map(consultation => {
                     const patient = patientsMap[consultation.patientId];
-                    const patientName = patient ? patient.patientName : "Paciente";
+                    const patientName = patient ? (patient.patientName || patient.nome) : "Paciente";
                     return createEventObject(consultation, patientName);
                 });
 
@@ -287,11 +250,10 @@ const AgendaMedica = () => {
             const doctorId = user.uid;
             const patientId = consultationData.patientId;
 
-            // IMPORTANTE: Padronize a data antes de enviar ao Firebase
+            // Garantir que a data está formatada corretamente antes de salvar
             const dataToSave = {
                 ...consultationData,
-                // Não é mais necessária nenhuma transformação, passe o objeto Date diretamente
-                consultationDate: consultationData.consultationDate
+                consultationDate: formatDateForFirebase(consultationData.consultationDate)
             };
 
             // Create consultation in Firebase
@@ -304,10 +266,10 @@ const AgendaMedica = () => {
             // Get patient name
             const patient = await FirebaseService.getPatient(doctorId, patientId);
 
-            // Crie o objeto de evento usando nossa função utilitária
+            // Crie o objeto de evento usando nossa função
             const newEvent = createEventObject(
                 { ...dataToSave, id: consultationId },
-                patient ? patient.patientName : "Paciente"
+                patient ? (patient.patientName || patient.nome) : "Paciente"
             );
 
             // Atualize o estado
@@ -356,11 +318,10 @@ const AgendaMedica = () => {
             const patientId = consultationData.patientId;
             const consultationId = consultationData.id;
 
-            // IMPORTANTE: Padronize a data antes de enviar ao Firebase
+            // Garantir que a data está formatada corretamente antes de salvar
             const dataToSave = {
                 ...consultationData,
-                // Não é mais necessária nenhuma transformação, passe o objeto Date diretamente
-                consultationDate: consultationData.consultationDate
+                consultationDate: formatDateForFirebase(consultationData.consultationDate)
             };
 
             // Update in Firebase
@@ -371,7 +332,7 @@ const AgendaMedica = () => {
                 dataToSave
             );
 
-            // Crie o objeto de evento atualizado usando nossa função utilitária
+            // Crie o objeto de evento atualizado
             const updatedEvent = createEventObject(
                 dataToSave,
                 eventos.find(e => e.id === consultationId)?.nome || "Paciente"
@@ -410,33 +371,6 @@ const AgendaMedica = () => {
         }
     };
 
-    // Helper function to convert date values to Date object
-    // Melhorado para lidar corretamente com problemas de fuso horário (Brasil UTC-3)
-    // Substitua a função parseConsultationDate atual por esta:
-    const parseConsultationDate = (dateValue) => {
-        let date;
-
-        if (dateValue instanceof Date) {
-            date = new Date(dateValue);
-        } else if (dateValue && typeof dateValue.toDate === 'function') {
-            // Se for um Timestamp do Firebase
-            date = dateValue.toDate();
-        } else if (typeof dateValue === 'string') {
-            try {
-                // Interpreta a data como local, usando o formato 'yyyy-MM-dd'
-                date = parse(dateValue, 'yyyy-MM-dd', new Date());
-            } catch (error) {
-                // Fallback para o construtor Date, se necessário
-                date = new Date(dateValue);
-            }
-        } else {
-            // Fallback para a data atual
-            date = new Date();
-        }
-
-        // Retorna a data com o ajuste
-        return date;
-    };
     // Close notification
     const handleCloseNotification = () => {
         setNotification(prev => ({ ...prev, open: false }));
@@ -490,7 +424,8 @@ const AgendaMedica = () => {
     }
 
     function formatDate(date) {
-        return format(date, "yyyy-MM-dd");
+        // Usar o mesmo método consistente em todo lugar
+        return formatDateForFirebase(date);
     }
 
     // Calendar navigation
@@ -532,14 +467,11 @@ const AgendaMedica = () => {
 
     // Find events for a specific date/hour - Improved for all views
     const findEvents = useCallback((day, hour = null) => {
-        // Obtém apenas a parte da data do dia atual (string YYYY-MM-DD)
-        const dayString = format(day, "yyyy-MM-dd");
+        // Formatar data consistentemente
+        const dayString = formatDateForFirebase(day);
 
         // Encontra eventos do dia comparando apenas as strings de data
-        const dayEvents = eventos.filter(event => {
-            // Usa a propriedade data (string) que já é padronizada como YYYY-MM-DD
-            return event.data === dayString;
-        });
+        const dayEvents = eventos.filter(event => event.data === dayString);
 
         // Se não precisa filtrar por hora
         if (hour === null) {
@@ -576,10 +508,13 @@ const AgendaMedica = () => {
     }, []);
 
     const handleSaveEvent = useCallback((event) => {
+        // Clone o evento para evitar modificar o original
+        const eventToSave = { ...event };
+
         if (event.id) {
-            updateConsultation(event);
+            updateConsultation(eventToSave);
         } else {
-            createConsultation(event);
+            createConsultation(eventToSave);
         }
     }, []);
 
@@ -1015,9 +950,7 @@ const AgendaMedica = () => {
 
         const upcomingEvents = eventos
             .filter(event => {
-                const eventDate = new Date(event.data);
-                const eventDateString = formatDate(eventDate);
-                return eventDateString >= todayString;
+                return event.data >= todayString;
             })
             .sort((a, b) => {
                 const dateA = new Date(a.data + 'T' + a.horaInicio);
@@ -1285,15 +1218,14 @@ const AgendaMedica = () => {
     // Defina o currentWeek (lista dos dias da semana)
     const currentWeek = useMemo(() => getWeekDays(currentDate), [currentDate]);
 
-// Agrupe os eventos da semana: weekEvents será um array com os eventos de cada dia da semana
     const weekEvents = useMemo(() => {
         return currentWeek.map(day => {
-            const dayStr = formatDate(day); // já retorna "yyyy-MM-dd"
+            const dayStr = moment(day).format('YYYY-MM-DD');
             return eventos.filter(event => event.data === dayStr);
         });
     }, [currentWeek, eventos]);
 
-// Crie um array de filteredTimeSlots com somente as horas em que há pelo menos um evento em algum dia
+    // Crie um array de filteredTimeSlots com somente as horas em que há pelo menos um evento em algum dia
     const filteredTimeSlots = useMemo(() => {
         return timeSlots.filter(hour =>
             currentWeek.some((day, dayIndex) => {
@@ -1305,7 +1237,6 @@ const AgendaMedica = () => {
             })
         );
     }, [timeSlots, currentWeek, weekEvents]);
-
 
     // Week view - improved to properly show events
     const renderWeekView = () => {
@@ -1349,94 +1280,125 @@ const AgendaMedica = () => {
 
                 {/* Time slots and events */}
                 <Box sx={{ flex: 1, overflow: 'auto', bgcolor: '#F8FAFF' }}>
-                    {filteredTimeSlots.map(hour => {
-                        const isCurrentHour = hour === currentHour;
-                        return (
-                            <Box
-                                key={hour}
-                                sx={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '80px repeat(7, 1fr)',
-                                    position: 'relative'
-                                }}
-                            >
-                                {/* Hour label */}
+                    {filteredTimeSlots.length > 0 ? (
+                        filteredTimeSlots.map(hour => {
+                            const isCurrentHour = hour === currentHour;
+                            return (
                                 <Box
+                                    key={hour}
                                     sx={{
-                                        p: 1,
-                                        borderRight: '1px solid #EAECEF',
-                                        borderBottom: '1px solid #EAECEF',
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        justifyContent: 'center',
-                                        bgcolor: 'white',
+                                        display: 'grid',
+                                        gridTemplateColumns: '80px repeat(7, 1fr)',
                                         position: 'relative'
                                     }}
                                 >
-                                    <Typography
-                                        variant="caption"
-                                        color="text.secondary"
+                                    {/* Hour label */}
+                                    <Box
                                         sx={{
-                                            fontWeight: 500,
-                                            position: 'absolute',
-                                            top: 8,
-                                            right: 10
+                                            p: 1,
+                                            borderRight: '1px solid #EAECEF',
+                                            borderBottom: '1px solid #EAECEF',
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            justifyContent: 'center',
+                                            bgcolor: 'white',
+                                            position: 'relative'
                                         }}
                                     >
-                                        {hour}:00
-                                    </Typography>
-                                </Box>
-
-                                {/* Day columns with events */}
-                                {currentWeek.map((day, dayIndex) => {
-                                    const dayEvents = weekEvents[dayIndex] || [];
-                                    const eventsAtHour = dayEvents.filter(event => {
-                                        const startHour = parseInt(event.horaInicio.split(':')[0]);
-                                        return startHour === hour;
-                                    });
-                                    const isTodayFlag = isToday(day);
-                                    return (
-                                        <Box
-                                            key={dayIndex}
+                                        <Typography
+                                            variant="caption"
+                                            color="text.secondary"
                                             sx={{
-                                                p: 1,
-                                                borderRight: dayIndex < 6 ? '1px solid #EAECEF' : 'none',
-                                                borderBottom: '1px solid #EAECEF',
-                                                minHeight: '80px',
-                                                bgcolor: 'white',
-                                                position: 'relative'
+                                                fontWeight: 500,
+                                                position: 'absolute',
+                                                top: 8,
+                                                right: 10
                                             }}
                                         >
-                                            {/* Current time indicator */}
-                                            {isTodayFlag && isCurrentHour && (
-                                                <Box
-                                                    sx={{
-                                                        position: 'absolute',
-                                                        top: '50%',
-                                                        left: 0,
-                                                        right: 0,
-                                                        height: '2px',
-                                                        bgcolor: theme.palette.error.main,
-                                                        zIndex: 1
-                                                    }}
-                                                />
-                                            )}
+                                            {hour}:00
+                                        </Typography>
+                                    </Box>
 
-                                            {/* Events at this hour */}
-                                            {eventsAtHour.map(event => (
-                                                <EventCard
-                                                    key={event.id}
-                                                    event={event}
-                                                    onClick={handleEventClick}
-                                                    isCompact={true}
-                                                />
-                                            ))}
-                                        </Box>
-                                    );
-                                })}
-                            </Box>
-                        );
-                    })}
+                                    {/* Day columns with events */}
+                                    {currentWeek.map((day, dayIndex) => {
+                                        const dayEvents = weekEvents[dayIndex] || [];
+                                        const eventsAtHour = dayEvents.filter(event => {
+                                            const startHour = parseInt(event.horaInicio.split(':')[0]);
+                                            return startHour === hour;
+                                        });
+                                        const isTodayFlag = isToday(day);
+                                        return (
+                                            <Box
+                                                key={dayIndex}
+                                                sx={{
+                                                    p: 1,
+                                                    borderRight: dayIndex < 6 ? '1px solid #EAECEF' : 'none',
+                                                    borderBottom: '1px solid #EAECEF',
+                                                    minHeight: '80px',
+                                                    bgcolor: 'white',
+                                                    position: 'relative'
+                                                }}
+                                            >
+                                                {/* Current time indicator */}
+                                                {isTodayFlag && isCurrentHour && (
+                                                    <Box
+                                                        sx={{
+                                                            position: 'absolute',
+                                                            top: '50%',
+                                                            left: 0,
+                                                            right: 0,
+                                                            height: '2px',
+                                                            bgcolor: theme.palette.error.main,
+                                                            zIndex: 1
+                                                        }}
+                                                    />
+                                                )}
+
+                                                {/* Events at this hour */}
+                                                {eventsAtHour.map(event => (
+                                                    <EventCard
+                                                        key={event.id}
+                                                        event={event}
+                                                        onClick={handleEventClick}
+                                                        isCompact={true}
+                                                    />
+                                                ))}
+                                            </Box>
+                                        );
+                                    })}
+                                </Box>
+                            );
+                        })
+                    ) : (
+                        <Box sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '100%',
+                            color: 'text.secondary',
+                            p: 4
+                        }}>
+                            <CalendarToday sx={{ fontSize: 48, color: alpha('#000', 0.1), mb: 2 }} />
+                            <Typography variant="body1" sx={{ mb: 1 }}>
+                                Nenhuma consulta agendada para esta semana
+                            </Typography>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<Add />}
+                                onClick={handleCreateEvent}
+                                sx={{
+                                    mt: 2,
+                                    borderRadius: '50px',
+                                    textTransform: 'none',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                }}
+                            >
+                                Agendar Consulta
+                            </Button>
+                        </Box>
+                    )}
                 </Box>
             </Box>
         );
@@ -1778,7 +1740,7 @@ const AgendaMedica = () => {
                         {!isMobile && (
                             <Button
                                 variant="contained"
-                                color= "#1852FE"
+                                color="primary"
                                 startIcon={<Add />}
                                 onClick={handleCreateEvent}
                                 sx={{
@@ -1861,7 +1823,7 @@ const AgendaMedica = () => {
                 }}>
                     <Button
                         variant="contained"
-                        color="success"
+                        color="primary"
                         startIcon={<Add />}
                         onClick={handleCreateEvent}
                         sx={{
