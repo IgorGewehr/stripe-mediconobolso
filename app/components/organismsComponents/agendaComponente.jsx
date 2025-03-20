@@ -457,54 +457,27 @@ const AgendaMedica = () => {
         let date;
 
         if (dateValue instanceof Date) {
-            // Se já for um objeto Date, criamos uma nova data mantendo ano/mês/dia
-            const year = dateValue.getFullYear();
-            const month = dateValue.getMonth();
-            const day = dateValue.getDate();
-            date = new Date(year, month, day, 12, 0, 0); // Usando meio-dia para evitar problemas de fuso
+            date = new Date(dateValue);
         } else if (dateValue && typeof dateValue.toDate === 'function') {
             // Se for um Timestamp do Firebase
-            const firebaseDate = dateValue.toDate();
-            // Cria uma nova data mantendo ano/mês/dia da data do Firebase
-            const year = firebaseDate.getFullYear();
-            const month = firebaseDate.getMonth();
-            const day = firebaseDate.getDate();
-            date = new Date(year, month, day, 12, 0, 0); // Usando meio-dia
+            date = dateValue.toDate();
         } else if (typeof dateValue === 'string') {
             try {
-                // Se for uma string no formato ISO
-                if (dateValue.includes('T') || dateValue.includes('-')) {
-                    // Extrair apenas a parte da data (yyyy-mm-dd)
-                    const parts = dateValue.split('T')[0].split('-');
-                    if (parts.length === 3) {
-                        const year = parseInt(parts[0]);
-                        const month = parseInt(parts[1]) - 1; // Mês em JavaScript é 0-based
-                        const day = parseInt(parts[2]);
-                        date = new Date(year, month, day, 12, 0, 0); // Usando meio-dia
-                    } else {
-                        // Fallback para o parse normal
-                        date = parse(dateValue, 'yyyy-MM-dd', new Date());
-                        // Ajusta para meio-dia
-                        date.setHours(12, 0, 0, 0);
-                    }
-                } else {
-                    // Outro formato de string
-                    date = new Date(dateValue);
-                    // Ajusta para meio-dia
-                    date.setHours(12, 0, 0, 0);
-                }
+                // Interpreta a data como local, usando o formato 'yyyy-MM-dd'
+                date = parse(dateValue, 'yyyy-MM-dd', new Date());
             } catch (error) {
-                console.error("Erro ao analisar data:", error);
-                // Fallback para hoje ao meio-dia
-                date = new Date();
-                date.setHours(12, 0, 0, 0);
+                // Fallback para o construtor Date, se necessário
+                date = new Date(dateValue);
             }
         } else {
-            // Fallback para hoje ao meio-dia
+            // Fallback para a data atual
             date = new Date();
-            date.setHours(12, 0, 0, 0);
         }
 
+        // Adiciona um dia à data para compensar o problema de timezone
+        date.setDate(date.getDate() + 1);
+
+        // Retorna a data com o ajuste
         return date;
     };
     // Close notification
