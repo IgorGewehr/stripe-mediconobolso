@@ -508,16 +508,13 @@ const AgendaMedica = () => {
 
     // Find events for a specific date/hour - Improved for all views
     const findEvents = useCallback((day, hour = null) => {
-        // Format the dates consistently
-        const dayStart = startOfDay(day);
+        // Obtém apenas a parte da data do dia atual (string YYYY-MM-DD)
+        const dayString = format(day, "yyyy-MM-dd");
 
-        // Encontra eventos do dia
+        // Encontra eventos do dia comparando apenas as strings de data
         const dayEvents = eventos.filter(event => {
-            // Usa a data mais precisa disponível
-            const eventDate = event.startDateTime || event.consultationDate ||
-                parseAnyDate(event.data + "T" + event.horaInicio);
-
-            return isSameDay(eventDate, day);
+            // Usa a propriedade data (string) que já é padronizada como YYYY-MM-DD
+            return event.data === dayString;
         });
 
         // Se não precisa filtrar por hora
@@ -1267,14 +1264,8 @@ const AgendaMedica = () => {
 // Agrupe os eventos da semana: weekEvents será um array com os eventos de cada dia da semana
     const weekEvents = useMemo(() => {
         return currentWeek.map(day => {
-            const dayStr = formatDate(day);
-            return eventos.filter(event => {
-                // Usa uma abordagem consistente para extrair a data do evento
-                const eventDate = event.consultationDate instanceof Date
-                    ? event.consultationDate
-                    : new Date(event.data);
-                return formatDate(eventDate) === dayStr;
-            });
+            const dayStr = formatDate(day); // já retorna "yyyy-MM-dd"
+            return eventos.filter(event => event.data === dayStr);
         });
     }, [currentWeek, eventos]);
 
