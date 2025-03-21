@@ -397,9 +397,12 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     const renderPatientOption = (props, option) => {
         if (!option) return null;
 
+        // Usar o ID do paciente como parte da chave para garantir unicidade
+        const uniqueKey = `patient-${option.id}`;
         const { key, ...otherProps } = props;
+
         return (
-            <Box component="li" key={key} {...otherProps}>
+            <Box component="li" key={uniqueKey} {...otherProps}>
                 <PatientItem>
                     <PatientAvatar src={option.fotoPerfil || undefined}>
                         {option.fotoPerfil
@@ -454,6 +457,7 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                                     getOptionLabel={(option) => option.name || ''}
                                     loading={loading}
                                     renderOption={renderPatientOption}
+                                    getOptionKey={(option) => option.id}
                                     renderInput={(params) => (
                                         <TextField
                                             {...params}
