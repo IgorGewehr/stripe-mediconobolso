@@ -5,12 +5,16 @@ import { Box, CircularProgress, useMediaQuery, useTheme } from '@mui/material';
 import AuthForms from './organismsComponents/authForms';
 import { useAuth } from './authProvider';
 import { useRouter } from 'next/navigation';
+import { useResponsiveScale } from './useScale'; // Importação do hook de escala
 
 const AuthTemplate = () => {
     const { user, loading } = useAuth();
     const router = useRouter();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    // Obter a escala responsiva
+    const { scaleStyle } = useResponsiveScale();
 
     useEffect(() => {
         if (user) {
@@ -75,12 +79,23 @@ const AuthTemplate = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     m: 0,
-                    p: { xs: 2, sm: 3 },
+                    p: 0,
                     marginLeft: { md: '40px' },
                     width: '100%',
+                    overflowX: 'hidden', // Prevenir overflow horizontal
                 }}
             >
-                <AuthForms />
+                {/* Container com escala aplicada */}
+                <Box sx={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: { xs: 2, sm: 3 },
+                    ...scaleStyle // Aplicar escala dinâmica aqui
+                }}>
+                    <AuthForms />
+                </Box>
             </Box>
             {!isMobile && (
                 <Box

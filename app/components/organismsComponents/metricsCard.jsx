@@ -9,11 +9,9 @@ import {
     Skeleton,
     Card,
     CardContent,
-    Stack,
-    Divider,
-    Grid
+    Button
 } from '@mui/material';
-import { TrendingUp, Timeline, PeopleAlt } from '@mui/icons-material';
+import { TrendingUp, Timeline, People } from '@mui/icons-material';
 
 const MetricsCard = ({ metrics, loading }) => {
     const theme = useTheme();
@@ -28,16 +26,16 @@ const MetricsCard = ({ metrics, loading }) => {
         let value;
         switch (timeFrame) {
             case 'hoje':
-                value = metrics.dailyAppointments;
+                value = metrics?.dailyAppointments || 0;
                 break;
             case 'semana':
-                value = metrics.weeklyAppointments;
+                value = metrics?.weeklyAppointments || 0;
                 break;
             case 'mes':
-                value = metrics.monthlyAppointments;
+                value = metrics?.monthlyAppointments || 0;
                 break;
             case 'ano':
-                value = metrics.yearlyAppointments;
+                value = metrics?.yearlyAppointments || 0;
                 break;
             default:
                 value = 0;
@@ -48,25 +46,35 @@ const MetricsCard = ({ metrics, loading }) => {
 
     // Função para formatar a taxa de recorrência
     const getFormattedRecurringRate = () => {
-        const rate = metrics.recurringRate || 0;
+        const rate = metrics?.recurringRate || 0;
         return rate < 10 ? `0${rate}` : `${rate}`;
     };
+
+    // Estilo comum para ambos os cards principais
+    const mainCardStyle = {
+        height: '140px', // Altura fixa para todos os cards
+        mb: 1,
+        borderRadius: '20px',
+        border: 'none',
+        overflow: 'hidden',
+        position: 'relative'
+    };
+
+    // Sem função de copiar link
 
     return (
         <Card
             elevation={0}
             sx={{
-                height: '100%',
+                width: '100%',
                 borderRadius: '20px',
                 border: '1px solid',
                 borderColor: theme.palette.divider,
-                backgroundColor: '#F5F9FF',
+                backgroundColor: 'white', // Fundo branco conforme solicitado
                 overflow: 'visible',
-                display: 'flex',
-                flexDirection: 'column'
             }}
         >
-            <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ p: 3 }}>
                 <Typography
                     variant="h6"
                     fontWeight={700}
@@ -123,17 +131,12 @@ const MetricsCard = ({ metrics, loading }) => {
                 <Card
                     elevation={0}
                     sx={{
-                        mb: 3,
-                        p: 0,
-                        borderRadius: '20px',
+                        ...mainCardStyle,
                         backgroundColor: '#1852FE',
                         color: 'white',
-                        overflow: 'hidden',
-                        border: 'none',
-                        position: 'relative'
                     }}
                 >
-                    <CardContent sx={{ p: 2.5 }}>
+                    <CardContent sx={{ p: 2.5, height: '100%', position: 'relative' }}>
                         {/* Elementos decorativos */}
                         <Box
                             sx={{
@@ -147,7 +150,7 @@ const MetricsCard = ({ metrics, loading }) => {
                             }}
                         />
 
-                        <Box sx={{ position: 'relative', zIndex: 1 }}>
+                        <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="subtitle1" fontWeight={500}>
                                     Seus Atendimentos
@@ -158,7 +161,7 @@ const MetricsCard = ({ metrics, loading }) => {
                             {loading ? (
                                 <Skeleton variant="text" width="50%" height={60} sx={{ bgcolor: alpha('#fff', 0.2) }} />
                             ) : (
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 'auto' }}>
                                     <Typography
                                         variant="h2"
                                         component="span"
@@ -180,20 +183,15 @@ const MetricsCard = ({ metrics, loading }) => {
                     </CardContent>
                 </Card>
 
-                {/* Card de taxa de recorrência - Design complementar */}
+                {/* Card de taxa de recorrência - Com mesma altura do card anterior */}
                 <Card
                     elevation={0}
                     sx={{
-                        mb: 3,
-                        borderRadius: '20px',
+                        ...mainCardStyle,
                         backgroundColor: '#E3F2FD',
-                        border: 'none',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        flex: 1
                     }}
                 >
-                    <CardContent sx={{ p: 2.5 }}>
+                    <CardContent sx={{ p: 2.5, height: '100%', position: 'relative' }}>
                         {/* Elementos decorativos */}
                         <Box
                             sx={{
@@ -207,7 +205,7 @@ const MetricsCard = ({ metrics, loading }) => {
                             }}
                         />
 
-                        <Box sx={{ position: 'relative', zIndex: 1 }}>
+                        <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="subtitle1" fontWeight={500} color="text.primary">
                                     Taxa de Recorrência
@@ -218,85 +216,94 @@ const MetricsCard = ({ metrics, loading }) => {
                             {loading ? (
                                 <Skeleton variant="text" width="50%" height={60} />
                             ) : (
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography
-                                        variant="h2"
-                                        component="span"
-                                        fontWeight={700}
-                                        color="#1852FE"
-                                        sx={{ letterSpacing: '-1px', lineHeight: 1 }}
-                                    >
-                                        {getFormattedRecurringRate()}
-                                    </Typography>
-                                    <Typography
-                                        variant="h4"
-                                        component="span"
-                                        color="#1852FE"
-                                        fontWeight={700}
-                                        sx={{ ml: 0.5 }}
-                                    >
-                                        %
+                                <Box sx={{ display: 'flex', flexDirection: 'column', mt: 'auto' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <Typography
+                                            variant="h2"
+                                            component="span"
+                                            fontWeight={700}
+                                            color="#1852FE"
+                                            sx={{ letterSpacing: '-1px', lineHeight: 1 }}
+                                        >
+                                            {getFormattedRecurringRate()}
+                                        </Typography>
+                                        <Typography
+                                            variant="h4"
+                                            component="span"
+                                            color="#1852FE"
+                                            fontWeight={700}
+                                            sx={{ ml: 0.5 }}
+                                        >
+                                            %
+                                        </Typography>
+                                    </Box>
+
+                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                        dos pacientes retornam em 3 meses
                                     </Typography>
                                 </Box>
                             )}
-
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                dos pacientes retornam em 3 meses
-                            </Typography>
                         </Box>
                     </CardContent>
                 </Card>
 
-                {/* Card de indicação */}
+                {/* Novo card de indicação - Substituindo a imagem */}
                 <Card
                     elevation={0}
                     sx={{
-                        backgroundColor: '#1852FE',
-                        color: 'white',
-                        borderRadius: '20px',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        mt: 'auto'
+                        ...mainCardStyle,
+                        background: 'linear-gradient(135deg, #7B40F2 0%, #4A3AFF 100%)',
+                        mt: 1,
+                        color: 'white'
                     }}
                 >
-                    <CardContent sx={{ p: 2.5 }}>
-                        <Grid container spacing={2} alignItems="center">
-                            <Grid item xs="auto">
-                                <PeopleAlt fontSize="large" />
-                            </Grid>
-                            <Grid item xs>
-                                <Typography variant="body1" fontWeight={600}>
-                                    Traga 3 amigos para o Médico no Bolso e ganhe 1 mês grátis!
-                                </Typography>
+                    <CardContent sx={{ p: 2.5, height: '100%', position: 'relative' }}>
+                        {/* Elementos decorativos */}
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: -25,
+                                right: -25,
+                                width: 140,
+                                height: 140,
+                                borderRadius: '50%',
+                                backgroundColor: alpha('#fff', 0.1)
+                            }}
+                        />
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                bottom: -15,
+                                left: -15,
+                                width: 80,
+                                height: 80,
+                                borderRadius: '50%',
+                                backgroundColor: alpha('#fff', 0.08)
+                            }}
+                        />
 
-                                <Box
+                        <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="subtitle1" fontWeight={500}>
+                                    Programa de Indicação
+                                </Typography>
+                                <People fontSize="small" />
+                            </Box>
+
+                            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+                                <Typography
+                                    variant="h5"
                                     sx={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                        borderRadius: '50px',
-                                        py: 0.5,
-                                        px: 2,
-                                        mt: 1,
-                                        display: 'inline-block',
-                                        cursor: 'pointer',
-                                        fontSize: '0.875rem',
-                                        fontWeight: 500,
-                                        '&:hover': {
-                                            backgroundColor: 'rgba(255, 255, 255, 0.3)'
-                                        }
+                                        fontWeight: 700,
+                                        textAlign: 'center',
+                                        mt: -1
                                     }}
                                 >
-                                    Copiar Link ID
-                                </Box>
-                            </Grid>
-                        </Grid>
+                                    Com 3 indicações você ganha 1 mês grátis!
+                                </Typography>
+                            </Box>
+                        </Box>
                     </CardContent>
-
-                    {/* Indicadores de slide */}
-                    <Box sx={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 0.5 }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'white' }} />
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.5)' }} />
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.5)' }} />
-                    </Box>
                 </Card>
             </CardContent>
         </Card>

@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import Dashboard from "../components/dashboardTemplate";
 import PatientsListPage from "../components/patientsListTemplate";
 import PrescriptionsPage from "../components/receitasTemplate";
+import {useResponsiveScale} from "../components/useScale";
+import CentralAjudaTemplate from "../components/centralAjudaTemplate";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -43,11 +45,21 @@ export default function AppLayout({ children }) {
         height: '105.26%',
     };
 
+    const { scaleStyle } = useResponsiveScale();
+
     // Handler para quando um paciente é clicado na tabela
     const handlePatientClick = (patientId) => {
         setSelectedPatientId(patientId);
         setActivePage("PatientProfile"); // Definir uma nova página ativa para o perfil do paciente
     };
+
+    const handleReportClick = () => {
+        setActivePage("Reportar");
+    }
+
+    const handleCentralClick = () => {
+        setActivePage("Central de AJuda");
+    }
 
     // Handler para voltar da visualização do paciente para a tabela de pacientes
     // Este handler foi mantido para compatibilidade mas não é mais usado no TopAppBar
@@ -105,7 +117,11 @@ export default function AppLayout({ children }) {
             case "patientprofile":
                 return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToDashboard} />;
             case "criar novo paciente":
-                return <PacienteCadastroTemplate/>
+                return <PacienteCadastroTemplate/>;
+            case "central de ajuda":
+                return <CentralAjudaTemplate />;
+            case "reportar":
+                return <CentralAjudaTemplate isReporte={true} />;
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
@@ -147,7 +163,7 @@ export default function AppLayout({ children }) {
     }
 
     return (
-        <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF"}}>
+        <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF", }}>
             <Sidebar
                 initialSelected={activePage}
                 onMenuSelect={handleMenuSelect}
@@ -199,7 +215,7 @@ export default function AppLayout({ children }) {
                 </Box>
                 <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
                     {/* Aplica o contentScaleStyle para ajustar a escala do conteúdo */}
-                    <Box sx={{ height: 'auto', padding: '10px', boxSizing: 'border-box', ...contentScaleStyle }}>
+                    <Box sx={{ height: 'auto', padding: '10px', boxSizing: 'border-box', ...scaleStyle }}>
                         {renderContent()}
                     </Box>
                 </Box>

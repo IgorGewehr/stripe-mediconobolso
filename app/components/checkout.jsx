@@ -9,6 +9,7 @@ import { fetchClientSecret } from '../actions/stripe';
 import PlanCard from './organismsComponents/planSelector';
 import { useAuth } from "./authProvider";
 import { useRouter } from 'next/navigation';
+import { useResponsiveScale } from './useScale'; // Importação do hook de escala
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -19,6 +20,9 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
     const [userInfo, setUserInfo] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Obter a escala responsiva
+    const { scaleStyle, scale } = useResponsiveScale();
 
     // Função de logout que usa o logout do AuthProvider
     const handleLogout = async () => {
@@ -107,7 +111,12 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
     }
 
     return (
-        <Box sx={{ display: 'flex', width: '100vw', height: '100vh' }}>
+        <Box sx={{
+            display: 'flex',
+            width: '100vw',
+            height: '100vh',
+            overflow: 'hidden' // Prevenir overflow
+        }}>
             {/* Logo e botão de logout */}
             <Box sx={{
                 position: 'absolute',
@@ -160,10 +169,21 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    marginLeft: '40px'
+                    marginLeft: '40px',
+                    overflow: 'hidden' // Prevenir overflow
                 }}
             >
-                <PlanCard selectedPlan={selectedPlan} onPlanChange={onPlanChange} />
+                {/* Container com escala para o PlanCard */}
+                <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    width: '100%',
+                    height: '100%',
+                    ...scaleStyle // Aplicar a escala aqui
+                }}>
+                    <PlanCard selectedPlan={selectedPlan} onPlanChange={onPlanChange} />
+                </Box>
             </Box>
 
             {/* Painel Direito: Exibe o checkout embutido do Stripe */}
@@ -172,60 +192,69 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                     flex: 1,
                     backgroundColor: '#FFF',
                     height: '100vh',
-                    overflowY: 'auto',
-                    p: 2,
+                    overflow: 'hidden', // Prevenir overflow horizontal
+                    p: 0, // Remover padding para aplicar no container com escala
                 }}
             >
-                {/* Verificação explícita de UID antes de mostrar o checkout */}
-                {user && user.uid && userInfo && userInfo.email ? (
-                    <EmbeddedCheckoutProvider
-                        key={selectedPlan} // Quando o plano muda, forçamos a remount do checkout
-                        stripe={stripePromise}
-                        options={{
-                            fetchClientSecret: async () => {
-                                try {
-                                    // Log para depuração
-                                    console.log(`Iniciando checkout para UID: ${user.uid}, Email: ${userInfo.email}`);
+                {/* Container com escala para o Checkout */}
+                <Box sx={{
+                    width: '100%',
+                    height: '100%',
+                    overflowY: 'auto', // Manter rolagem vertical
+                    p: 2,
+                    ...scaleStyle // Aplicar a escala aqui
+                }}>
+                    {/* Verificação explícita de UID antes de mostrar o checkout */}
+                    {user && user.uid && userInfo && userInfo.email ? (
+                        <EmbeddedCheckoutProvider
+                            key={selectedPlan} // Quando o plano muda, forçamos a remount do checkout
+                            stripe={stripePromise}
+                            options={{
+                                fetchClientSecret: async () => {
+                                    try {
+                                        // Log para depuração
+                                        console.log(`Iniciando checkout para UID: ${user.uid}, Email: ${userInfo.email}`);
 
-                                    return await fetchClientSecret({
-                                        plan: selectedPlan,
-                                        uid: user.uid,
-                                        email: userInfo.email,
-                                    });
-                                } catch (err) {
-                                    console.error("Erro ao buscar client secret:", err);
-                                    setError(`Erro ao iniciar checkout do Stripe: ${err.message}`);
-                                    return null;
-                                }
-                            },
-                        }}
-                    >
-                        <EmbeddedCheckout />
-                    </EmbeddedCheckoutProvider>
-                ) : (
-                    <Box sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        height: '100%',
-                        p: 3
-                    }}>
-                        <Typography variant="h6" sx={{ mb: 2 }}>
-                            Não foi possível iniciar o checkout
-                        </Typography>
-                        <Typography variant="body1" sx={{ mb: 3 }}>
-                            Informações do usuário incompletas: {!user ? "Usuário não autenticado" : !user.uid ? "UID não encontrado" : "Email não encontrado"}
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => router.push('/')}
+                                        return await fetchClientSecret({
+                                            plan: selectedPlan,
+                                            uid: user.uid,
+                                            email: userInfo.email,
+                                        });
+                                    } catch (err) {
+                                        console.error("Erro ao buscar client secret:", err);
+                                        setError(`Erro ao iniciar checkout do Stripe: ${err.message}`);
+                                        return null;
+                                    }
+                                },
+                            }}
                         >
-                            Voltar para página inicial
-                        </Button>
-                    </Box>
-                )}
+                            <EmbeddedCheckout />
+                        </EmbeddedCheckoutProvider>
+                    ) : (
+                        <Box sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            height: '100%',
+                            p: 3
+                        }}>
+                            <Typography variant="h6" sx={{ mb: 2 }}>
+                                Não foi possível iniciar o checkout
+                            </Typography>
+                            <Typography variant="body1" sx={{ mb: 3 }}>
+                                Informações do usuário incompletas: {!user ? "Usuário não autenticado" : !user.uid ? "UID não encontrado" : "Email não encontrado"}
+                            </Typography>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={() => router.push('/')}
+                            >
+                                Voltar para página inicial
+                            </Button>
+                        </Box>
+                    )}
+                </Box>
             </Box>
         </Box>
     );

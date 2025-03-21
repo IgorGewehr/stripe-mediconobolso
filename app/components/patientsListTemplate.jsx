@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, {useState, useEffect, useMemo, useCallback} from 'react';
 import {
     Box,
     Typography,
@@ -87,6 +87,7 @@ import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, s
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from "../../lib/firebaseService";
 import { useAuth } from "./authProvider";
+import SearchBar from "./basicComponents/searchBar";
 
 // Constantes para o componente
 const PATIENT_CONDITIONS = [
@@ -1317,112 +1318,101 @@ const PatientsListPage = ({ onPatientClick }) => {
     );
 
     // Barra de ferramentas com busca e filtros
-    const ToolbarSection = () => (
-        <Box
-            sx={{
-                mb: 3,
-                display: 'flex',
-                flexDirection: isTablet ? 'column' : 'row',
-                alignItems: isTablet ? 'stretch' : 'center',
-                gap: 2
-            }}
-        >
-            <TextField
-                placeholder="Buscar pacientes por nome, e-mail ou CPF..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                variant="outlined"
-                fullWidth={isTablet}
-                sx={{
-                    flex: isTablet ? '1' : '1 1 50%',
-                    '& .MuiOutlinedInput-root': {
-                        borderRadius: '50px',
-                        backgroundColor: '#fff',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                    }
-                }}
-                InputProps={{
-                    startAdornment: (
-                        <InputAdornment position="start">
-                            <SearchIcon />
-                        </InputAdornment>
-                    ),
-                }}
-                size="small"
-            />
+    const ToolbarSection = () => {
+        // handleSearch é chamado apenas quando o usuário para de digitar
+        const handleSearch = useCallback((value) => {
+            setSearchTerm(value);
+        }, []);
 
+        return (
             <Box
                 sx={{
+                    mb: 3,
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    justifyContent: isTablet ? 'space-between' : 'flex-end',
-                    flex: isTablet ? '1' : '1 1 50%'
+                    flexDirection: isTablet ? 'column' : 'row',
+                    alignItems: isTablet ? 'stretch' : 'center',
+                    gap: 2
                 }}
             >
-                {hasActiveFilters && (
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<FilterAltIcon />}
-                        onClick={handleClearFilters}
-                        sx={{
-                            borderRadius: '50px',
-                        }}
-                    >
-                        Limpar Filtros
-                    </Button>
-                )}
+                {/* Substituir o TextField original pelo componente SearchBar */}
+                <SearchBar
+                    onSearch={handleSearch}
+                    isTablet={isTablet}
+                />
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<FilterListIcon />}
-                        onClick={handleFilterClick}
-                        color={hasActiveFilters ? "primary" : "inherit"}
-                        sx={{
-                            borderRadius: '50px',
-                            fontWeight: hasActiveFilters ? 600 : 400
-                        }}
-                    >
-                        Filtrar
-                    </Button>
-
-                    <ButtonGroup variant="outlined" sx={{ borderRadius: '50px', overflow: 'hidden' }}>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        justifyContent: isTablet ? 'space-between' : 'flex-end',
+                        flex: isTablet ? '1' : '1 1 50%'
+                    }}
+                >
+                    {hasActiveFilters && (
                         <Button
                             size="small"
-                            onClick={() => handleViewModeChange(VIEWS.TABLE)}
-                            variant={viewMode === VIEWS.TABLE ? 'contained' : 'outlined'}
+                            variant="outlined"
+                            startIcon={<FilterAltIcon />}
+                            onClick={handleClearFilters}
                             sx={{
-                                borderTopLeftRadius: '50px',
-                                borderBottomLeftRadius: '50px',
-                                borderTopRightRadius: '0',
-                                borderBottomRightRadius: '0',
-                                minWidth: '40px'
+                                borderRadius: '50px',
                             }}
                         >
-                            <ViewListIcon fontSize="small" />
+                            Limpar Filtros
                         </Button>
+                    )}
+
+                    <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button
                             size="small"
-                            onClick={() => handleViewModeChange(VIEWS.GRID)}
-                            variant={viewMode === VIEWS.GRID ? 'contained' : 'outlined'}
+                            variant="outlined"
+                            startIcon={<FilterListIcon />}
+                            onClick={handleFilterClick}
+                            color={hasActiveFilters ? "primary" : "inherit"}
                             sx={{
-                                borderTopRightRadius: '50px',
-                                borderBottomRightRadius: '50px',
-                                borderTopLeftRadius: '0',
-                                borderBottomLeftRadius: '0',
-                                minWidth: '40px'
+                                borderRadius: '50px',
+                                fontWeight: hasActiveFilters ? 600 : 400
                             }}
                         >
-                            <GridViewIcon fontSize="small" />
+                            Filtrar
                         </Button>
-                    </ButtonGroup>
+
+                        <ButtonGroup variant="outlined" sx={{ borderRadius: '50px', overflow: 'hidden' }}>
+                            <Button
+                                size="small"
+                                onClick={() => handleViewModeChange(VIEWS.TABLE)}
+                                variant={viewMode === VIEWS.TABLE ? 'contained' : 'outlined'}
+                                sx={{
+                                    borderTopLeftRadius: '50px',
+                                    borderBottomLeftRadius: '50px',
+                                    borderTopRightRadius: '0',
+                                    borderBottomRightRadius: '0',
+                                    minWidth: '40px'
+                                }}
+                            >
+                                <ViewListIcon fontSize="small" />
+                            </Button>
+                            <Button
+                                size="small"
+                                onClick={() => handleViewModeChange(VIEWS.GRID)}
+                                variant={viewMode === VIEWS.GRID ? 'contained' : 'outlined'}
+                                sx={{
+                                    borderTopRightRadius: '50px',
+                                    borderBottomRightRadius: '50px',
+                                    borderTopLeftRadius: '0',
+                                    borderBottomLeftRadius: '0',
+                                    minWidth: '40px'
+                                }}
+                            >
+                                <GridViewIcon fontSize="small" />
+                            </Button>
+                        </ButtonGroup>
+                    </Box>
                 </Box>
             </Box>
-        </Box>
-    );
+        );
+    };
 
     // Chips de filtros ativos
     const ActiveFiltersSection = () => {

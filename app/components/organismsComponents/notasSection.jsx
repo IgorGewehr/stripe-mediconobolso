@@ -617,6 +617,7 @@ export default function NotasSection({ pacienteId }) {
     };
 
     // Handler para criar ou atualizar nota
+    // Handler para criar ou atualizar nota
     const handleSaveNote = (notaData) => {
         // Se estamos editando uma nota existente
         if (selectedNota && selectedNota.id) {
@@ -640,11 +641,7 @@ export default function NotasSection({ pacienteId }) {
             setTimeout(() => setShowSuccessMessage(false), 3000);
 
         } else {
-            setNotasData(prevNotas => Array.isArray(prevNotas) ? [notaData, ...prevNotas] : [notaData]);
-
-            // Calcular métricas com array seguro
-            calculateMetrics(Array.isArray(notasData) ? [...notasData, notaData] : [notaData]);
-            // Adicionar a nova nota ao estado local
+            // CORRIGIDO: Apenas uma chamada para adicionar a nova nota
             setNotasData(prevNotas => [notaData, ...prevNotas]);
 
             // Mostrar mensagem de sucesso
@@ -656,8 +653,11 @@ export default function NotasSection({ pacienteId }) {
         // Fechar o dialog
         setOpenNoteDialog(false);
 
-        // Aplicar filtros novamente
-        calculateMetrics([...notasData, notaData]);
+        // CORRIGIDO: Atualizar métricas usando uma função de callback para garantir o estado mais recente
+        setNotasData(prevNotas => {
+            calculateMetrics(prevNotas);
+            return prevNotas;
+        });
     };
 
     // Handler para salvar receita
