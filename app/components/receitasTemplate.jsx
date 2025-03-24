@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -16,10 +16,8 @@ import {
     List,
     Paper,
     CircularProgress,
-    Container,
     Grid,
     Stack,
-    styled,
     useTheme,
     alpha,
     FormControl,
@@ -34,22 +32,25 @@ import {
     Tab,
     Avatar,
     Drawer,
-    ListItemText,
-    Collapse,
-    ButtonGroup,
     Pagination,
     InputBase,
     Badge,
-    FormControlLabel,
     Divider,
     Fade,
     Zoom,
+    ButtonGroup, CardContent,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    CardHeader,
+    ListItem,
+    ListItemText,
+    ListItemIcon, CardActions
 } from '@mui/material';
 import {
     SearchOutlined,
     FilterListOutlined,
     SortOutlined,
-    VisibilityOutlined,
     DeleteOutlined,
     AccessTimeOutlined,
     EventOutlined,
@@ -61,15 +62,11 @@ import {
     CloseOutlined,
     AddOutlined,
     MedicationOutlined,
-    SortByAlphaOutlined,
-    ExpandMoreOutlined,
-    ExpandLessOutlined,
     ClearOutlined,
     SaveOutlined,
     LocalHospitalOutlined,
     PersonOutlined,
     CheckCircleOutlineOutlined,
-    HelpOutlineOutlined,
     CalendarTodayOutlined,
     EditOutlined as EditIcon,
     ArrowBackOutlined,
@@ -78,156 +75,25 @@ import {
     LocalOfferOutlined,
     StarOutline,
     StarRate,
+    FilterAlt as FilterAltIcon,
+    ViewList as ViewListIcon,
+    GridView as GridViewIcon,
 } from '@mui/icons-material';
-import FirebaseService from '../../lib/firebaseService';
-import { format, formatDistanceToNow, isToday, isYesterday, isValid, parse } from 'date-fns';
+import FirebaseService from "../../lib/firebaseService";
+import { format, formatDistanceToNow, isToday, isYesterday, isValid, parse, isPast, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from "./authProvider";
+import SearchBar from "./basicComponents/searchBar";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { formatDistance } from 'date-fns';
+import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
+import { styled } from '@mui/material/styles';
 
-// Styled components with enhanced design
-const SearchBar = styled(Paper)(({ theme }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    borderRadius: 16,
-    padding: theme.spacing(0.5, 2),
-    marginBottom: theme.spacing(3),
-    backgroundColor: alpha(theme.palette.background.paper, 0.8),
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
-    border: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
-    transition: 'all 0.3s ease',
-    '&:hover, &:focus-within': {
-        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
-        borderColor: alpha(theme.palette.primary.main, 0.2),
-        backgroundColor: theme.palette.background.paper,
-    },
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-    width: '100%',
-    '& .MuiInputBase-input': {
-        padding: theme.spacing(1.2, 1, 1.2, 0),
-        fontFamily: 'Gellix, system-ui, sans-serif',
-        fontSize: '0.95rem',
-    },
-}));
-
-const FilterChip = styled(Chip)(({ theme, selected }) => ({
-    margin: theme.spacing(0.5),
-    backgroundColor: selected ? alpha(theme.palette.primary.main, 0.9) : alpha(theme.palette.primary.main, 0.08),
-    color: selected ? theme.palette.common.white : theme.palette.text.primary,
-    borderRadius: 12,
-    height: 32,
-    border: `1px solid ${selected ? theme.palette.primary.main : alpha(theme.palette.primary.main, 0.2)}`,
-    fontWeight: 500,
-    '&:hover': {
-        backgroundColor: selected ? theme.palette.primary.dark : alpha(theme.palette.primary.main, 0.12),
-    },
-    '& .MuiChip-label': {
-        padding: '0 12px',
-    },
-    transition: 'all 0.2s ease',
-}));
-
-const ActionButton = styled(Button)(({ theme, variant = 'contained', color = 'primary' }) => ({
-    borderRadius: 12,
-    textTransform: 'none',
-    boxShadow: variant === 'contained' ? '0px 3px 12px rgba(0, 0, 0, 0.08)' : 'none',
-    fontWeight: 600,
-    fontSize: '0.875rem',
-    padding: '8px 18px',
-    minWidth: 'auto',
-    '&:hover': {
-        boxShadow: variant === 'contained' ? '0px 5px 15px rgba(0, 0, 0, 0.12)' : 'none',
-        transform: 'translateY(-1px)',
-    },
-    transition: 'all 0.2s ease',
-}));
-
-const PrescriptionCard = styled(Paper)(({ theme }) => ({
-    borderRadius: 20,
-    overflow: 'hidden',
-    border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-    backgroundColor: theme.palette.background.paper,
-    marginBottom: theme.spacing(2.5),
-    '&:hover': {
-        boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.1)',
-        transform: 'translateY(-3px)',
-        borderColor: alpha(theme.palette.primary.main, 0.3),
-    },
-}));
-
-const TabPanel = (props) => {
-    const { children, value, index, ...other } = props;
-    return (
-        <div
-            role="tabpanel"
-            hidden={value !== index}
-            id={`tabpanel-${index}`}
-            aria-labelledby={`tab-${index}`}
-            {...other}
-        >
-            {value === index && (
-                <Fade in={value === index}>
-                    <Box sx={{ pt: 3 }}>{children}</Box>
-                </Fade>
-            )}
-        </div>
-    );
-};
-
-const MedicationCard = styled(Card)(({ theme }) => ({
-    borderRadius: 16,
-    width: '100%',
-    padding: theme.spacing(2.5),
-    transition: 'all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1)',
-    border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-    boxShadow: '0px 1px 5px rgba(0, 0, 0, 0.03)',
-    '&:hover': {
-        boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.08)',
-        transform: 'translateY(-4px)',
-        borderColor: alpha(theme.palette.primary.main, 0.2),
-    },
-    position: 'relative',
-    overflow: 'visible',
-}));
-
-const AnimatedContent = styled(Box)(({ theme }) => ({
-    animation: 'fadeIn 0.5s ease-out',
-    '@keyframes fadeIn': {
-        '0%': { opacity: 0, transform: 'translateY(10px)' },
-        '100%': { opacity: 1, transform: 'translateY(0)' },
-    },
-}));
-
-const StyledDivider = styled(Divider)(({ theme }) => ({
-    margin: theme.spacing(2, 0),
-    borderColor: alpha(theme.palette.divider, 0.6),
-}));
-
-const StyledTabs = styled(Tabs)(({ theme }) => ({
-    '& .MuiTabs-indicator': {
-        height: 3,
-        borderRadius: '3px 3px 0 0',
-    },
-    '& .MuiTab-root': {
-        textTransform: 'none',
-        fontSize: '0.95rem',
-        fontWeight: 600,
-        padding: theme.spacing(1.5, 2.5),
-        marginRight: theme.spacing(1),
-        minWidth: 0,
-        transition: 'all 0.2s ease',
-        '&:hover': {
-            backgroundColor: alpha(theme.palette.primary.main, 0.04),
-        },
-    },
-}));
-
+// Adicione após os imports
 const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
-        backgroundColor: theme.palette.success.main,
-        color: theme.palette.success.contrastText,
+        backgroundColor: '#44b700',
+        color: '#44b700',
         boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
         '&::after': {
             position: 'absolute',
@@ -253,61 +119,29 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const EmptyStateContainer = styled(Paper)(({ theme }) => ({
-    padding: theme.spacing(6),
-    borderRadius: 24,
-    textAlign: 'center',
-    border: '2px dashed',
-    borderColor: alpha(theme.palette.grey[300], 0.7),
-    backgroundColor: alpha(theme.palette.grey[50], 0.5),
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-}));
-
-const StatusChip = styled(Chip)(({ theme, status }) => {
-    let color = theme.palette.info.main;
-    let backgroundColor = alpha(theme.palette.info.main, 0.1);
-    let textColor = theme.palette.info.dark;
-
-    switch(status?.toLowerCase()) {
-        case 'ativa':
-            color = theme.palette.success.main;
-            backgroundColor = alpha(theme.palette.success.main, 0.12);
-            textColor = theme.palette.success.dark;
-            break;
-        case 'suspensa':
-            color = theme.palette.warning.main;
-            backgroundColor = alpha(theme.palette.warning.main, 0.12);
-            textColor = theme.palette.warning.dark;
-            break;
-        case 'concluída':
-            color = theme.palette.grey[500];
-            backgroundColor = alpha(theme.palette.grey[300], 0.4);
-            textColor = theme.palette.grey[800];
-            break;
-        case 'renovada':
-            color = theme.palette.info.main;
-            backgroundColor = alpha(theme.palette.info.main, 0.12);
-            textColor = theme.palette.info.dark;
-            break;
+const convertToDate = (value) => {
+    if (!value) return new Date();
+    if (value instanceof Date) return value;
+    if (value && typeof value.toDate === 'function') return value.toDate();
+    if (typeof value === 'string') {
+        // Se a string tiver "/" assume formato "dd/MM/yyyy"
+        if (value.includes('/')) {
+            const parsed = parse(value, 'dd/MM/yyyy', new Date());
+            return isValid(parsed) ? parsed : new Date();
+        }
+        const parsed = new Date(value);
+        return isValid(parsed) ? parsed : new Date();
     }
+    if (typeof value === 'object') {
+        // Se for um objeto vazio, retorne a data atual (ou trate conforme sua necessidade)
+        if (Object.keys(value).length === 0) return new Date();
+        const parsed = new Date(value);
+        return isValid(parsed) ? parsed : new Date();
+    }
+    return new Date(value);
+};
 
-    return {
-        borderRadius: 12,
-        border: `1px solid ${color}`,
-        backgroundColor: backgroundColor,
-        color: textColor,
-        fontWeight: 600,
-        '& .MuiChip-label': {
-            padding: '0 10px',
-        },
-        boxShadow: `0 1px 3px ${alpha(color, 0.1)}`,
-    };
-});
-
-// Main component
+// Componente principal da página
 const PrescriptionsPage = () => {
     const theme = useTheme();
     const { user } = useAuth();
@@ -320,10 +154,14 @@ const PrescriptionsPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [openDetailDialog, setOpenDetailDialog] = useState(false);
+    // Estados para métricas de medicamentos
+    const [topMedications, setTopMedications] = useState([]);
+    const [recentMedications, setRecentMedications] = useState([]);
+    const [formDistribution, setFormDistribution] = useState([]);
 
     // Medication states
     const [medications, setMedications] = useState([]);
-    const [tabValue, setTabValue] = useState(0);
+    const [currentTab, setCurrentTab] = useState('prescriptions');
     const [medicationDialogOpen, setMedicationDialogOpen] = useState(false);
     const [selectedMedication, setSelectedMedication] = useState(null);
     const [medicationFormData, setMedicationFormData] = useState({
@@ -340,6 +178,7 @@ const PrescriptionsPage = () => {
 
     // Filter and search states
     const [searchTerm, setSearchTerm] = useState('');
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const [filters, setFilters] = useState({
         status: 'all',
         dateFrom: '',
@@ -347,8 +186,9 @@ const PrescriptionsPage = () => {
         patientId: '',
         medicationName: '',
     });
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [filterAnchorEl, setFilterAnchorEl] = useState(null);
     const [sort, setSort] = useState('date-desc');
+    const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
 
     // Pagination states
     const [page, setPage] = useState(1);
@@ -359,6 +199,14 @@ const PrescriptionsPage = () => {
         open: false,
         message: '',
         severity: 'success'
+    });
+
+    // Métricas
+    const [metrics, setMetrics] = useState({
+        totalPrescriptions: 0,
+        activePrescriptions: 0,
+        pendingPrescriptions: 0,
+        totalMedications: 0
     });
 
     // Load prescriptions and medications
@@ -373,12 +221,39 @@ const PrescriptionsPage = () => {
                     FirebaseService.listMedications(doctorId)
                 ]);
 
-                setPrescriptions(prescriptionsData);
-                setFilteredPrescriptions(prescriptionsData);
+                // Validar os dados recebidos
+                if (!Array.isArray(prescriptionsData)) {
+                    console.error("Dados de prescrições inválidos:", prescriptionsData);
+                    throw new Error("Formato de dados inválido para prescrições");
+                }
+
+                if (!Array.isArray(medicationsData)) {
+                    console.error("Dados de medicamentos inválidos:", medicationsData);
+                    throw new Error("Formato de dados inválido para medicamentos");
+                }
+
+                // Ensure all prescriptions have a status and valid timestamps
+                const processedPrescriptions = prescriptionsData.map(p => ({
+                    ...p,
+                    status: p.status || 'Ativa', // Default to 'Ativa' if status is missing
+                    createdAt: convertToDate(p.createdAt),
+                    updatedAt: convertToDate(p.updatedAt),
+                }));
+
+                setPrescriptions(processedPrescriptions);
+                setFilteredPrescriptions(processedPrescriptions);
                 setMedications(medicationsData);
+
+                // Calculate metrics
+                setMetrics({
+                    totalPrescriptions: processedPrescriptions.length,
+                    activePrescriptions: processedPrescriptions.filter(p => p.status === 'Ativa').length,
+                    pendingPrescriptions: processedPrescriptions.filter(p => p.status === 'Pendente').length,
+                    totalMedications: medicationsData.length
+                });
             } catch (err) {
                 console.error("Erro ao carregar dados:", err);
-                setError("Não foi possível carregar os dados. Tente novamente mais tarde.");
+                setError(`Não foi possível carregar os dados. ${err.message}`);
             } finally {
                 setLoading(false);
             }
@@ -388,10 +263,35 @@ const PrescriptionsPage = () => {
     }, [doctorId]);
 
     // Filter prescriptions when filters or search term change
+    // Filter prescriptions when filters or search term change
     useEffect(() => {
         if (!prescriptions.length) return;
 
         let results = [...prescriptions];
+
+        // Apply tab filter
+        if (currentTab === 'active') {
+            results = results.filter(p => p.status === 'Ativa');
+        } else if (currentTab === 'pending') {
+            results = results.filter(p => p.status === 'Pendente');
+        } else if (currentTab === 'recent') {
+            // Last 30 days
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            results = results.filter(p => {
+                const createdAt = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+                return createdAt >= thirtyDaysAgo;
+            });
+        }
+
+        // Apply search term
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            results = results.filter(p =>
+                p.patientData?.name?.toLowerCase().includes(term) ||
+                p.medications?.some(med => med.medicationName?.toLowerCase().includes(term))
+            );
+        }
 
         // Apply status filter
         if (filters.status !== 'all') {
@@ -430,41 +330,12 @@ const PrescriptionsPage = () => {
             );
         }
 
-        // Apply search term
-        if (searchTerm) {
-            const term = searchTerm.toLowerCase();
-            results = results.filter(p =>
-                p.patientData?.name.toLowerCase().includes(term) ||
-                p.medications?.some(med => med.medicationName.toLowerCase().includes(term))
-            );
-        }
-
         // Apply sorting
         results = sortPrescriptions(results, sort);
 
         setFilteredPrescriptions(results);
-    }, [prescriptions, filters, searchTerm, sort]);
-
-    // Sort prescriptions
-    const sortPrescriptions = (prescriptionsToSort, sortOrder) => {
-        return [...prescriptionsToSort].sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-
-            switch (sortOrder) {
-                case 'date-asc':
-                    return dateA - dateB;
-                case 'date-desc':
-                    return dateB - dateA;
-                case 'patient-asc':
-                    return (a.patientData?.name || '').localeCompare(b.patientData?.name || '');
-                case 'patient-desc':
-                    return (b.patientData?.name || '').localeCompare(a.patientData?.name || '');
-                default:
-                    return dateB - dateA;
-            }
-        });
-    };
+        setPage(1);
+    }, [prescriptions, searchTerm, filters, sort, currentTab]);
 
     // Pagination
     const paginatedPrescriptions = useMemo(() => {
@@ -472,9 +343,123 @@ const PrescriptionsPage = () => {
         return filteredPrescriptions.slice(startIndex, startIndex + rowsPerPage);
     }, [filteredPrescriptions, page, rowsPerPage]);
 
+
+// Função auxiliar para determinar a cor por categoria
+    const getMedicationCategoryColor = (category) => {
+        const categories = {
+            'Analgésico': theme.palette.primary.main,
+            'Antibiótico': theme.palette.success.main,
+            'Anti-inflamatório': theme.palette.warning.main,
+            'Antidepressivo': theme.palette.info.main,
+            'Ansiolítico': theme.palette.secondary.main
+        };
+
+        return categories[category] || theme.palette.grey[500];
+    };
+
+// Função para adicionar medicamento à receita atual (para implementar)
+    const handleAddToCurrentPrescription = (medication) => {
+        // Implementar lógica para adicionar à receita atual ou criar nova receita
+        setSnackbar({
+            open: true,
+            message: `${medication.name} adicionado à receita`,
+            severity: 'success'
+        });
+    };
+
+// Função para selecionar medicamento da pesquisa
+    const handleMedicationSelect = (medication) => {
+        // Implementar ação ao selecionar medicamento na pesquisa
+        handleOpenMedicationDialog(medication);
+    };
+
+    // Use este useEffect para calcular as métricas
+    useEffect(() => {
+        if (medications.length > 0) {
+            // Calcular medicamentos mais receitados com base em prescrições reais
+            const medicationCounts = {};
+
+            // Conta ocorrências de cada medicamento nas prescrições
+            prescriptions.forEach(prescription => {
+                prescription.medications?.forEach(med => {
+                    if (med.medicationName) {
+                        medicationCounts[med.medicationName] = (medicationCounts[med.medicationName] || 0) + 1;
+                    }
+                });
+            });
+
+            // Converte para array e ordena
+            const medCounts = Object.entries(medicationCounts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+
+            setTopMedications(medCounts.length > 0 ? medCounts : []);
+
+            // Medicamentos recentes - usar criados realmente mais recentes
+            const recent = [...medications]
+                .sort((a, b) => {
+                    const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt || 0);
+                    const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt || 0);
+                    return dateB - dateA;
+                })
+                .slice(0, 5)
+                .map(med => ({
+                    name: med.name,
+                    addedDate: med.createdAt || new Date()
+                }));
+            setRecentMedications(recent);
+
+            // Distribuição por forma farmacêutica
+            const formCounts = {};
+            medications.forEach(med => {
+                if (med.form) {
+                    formCounts[med.form] = (formCounts[med.form] || 0) + 1;
+                }
+            });
+
+            const formData = Object.entries(formCounts).map(([name, value]) => ({
+                name,
+                value
+            }));
+            setFormDistribution(formData);
+        }
+    }, [medications, prescriptions]);
+
+    // Sort prescriptions
+    const sortPrescriptions = useMemo(() => {
+        return (prescriptionsToSort, sortOrder) => {
+            return [...prescriptionsToSort].sort((a, b) => {
+                const dateA = convertToDate(a.createdAt);
+                const dateB = convertToDate(b.createdAt);
+
+                switch (sortOrder) {
+                    case 'date-asc':
+                        return dateA - dateB;
+                    case 'date-desc':
+                        return dateB - dateA;
+                    case 'patient-asc':
+                        return (a.patientData?.name || '').localeCompare(b.patientData?.name || '');
+                    case 'patient-desc':
+                        return (b.patientData?.name || '').localeCompare(a.patientData?.name || '');
+                    default:
+                        return dateB - dateA;
+                }
+            });
+        };
+    }, []);
+
+    // Função para verificar se existem filtros ativos
+    const hasActiveFilters =
+        filters.status !== 'all' ||
+        filters.dateFrom !== '' ||
+        filters.dateTo !== '' ||
+        filters.patientId !== '' ||
+        filters.medicationName !== '';
+
     // Functions for handling medications
     const handleTabChange = (event, newValue) => {
-        setTabValue(newValue);
+        setCurrentTab(newValue);
     };
 
     const handleOpenMedicationDialog = (medication = null) => {
@@ -534,6 +519,69 @@ const PrescriptionsPage = () => {
         }));
     };
 
+    // Componente simples para o gráfico de rosca
+    // Componente DonutChart - adicione junto às outras funções auxiliares
+// (antes do return principal, aproximadamente por volta da linha 580-590)
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
+    const DonutChart = ({ data }) => {
+        // Se não houver dados ou estiver vazio, renderize uma mensagem
+        if (!data || data.length === 0) {
+            return (
+                <Box sx={{
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    <Typography variant="caption" color="text.secondary">
+                        Sem dados disponíveis
+                    </Typography>
+                </Box>
+            );
+        }
+
+        return (
+            <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                    <Pie
+                        data={data}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        innerRadius={40}
+                        fill="#8884d8"
+                        dataKey="value"
+                    >
+                        {data.map((entry, index) => (
+                            <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                            />
+                        ))}
+                    </Pie>
+                    <Tooltip
+                        formatter={(value) => [`${value} medicamentos`, 'Quantidade']}
+                        contentStyle={{
+                            borderRadius: 8,
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                            border: 'none',
+                            padding: '8px 12px'
+                        }}
+                    />
+                    <Legend
+                        formatter={(value) => <span style={{ fontSize: '0.75rem' }}>{value}</span>}
+                        layout="vertical"
+                        verticalAlign="middle"
+                        align="right"
+                        wrapperStyle={{ fontSize: '12px' }}
+                    />
+                </PieChart>
+            </ResponsiveContainer>
+        );
+    };
+
     const handleSaveMedication = async () => {
         try {
             setLoading(true);
@@ -578,6 +626,12 @@ const PrescriptionsPage = () => {
                 });
             }
 
+            // Update metrics
+            setMetrics(prev => ({
+                ...prev,
+                totalMedications: selectedMedication ? prev.totalMedications : prev.totalMedications + 1
+            }));
+
             handleCloseMedicationDialog();
         } catch (error) {
             console.error("Erro ao salvar medicamento:", error);
@@ -595,6 +649,13 @@ const PrescriptionsPage = () => {
         try {
             await FirebaseService.deleteMedication(doctorId, id);
             setMedications(prev => prev.filter(med => med.id !== id));
+
+            // Update metrics
+            setMetrics(prev => ({
+                ...prev,
+                totalMedications: prev.totalMedications - 1
+            }));
+
             setSnackbar({
                 open: true,
                 message: 'Medicamento excluído com sucesso',
@@ -631,9 +692,37 @@ const PrescriptionsPage = () => {
         setSearchTerm('');
     };
 
+    // Função para busca com atraso
+    const handleSearch = useCallback((value) => {
+        setSearchTerm(value);
+    }, []);
+
+    const handleFilterClick = (event) => {
+        setFiltersOpen(true);
+    };
+
+    const handleFilterClose = () => {
+        setFiltersOpen(false);
+    };
+
+
     const handleFilterChange = (name, value) => {
         setFilters(prev => ({ ...prev, [name]: value }));
         setPage(1); // Back to first page when filtering
+    };
+
+    const handleRemoveFilter = (type, value) => {
+        if (type === 'status') {
+            setFilters(prev => ({ ...prev, status: 'all' }));
+        } else if (type === 'dateFrom') {
+            setFilters(prev => ({ ...prev, dateFrom: '' }));
+        } else if (type === 'dateTo') {
+            setFilters(prev => ({ ...prev, dateTo: '' }));
+        } else if (type === 'patientId') {
+            setFilters(prev => ({ ...prev, patientId: '' }));
+        } else if (type === 'medicationName') {
+            setFilters(prev => ({ ...prev, medicationName: '' }));
+        }
     };
 
     const handleResetFilters = () => {
@@ -652,6 +741,10 @@ const PrescriptionsPage = () => {
         setSort(newSort);
     };
 
+    const handleViewModeChange = (mode) => {
+        setViewMode(mode);
+    };
+
     const handleCloseSnackbar = () => {
         setSnackbar({
             ...snackbar,
@@ -659,32 +752,78 @@ const PrescriptionsPage = () => {
         });
     };
 
+    const handlePageChange = (event, value) => {
+        setPage(value);
+    };
+    // Localização: função handleStatusChange
+    const handleStatusChange = async (prescriptionId, patientId, newStatus) => {
+        try {
+            setLoading(true);
+
+            if (!doctorId || !patientId || !prescriptionId) {
+                throw new Error("Dados incompletos para atualizar o status");
+            }
+
+            // Encontrar a prescrição no array atual
+            const prescriptionToUpdate = prescriptions.find(p => p.id === prescriptionId);
+            if (!prescriptionToUpdate) {
+                throw new Error("Prescrição não encontrada");
+            }
+
+            // Atualizar o status no Firebase
+            await FirebaseService.updatePrescription(doctorId, patientId, prescriptionId, {
+                status: newStatus,
+                updatedAt: new Date()
+            });
+
+            // Atualizar o estado local
+            const updatedPrescriptions = prescriptions.map(p =>
+                p.id === prescriptionId ? { ...p, status: newStatus, updatedAt: new Date() } : p
+            );
+            setPrescriptions(updatedPrescriptions);
+
+            // Atualizar a prescrição selecionada, se estiver aberta no modal
+            if (selectedPrescription && selectedPrescription.id === prescriptionId) {
+                setSelectedPrescription({ ...selectedPrescription, status: newStatus, updatedAt: new Date() });
+            }
+
+            // Recalcular métricas
+            const activePrescriptions = updatedPrescriptions.filter(p => p.status === 'Ativa').length;
+            const pendingPrescriptions = updatedPrescriptions.filter(p => p.status === 'Pendente').length;
+
+            setMetrics(prevMetrics => ({
+                ...prevMetrics,
+                activePrescriptions,
+                pendingPrescriptions
+            }));
+
+            setSnackbar({
+                open: true,
+                message: `Status alterado para ${newStatus}`,
+                severity: 'success'
+            });
+        } catch (error) {
+            console.error("Erro ao atualizar status:", error);
+            setSnackbar({
+                open: true,
+                message: `Erro ao atualizar status: ${error.message}`,
+                severity: 'error'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
     // Utility functions for formatting
     const formatDate = (date) => {
         if (!date) return '';
         try {
-            let jsDate;
-            if (date instanceof Date) {
-                jsDate = date;
-            } else if (date && typeof date.toDate === 'function') {
-                jsDate = date.toDate();
-            } else if (typeof date === 'string') {
-                // If the string contains "/" assume format "dd/MM/yyyy"
-                if (date.includes('/')) {
-                    jsDate = parse(date, 'dd/MM/yyyy', new Date());
-                } else {
-                    jsDate = new Date(date);
-                }
-            } else {
-                jsDate = new Date(date);
-            }
-
-            // Check if date is valid
+            const jsDate = convertToDate(date);
             if (!isValid(jsDate)) {
                 console.error("Invalid date received:", date);
                 return 'Data inválida';
             }
-
             if (isToday(jsDate)) {
                 return `Hoje, ${format(jsDate, 'HH:mm')}`;
             } else if (isYesterday(jsDate)) {
@@ -697,7 +836,20 @@ const PrescriptionsPage = () => {
             return 'Data inválida';
         }
     };
-
+    const formatRelativeTime = (date) => {
+        if (!date) return '';
+        try {
+            const jsDate = convertToDate(date);
+            if (!isValid(jsDate)) {
+                console.error("Invalid date for relative time:", date);
+                return '';
+            }
+            return formatDistanceToNow(jsDate, { addSuffix: true, locale: ptBR });
+        } catch (error) {
+            console.error("Error formatting relative time:", error);
+            return '';
+        }
+    };
 
     const formatFullDate = (date) => {
         if (!date) return '';
@@ -710,35 +862,106 @@ const PrescriptionsPage = () => {
         }
     };
 
-    const formatRelativeTime = (date) => {
-        if (!date) return '';
-        try {
-            const jsDate = date instanceof Date ? date : date.toDate();
-            return formatDistanceToNow(jsDate, { addSuffix: true, locale: ptBR });
-        } catch (error) {
-            console.error("Error formatting relative time:", error);
-            return '';
+
+
+    // Componente para o chip de status
+    const StatusChip = ({ status }) => {
+        let color, bgColor, textColor;
+
+        switch(status?.toLowerCase()) {
+            case 'ativa':
+                color = theme.palette.success.main;
+                bgColor = alpha(theme.palette.success.main, 0.12);
+                textColor = theme.palette.success.dark;
+                break;
+            case 'suspensa':
+                color = theme.palette.warning.main;
+                bgColor = alpha(theme.palette.warning.main, 0.12);
+                textColor = theme.palette.warning.dark;
+                break;
+            case 'concluída':
+                color = theme.palette.grey[500];
+                bgColor = alpha(theme.palette.grey[300], 0.4);
+                textColor = theme.palette.grey[800];
+                break;
+            case 'renovada':
+                color = theme.palette.info.main;
+                bgColor = alpha(theme.palette.info.main, 0.12);
+                textColor = theme.palette.info.dark;
+                break;
+            case 'pendente':
+                color = theme.palette.warning.main;
+                bgColor = alpha(theme.palette.warning.main, 0.08);
+                textColor = theme.palette.warning.dark;
+                break;
+            default:
+                color = theme.palette.info.main;
+                bgColor = alpha(theme.palette.info.main, 0.1);
+                textColor = theme.palette.info.dark;
         }
+
+        return (
+            <Chip
+                label={status || 'Ativa'}
+                size="small"
+                sx={{
+                    borderRadius: 12,
+                    border: `1px solid ${color}`,
+                    backgroundColor: bgColor,
+                    color: textColor,
+                    fontWeight: 600,
+                    '& .MuiChip-label': {
+                        padding: '0 10px',
+                    },
+                    boxShadow: `0 1px 3px ${alpha(color, 0.1)}`,
+                }}
+            />
+        );
+    };
+
+    // Componente para chip de filtro no cabeçalho
+    const FilterChip = ({ label, onDelete }) => {
+        return (
+            <Chip
+                label={label}
+                onDelete={onDelete}
+                deleteIcon={<CloseOutlined fontSize="small" />}
+                sx={{
+                    margin: '0 4px',
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
+                    borderRadius: '50px',
+                    fontWeight: 500,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                    '& .MuiChip-deleteIcon': {
+                        color: theme.palette.primary.main,
+                        '&:hover': {
+                            color: alpha(theme.palette.primary.main, 0.7),
+                        },
+                    },
+                }}
+            />
+        );
     };
 
     // Rendering loading state
     if (loading && !prescriptions.length && !medications.length) {
         return (
-            <Container maxWidth="lg" sx={{ py: 6 }}>
+            <Box sx={{ p: 0, backgroundColor: '#F4F9FF', height: '100%' }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh' }}>
                     <CircularProgress size={60} sx={{ mb: 3, color: theme.palette.primary.main }} />
                     <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500 }}>
                         Carregando seus dados médicos...
                     </Typography>
                 </Box>
-            </Container>
+            </Box>
         );
     }
 
     // Rendering error state
     if (error) {
         return (
-            <Container maxWidth="lg" sx={{ py: 6 }}>
+            <Box sx={{ p: 0, backgroundColor: '#F4F9FF', height: '100%' }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh' }}>
                     <Typography variant="h6" color="error" gutterBottom sx={{ fontWeight: 500, mb: 2 }}>
                         {error}
@@ -757,184 +980,348 @@ const PrescriptionsPage = () => {
                         Tentar novamente
                     </Button>
                 </Box>
-            </Container>
+            </Box>
         );
     }
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            {/* Header */}
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h4" sx={{
-                    fontWeight: 700,
-                    color: theme.palette.primary.main,
-                    fontSize: { xs: '1.8rem', md: '2.2rem' },
-                    letterSpacing: '-0.02em'
-                }}>
-                    Gerenciamento de Receitas
-                </Typography>
-                <Typography variant="body1" sx={{
-                    color: alpha(theme.palette.text.primary, 0.7),
-                    mt: 1
-                }}>
-                    Crie, gerencie e acompanhe receitas e medicamentos para seus pacientes
-                </Typography>
-            </Box>
-
-            {/* Main content card with tabs */}
-            <Paper
-                elevation={0}
+        <Box sx={{ p: 0, backgroundColor: '#F4F9FF' }}>
+            {/* Cabeçalho com abas */}
+            <Tabs
+                value={currentTab}
+                onChange={handleTabChange}
+                variant="standard"
+                scrollButtons="auto"
                 sx={{
-                    mb: 4,
-                    borderRadius: 3,
-                    overflow: 'hidden',
-                    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                    border: `1px solid ${alpha(theme.palette.divider, 0.6)}`
+                    mb: 3,
+                    '& .MuiTabs-indicator': {
+                        backgroundColor: theme.palette.primary.main,
+                        height: 3,
+                        borderRadius: '3px'
+                    },
+                    '& .MuiTab-root': {
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        fontSize: '0.9rem',
+                        minWidth: 'auto',
+                        padding: '12px 16px',
+                        '&.Mui-selected': {
+                            color: theme.palette.primary.main,
+                            fontWeight: 600
+                        }
+                    }
                 }}
             >
-                <StyledTabs
-                    value={tabValue}
-                    onChange={handleTabChange}
-                    variant="standard"
-                    sx={{
-                        px: 3,
-                        pt: 2,
-                        borderBottom: 1,
-                        borderColor: 'divider'
-                    }}
-                    textColor="primary"
-                    indicatorColor="primary"
-                >
-                    <Tab
-                        label="Receitas"
-                        icon={<PictureAsPdfOutlined />}
-                        iconPosition="start"
-                        sx={{ textTransform: 'none', fontWeight: 600 }}
-                    />
-                    <Tab
-                        label="Medicamentos"
-                        icon={<MedicationOutlined />}
-                        iconPosition="start"
-                        sx={{ textTransform: 'none', fontWeight: 600 }}
-                    />
-                </StyledTabs>
-
-                {/* Prescriptions Panel */}
-                <TabPanel value={tabValue} index={0}>
-                    {/* Search bar and filters */}
-                    <Box sx={{ px: 4 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
-                            <SearchBar elevation={0} sx={{
-                                flex: 1,
-                                mr: { xs: 0, sm: 2 },
-                                mb: { xs: 2, sm: 0 },
-                                width: { xs: '100%', sm: 'auto' }
-                            }}>
-                                <SearchOutlined color="action" sx={{ mr: 1, color: alpha(theme.palette.text.secondary, 0.7) }} />
-                                <StyledInputBase
-                                    placeholder="Pesquisar por paciente ou medicamento..."
-                                    value={searchTerm}
-                                    onChange={handleSearchChange}
-                                    fullWidth
-                                />
-                                {searchTerm && (
-                                    <IconButton size="small" onClick={handleClearSearch} sx={{ opacity: 0.7 }}>
-                                        <ClearOutlined fontSize="small" />
-                                    </IconButton>
-                                )}
-                            </SearchBar>
-
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Tooltip title="Filtrar">
-                                    <Button
-                                        variant="outlined"
-                                        color={Object.values(filters).some(v => v && v !== 'all') ? "primary" : "inherit"}
-                                        onClick={() => setFiltersOpen(true)}
-                                        startIcon={<FilterListOutlined />}
-                                        sx={{
-                                            borderRadius: 10,
-                                            textTransform: 'none',
-                                            px: 2
-                                        }}
-                                    >
-                                        Filtros
-                                    </Button>
-                                </Tooltip>
-                                <Tooltip title="Ordenar">
-                                    <Button
-                                        variant="outlined"
-                                        color="inherit"
-                                        onClick={(e) => setFiltersOpen(true)}
-                                        startIcon={<SortOutlined />}
-                                        sx={{
-                                            borderRadius: 10,
-                                            textTransform: 'none',
-                                            px: 2
-                                        }}
-                                    >
-                                        Ordenar
-                                    </Button>
-                                </Tooltip>
-                            </Box>
+                <Tab
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            Todas as Receitas
+                            <Chip
+                                label={metrics.totalPrescriptions}
+                                size="small"
+                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                            />
                         </Box>
+                    }
+                    value="prescriptions"
+                />
+                <Tab
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            Ativas
+                            <Chip
+                                label={metrics.activePrescriptions}
+                                size="small"
+                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                            />
+                        </Box>
+                    }
+                    value="active"
+                />
+                <Tab
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            Pendentes
+                            <Chip
+                                label={metrics.pendingPrescriptions}
+                                size="small"
+                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                            />
+                        </Box>
+                    }
+                    value="pending"
+                />
+                <Tab
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            Recentes
+                            <Chip
+                                label="30d"
+                                size="small"
+                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                            />
+                        </Box>
+                    }
+                    value="recent"
+                />
+                <Tab
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            Medicamentos
+                            <Chip
+                                label={metrics.totalMedications}
+                                size="small"
+                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                            />
+                        </Box>
+                    }
+                    value="medications"
+                />
+            </Tabs>
 
-                        {/* Active filter chips */}
-                        {Object.values(filters).some(v => v && v !== 'all') && (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', mb: 3 }}>
-                                {filters.status !== 'all' && (
-                                    <FilterChip
-                                        label={`Status: ${filters.status}`}
-                                        onDelete={() => handleFilterChange('status', 'all')}
-                                        selected
-                                    />
-                                )}
-                                {filters.dateFrom && (
-                                    <FilterChip
-                                        label={`De: ${format(new Date(filters.dateFrom), 'dd/MM/yyyy')}`}
-                                        onDelete={() => handleFilterChange('dateFrom', '')}
-                                        selected
-                                    />
-                                )}
-                                {filters.dateTo && (
-                                    <FilterChip
-                                        label={`Até: ${format(new Date(filters.dateTo), 'dd/MM/yyyy')}`}
-                                        onDelete={() => handleFilterChange('dateTo', '')}
-                                        selected
-                                    />
-                                )}
-                                {filters.patientId && (
-                                    <FilterChip
-                                        label={`Paciente específico`}
-                                        onDelete={() => handleFilterChange('patientId', '')}
-                                        selected
-                                    />
-                                )}
-                                {filters.medicationName && (
-                                    <FilterChip
-                                        label={`Medicamento: ${filters.medicationName}`}
-                                        onDelete={() => handleFilterChange('medicationName', '')}
-                                        selected
-                                    />
-                                )}
-                                <Button
-                                    size="small"
-                                    variant="text"
-                                    onClick={handleResetFilters}
-                                    startIcon={<ClearOutlined />}
-                                    sx={{
-                                        ml: 1,
-                                        textTransform: 'none',
-                                        color: alpha(theme.palette.text.primary, 0.7)
-                                    }}
-                                >
-                                    Limpar filtros
-                                </Button>
-                            </Box>
+            {/* Cards de métricas */}
+            <Grid container spacing={3} sx={{ mb: 3 }}>
+                <Grid item xs={12} sm={6} md={3}>
+                    <Card sx={{
+                        borderRadius: '24px',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                        height: '100%'
+                    }}>
+                        <CardContent>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Total de Receitas
+                            </Typography>
+                            <Typography component="div" variant="h4" sx={{ mt: 1, fontWeight: 600, color: theme.palette.primary.main }}>
+                                {loading ? <Chip size="small" label="Carregando..." /> : metrics.totalPrescriptions}
+                            </Typography>
+                            {loading ? (
+                                <Box sx={{ mt: 1 }}>
+                                    <Chip size="small" label="Carregando..." />
+                                </Box>
+                            ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                    +3 receitas nesta semana
+                                </Typography>
+                            )}
+                        </CardContent>
+                    </Card>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={3}>
+                    <Card sx={{
+                        borderRadius: '24px',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                        height: '100%'
+                    }}>
+                        <CardContent>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Receitas Ativas
+                            </Typography>
+                            <Typography component="div"  variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#4CAF50' }}>
+                                {loading ? <Chip size="small" label="Carregando..." /> : metrics.activePrescriptions}
+                            </Typography>
+                            {loading ? (
+                                <Box sx={{ mt: 1 }}>
+                                    <Chip size="small" label="Carregando..." />
+                                </Box>
+                            ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                    <span style={{ color: '#4CAF50' }}>{Math.round((metrics.activePrescriptions / metrics.totalPrescriptions) * 100) || 0}%</span> do total
+                                </Typography>
+                            )}
+                        </CardContent>
+                    </Card>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={3}>
+                    <Card sx={{
+                        borderRadius: '24px',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                        height: '100%'
+                    }}>
+                        <CardContent>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Receitas Pendentes
+                            </Typography>
+                            <Typography component="div" variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#FF9800' }}>
+                                {loading ? <Chip size="small" label="Carregando..." /> : metrics.pendingPrescriptions}
+                            </Typography>
+                            <Typography component="div" variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                {loading ? <Chip size="small" label="Carregando..." /> : 'Requerem sua atenção'}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={3}>
+                    <Card sx={{
+                        borderRadius: '24px',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                        height: '100%'
+                    }}>
+                        <CardContent>
+                            <Typography variant="subtitle2" color="text.secondary">
+                                Medicamentos Cadastrados
+                            </Typography>
+                            <Typography component="div" variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#2196F3' }}>
+                                {loading ? <Chip size="small" label="Carregando..." /> : metrics.totalMedications}
+                            </Typography>
+                            <Typography component="div" variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                {loading ? <Chip size="small" label="Carregando..." /> : `${medications.filter(m => m.dosages?.length > 0).length} com dosagens definidas`}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
+
+            {/* Barra de Pesquisa e Filtros principal - escondida na seção de medicamentos */}
+            {currentTab !== 'medications' && (
+                <Box
+                    sx={{
+                        mb: 3,
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        alignItems: { xs: 'stretch', sm: 'center' },
+                        gap: 2
+                    }}
+                >
+                    <SearchBar
+                        onSearch={handleSearch}
+                        isTablet={false}
+                        placeholder="Buscar receitas..."
+                    />
+
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            justifyContent: { xs: 'space-between', sm: 'flex-end' },
+                            flex: { xs: '1', sm: '1 1 50%' }
+                        }}
+                    >
+                        {hasActiveFilters && (
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<FilterAltIcon />}
+                                onClick={handleResetFilters}
+                                sx={{
+                                    borderRadius: '50px',
+                                }}
+                            >
+                                Limpar Filtros
+                            </Button>
                         )}
 
-                        {/* Prescription list */}
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<FilterListOutlined />}
+                                onClick={handleFilterClick}
+                                color={hasActiveFilters ? "primary" : "inherit"}
+                                sx={{
+                                    borderRadius: '50px',
+                                    fontWeight: hasActiveFilters ? 600 : 400
+                                }}
+                            >
+                                Filtrar
+                            </Button>
+
+                            <ButtonGroup variant="outlined" sx={{ borderRadius: '50px', overflow: 'hidden' }}>
+                                <Button
+                                    size="small"
+                                    onClick={() => handleViewModeChange('table')}
+                                    variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                                    sx={{
+                                        borderTopLeftRadius: '50px',
+                                        borderBottomLeftRadius: '50px',
+                                        borderTopRightRadius: '0',
+                                        borderBottomRightRadius: '0',
+                                        minWidth: '40px'
+                                    }}
+                                >
+                                    <ViewListIcon fontSize="small" />
+                                </Button>
+                                <Button
+                                    size="small"
+                                    onClick={() => handleViewModeChange('grid')}
+                                    variant={viewMode === 'grid' ? 'contained' : 'outlined'}
+                                    sx={{
+                                        borderTopRightRadius: '50px',
+                                        borderBottomRightRadius: '50px',
+                                        borderTopLeftRadius: '0',
+                                        borderBottomLeftRadius: '0',
+                                        minWidth: '40px'
+                                    }}
+                                >
+                                    <GridViewIcon fontSize="small" />
+                                </Button>
+                            </ButtonGroup>
+                        </Box>
+                    </Box>
+                </Box>
+            )}
+
+            {/* Chips de filtros ativos - apenas quando não estiver na aba de medicamentos */}
+            {hasActiveFilters && currentTab !== 'medications' && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                    {filters.status !== 'all' && (
+                        <FilterChip
+                            label={`Status: ${filters.status}`}
+                            onDelete={() => handleRemoveFilter('status')}
+                        />
+                    )}
+
+                    {filters.dateFrom && (
+                        <FilterChip
+                            label={`De: ${filters.dateFrom}`}
+                            onDelete={() => handleRemoveFilter('dateFrom')}
+                        />
+                    )}
+
+                    {filters.dateTo && (
+                        <FilterChip
+                            label={`Até: ${filters.dateTo}`}
+                            onDelete={() => handleRemoveFilter('dateTo')}
+                        />
+                    )}
+
+                    {filters.patientId && (
+                        <FilterChip
+                            label="Paciente específico"
+                            onDelete={() => handleRemoveFilter('patientId')}
+                        />
+                    )}
+
+                    {filters.medicationName && (
+                        <FilterChip
+                            label={`Medicamento: ${filters.medicationName}`}
+                            onDelete={() => handleRemoveFilter('medicationName')}
+                        />
+                    )}
+                </Box>
+            )}
+
+            {/* Conteúdo Principal */}
+            <Box sx={{ mt: 2 }}>
+                {/* Aba de Receitas */}
+                {currentTab !== 'medications' && (
+                    <>
                         {paginatedPrescriptions.length === 0 ? (
-                            <EmptyStateContainer>
+                            <Paper sx={{
+                                padding: 6,
+                                borderRadius: 4,
+                                textAlign: 'center',
+                                border: '2px dashed',
+                                borderColor: alpha(theme.palette.grey[300], 0.7),
+                                backgroundColor: alpha(theme.palette.grey[50], 0.5),
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}>
                                 <Box
                                     component="img"
                                     src="/receitaicon.svg"
@@ -959,373 +1346,598 @@ const PrescriptionsPage = () => {
                                         mx: 'auto'
                                     }}
                                 >
-                                    {searchTerm || Object.values(filters).some(v => v && v !== 'all') ?
+                                    {searchTerm || hasActiveFilters ?
                                         'Tente ajustar os filtros ou termos de pesquisa para encontrar o que procura.' :
                                         'Você ainda não tem receitas cadastradas. Crie sua primeira receita agora mesmo.'}
                                 </Typography>
-                            </EmptyStateContainer>
+                            </Paper>
                         ) : (
-                            <AnimatedContent>
-                                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography
-                                        variant="body2"
-                                        color="textSecondary"
-                                        sx={{ fontWeight: 500 }}
-                                    >
-                                        Mostrando {paginatedPrescriptions.length} de {filteredPrescriptions.length} receitas
-                                    </Typography>
-                                </Box>
+                            <>
+                                {/* Vista em Tabela */}
+                                {viewMode === 'table' && (
+                                    <Paper sx={{
+                                        borderRadius: '24px',
+                                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <Box sx={{ p: 3 }}>
+                                            <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+                                                Mostrando {paginatedPrescriptions.length} de {filteredPrescriptions.length} receitas
+                                            </Typography>
 
-                                {paginatedPrescriptions.map((prescription, index) => (
-                                    <Zoom
-                                        in={true}
-                                        key={prescription.id}
-                                        style={{
-                                            transitionDelay: `${index * 50}ms`,
-                                            transformOrigin: 'center top'
-                                        }}
-                                    >
-                                        <PrescriptionCard
-                                            onClick={() => handleOpenPrescriptionDetail(prescription)}
-                                            elevation={0}
-                                            sx={{ cursor: 'pointer' }}
-                                        >
-                                            <Box>
-                                                {/* Card header with date and status */}
-                                                <Box
-                                                    sx={{
-                                                        p: 2.5,
-                                                        display: 'flex',
-                                                        justifyContent: 'space-between',
-                                                        alignItems: 'center',
-                                                        borderBottom: '1px solid',
-                                                        borderColor: alpha(theme.palette.divider, 0.5),
-                                                        bgcolor: alpha(theme.palette.background.default, 0.5)
-                                                    }}
-                                                >
-                                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                        <Avatar
+                                            <Grid container spacing={2}>
+                                                {paginatedPrescriptions.map((prescription, index) => (
+                                                    <Grid item xs={12} key={prescription.id}>
+                                                        <Paper
+                                                            elevation={0}
+                                                            onClick={() => handleOpenPrescriptionDetail(prescription)}
                                                             sx={{
-                                                                width: 38,
-                                                                height: 38,
-                                                                mr: 1.5,
-                                                                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                                                color: theme.palette.primary.main,
-                                                                border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`
+                                                                p: 0,
+                                                                borderRadius: 3,
+                                                                overflow: 'hidden',
+                                                                cursor: 'pointer',
+                                                                border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+                                                                transition: 'all 0.3s ease',
+                                                                '&:hover': {
+                                                                    boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.1)',
+                                                                    transform: 'translateY(-4px)',
+                                                                    borderColor: alpha(theme.palette.primary.main, 0.3),
+                                                                }
                                                             }}
                                                         >
-                                                            <CalendarTodayOutlined fontSize="small" />
-                                                        </Avatar>
-                                                        <Box>
-                                                            <Typography
-                                                                variant="subtitle2"
-                                                                color="textPrimary"
-                                                                sx={{ fontWeight: 600 }}
-                                                            >
-                                                                {formatDate(prescription.createdAt)}
-                                                            </Typography>
-                                                            <Typography
-                                                                variant="caption"
-                                                                color="textSecondary"
-                                                                sx={{ display: 'block' }}
-                                                            >
-                                                                {formatRelativeTime(prescription.createdAt)}
-                                                            </Typography>
-                                                        </Box>
-                                                    </Box>
-                                                    <Chip
-                                                        label={prescription.status || 'Ativa'}
-                                                        size="small"
-                                                        component={StatusChip}
-                                                        status={prescription.status || 'Ativa'}
-                                                    />
-                                                </Box>
-
-                                                {/* Main content */}
-                                                <Box sx={{ p: 3 }}>
-                                                    <Grid container spacing={2} alignItems="center">
-                                                        {/* Patient data */}
-                                                        <Grid item xs={12} sm={5}>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                <StyledBadge
-                                                                    overlap="circular"
-                                                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                                                    variant="dot"
-                                                                    sx={{ mr: 2 }}
-                                                                >
-                                                                    <Avatar
-                                                                        sx={{
-                                                                            width: 52,
-                                                                            height: 52,
-                                                                            bgcolor: alpha(theme.palette.secondary.main, 0.1),
-                                                                            color: theme.palette.secondary.main,
-                                                                            border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`
-                                                                        }}
-                                                                    >
-                                                                        <PersonOutlined />
-                                                                    </Avatar>
-                                                                </StyledBadge>
-                                                                <Box>
-                                                                    <Typography
-                                                                        variant="h6"
-                                                                        sx={{
-                                                                            fontWeight: 600,
-                                                                            fontSize: '1.1rem',
-                                                                            lineHeight: 1.3
-                                                                        }}
-                                                                    >
-                                                                        {prescription.patientData?.name || 'Paciente não encontrado'}
-                                                                    </Typography>
-                                                                    {prescription.patientData?.birthDate && (
-                                                                        <Typography
-                                                                            variant="body2"
-                                                                            color="textSecondary"
-                                                                            sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}
-                                                                        >
-                                                                            <EventOutlined
-                                                                                fontSize="small"
-                                                                                sx={{
-                                                                                    fontSize: '0.9rem',
-                                                                                    mr: 0.5,
-                                                                                    opacity: 0.7
-                                                                                }}
-                                                                            />
-                                                                            {formatDate(prescription.patientData.birthDate)}
+                                                            <Box sx={{
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                p: 2,
+                                                                borderBottom: '1px solid',
+                                                                borderColor: alpha(theme.palette.divider, 0.5),
+                                                                bgcolor: alpha(theme.palette.background.default, 0.5)
+                                                            }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <CalendarTodayOutlined sx={{ mr: 1, color: theme.palette.primary.main }} />
+                                                                    <Typography variant="body2" fontWeight={500}>
+                                                                        {formatDate(prescription.createdAt)}
+                                                                        <Typography component="span" variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                                                                            ({formatRelativeTime(prescription.createdAt)})
                                                                         </Typography>
-                                                                    )}
+                                                                    </Typography>
                                                                 </Box>
+                                                                <StatusChip status={prescription.status || 'Ativa'} />
                                                             </Box>
-                                                        </Grid>
 
-                                                        {/* Medications */}
-                                                        <Grid item xs={12} sm={7}>
-                                                            <Box>
-                                                                <Typography
-                                                                    variant="body2"
-                                                                    color="textSecondary"
-                                                                    sx={{
-                                                                        mb: 1.5,
-                                                                        display: 'flex',
-                                                                        alignItems: 'center'
-                                                                    }}
-                                                                >
-                                                                    <MedicationOutlined
-                                                                        fontSize="small"
-                                                                        sx={{ mr: 0.5, opacity: 0.7 }}
-                                                                    />
-                                                                    Medicamentos prescritos:
-                                                                </Typography>
-                                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                                                                    {prescription.medications?.slice(0, 3).map((med, idx) => (
-                                                                        <Chip
-                                                                            key={idx}
-                                                                            label={`${med.medicationName} ${med.dosage || ''}`}
-                                                                            size="small"
-                                                                            variant="outlined"
+                                                            <Box sx={{ p: 2 }}>
+                                                                <Grid container spacing={2} alignItems="center">
+                                                                    <Grid item xs={12} md={5}>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                            <Avatar
+                                                                                sx={{
+                                                                                    bgcolor: alpha(theme.palette.secondary.main, 0.1),
+                                                                                    color: theme.palette.secondary.main,
+                                                                                    width: 40,
+                                                                                    height: 40,
+                                                                                    mr: 2
+                                                                                }}
+                                                                            >
+                                                                                <PersonOutlined />
+                                                                            </Avatar>
+                                                                            <Box>
+                                                                                <Typography variant="subtitle2" fontWeight={600}>
+                                                                                    {prescription.patientData?.name || 'Paciente não encontrado'}
+                                                                                </Typography>
+                                                                                <Typography variant="caption" color="text.secondary">
+                                                                                    {prescription.patientData?.email || 'Sem e-mail'}
+                                                                                </Typography>
+                                                                            </Box>
+                                                                        </Box>
+                                                                    </Grid>
+
+                                                                    <Grid item xs={12} md={5}>
+                                                                        <Box>
+                                                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                                                                <MedicationOutlined fontSize="small" sx={{ mr: 0.5, verticalAlign: 'middle' }} />
+                                                                                Medicamentos:
+                                                                            </Typography>
+                                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                                {prescription.medications?.slice(0, 2).map((med, idx) => (
+                                                                                    <Chip
+                                                                                        key={idx}
+                                                                                        label={med.medicationName}
+                                                                                        size="small"
+                                                                                        sx={{
+                                                                                            borderRadius: 2,
+                                                                                            bgcolor: alpha(theme.palette.primary.main, 0.08),
+                                                                                            color: theme.palette.primary.main,
+                                                                                            fontWeight: 500
+                                                                                        }}
+                                                                                    />
+                                                                                ))}
+                                                                                {prescription.medications?.length > 2 && (
+                                                                                    <Chip
+                                                                                        label={`+${prescription.medications.length - 2}`}
+                                                                                        size="small"
+                                                                                        sx={{
+                                                                                            borderRadius: 2,
+                                                                                            bgcolor: alpha(theme.palette.grey[400], 0.1),
+                                                                                            fontWeight: 500
+                                                                                        }}
+                                                                                    />
+                                                                                )}
+                                                                            </Box>
+                                                                        </Box>
+                                                                    </Grid>
+
+                                                                    <Grid item xs={12} md={2} sx={{ textAlign: 'right' }}>
+                                                                        <Button
+                                                                            endIcon={<KeyboardArrowRightOutlined />}
                                                                             sx={{
-                                                                                borderRadius: 10,
-                                                                                borderColor: alpha(theme.palette.primary.main, 0.3),
-                                                                                bgcolor: alpha(theme.palette.primary.main, 0.05)
+                                                                                textTransform: 'none',
+                                                                                fontWeight: 500
                                                                             }}
-                                                                        />
-                                                                    ))}
-                                                                    {prescription.medications?.length > 3 && (
-                                                                        <Chip
-                                                                            label={`+${prescription.medications.length - 3}`}
-                                                                            size="small"
-                                                                            variant="outlined"
-                                                                            sx={{
-                                                                                borderRadius: 10,
-                                                                                borderColor: alpha(theme.palette.grey[400], 0.5),
-                                                                                bgcolor: alpha(theme.palette.grey[100], 0.5)
-                                                                            }}
-                                                                        />
-                                                                    )}
-                                                                </Box>
+                                                                        >
+                                                                            Detalhes
+                                                                        </Button>
+                                                                    </Grid>
+                                                                </Grid>
                                                             </Box>
-                                                        </Grid>
+                                                        </Paper>
                                                     </Grid>
-                                                </Box>
+                                                ))}
+                                            </Grid>
+                                        </Box>
 
-                                                {/* Footer with view button */}
-                                                <Box
-                                                    sx={{
-                                                        py: 1.5,
-                                                        px: 2,
-                                                        display: 'flex',
-                                                        justifyContent: 'flex-end',
-                                                        borderTop: '1px solid',
-                                                        borderColor: alpha(theme.palette.divider, 0.5),
-                                                        bgcolor: alpha(theme.palette.background.default, 0.5)
-                                                    }}
-                                                >
-                                                    <Button
-                                                        variant="text"
-                                                        color="primary"
-                                                        endIcon={<KeyboardArrowRightOutlined />}
-                                                        sx={{
-                                                            textTransform: 'none',
-                                                            fontWeight: 600
+                                        {/* Paginação */}
+                                        {filteredPrescriptions.length > rowsPerPage && (
+                                            <Box sx={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                p: 2,
+                                                borderTop: `1px solid ${theme.palette.divider}`
+                                            }}>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Mostrando {Math.min(rowsPerPage, filteredPrescriptions.length)} de {filteredPrescriptions.length} receitas
+                                                </Typography>
+
+                                                <Pagination
+                                                    count={Math.ceil(filteredPrescriptions.length / rowsPerPage)}
+                                                    page={page}
+                                                    onChange={handlePageChange}
+                                                    color="primary"
+                                                    shape="rounded"
+                                                    size="small"
+                                                />
+                                            </Box>
+                                        )}
+                                    </Paper>
+                                )}
+
+                                {/* Vista em Grid */}
+                                {viewMode === 'grid' && (
+                                    <>
+                                        <Box sx={{ mb: 2 }}>
+                                            <Typography variant="subtitle1" fontWeight={600}>
+                                                Mostrando {paginatedPrescriptions.length} de {filteredPrescriptions.length} receitas
+                                            </Typography>
+                                        </Box>
+
+                                        <Grid container spacing={3}>
+                                            {paginatedPrescriptions.map((prescription, index) => (
+                                                <Grid item xs={12} sm={6} md={4} key={prescription.id}>
+                                                    <Zoom
+                                                        in={true}
+                                                        style={{
+                                                            transitionDelay: `${index * 50}ms`,
+                                                            transformOrigin: 'center top'
                                                         }}
                                                     >
-                                                        Ver detalhes
-                                                    </Button>
-                                                </Box>
+                                                        <Paper
+                                                            onClick={() => handleOpenPrescriptionDetail(prescription)}
+                                                            elevation={0}
+                                                            sx={{
+                                                                height: '100%',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                borderRadius: '24px',
+                                                                boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                                                                overflow: 'hidden',
+                                                                border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+                                                                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                                                '&:hover': {
+                                                                    boxShadow: '0px 8px 30px rgba(0, 0, 0, 0.1)',
+                                                                    transform: 'translateY(-5px)',
+                                                                    borderColor: alpha(theme.palette.primary.main, 0.3),
+                                                                },
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <Box sx={{
+                                                                p: 2,
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                alignItems: 'center',
+                                                                borderBottom: '1px solid',
+                                                                borderColor: alpha(theme.palette.divider, 0.5),
+                                                                bgcolor: alpha(theme.palette.background.default, 0.5)
+                                                            }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <Avatar
+                                                                        sx={{
+                                                                            width: 38,
+                                                                            height: 38,
+                                                                            mr: 1.5,
+                                                                            bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                                                            color: theme.palette.primary.main,
+                                                                            border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`
+                                                                        }}
+                                                                    >
+                                                                        <CalendarTodayOutlined fontSize="small" />
+                                                                    </Avatar>
+                                                                    <Box>
+                                                                        <Typography variant="subtitle2" fontWeight={600}>
+                                                                            {formatDate(prescription.createdAt)}
+                                                                        </Typography>
+                                                                        <Typography variant="caption" color="text.secondary">
+                                                                            {formatRelativeTime(prescription.createdAt)}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                </Box>
+                                                                <StatusChip status={prescription.status || 'Ativa'} />
+                                                            </Box>
+
+                                                            <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                                                    <StyledBadge
+                                                                        overlap="circular"
+                                                                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                                                        variant="dot"
+                                                                        sx={{ mr: 2 }}
+                                                                    >
+                                                                        <Avatar
+                                                                            sx={{
+                                                                                width: 52,
+                                                                                height: 52,
+                                                                                bgcolor: alpha(theme.palette.secondary.main, 0.1),
+                                                                                color: theme.palette.secondary.main,
+                                                                                border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`
+                                                                            }}
+                                                                        >
+                                                                            <PersonOutlined />
+                                                                        </Avatar>
+                                                                    </StyledBadge>
+                                                                    <Box>
+                                                                        <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                                                                            {prescription.patientData?.name || 'Paciente não encontrado'}
+                                                                        </Typography>
+                                                                        <Typography variant="caption" color="text.secondary" display="block">
+                                                                            {prescription.patientData?.email || 'Sem e-mail'}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                </Box>
+
+                                                                <Divider sx={{ my: 1.5 }} />
+
+                                                                <Box sx={{ mb: 'auto' }}>
+                                                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                                        <MedicationOutlined fontSize="small" sx={{ mr: 0.5, verticalAlign: 'middle' }} />
+                                                                        Medicamentos prescritos:
+                                                                    </Typography>
+                                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                                                                        {prescription.medications?.map((med, idx) => (
+                                                                            <Chip
+                                                                                key={idx}
+                                                                                label={`${med.medicationName} ${med.dosage || ''}`}
+                                                                                size="small"
+                                                                                variant="outlined"
+                                                                                sx={{
+                                                                                    borderRadius: 10,
+                                                                                    borderColor: alpha(theme.palette.primary.main, 0.3),
+                                                                                    bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                                                                    mb: 0.5
+                                                                                }}
+                                                                            />
+                                                                        ))}
+                                                                        {!prescription.medications?.length && (
+                                                                            <Typography variant="caption" color="text.secondary">
+                                                                                Nenhum medicamento registrado
+                                                                            </Typography>
+                                                                        )}
+                                                                    </Box>
+                                                                </Box>
+
+                                                                <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}`, justifyContent: 'flex-end' }}>
+                                                                    <Button
+                                                                        size="small"
+                                                                        endIcon={<KeyboardArrowRightOutlined />}
+                                                                        variant="contained"
+                                                                        color="primary"
+                                                                        sx={{
+                                                                            borderRadius: '50px',
+                                                                            fontSize: '0.75rem',
+                                                                            boxShadow: '0 2px 8px 0 rgba(0,118,255,0.25)',
+                                                                            textTransform: 'none'
+                                                                        }}
+                                                                    >
+                                                                        Ver Detalhes
+                                                                    </Button>
+                                                                </Box>
+                                                            </Box>
+                                                        </Paper>
+                                                    </Zoom>
+                                                </Grid>
+                                            ))}
+                                        </Grid>
+
+                                        {/* Paginação */}
+                                        {filteredPrescriptions.length > rowsPerPage && (
+                                            <Box sx={{
+                                                display: 'flex',
+                                                justifyContent: 'center',
+                                                mt: 4,
+                                                mb: 2
+                                            }}>
+                                                <Pagination
+                                                    count={Math.ceil(filteredPrescriptions.length / rowsPerPage)}
+                                                    page={page}
+                                                    onChange={handlePageChange}
+                                                    color="primary"
+                                                    variant="outlined"
+                                                    shape="rounded"
+                                                    size="medium"
+                                                />
                                             </Box>
-                                        </PrescriptionCard>
-                                    </Zoom>
-                                ))}
-
-                                {/* Pagination */}
-                                {filteredPrescriptions.length > rowsPerPage && (
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                                        <Pagination
-                                            count={Math.ceil(filteredPrescriptions.length / rowsPerPage)}
-                                            page={page}
-                                            onChange={(e, newPage) => setPage(newPage)}
-                                            color="primary"
-                                            showFirstButton
-                                            showLastButton
-                                            shape="rounded"
-                                            size="large"
-                                            sx={{
-                                                '& .MuiPaginationItem-root': {
-                                                    borderRadius: 2,
-                                                    margin: '0 4px'
-                                                }
-                                            }}
-                                        />
-                                    </Box>
+                                        )}
+                                    </>
                                 )}
-                            </AnimatedContent>
+                            </>
                         )}
-                    </Box>
-                </TabPanel>
+                    </>
+                )}
 
-                {/* Medications Panel */}
-                <TabPanel value={tabValue} index={1}>
-                    <Box sx={{ px: 4 }}>
-                        <Box sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            mb: 3,
-                            flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                            gap: 2
-                        }}>
-                            <SearchBar elevation={0} sx={{
-                                width: { xs: '100%', sm: 400 }
-                            }}>
-                                <SearchOutlined color="action" sx={{ mr: 1, color: alpha(theme.palette.text.secondary, 0.7) }} />
-                                <StyledInputBase
-                                    placeholder="Pesquisar medicamento..."
-                                    value={searchTerm}
-                                    onChange={handleSearchChange}
-                                />
-                                {searchTerm && (
-                                    <IconButton size="small" onClick={handleClearSearch} sx={{ opacity: 0.7 }}>
-                                        <ClearOutlined fontSize="small" />
-                                    </IconButton>
-                                )}
-                            </SearchBar>
+                {/* Aba de Medicamentos */}
+                {currentTab === 'medications' && (
+                    <>
+                        {/* Cards de métricas otimizados */}
+                        <Grid container spacing={3} sx={{ mb: 4 }}>
+                            {/* Card de Total de Medicamentos */}
+                            <Grid item xs={12} sm={6} md={4}>
+                                <Card sx={{
+                                    borderRadius: 3,
+                                    height: '100%',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                }}>
+                                    <CardContent>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Medicamentos Cadastrados
+                                        </Typography>
+                                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: theme.palette.primary.main }}>
+                                            {metrics.totalMedications}
+                                        </Typography>
+                                        <Box sx={{ mt: 2 }}>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {medications.filter(m => m.dosages?.length > 0).length} com dosagens definidas
+                                            </Typography>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
 
-                            <ActionButton
+                            {/* Card de Formas Farmacêuticas - Melhorado */}
+                            <Grid item xs={12} sm={6} md={4}>
+                                <Card sx={{
+                                    borderRadius: 3,
+                                    height: '100%',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                }}>
+                                    <CardContent>
+                                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                            Formas Farmacêuticas
+                                        </Typography>
+                                        <Box sx={{ height: 180, width: '100%' }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie
+                                                        data={formDistribution}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        labelLine={false}
+                                                        outerRadius={70}
+                                                        innerRadius={30}
+                                                        fill="#8884d8"
+                                                        dataKey="value"
+                                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                                    >
+                                                        {formDistribution.map((entry, index) => (
+                                                            <Cell
+                                                                key={`cell-${index}`}
+                                                                fill={COLORS[index % COLORS.length]}
+                                                            />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip
+                                                        formatter={(value) => [`${value} medicamentos`, 'Quantidade']}
+                                                        contentStyle={{
+                                                            borderRadius: 8,
+                                                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                                                            border: 'none',
+                                                            padding: '8px 12px'
+                                                        }}
+                                                    />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+
+                            {/* Card de Medicamentos Recentes - Melhorado */}
+                            <Grid item xs={12} sm={6} md={4}>
+                                <Card sx={{
+                                    borderRadius: 3,
+                                    height: '100%',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                }}>
+                                    <CardHeader
+                                        title="Medicamentos Recentes"
+                                        titleTypographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
+                                        action={
+                                            <Button
+                                                variant="contained"
+                                                startIcon={<AddOutlined />}
+                                                onClick={() => handleOpenMedicationDialog()}
+                                                size="small"
+                                                sx={{
+                                                    borderRadius: 8,
+                                                    textTransform: 'none',
+                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                                    bgcolor: theme.palette.success.main,
+                                                    '&:hover': {
+                                                        bgcolor: theme.palette.success.dark
+                                                    }
+                                                }}
+                                            >
+                                                Novo Medicamento
+                                            </Button>
+                                        }
+                                    />
+                                    <CardContent sx={{ pt: 0 }}>
+                                        <List sx={{ mt: 1 }}>
+                                            {[...medications]
+                                                .sort((a, b) => (b.createdAt || new Date()) - (a.createdAt || new Date()))
+                                                .slice(0, 3)
+                                                .map((med, index) => (
+                                                    <ListItem key={index} disablePadding sx={{
+                                                        mb: 1,
+                                                        pb: 1,
+                                                        borderBottom: index < 2 ? `1px solid ${alpha(theme.palette.divider, 0.5)}` : 'none'
+                                                    }}>
+                                                        <ListItemIcon sx={{ minWidth: 36 }}>
+                                                            <LocalPharmacyOutlined fontSize="small" color="primary" />
+                                                        </ListItemIcon>
+                                                        <ListItemText
+                                                            primary={med.name}
+                                                            secondary={med.form || 'Não especificado'}
+                                                            primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+                                                            secondaryTypographyProps={{ variant: 'caption' }}
+                                                        />
+                                                    </ListItem>
+                                                ))}
+                                        </List>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        </Grid>
+
+                        {/* Barra de Pesquisa e Botão de Novo Medicamento - sem filtros */}
+                        <Box
+                            sx={{
+                                mb: 3,
+                                display: 'flex',
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                alignItems: { xs: 'stretch', sm: 'center' },
+                                gap: 2
+                            }}
+                        >
+                            <SearchBar
+                                onSearch={handleSearch}
+                                isTablet={false}
+                                placeholder="Buscar medicamentos..."
+                            />
+
+                            <Button
+                                size="medium"
                                 variant="contained"
                                 startIcon={<AddOutlined />}
                                 onClick={() => handleOpenMedicationDialog()}
                                 sx={{
-                                    width: { xs: '100%', sm: 'auto' },
-                                    borderRadius: 10
+                                    borderRadius: '50px',
+                                    backgroundColor: theme.palette.success.main,
+                                    '&:hover': {
+                                        backgroundColor: theme.palette.success.dark,
+                                    },
+                                    alignSelf: { xs: 'stretch', sm: 'auto' },
+                                    whitespace: 'nowrap',
+                                    px: 3
                                 }}
                             >
-                                Novo medicamento
-                            </ActionButton>
+                                Novo Medicamento
+                            </Button>
                         </Box>
 
-                        {/* Medications list */}
-                        <Grid container spacing={3}>
-                            {medications.length === 0 ? (
-                                <Grid item xs={12}>
-                                    <EmptyStateContainer>
-                                        <MedicationOutlined sx={{
-                                            fontSize: 80,
-                                            color: alpha(theme.palette.text.secondary, 0.5),
-                                            mb: 2
-                                        }} />
-                                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                                            Nenhum medicamento cadastrado
-                                        </Typography>
-                                        <Typography
-                                            variant="body2"
-                                            color="textSecondary"
-                                            sx={{
-                                                mb: 3,
-                                                maxWidth: 500,
-                                                mx: 'auto'
-                                            }}
-                                        >
-                                            Adicione medicamentos para facilitar a criação de receitas e agilizar seu trabalho
-                                        </Typography>
-                                        <Button
-                                            variant="contained"
-                                            startIcon={<AddOutlined />}
-                                            onClick={() => handleOpenMedicationDialog()}
-                                            sx={{
-                                                borderRadius: 10,
-                                                px: 3,
-                                                py: 1,
-                                                textTransform: 'none'
-                                            }}
-                                        >
-                                            Adicionar primeiro medicamento
-                                        </Button>
-                                    </EmptyStateContainer>
-                                </Grid>
-                            ) : (
-                                medications
-                                    .filter(med => !searchTerm || med.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                                    .map((medication, index) => (
-                                        <Grid item xs={12} sm={6} md={4} key={medication.id}>
-                                            <Zoom
-                                                in={true}
-                                                style={{
-                                                    transitionDelay: `${index * 50}ms`,
-                                                    transformOrigin: 'center top'
-                                                }}
-                                            >
-                                                <MedicationCard>
+                        {medications.length === 0 ? (
+                            <Paper sx={{
+                                padding: 6,
+                                borderRadius: 4,
+                                textAlign: 'center',
+                                border: '2px dashed',
+                                borderColor: alpha(theme.palette.grey[300], 0.7),
+                                backgroundColor: alpha(theme.palette.grey[50], 0.5),
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}>
+                                <MedicationOutlined sx={{
+                                    fontSize: 80,
+                                    color: alpha(theme.palette.text.secondary, 0.5),
+                                    mb: 2
+                                }} />
+                                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                                    Nenhum medicamento cadastrado
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    color="textSecondary"
+                                    sx={{
+                                        mb: 3,
+                                        maxWidth: 500,
+                                        mx: 'auto'
+                                    }}
+                                >
+                                    Adicione medicamentos para facilitar a criação de receitas e agilizar seu trabalho
+                                </Typography>
+                                <Button
+                                    variant="contained"
+                                    startIcon={<AddOutlined />}
+                                    onClick={() => handleOpenMedicationDialog()}
+                                    sx={{
+                                        borderRadius: 10,
+                                        px: 3,
+                                        py: 1,
+                                        textTransform: 'none'
+                                    }}
+                                >
+                                    Adicionar primeiro medicamento
+                                </Button>
+                            </Paper>
+                        ) : (
+                            <>
+                                <Grid container spacing={3}>
+                                    {medications
+                                        .filter(med => !searchTerm || med.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                        .map((medication, index) => (
+                                            <Grid item xs={12} sm={6} md={4} lg={3} key={medication.id}>
+                                                <Card sx={{
+                                                    borderRadius: 4,
+                                                    height: '100%',
+                                                    transition: 'all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1)',
+                                                    border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+                                                    boxShadow: '0px 1px 5px rgba(0, 0, 0, 0.03)',
+                                                    '&:hover': {
+                                                        boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.08)',
+                                                        transform: 'translateY(-4px)',
+                                                    },
+                                                    display: 'flex',
+                                                    flexDirection: 'column'
+                                                }}>
                                                     <Box sx={{
-                                                        position: 'absolute',
-                                                        top: -15,
-                                                        left: 20,
-                                                        bgcolor: theme.palette.primary.main,
-                                                        color: 'white',
-                                                        borderRadius: '50%',
-                                                        width: 36,
-                                                        height: 36,
+                                                        p: 2,
                                                         display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        boxShadow: `0 3px 10px ${alpha(theme.palette.primary.main, 0.4)}`
+                                                        justifyContent: 'space-between',
+                                                        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`
                                                     }}>
-                                                        <LocalPharmacyOutlined fontSize="small" />
-                                                    </Box>
-
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, mt: 1 }}>
-                                                        <Typography
-                                                            variant="h6"
-                                                            sx={{
-                                                                fontWeight: 600,
-                                                                display: '-webkit-box',
-                                                                WebkitBoxOrient: 'vertical',
-                                                                WebkitLineClamp: 1,
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                                pr: 4
-                                                            }}
-                                                        >
+                                                        <Typography variant="subtitle1" fontWeight={600}>
                                                             {medication.name}
                                                         </Typography>
-
                                                         <Box>
                                                             <IconButton
                                                                 size="small"
@@ -1335,10 +1947,6 @@ const PrescriptionsPage = () => {
                                                                 }}
                                                                 sx={{
                                                                     color: theme.palette.primary.main,
-                                                                    bgcolor: alpha(theme.palette.primary.main, 0.08),
-                                                                    '&:hover': {
-                                                                        bgcolor: alpha(theme.palette.primary.main, 0.15),
-                                                                    },
                                                                     mr: 0.5
                                                                 }}
                                                             >
@@ -1349,14 +1957,8 @@ const PrescriptionsPage = () => {
                                                                 color="error"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    if (window.confirm(`Deseja excluir o medicamento ${medication.name}?`)) {
+                                                                    if (window.confirm(`Deseja excluir ${medication.name}?`)) {
                                                                         handleDeleteMedication(medication.id);
-                                                                    }
-                                                                }}
-                                                                sx={{
-                                                                    bgcolor: alpha(theme.palette.error.main, 0.08),
-                                                                    '&:hover': {
-                                                                        bgcolor: alpha(theme.palette.error.main, 0.15),
                                                                     }
                                                                 }}
                                                             >
@@ -1364,127 +1966,79 @@ const PrescriptionsPage = () => {
                                                             </IconButton>
                                                         </Box>
                                                     </Box>
-
-                                                    <StyledDivider />
-
-                                                    <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                                                    <CardContent sx={{ pt: 2, flexGrow: 1 }}>
                                                         {medication.form && (
-                                                            <Grid item xs={6}>
-                                                                <Typography
-                                                                    variant="body2"
-                                                                    color="textSecondary"
-                                                                    sx={{
-                                                                        display: 'flex',
-                                                                        alignItems: 'flex-start',
-                                                                        lineHeight: 1.4
-                                                                    }}
-                                                                >
-                                                                    <CategoryOutlined
-                                                                        fontSize="small"
-                                                                        sx={{
-                                                                            mr: 0.5,
-                                                                            opacity: 0.7,
-                                                                            mt: 0.3,
-                                                                            fontSize: '0.9rem'
-                                                                        }}
-                                                                    />
-                                                                    <span>
-                                                                        <strong>Forma:</strong><br/>
-                                                                        {medication.form}
-                                                                    </span>
-                                                                </Typography>
-                                                            </Grid>
+                                                            <Chip
+                                                                label={medication.form}
+                                                                size="small"
+                                                                sx={{
+                                                                    mb: 2,
+                                                                    bgcolor: alpha(theme.palette.secondary.main, 0.1),
+                                                                    color: theme.palette.secondary.main,
+                                                                    fontWeight: 500,
+                                                                    borderRadius: '12px'
+                                                                }}
+                                                                icon={<CategoryOutlined style={{ fontSize: '16px' }} />}
+                                                            />
                                                         )}
 
-                                                        {medication.category && (
-                                                            <Grid item xs={6}>
-                                                                <Typography
-                                                                    variant="body2"
-                                                                    color="textSecondary"
-                                                                    sx={{
-                                                                        display: 'flex',
-                                                                        alignItems: 'flex-start',
-                                                                        lineHeight: 1.4
-                                                                    }}
-                                                                >
-                                                                    <LocalOfferOutlined
-                                                                        fontSize="small"
-                                                                        sx={{
-                                                                            mr: 0.5,
-                                                                            opacity: 0.7,
-                                                                            mt: 0.3,
-                                                                            fontSize: '0.9rem'
-                                                                        }}
-                                                                    />
-                                                                    <span>
-                                                                        <strong>Categoria:</strong><br/>
-                                                                        {medication.category}
-                                                                    </span>
+                                                        {medication.dosages && medication.dosages.length > 0 ? (
+                                                            <Box sx={{ mb: 2 }}>
+                                                                <Typography variant="body2" fontWeight={600} color="text.secondary" gutterBottom>
+                                                                    Dosagens:
                                                                 </Typography>
-                                                            </Grid>
+                                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                                                                    {medication.dosages.map((dosage, idx) => (
+                                                                        <Chip
+                                                                            key={idx}
+                                                                            label={dosage}
+                                                                            size="small"
+                                                                            sx={{
+                                                                                borderRadius: 10,
+                                                                                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                                                                color: theme.palette.primary.main,
+                                                                                mb: 0.5
+                                                                            }}
+                                                                        />
+                                                                    ))}
+                                                                </Box>
+                                                            </Box>
+                                                        ) : (
+                                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
+                                                                Nenhuma dosagem definida
+                                                            </Typography>
                                                         )}
-                                                    </Grid>
 
-                                                    {medication.description && (
-                                                        <Typography
-                                                            variant="body2"
-                                                            color="textSecondary"
-                                                            sx={{
-                                                                mt: 2,
+                                                        {medication.description && (
+                                                            <Typography variant="body2" color="text.secondary" sx={{
                                                                 display: '-webkit-box',
                                                                 WebkitBoxOrient: 'vertical',
                                                                 WebkitLineClamp: 2,
                                                                 overflow: 'hidden',
                                                                 textOverflow: 'ellipsis'
-                                                            }}
-                                                        >
-                                                            {medication.description}
-                                                        </Typography>
-                                                    )}
-
-                                                    {medication.dosages && medication.dosages.length > 0 && (
-                                                        <Box sx={{ mt: 2 }}>
-                                                            <Typography
-                                                                variant="body2"
-                                                                fontWeight={600}
-                                                                sx={{
-                                                                    display: 'flex',
-                                                                    alignItems: 'center'
-                                                                }}
-                                                            >
-                                                                <AssignmentOutlined
-                                                                    fontSize="small"
-                                                                    sx={{ mr: 0.5, opacity: 0.7 }}
-                                                                />
-                                                                Dosagens disponíveis:
+                                                            }}>
+                                                                {medication.description}
                                                             </Typography>
-                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1 }}>
-                                                                {medication.dosages.map((dosage, idx) => (
-                                                                    <Chip
-                                                                        key={idx}
-                                                                        label={dosage}
-                                                                        size="small"
-                                                                        sx={{
-                                                                            borderRadius: 10,
-                                                                            bgcolor: alpha(theme.palette.secondary.main, 0.1),
-                                                                            color: theme.palette.secondary.dark,
-                                                                            border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
-                                                                            fontWeight: 500
-                                                                        }}
-                                                                    />
-                                                                ))}
-                                                            </Box>
-                                                        </Box>
-                                                    )}
-                                                </MedicationCard>
-                                            </Zoom>
-                                        </Grid>
-                                    ))
-                            )}
-                        </Grid>
-                    </Box>
-                </TabPanel>
-            </Paper>
+                                                        )}
+                                                    </CardContent>
+                                                    <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+                                                        <Button
+                                                            size="small"
+                                                            onClick={() => handleOpenMedicationDialog(medication)}
+                                                            sx={{ textTransform: 'none' }}
+                                                        >
+                                                            Editar
+                                                        </Button>
+                                                    </CardActions>
+                                                </Card>
+                                            </Grid>
+                                        ))}
+                                </Grid>
+                            </>
+                        )}
+                    </>
+                )}
+            </Box>
 
             {/* Prescription detail dialog */}
             <Dialog
@@ -1662,12 +2216,37 @@ const PrescriptionsPage = () => {
                                                 }}
                                             >
                                                 <Box component="span" sx={{ opacity: 0.7, mr: 1, minWidth: 100 }}>Status:</Box>
-                                                <Chip
-                                                    label={selectedPrescription.status || 'Ativa'}
-                                                    size="small"
-                                                    component={StatusChip}
-                                                    status={selectedPrescription.status || 'Ativa'}
-                                                />
+                                                <StatusChip status={selectedPrescription.status || 'Ativa'} />
+                                            </Box>
+
+
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    mb: 1,
+                                                    mt: 2,
+                                                    color: alpha(theme.palette.text.primary, 0.8),
+                                                    fontSize: theme.typography.body2.fontSize
+                                                }}
+                                            >
+                                                <Box component="span" sx={{ opacity: 0.7, mr: 1, minWidth: 100 }}>Alterar status:</Box>
+                                                <FormControl size="small" sx={{ minWidth: 150 }}>
+                                                    <Select
+                                                        value={selectedPrescription.status || 'Ativa'}
+                                                        onChange={(e) => handleStatusChange(selectedPrescription.id, selectedPrescription.patientData.id, e.target.value)}
+                                                        sx={{
+                                                            borderRadius: 2,
+                                                            '& .MuiSelect-select': { py: 0.5 }
+                                                        }}
+                                                    >
+                                                        <MenuItem value="Ativa">Ativa</MenuItem>
+                                                        <MenuItem value="Pendente">Pendente</MenuItem>
+                                                        <MenuItem value="Suspensa">Suspensa</MenuItem>
+                                                        <MenuItem value="Concluída">Concluída</MenuItem>
+                                                        <MenuItem value="Renovada">Renovada</MenuItem>
+                                                    </Select>
+                                                </FormControl>
                                             </Box>
 
                                             <Box
@@ -2040,8 +2619,9 @@ const PrescriptionsPage = () => {
                 </DialogTitle>
 
                 <DialogContent dividers>
+                    {/* Layout simplificado - apenas campos essenciais visíveis inicialmente */}
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12}>
                             <TextField
                                 label="Nome do Medicamento"
                                 name="name"
@@ -2049,207 +2629,140 @@ const PrescriptionsPage = () => {
                                 onChange={handleMedicationChange}
                                 fullWidth
                                 required
-                                margin="normal"
-                                placeholder="Ex: Dipirona"
+                                autoFocus
+                                placeholder="Ex: Dipirona, Amoxicilina, Losartana..."
                                 variant="outlined"
                                 InputProps={{
-                                    sx: { borderRadius: 2 }
+                                    sx: { borderRadius: 2 },
+                                    endAdornment: medicationFormData.name ? (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setMedicationFormData(prev => ({ ...prev, name: '' }))}>
+                                                <ClearOutlined fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null
                                 }}
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                label="Forma Farmacêutica"
-                                name="form"
-                                value={medicationFormData.form}
-                                onChange={handleMedicationChange}
-                                fullWidth
-                                margin="normal"
-                                placeholder="Ex: Comprimido, Solução Oral, Injetável"
-                                variant="outlined"
-                                InputProps={{
-                                    sx: { borderRadius: 2 }
-                                }}
-                            />
+                        <Grid item xs={12} md={6}>
+                            <FormControl fullWidth variant="outlined">
+                                <InputLabel>Forma</InputLabel>
+                                <Select
+                                    name="form"
+                                    value={medicationFormData.form}
+                                    onChange={handleMedicationChange}
+                                    label="Forma"
+                                >
+                                    <MenuItem value="">Selecione...</MenuItem>
+                                    <MenuItem value="Comprimido">Comprimido</MenuItem>
+                                    <MenuItem value="Cápsula">Cápsula</MenuItem>
+                                    <MenuItem value="Solução Oral">Solução Oral</MenuItem>
+                                    <MenuItem value="Xarope">Xarope</MenuItem>
+                                    <MenuItem value="Injetável">Injetável</MenuItem>
+                                    <MenuItem value="Pomada">Pomada</MenuItem>
+                                    <MenuItem value="Creme">Creme</MenuItem>
+                                    <MenuItem value="Gotas">Gotas</MenuItem>
+                                    <MenuItem value="Spray">Spray</MenuItem>
+                                </Select>
+                            </FormControl>
                         </Grid>
 
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} md={6}>
                             <TextField
-                                label="Categoria"
-                                name="category"
-                                value={medicationFormData.category}
-                                onChange={handleMedicationChange}
+                                label="Dosagem Principal"
+                                name="newDosage"
+                                value={newDosage}
+                                onChange={(e) => setNewDosage(e.target.value)}
                                 fullWidth
-                                margin="normal"
-                                placeholder="Ex: Analgésico, Antibiótico, Anti-inflamatório"
-                                variant="outlined"
+                                placeholder="Ex: 500mg, 50mg/ml"
                                 InputProps={{
-                                    sx: { borderRadius: 2 }
-                                }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                label="Descrição"
-                                name="description"
-                                value={medicationFormData.description}
-                                onChange={handleMedicationChange}
-                                fullWidth
-                                multiline
-                                rows={1}
-                                margin="normal"
-                                placeholder="Descrição breve do medicamento"
-                                variant="outlined"
-                                InputProps={{
-                                    sx: { borderRadius: 2 }
-                                }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <Typography
-                                variant="subtitle1"
-                                gutterBottom
-                                sx={{
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    mt: 1
-                                }}
-                            >
-                                <MedicationOutlined sx={{ mr: 1, fontSize: '1.1rem' }} />
-                                Dosagens Disponíveis
-                            </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <TextField
-                                    label="Adicionar Dosagem"
-                                    value={newDosage}
-                                    onChange={(e) => setNewDosage(e.target.value)}
-                                    placeholder="Ex: 500mg, 1g, 250mg/5ml"
-                                    fullWidth
-                                    margin="dense"
-                                    variant="outlined"
-                                    InputProps={{
-                                        sx: { borderRadius: 2 },
-                                        endAdornment: (
-                                            <InputAdornment position="end">
-                                                <Button
-                                                    onClick={handleAddDosage}
-                                                    disabled={!newDosage.trim()}
-                                                    variant="contained"
-                                                    size="small"
-                                                    sx={{
-                                                        borderRadius: 10,
-                                                        textTransform: 'none'
-                                                    }}
-                                                >
-                                                    Adicionar
-                                                </Button>
-                                            </InputAdornment>
-                                        ),
-                                    }}
-                                    onKeyPress={(e) => {
-                                        if (e.key === 'Enter' && newDosage.trim()) {
-                                            e.preventDefault();
-                                            handleAddDosage();
-                                        }
-                                    }}
-                                />
-                            </Box>
-
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-                                {medicationFormData.dosages.map((dosage, index) => (
-                                    <Chip
-                                        key={index}
-                                        label={dosage}
-                                        onDelete={() => handleRemoveDosage(index)}
-                                        color="primary"
-                                        variant="outlined"
-                                        sx={{
-                                            borderRadius: 10,
-                                            transition: 'all 0.2s ease',
-                                            '&:hover': {
-                                                bgcolor: alpha(theme.palette.primary.main, 0.1)
-                                            }
-                                        }}
-                                    />
-                                ))}
-                                {medicationFormData.dosages.length === 0 && (
-                                    <Typography
-                                        variant="body2"
-                                        color="textSecondary"
-                                        sx={{
-                                            p: 2,
-                                            bgcolor: alpha(theme.palette.grey[100], 0.5),
-                                            borderRadius: 2,
-                                            border: '1px dashed',
-                                            borderColor: alpha(theme.palette.grey[300], 0.8),
-                                            width: '100%',
-                                            textAlign: 'center'
-                                        }}
-                                    >
-                                        Nenhuma dosagem adicionada
-                                    </Typography>
-                                )}
-                            </Box>
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Instruções Comuns"
-                                name="instructions"
-                                value={medicationFormData.instructions}
-                                onChange={handleMedicationChange}
-                                fullWidth
-                                multiline
-                                rows={2}
-                                margin="normal"
-                                placeholder="Instruções gerais sobre como usar este medicamento"
-                                variant="outlined"
-                                InputProps={{
-                                    sx: { borderRadius: 2 }
-                                }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                label="Efeitos Colaterais"
-                                name="sideEffects"
-                                value={medicationFormData.sideEffects}
-                                onChange={handleMedicationChange}
-                                fullWidth
-                                multiline
-                                rows={2}
-                                margin="normal"
-                                placeholder="Liste os efeitos colaterais comuns"
-                                variant="outlined"
-                                InputProps={{
-                                    sx: { borderRadius: 2 }
-                                }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                label="Contraindicações"
-                                name="contraindications"
-                                value={medicationFormData.contraindications}
-                                onChange={handleMedicationChange}
-                                fullWidth
-                                multiline
-                                rows={2}
-                                margin="normal"
-                                placeholder="Liste as contraindicações principais"
-                                variant="outlined"
-                                InputProps={{
-                                    sx: { borderRadius: 2 }
+                                    endAdornment: newDosage ? (
+                                        <InputAdornment position="end">
+                                            <Button
+                                                onClick={handleAddDosage}
+                                                color="primary"
+                                                variant="outlined"
+                                                size="small"
+                                            >
+                                                Adicionar
+                                            </Button>
+                                        </InputAdornment>
+                                    ) : null
                                 }}
                             />
                         </Grid>
                     </Grid>
+
+                    {/* Dosagens adicionadas */}
+                    {medicationFormData.dosages.length > 0 && (
+                        <Box sx={{ mt: 3, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {medicationFormData.dosages.map((dosage, index) => (
+                                <Chip
+                                    key={index}
+                                    label={dosage}
+                                    onDelete={() => handleRemoveDosage(index)}
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{ borderRadius: 10 }}
+                                />
+                            ))}
+                        </Box>
+                    )}
+
+                    {/* Accordion para campos opcionais - expandidos somente se necessário */}
+                    <Accordion
+                        sx={{
+                            mt: 3,
+                            backgroundColor: 'transparent',
+                            '&:before': { display: 'none' },
+                            boxShadow: 'none',
+                            border: `1px dashed ${alpha(theme.palette.primary.main, 0.3)}`,
+                            borderRadius: 2,
+                        }}
+                    >
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography color="primary" sx={{ fontWeight: 500 }}>
+                                Informações adicionais (opcional)
+                            </Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        label="Categoria"
+                                        name="category"
+                                        value={medicationFormData.category}
+                                        onChange={handleMedicationChange}
+                                        fullWidth
+                                        placeholder="Ex: Analgésico, Antibiótico"
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        label="Instruções"
+                                        name="instructions"
+                                        value={medicationFormData.instructions}
+                                        onChange={handleMedicationChange}
+                                        fullWidth
+                                        placeholder="Ex: Tomar com água"
+                                    />
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <TextField
+                                        label="Descrição"
+                                        name="description"
+                                        value={medicationFormData.description}
+                                        onChange={handleMedicationChange}
+                                        fullWidth
+                                        multiline
+                                        rows={2}
+                                        placeholder="Informações adicionais sobre o medicamento"
+                                    />
+                                </Grid>
+                            </Grid>
+                        </AccordionDetails>
+                    </Accordion>
                 </DialogContent>
 
                 <DialogActions sx={{ p: 2.5, borderTop: `1px solid ${alpha(theme.palette.divider, 0.5)}` }}>
@@ -2279,7 +2792,7 @@ const PrescriptionsPage = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Filters drawer */}
+
             <Drawer
                 anchor="right"
                 open={filtersOpen}
@@ -2337,6 +2850,7 @@ const PrescriptionsPage = () => {
                     >
                         <MenuItem value="all">Todos os status</MenuItem>
                         <MenuItem value="Ativa">Ativas</MenuItem>
+                        <MenuItem value="Pendente">Pendentes</MenuItem>
                         <MenuItem value="Renovada">Renovadas</MenuItem>
                         <MenuItem value="Suspensa">Suspensas</MenuItem>
                         <MenuItem value="Concluída">Concluídas</MenuItem>
@@ -2392,6 +2906,62 @@ const PrescriptionsPage = () => {
                         />
                     </Grid>
                 </Grid>
+
+                {/* Filtro por paciente */}
+                <Typography
+                    variant="subtitle1"
+                    gutterBottom
+                    sx={{
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        mt: 4
+                    }}
+                >
+                    <PersonOutlined sx={{ mr: 1, fontSize: '1.1rem', color: theme.palette.secondary.main }} />
+                    Paciente
+                </Typography>
+                <FormControl fullWidth margin="normal" variant="outlined" sx={{ mt: 1 }}>
+                    <TextField
+                        label="Buscar por nome do paciente"
+                        value={filters.patientId}
+                        onChange={(e) => handleFilterChange('patientId', e.target.value)}
+                        fullWidth
+                        placeholder="Digite o nome do paciente"
+                        variant="outlined"
+                        InputProps={{
+                            sx: { borderRadius: 2 }
+                        }}
+                    />
+                </FormControl>
+
+                {/* Filtro por medicamento */}
+                <Typography
+                    variant="subtitle1"
+                    gutterBottom
+                    sx={{
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        mt: 4
+                    }}
+                >
+                    <MedicationOutlined sx={{ mr: 1, fontSize: '1.1rem', color: theme.palette.info.main }} />
+                    Medicamento
+                </Typography>
+                <FormControl fullWidth margin="normal" variant="outlined" sx={{ mt: 1 }}>
+                    <TextField
+                        label="Buscar por medicamento"
+                        value={filters.medicationName}
+                        onChange={(e) => handleFilterChange('medicationName', e.target.value)}
+                        fullWidth
+                        placeholder="Digite o nome do medicamento"
+                        variant="outlined"
+                        InputProps={{
+                            sx: { borderRadius: 2 }
+                        }}
+                    />
+                </FormControl>
 
                 <Typography
                     variant="subtitle1"
@@ -2472,7 +3042,7 @@ const PrescriptionsPage = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
-        </Container>
+        </Box>
     );
 };
 

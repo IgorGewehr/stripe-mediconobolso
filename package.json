@@ -29,6 +29,7 @@
     "react-datepicker": "^8.2.1",
     "react-dom": "^19.0.0",
     "react-input-mask": "^2.0.4",
+    "recharts": "^2.15.1",
     "stripe": "^17.5.0"
   },
   "devDependencies": {
