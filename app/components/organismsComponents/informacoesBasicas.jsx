@@ -212,6 +212,8 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
         <Box component="form" autoComplete="off" sx={{ p: 2 }}>
             {/* Foto do Paciente */}
             <Box sx={{ mb: 3 }}>
+                <input type="text" name="dummy" style={{ display: "none" }} autoComplete="off" />
+
                 <FormLabel>Foto do Paciente</FormLabel>
                 <input
                     type="file"
@@ -260,6 +262,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                     <StyledTextField
                         fullWidth
                         id="nome"
+                        autoComplete="new-password"
                         name="nome"
                         placeholder="Digite seu nome completo"
                         value={formData?.nome || ""}
@@ -275,6 +278,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                         fullWidth
                         id="email"
                         name="email"
+                        autoComplete="new-password"
                         placeholder="contato@paciente.com"
                         value={formData?.email || ""}
                         onChange={handleChange}
@@ -295,6 +299,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                     <StyledTextField
                         fullWidth
                         id="telefone"
+                        autoComplete="new-password"
                         name="telefone"
                         placeholder="(00) 00000-0000"
                         value={formData?.telefone || ""}
@@ -385,6 +390,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                         fullWidth
                         id="endereco"
                         name="endereco"
+                        autoComplete="new-password"
                         placeholder="Digite seu endereço"
                         value={formData?.endereco || ""}
                         onChange={handleChange}
@@ -396,6 +402,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                     <StyledTextField
                         fullWidth
                         id="cpf"
+                        autoComplete="new-password"
                         name="cpf"
                         placeholder="000.000.000-00"
                         value={formData?.cpf || ""}
@@ -411,6 +418,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                         fullWidth
                         id="cidade"
                         name="cidade"
+                        autoComplete="new-password"
                         placeholder="Digite o nome da cidade"
                         value={formData?.cidade || ""}
                         onChange={handleChange}
@@ -466,6 +474,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                         fullWidth
                         id="cep"
                         name="cep"
+                        autoComplete="new-password"
                         placeholder="00000-000"
                         value={formData?.cep || ""}
                         onChange={handleCEPChange}
