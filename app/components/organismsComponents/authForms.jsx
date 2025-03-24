@@ -15,7 +15,7 @@ import {
     useMediaQuery,
     useTheme,
     Checkbox,
-    FormControlLabel, FormControl, FormHelperText,
+    FormControlLabel, FormControl, FormHelperText, CircularProgress
 } from "@mui/material";
 import React, { useState } from "react";
 import firebaseService from "../../../lib/firebaseService";
@@ -32,6 +32,16 @@ export const AuthForms = () => {
         password: "",
         confirmPassword: "",
         acceptedTerms: false,
+        // Campos de endereço
+        cep: "",
+        street: "",
+        number: "",
+        complement: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        // Indicador de carregamento
+        isLoadingAddress: false,
     });
     const [errors, setErrors] = useState({});
     const [authError, setAuthError] = useState("");
@@ -97,6 +107,93 @@ export const AuthForms = () => {
         return { formattedCPF, isValid, existsInDB };
     };
 
+
+
+    const handleCEPBlur = async () => {
+        const cep = formData.cep.replace(/\D/g, "");
+        if (cep.length !== 8) return;
+
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await response.json();
+
+            if (!data.erro) {
+                setFormData(prev => ({
+                    ...prev,
+                    street: data.logradouro,
+                    neighborhood: data.bairro,
+                    city: data.localidade,
+                    state: data.uf
+                }));
+            }
+        } catch (error) {
+            console.error("Erro ao buscar CEP:", error);
+        }
+    };
+    const fetchAddressByCEP = async (cep) => {
+        try {
+            // Mostrar indicador de carregamento (opcional)
+            setFormData(prev => ({
+                ...prev,
+                isLoadingAddress: true // Você precisará adicionar este campo ao estado inicial
+            }));
+
+            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await response.json();
+
+            if (!data.erro) {
+                setFormData(prev => ({
+                    ...prev,
+                    street: data.logradouro || "",
+                    neighborhood: data.bairro || "",
+                    city: data.localidade || "",
+                    state: data.uf || "",
+                    isLoadingAddress: false
+                }));
+
+                // Adicionar um foco automático no campo de número após preencher o endereço
+                const numberField = document.querySelector('input[name="number"]');
+                if (numberField) {
+                    numberField.focus();
+                }
+            } else {
+                // CEP não encontrado
+                setErrors(prev => ({
+                    ...prev,
+                    cep: "CEP não encontrado"
+                }));
+                setTimeout(() => setErrors(prev => ({ ...prev, cep: false })), 3000);
+                setFormData(prev => ({ ...prev, isLoadingAddress: false }));
+            }
+        } catch (error) {
+            console.error("Erro ao buscar CEP:", error);
+            setFormData(prev => ({ ...prev, isLoadingAddress: false }));
+            setErrors(prev => ({
+                ...prev,
+                cep: "Erro ao buscar o CEP"
+            }));
+            setTimeout(() => setErrors(prev => ({ ...prev, cep: false })), 3000);
+        }
+    };
+
+    const formatCEP = (cep) => {
+        const digits = cep.replace(/\D/g, "");
+        if (digits.length === 8) {
+            return digits.replace(/(\d{5})(\d{3})/, "$1-$2");
+        }
+        return cep;
+    };
+    const handleCEPInput = () => {
+        const formatted = formatCEP(formData.cep);
+        setFormData(prev => ({ ...prev, cep: formatted }));
+        handleCEPBlur();
+    };
+
+    const validateCEP = (cep) => {
+        const digits = cep.replace(/\D/g, "");
+        return digits.length === 8;
+    };
+
     // Handlers do formulário
     const handleToggleForm = () => {
         setIsLogin(!isLogin);
@@ -115,8 +212,34 @@ export const AuthForms = () => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+
+        // Resetar erros de autenticação quando o usuário digita no email ou senha
         if ((name === "email" || name === "password") && authError) {
             setAuthError("");
+        }
+
+        // Verificar automaticamente o CEP quando ele tiver 8 dígitos
+        if (name === "cep") {
+            const digits = value.replace(/\D/g, "");
+
+            // Formatar o CEP enquanto digita
+            let formattedCep = value;
+            if (digits.length <= 8) {
+                formattedCep = digits;
+                if (digits.length > 5) {
+                    formattedCep = digits.replace(/(\d{5})(\d{0,3})/, "$1-$2");
+                }
+
+                setFormData(prev => ({ ...prev, cep: formattedCep }));
+            }
+
+            // Buscar o CEP quando tiver 8 dígitos
+            if (digits.length === 8) {
+                // Adicione um pequeno delay para garantir uma boa experiência ao usuário
+                setTimeout(() => {
+                    fetchAddressByCEP(digits);
+                }, 500);
+            }
         }
     };
 
@@ -171,6 +294,15 @@ export const AuthForms = () => {
             } else {
                 setFormData((prev) => ({ ...prev, cpf: formattedCPF }));
             }
+            if (!formData.cep.trim() || !validateCEP(formData.cep)) {
+                newErrors.cep = "CEP inválido";
+            }
+            if (!formData.street.trim()) newErrors.street = true;
+            if (!formData.number.trim()) newErrors.number = true;
+            if (!formData.neighborhood.trim()) newErrors.neighborhood = true;
+            if (!formData.city.trim()) newErrors.city = true;
+            if (!formData.state.trim()) newErrors.state = true;
+
             // Verifica se os termos foram aceitos
             if (!formData.acceptedTerms) {
                 newErrors.acceptedTerms = true;
@@ -190,6 +322,15 @@ export const AuthForms = () => {
                     phone: formData.phone,
                     email: formData.email,
                     cpf: formData.cpf,
+                    address: {
+                        cep: formData.cep,
+                        street: formData.street,
+                        number: formData.number,
+                        complement: formData.complement,
+                        neighborhood: formData.neighborhood,
+                        city: formData.city,
+                        state: formData.state.toUpperCase(),
+                    },
                     assinouPlano: false,
                 };
                 await firebaseService.signUp(formData.email, formData.password, userData);
@@ -316,6 +457,134 @@ export const AuthForms = () => {
                             color={errors.cpf ? "error" : "primary"}
                             size={isMobile ? "small" : "medium"}
                         />
+                    </Box>
+                </Collapse>
+
+                <Collapse in={!isLogin && formData.cpf && validateCPF(formData.cpf)} timeout={500}>
+                    <Box
+                        sx={{
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1,
+                            p: 2,
+                            mb: 2,
+                            mt: 1.5
+                        }}
+                    >
+                        <Typography
+                            variant="subtitle2"
+                            color="primary"
+                            sx={{ mb: 1.5, fontWeight: 'medium' }}
+                        >
+                            Endereço
+                        </Typography>
+
+                        <Box sx={{ mb: 1.5 }}>
+                            <TextField
+                                label="CEP"
+                                variant="outlined"
+                                fullWidth
+                                name="cep"
+                                value={formData.cep}
+                                onChange={handleInputChange}
+                                error={Boolean(errors.cep)}
+                                helperText={
+                                    errors.cep
+                                        ? errors.cep
+                                        : (formData.street && formData.city)
+                                            ? "Endereço encontrado!"
+                                            : "Digite apenas números"
+                                }
+                                placeholder="00000-000"
+                                inputProps={{ maxLength: 9 }}
+                                size={isMobile ? "small" : "medium"}
+                                sx={{ mb: 1.5 }}
+                                InputProps={{
+                                    endAdornment: formData.isLoadingAddress ? (
+                                        <InputAdornment position="end">
+                                            <CircularProgress size={20} />
+                                        </InputAdornment>
+                                    ) : null,
+                                }}
+                            />
+
+                            <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5 }}>
+                                <TextField
+                                    label="Logradouro"
+                                    variant="outlined"
+                                    fullWidth
+                                    name="street"
+                                    value={formData.street}
+                                    onChange={handleInputChange}
+                                    error={Boolean(errors.street)}
+                                    helperText={errors.street ? "Campo obrigatório" : ""}
+                                    size={isMobile ? "small" : "medium"}
+                                    sx={{ flexGrow: 3 }}
+                                />
+                                <TextField
+                                    label="Nº"
+                                    variant="outlined"
+                                    name="number"
+                                    value={formData.number}
+                                    onChange={handleInputChange}
+                                    error={Boolean(errors.number)}
+                                    helperText={errors.number ? "Obrigatório" : ""}
+                                    size={isMobile ? "small" : "medium"}
+                                    sx={{ width: '80px' }}
+                                />
+                            </Box>
+
+                            <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                <TextField
+                                    label="Bairro"
+                                    variant="outlined"
+                                    fullWidth
+                                    name="neighborhood"
+                                    value={formData.neighborhood}
+                                    onChange={handleInputChange}
+                                    error={Boolean(errors.neighborhood)}
+                                    helperText={errors.neighborhood ? "Campo obrigatório" : ""}
+                                    size={isMobile ? "small" : "medium"}
+                                />
+                                <TextField
+                                    label="Complemento"
+                                    variant="outlined"
+                                    fullWidth
+                                    name="complement"
+                                    value={formData.complement}
+                                    onChange={handleInputChange}
+                                    size={isMobile ? "small" : "medium"}
+                                    placeholder="Opcional"
+                                />
+                            </Box>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', gap: 1.5 }}>
+                            <TextField
+                                label="Cidade"
+                                variant="outlined"
+                                fullWidth
+                                name="city"
+                                value={formData.city}
+                                onChange={handleInputChange}
+                                error={Boolean(errors.city)}
+                                helperText={errors.city ? "Campo obrigatório" : ""}
+                                size={isMobile ? "small" : "medium"}
+                                sx={{ flexGrow: 3 }}
+                            />
+                            <TextField
+                                label="UF"
+                                variant="outlined"
+                                name="state"
+                                value={formData.state}
+                                onChange={handleInputChange}
+                                error={Boolean(errors.state)}
+                                helperText={errors.state ? "Obrigatório" : ""}
+                                size={isMobile ? "small" : "medium"}
+                                inputProps={{ maxLength: 2, style: { textTransform: 'uppercase' } }}
+                                sx={{ width: '70px' }}
+                            />
+                        </Box>
                     </Box>
                 </Collapse>
 
