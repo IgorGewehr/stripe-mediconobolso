@@ -14,6 +14,8 @@ import {
     Snackbar,
     useMediaQuery,
     useTheme,
+    Checkbox,
+    FormControlLabel, FormControl, FormHelperText,
 } from "@mui/material";
 import React, { useState } from "react";
 import firebaseService from "../../../lib/firebaseService";
@@ -29,6 +31,7 @@ export const AuthForms = () => {
         cpf: "",
         password: "",
         confirmPassword: "",
+        acceptedTerms: false,
     });
     const [errors, setErrors] = useState({});
     const [authError, setAuthError] = useState("");
@@ -168,6 +171,10 @@ export const AuthForms = () => {
             } else {
                 setFormData((prev) => ({ ...prev, cpf: formattedCPF }));
             }
+            // Verifica se os termos foram aceitos
+            if (!formData.acceptedTerms) {
+                newErrors.acceptedTerms = true;
+            }
         }
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
@@ -177,7 +184,6 @@ export const AuthForms = () => {
         try {
             if (isLogin) {
                 await firebaseService.login(formData.email, formData.password);
-                // O redirecionamento é gerenciado pelo AuthProvider
             } else {
                 const userData = {
                     fullName: formData.fullName,
@@ -187,7 +193,6 @@ export const AuthForms = () => {
                     assinouPlano: false,
                 };
                 await firebaseService.signUp(formData.email, formData.password, userData);
-                // O redirecionamento é gerenciado pelo AuthProvider
             }
         } catch (error) {
             console.error("Erro na autenticação:", error);
@@ -361,6 +366,33 @@ export const AuthForms = () => {
                         size={isMobile ? "small" : "medium"}
                     />
                 </Collapse>
+                {!isLogin && (
+                    <Box sx={{ mt: 2 }}>
+                        <FormControl error={Boolean(errors.acceptedTerms)} component="fieldset" variant="standard">
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={formData.acceptedTerms}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({ ...prev, acceptedTerms: e.target.checked }))
+                                        }
+                                        color="primary"
+                                    />
+                                }
+                                label={
+                                    <Typography variant="body2">
+                                        Li e aceito o <strong>Termo de Condições de uso</strong>
+                                    </Typography>
+                                }
+                            />
+                            {errors.acceptedTerms && (
+                                <FormHelperText>
+                                    Você precisa aceitar os Termos de Condições de uso.
+                                </FormHelperText>
+                            )}
+                        </FormControl>
+                    </Box>
+                )}
 
                 <Button
                     variant="contained"
