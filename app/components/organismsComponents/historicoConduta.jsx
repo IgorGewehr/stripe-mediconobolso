@@ -155,7 +155,7 @@ const HistoricoCondutaForm = ({ formData, updateFormData }) => {
     };
 
     return (
-        <Box>
+        <Box component="form" autoComplete="off">
             <Grid container spacing={3}>
                 {/* Doenças Genéticas ou Hereditárias */}
                 <Grid item xs={12}>

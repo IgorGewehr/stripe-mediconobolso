@@ -209,7 +209,7 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
     };
 
     return (
-        <Box sx={{ p: 2 }}>
+        <Box component="form" autoComplete="off" sx={{ p: 2 }}>
             {/* Foto do Paciente */}
             <Box sx={{ mb: 3 }}>
                 <FormLabel>Foto do Paciente</FormLabel>
