@@ -24,7 +24,8 @@ import { useAuth } from "../authProvider";
 
 export const AuthForms = () => {
     const [isLogin, setIsLogin] = useState(false);
-    const [formData, setFormData] = useState({
+
+    const initialFormData = {
         fullName: "",
         phone: "",
         email: "",
@@ -32,7 +33,7 @@ export const AuthForms = () => {
         password: "",
         confirmPassword: "",
         acceptedTerms: false,
-        // Campos de endereço
+        // Campos de endereço:
         cep: "",
         street: "",
         number: "",
@@ -40,9 +41,12 @@ export const AuthForms = () => {
         neighborhood: "",
         city: "",
         state: "",
-        // Indicador de carregamento
+        // Indicador de carregamento:
         isLoadingAddress: false,
-    });
+    };
+
+    const [formData, setFormData] = useState(initialFormData);
+
     const [errors, setErrors] = useState({});
     const [authError, setAuthError] = useState("");
     const [passwordResetSent, setPasswordResetSent] = useState(false);
@@ -197,14 +201,7 @@ export const AuthForms = () => {
     // Handlers do formulário
     const handleToggleForm = () => {
         setIsLogin(!isLogin);
-        setFormData({
-            fullName: "",
-            phone: "",
-            email: "",
-            cpf: "",
-            password: "",
-            confirmPassword: "",
-        });
+        setFormData(initialFormData);
         setErrors({});
         setAuthError("");
     };

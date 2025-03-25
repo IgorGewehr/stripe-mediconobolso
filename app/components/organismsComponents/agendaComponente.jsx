@@ -1178,32 +1178,24 @@ const AgendaMedica = () => {
 
                                 if (eventsAtHour.length === 0) return null;
 
+                                // Ordena os eventos também pelos minutos
+                                const sortedEvents = [...eventsAtHour].sort((a, b) => {
+                                    const [aHour, aMin] = a.horaInicio.split(':').map(Number);
+                                    const [bHour, bMin] = b.horaInicio.split(':').map(Number);
+                                    return (aHour * 60 + aMin) - (bHour * 60 + bMin);
+                                });
+
                                 return (
                                     <Box key={hour} sx={{ mb: 3 }}>
-                                        <Box sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            mb: 1.5,
-                                            pl: 1
-                                        }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, pl: 1 }}>
                                             <AccessTime sx={{ fontSize: '1rem', color: 'text.secondary', mr: 1 }} />
-                                            <Typography
-                                                variant="subtitle2"
-                                                sx={{
-                                                    fontWeight: 600,
-                                                    color: 'text.secondary'
-                                                }}
-                                            >
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                                                 {hour}:00
                                             </Typography>
                                         </Box>
 
-                                        {eventsAtHour.map(event => (
-                                            <EventCard
-                                                key={event.id}
-                                                event={event}
-                                                onClick={handleEventClick}
-                                            />
+                                        {sortedEvents.map(event => (
+                                            <EventCard key={event.id} event={event} onClick={handleEventClick} />
                                         ))}
                                     </Box>
                                 );
@@ -1355,14 +1347,21 @@ const AgendaMedica = () => {
                                                 )}
 
                                                 {/* Events at this hour */}
-                                                {eventsAtHour.map(event => (
-                                                    <EventCard
-                                                        key={event.id}
-                                                        event={event}
-                                                        onClick={handleEventClick}
-                                                        isCompact={true}
-                                                    />
-                                                ))}
+                                                {[...eventsAtHour]
+                                                    .sort((a, b) => {
+                                                        const [aHour, aMin] = a.horaInicio.split(':').map(Number);
+                                                        const [bHour, bMin] = b.horaInicio.split(':').map(Number);
+                                                        return (aHour * 60 + aMin) - (bHour * 60 + bMin);
+                                                    })
+                                                    .map(event => (
+                                                        <EventCard
+                                                            key={event.id}
+                                                            event={event}
+                                                            onClick={handleEventClick}
+                                                            isCompact={true}
+                                                        />
+                                                    ))
+                                                }
                                             </Box>
                                         );
                                     })}
