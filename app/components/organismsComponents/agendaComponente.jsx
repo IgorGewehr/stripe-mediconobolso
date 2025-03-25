@@ -82,7 +82,10 @@ const AgendaMedica = () => {
     // Funções para manipulação de datas
     // Função simplificada para garantir formato de data consistente para o Firebase
     const formatDateForFirebase = (date) => {
-        // Garantir que o dia local seja preservado
+        // Se já for string no formato "YYYY-MM-DD", retorne-a sem alteração
+        if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return date;
+        }
         const d = new Date(date);
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');

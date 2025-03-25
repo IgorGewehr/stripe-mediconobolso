@@ -270,7 +270,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         uso: "interno", // interno, externo
         orientacaoGeral: "",
         medicamentos: [],
-        observacoes: ""
     });
 
     // Estado temporário para o medicamento sendo adicionado/editado
@@ -280,7 +279,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         posologia: "",
         duracao: "",
         quantidade: "",
-        observacao: ""
     });
 
     // Estado para feedback (Snackbar)
@@ -309,8 +307,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                     dataValidade: addMonths(new Date(), 6),
                     uso: "interno",
                     orientacaoGeral: "",
-                    medicamentos: [],
-                    observacoes: ""
+                    medicamentos: []
                 });
                 setLoading(false);
             }
@@ -619,15 +616,11 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 yPos = addWrappedText(`Duração: ${med.duracao}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
             }
 
-            if (med.observacao) {
-                yPos = addWrappedText(`Observação: ${med.observacao}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
-            }
-
             yPos += 5;
         });
 
         // Orientação geral e observações
-        if (receitaData.orientacaoGeral || receitaData.observacoes) {
+        if (receitaData.orientacaoGeral) {
             if (yPos > pageHeight - 60) {
                 doc.addPage();
                 yPos = 20;
@@ -637,21 +630,11 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
             doc.line(margin, yPos, pageWidth - margin, yPos);
             yPos += 10;
 
-            if (receitaData.orientacaoGeral) {
-                doc.setFont('helvetica', 'bold');
-                doc.text("Orientações Gerais:", margin, yPos);
-                yPos += 7;
-                doc.setFont('helvetica', 'normal');
-                yPos = addWrappedText(receitaData.orientacaoGeral, margin, yPos, pageWidth - (2 * margin)) + 10;
-            }
-
-            if (receitaData.observacoes) {
-                doc.setFont('helvetica', 'bold');
-                doc.text("Observações:", margin, yPos);
-                yPos += 7;
-                doc.setFont('helvetica', 'normal');
-                yPos = addWrappedText(receitaData.observacoes, margin, yPos, pageWidth - (2 * margin)) + 10;
-            }
+            doc.setFont('helvetica', 'bold');
+            doc.text("Orientações Gerais:", margin, yPos);
+            yPos += 7;
+            doc.setFont('helvetica', 'normal');
+            yPos = addWrappedText(receitaData.orientacaoGeral, margin, yPos, pageWidth - (2 * margin)) + 10;
         }
 
         // Assinatura
@@ -716,38 +699,8 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 { type: 'application/pdf' }
             );
 
-            // 4. Se estamos editando, atualiza a receita existente
+            // 4. Normaliza os dados da receita
             let receitaId;
-            if (isEditMode) {
-                await FirebaseService.updatePrescription(
-                    doctorId,
-                    patientId,
-                    receitaData.id,
-                    {
-                        ...receitaData,
-                        updatedAt: new Date()
-                    }
-                );
-                receitaId = receitaData.id;
-            } else {
-                // Caso contrário, cria uma nova receita
-                receitaId = await FirebaseService.createPrescription(
-                    doctorId,
-                    patientId,
-                    {
-                        ...receitaData,
-                        createdAt: new Date()
-                    }
-                );
-            }
-
-            // 5. Faz upload do PDF para o Firebase Storage
-            const pdfPath = `users/${doctorId}/patients/${patientId}/prescriptions/${receitaId}/${pdfFileName}`;
-            const pdfUrl = await FirebaseService.uploadFile(
-                pdfFile,
-                pdfPath
-            );
-
             const normalizedData = {
                 ...receitaData,
                 medications: receitaData.medicamentos.map(med => ({
@@ -757,14 +710,25 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                     duration: med.duracao,
                     quantity: med.quantidade,
                     observation: med.observacao
-                }))
+                })),
+                updatedAt: new Date()
             };
 
-            await FirebaseService.createPrescription(doctorId, patientId, normalizedData);
+            // Se estivermos editando, atualiza a receita existente; caso contrário, cria uma nova
+            if (isEditMode) {
+                await FirebaseService.updatePrescription(doctorId, patientId, receitaData.id, normalizedData);
+                receitaId = receitaData.id;
+            } else {
+                normalizedData.createdAt = new Date();
+                receitaId = await FirebaseService.createPrescription(doctorId, patientId, normalizedData);
+            }
 
-            // 7. Cria uma nota associada à receita
-            // Prepara o texto da nota (lista de medicamentos)
-            let medicamentosText = receitaData.medicamentos.map(med =>
+            // 5. Faz upload do PDF para o Firebase Storage
+            const pdfPath = `users/${doctorId}/patients/${patientId}/prescriptions/${receitaId}/${pdfFileName}`;
+            const pdfUrl = await FirebaseService.uploadFile(pdfFile, pdfPath);
+
+            // 6. Cria uma nota associada à receita
+            const medicamentosText = receitaData.medicamentos.map(med =>
                 `- ${med.nome}${med.concentracao ? ` ${med.concentracao}` : ''}: ${med.posologia}`
             ).join('\n');
 
@@ -773,34 +737,23 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 noteTitle: receitaData.titulo || `Receita - ${getPatientName()}`,
                 noteText: `Receita ${receitaData.tipo === "controlada" ? "Controlada" :
                     receitaData.tipo === "especial" ? "Especial" :
-                        receitaData.tipo === "antimicrobiano" ? "de Antimicrobiano" :
-                            "Comum"} emitida em ${formattedDate}.\n\nMedicamentos:\n${medicamentosText}`,
+                        receitaData.tipo === "antimicrobiano" ? "de Antimicrobiano" : "Comum"} emitida em ${formattedDate}.\n\nMedicamentos:\n${medicamentosText}`,
                 noteType: "Receita", // Tipo especial para receitas
                 consultationDate: receitaData.dataEmissao,
                 prescriptionId: receitaId, // Referência para a receita
                 pdfUrl // URL do PDF
             };
 
-            const noteId = await FirebaseService.createNote(
-                doctorId,
-                patientId,
-                noteData
-            );
+            const noteId = await FirebaseService.createNote(doctorId, patientId, noteData);
 
-            // 8. Anexa o PDF à nota
-            await FirebaseService.uploadNoteAttachment(
-                pdfFile,
-                doctorId,
-                patientId,
-                noteId
-            );
+            // 7. Anexa o PDF à nota
+            await FirebaseService.uploadNoteAttachment(pdfFile, doctorId, patientId, noteId);
 
             setSnackbar({
                 open: true,
                 message: isEditMode ? "Receita atualizada com sucesso!" : "Receita criada com sucesso!",
                 severity: "success"
             });
-
             setIsSaved(true);
 
             // Fecha o diálogo após um curto delay
@@ -821,6 +774,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
             setIsSubmitting(false);
         }
     };
+
 
     // Função para confirmar a exclusão da receita
     const handleConfirmDelete = () => {
@@ -1613,24 +1567,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                             )}
                                         </Box>
                                     </Collapse>
-                                </Box>
-
-                                {/* Observações */}
-                                <Box sx={{ p: 3 }}>
-                                    <TextField
-                                        fullWidth
-                                        label="Observações"
-                                        placeholder="Observações adicionais para a receita"
-                                        multiline
-                                        rows={3}
-                                        name="observacoes"
-                                        value={receitaData.observacoes}
-                                        onChange={handleChange}
-                                        disabled={isSubmitting}
-                                        InputLabelProps={{
-                                            shrink: true,
-                                        }}
-                                    />
                                 </Box>
                             </Paper>
                         </Box>

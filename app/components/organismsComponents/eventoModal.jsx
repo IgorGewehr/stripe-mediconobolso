@@ -233,7 +233,7 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                 consultationDate: evento.consultationDate instanceof Date
                     ? evento.consultationDate
                     : evento.data
-                        ? new Date(evento.data)
+                        ? parseLocalDate(evento.data)
                         : new Date(),
                 consultationTime: evento.horaInicio || evento.consultationTime || '09:00',
                 consultationDuration: evento.consultationDuration || 30,
@@ -292,6 +292,14 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: undefined }));
         }
+    };
+
+    const parseLocalDate = (dateString) => {
+        const parts = dateString.split('-');
+        if (parts.length === 3) {
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+        return new Date(dateString);
     };
 
     // Handler específico para mudança de data
