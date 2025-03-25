@@ -577,12 +577,8 @@ const PatientNoteDialog = ({
                 consultationDate: consultationDate
             };
             if (isEditMode && note.id) {
-                await FirebaseService.updateNote(
-                    user.uid,
-                    patientId,
-                    note.id,
-                    noteData
-                );
+                // Atualização permanece igual
+                await FirebaseService.updateNote(user.uid, patientId, note.id, noteData);
                 if (onSave) {
                     onSave({
                         ...note,
@@ -591,30 +587,9 @@ const PatientNoteDialog = ({
                     });
                 }
             } else {
-                const noteId = await FirebaseService.createNote(
-                    user.uid,
-                    patientId,
-                    noteData
-                );
-                const uploadedAttachments = [];
-                for (const attachment of attachments) {
-                    if (attachment.file) {
-                        const fileInfo = await FirebaseService.uploadNoteAttachment(
-                            attachment.file,
-                            user.uid,
-                            patientId,
-                            noteId
-                        );
-                        uploadedAttachments.push(fileInfo);
-                    }
-                }
+                // Remova a criação de nota daqui e delegue ao pai:
                 if (onSave) {
-                    onSave({
-                        id: noteId,
-                        ...noteData,
-                        attachments: uploadedAttachments,
-                        createdAt: new Date()
-                    });
+                    onSave(noteData);
                 }
             }
             setIsSaved(true);

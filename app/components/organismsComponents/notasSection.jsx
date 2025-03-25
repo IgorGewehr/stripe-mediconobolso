@@ -612,80 +612,75 @@ export default function NotasSection({ pacienteId }) {
         setSelectedReceita(null);
     };
 
-    const handleCloseAnamneseDialog = () => {
+    const handleCloseAnamneseDialog = async () => {
         setOpenAnamneseDialog(false);
+        await fetchNotas();
     };
 
     // Handler para criar ou atualizar nota
-    // Handler para criar ou atualizar nota
-    const handleSaveNote = (notaData) => {
-        // Se estamos editando uma nota existente
-        if (selectedNota && selectedNota.id) {
-            // Atualizar a nota no estado local
-            setNotasData(prevNotas => {
-                const index = prevNotas.findIndex(n => n.id === selectedNota.id);
-                if (index !== -1) {
-                    const updatedNotas = [...prevNotas];
-                    updatedNotas[index] = {
-                        ...prevNotas[index],
-                        ...notaData
-                    };
-                    return updatedNotas;
-                }
-                return prevNotas;
-            });
+    const handleSaveNote = async (notaData) => {
+        try {
+            if (selectedNota && selectedNota.id) {
+                // Se for edição, atualize a nota no Firebase
+                await FirebaseService.updateNote(user.uid, pacienteId, selectedNota.id, notaData);
+                setSuccessAction("atualizada");
+            } else {
+                // Se for nova nota, crie-a no Firebase
+                await FirebaseService.createNote(user.uid, pacienteId, notaData);
+                setSuccessAction("criada");
+            }
 
-            // Mostrar mensagem de sucesso
-            setSuccessAction("atualizada");
             setShowSuccessMessage(true);
             setTimeout(() => setShowSuccessMessage(false), 3000);
 
-        } else {
-            // CORRIGIDO: Apenas uma chamada para adicionar a nova nota
-            setNotasData(prevNotas => [notaData, ...prevNotas]);
+            // Fecha o diálogo
+            setOpenNoteDialog(false);
 
-            // Mostrar mensagem de sucesso
-            setSuccessAction("criada");
-            setShowSuccessMessage(true);
-            setTimeout(() => setShowSuccessMessage(false), 3000);
+            // Recarrega a lista de notas atualizada do Firebase
+            await fetchNotas();
+
+        } catch (error) {
+            console.error("Erro ao salvar a nota:", error);
+            // Opcional: exibir feedback de erro
         }
-
-        // Fechar o dialog
-        setOpenNoteDialog(false);
-
-        // CORRIGIDO: Atualizar métricas usando uma função de callback para garantir o estado mais recente
-        setNotasData(prevNotas => {
-            calculateMetrics(prevNotas);
-            return prevNotas;
-        });
     };
 
     // Handler para salvar receita
-    const handleSaveReceita = (receitaId) => {
-        // Atualizamos as notas após salvar a receita para incluir a nova nota criada
-        fetchNotas();
+    const handleSaveReceita = async (receitaId) => {
+        try {
+            // Atualiza a lista de notas com os dados mais recentes do Firebase
+            await fetchNotas();
 
-        // Mostrar mensagem de sucesso
-        setSuccessAction("criada");
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
+            // Mostra mensagem de sucesso
+            setSuccessAction("criada");
+            setShowSuccessMessage(true);
+            setTimeout(() => setShowSuccessMessage(false), 3000);
 
-        // Fechar o dialog
-        setOpenReceitaDialog(false);
+            // Fecha o diálogo de receita
+            setOpenReceitaDialog(false);
+        } catch (error) {
+            console.error("Erro ao salvar receita:", error);
+            // Aqui você pode exibir um feedback de erro se necessário
+        }
     };
 
     // Handler para salvar anamnese
-    const handleSaveAnamnese = (anamneseId) => {
-        // Atualizamos as notas após salvar a anamnese para incluir a nova nota
-        fetchNotas();
+    const handleSaveAnamnese = async (anamneseId) => {
+        try {
+            // Atualiza a lista de notas com os dados mais recentes do Firebase
+            await fetchNotas();
 
-        // Mostrar mensagem de sucesso
-        setSuccessAction("criada");
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
+            // Mostra mensagem de sucesso
+            setSuccessAction("criada");
+            setShowSuccessMessage(true);
+            setTimeout(() => setShowSuccessMessage(false), 3000);
 
-        // Fechar o dialog
-        setOpenAnamneseDialog(false);
+            // Fecha o diálogo de anamnese
+            setOpenAnamneseDialog(false);
+        } catch (error) {
+            console.error("Erro ao salvar anamnese:", error);
+            // Aqui você pode exibir um feedback de erro se necessário
+        }
     };
 
     // Handler para deletar nota

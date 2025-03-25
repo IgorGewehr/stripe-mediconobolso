@@ -286,6 +286,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
     const [patientData, setPatientData] = useState(null);
     const [error, setError] = useState(null);
     const [fontSizeScale, setFontSizeScale] = useState(1);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const MIN_SCALE = 1;
     const MAX_SCALE = 2;
@@ -538,16 +539,14 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
         message: "",
         severity: "success",
     });
-
-    // Estado para controle de loading ao submeter
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Resetar formulário quando o modal for aberto
     useEffect(() => {
-        if (open) {
+        if (!open) {
+            setIsSubmitting(false);
+        } else if(open){
             resetForm();
         }
     }, [open]);
+
 
     // Carrega dados do paciente se disponíveis
     useEffect(() => {
