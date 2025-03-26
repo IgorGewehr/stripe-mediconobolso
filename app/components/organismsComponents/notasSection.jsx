@@ -475,6 +475,7 @@ export default function NotasSection({ pacienteId }) {
     const [selectedNota, setSelectedNota] = useState(null);
     const [selectedReceita, setSelectedReceita] = useState(null);
     const [openViewNoteDialog, setOpenViewNoteDialog] = useState(false);
+    const [selectedAnamnese, setSelectedAnamnese] = useState(null);
 
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     const [successAction, setSuccessAction] = useState("");
@@ -608,11 +609,9 @@ export default function NotasSection({ pacienteId }) {
             });
             setOpenReceitaDialog(true);
         } else if (nota.noteType === "Anamnese") {
-            // Para anamneses, abrimos o dialog de anamnese com o ID da nota
-            // Nota: isso pode requerer ajustes no AnamneseDialog para suportar edição
             setOpenAnamneseDialog(true);
-            // Caso precise passar algum ID específico para o AnamneseDialog
-            // setSelectedAnamnese(nota.id);
+            // Pass the anamneseId from the note
+            setSelectedAnamnese(nota.anamneseId);
         } else {
             // Para notas regulares, abre o diálogo padrão de nota
             setOpenNoteDialog(true);
@@ -1070,6 +1069,7 @@ export default function NotasSection({ pacienteId }) {
                 onClose={handleCloseAnamneseDialog}
                 patientId={pacienteId}
                 doctorId={user?.uid}
+                anamneseId={selectedAnamnese}
                 onSave={handleSaveAnamnese}
             />
 

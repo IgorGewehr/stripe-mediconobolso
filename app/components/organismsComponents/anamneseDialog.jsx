@@ -279,7 +279,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 
 
 // ------------------ COMPONENTE PRINCIPAL DE DIÁLOGO ------------------
-export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
+export default function AnamneseDialog({ open, onClose, patientId, doctorId, anamneseId, onSave }) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [loading, setLoading] = useState(true);
@@ -337,6 +337,40 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
             fetchPatientData();
         }
     }, [open, patientId]);
+
+    // Add this after the existing useEffect for loading patient data
+    useEffect(() => {
+        if (open && anamneseId && patientId && doctorId) {
+            fetchAnamneseData();
+        }
+    }, [open, anamneseId, patientId, doctorId]);
+
+// Add this function to fetch anamnese data
+    const fetchAnamneseData = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const data = await FirebaseService.getAnamnese(doctorId, patientId, anamneseId);
+
+            if (data) {
+                // Populate the form with the existing anamnese data
+                setAnamneseData({
+                    ...data,
+                    // Ensure proper date format
+                    anamneseDate: data.anamneseDate?.toDate ? data.anamneseDate.toDate() : new Date(data.anamneseDate || new Date()),
+                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || new Date())
+                });
+            } else {
+                setError("Anamnese não encontrada.");
+            }
+        } catch (err) {
+            console.error("Erro ao buscar dados da anamnese:", err);
+            setError("Erro ao carregar dados da anamnese.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
 // Função para buscar dados do paciente no Firebase
     const fetchPatientData = async () => {
@@ -1190,18 +1224,34 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
 
         setIsSubmitting(true);
         try {
-            // 1. Save anamnesis to Firebase
-            const anamneseId = await firebaseService.createAnamnese(
-                doctorId,
-                patientId,
-                anamneseData
-            );
+            let anamneseId;
+            let isNewAnamnese = true;
 
-            // 2. Generate PDF
+            // Check if we're editing an existing anamnese
+            if (props.anamneseId) {
+                // Update existing anamnese
+                await firebaseService.updateAnamnese(
+                    doctorId,
+                    patientId,
+                    props.anamneseId,
+                    anamneseData
+                );
+                anamneseId = props.anamneseId;
+                isNewAnamnese = false;
+            } else {
+                // Create new anamnese
+                anamneseId = await firebaseService.createAnamnese(
+                    doctorId,
+                    patientId,
+                    anamneseData
+                );
+            }
+
+            // Generate PDF
             const pdfDoc = generateAnamnesePDF(anamneseData);
             const pdfBlob = pdfDoc.output('blob');
 
-            // 3. Create a File object from the Blob
+            // Create a File object from the Blob
             const patientNameForFile = getPatientName().replace(/\s+/g, '_');
             const pdfFileName = `anamnese_${patientNameForFile}_${format(new Date(), 'dd-MM-yyyy')}.pdf`;
 
@@ -1210,15 +1260,15 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
                 pdfFileName,
                 { type: 'application/pdf' }
             );
-            // 4. Upload PDF to Firebase Storage
+
+            // Upload PDF to Firebase Storage
             const pdfPath = `users/${doctorId}/patients/${patientId}/anamneses/${anamneseId}/${pdfFileName}`;
             const pdfUrl = await firebaseService.uploadFile(
                 pdfFile,
                 pdfPath
             );
 
-
-            // 5. Update anamnesis with PDF URL
+            // Update anamnesis with PDF URL
             await firebaseService.updateAnamnese(
                 doctorId,
                 patientId,
@@ -1226,35 +1276,64 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
                 { pdfUrl }
             );
 
-            // 6. Create anamnesis note
-            const formattedDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-            const noteData = {
-                noteTitle: `Anamnese - ${getPatientName()}`,
-                noteText: `Anamnese realizada em ${formattedDate}. Queixa principal: ${anamneseData.chiefComplaint}`,
-                noteType: "Anamnese", // Special type for anamnesis notes
-                consultationDate: new Date(),
-                anamneseId, // Reference to the anamnesis
-                createdAt: new Date(),
-                pdfUrl // Store the PDF URL in the note as well
-            };
+            // If creating a new anamnese, create a note for it
+            if (isNewAnamnese) {
+                // Create anamnesis note
+                const formattedDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+                const noteData = {
+                    noteTitle: `Anamnese - ${getPatientName()}`,
+                    noteText: `Anamnese realizada em ${formattedDate}. Queixa principal: ${anamneseData.chiefComplaint}`,
+                    noteType: "Anamnese", // Special type for anamnesis notes
+                    consultationDate: new Date(),
+                    anamneseId, // Reference to the anamnesis
+                    createdAt: new Date(),
+                    pdfUrl // Store the PDF URL in the note as well
+                };
 
-            const noteId = await firebaseService.createNote(
-                doctorId,
-                patientId,
-                noteData
-            );
+                const noteId = await firebaseService.createNote(
+                    doctorId,
+                    patientId,
+                    noteData
+                );
 
-            // 7. Attach PDF to note
-            await firebaseService.uploadNoteAttachment(
-                pdfFile,
-                doctorId,
-                patientId,
-                noteId
-            );
+                // Attach PDF to note
+                await firebaseService.uploadNoteAttachment(
+                    pdfFile,
+                    doctorId,
+                    patientId,
+                    noteId
+                );
+            } else {
+                // If updating, find and update the associated note
+                const notes = await firebaseService.listNotes(doctorId, patientId);
+                const associatedNote = notes.find(note => note.anamneseId === anamneseId);
+
+                if (associatedNote) {
+                    const formattedDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+                    await firebaseService.updateNote(
+                        doctorId,
+                        patientId,
+                        associatedNote.id,
+                        {
+                            noteText: `Anamnese atualizada em ${formattedDate}. Queixa principal: ${anamneseData.chiefComplaint}`,
+                            pdfUrl: pdfUrl,
+                            lastModified: new Date()
+                        }
+                    );
+
+                    // Update attachment if needed
+                    await firebaseService.uploadNoteAttachment(
+                        pdfFile,
+                        doctorId,
+                        patientId,
+                        associatedNote.id
+                    );
+                }
+            }
 
             setSnackbar({
                 open: true,
-                message: "Anamnese registrada com sucesso!",
+                message: isNewAnamnese ? "Anamnese registrada com sucesso!" : "Anamnese atualizada com sucesso!",
                 severity: "success",
             });
 
@@ -1266,7 +1345,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId }) {
             console.error("Erro ao salvar anamnese:", error);
             setSnackbar({
                 open: true,
-                message: "Erro ao registrar anamnese. Tente novamente.",
+                message: "Erro ao processar anamnese. Tente novamente.",
                 severity: "error",
             });
             setIsSubmitting(false);
