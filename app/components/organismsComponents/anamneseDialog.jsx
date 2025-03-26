@@ -351,7 +351,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
         setError(null);
 
         try {
-            const data = await FirebaseService.getAnamnese(doctorId, patientId, anamneseId);
+            const data = await firebaseService.getAnamnese(doctorId, patientId, anamneseId);
 
             if (data) {
                 // Populate the form with the existing anamnese data
@@ -1228,15 +1228,14 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             let isNewAnamnese = true;
 
             // Check if we're editing an existing anamnese
-            if (props.anamneseId) {
+            if (anamneseId) {  // Use anamneseId em vez de props.anamneseId
                 // Update existing anamnese
                 await firebaseService.updateAnamnese(
                     doctorId,
                     patientId,
-                    props.anamneseId,
+                    anamneseId,  // Use anamneseId em vez de props.anamneseId
                     anamneseData
                 );
-                anamneseId = props.anamneseId;
                 isNewAnamnese = false;
             } else {
                 // Create new anamnese
@@ -1246,7 +1245,6 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     anamneseData
                 );
             }
-
             // Generate PDF
             const pdfDoc = generateAnamnesePDF(anamneseData);
             const pdfBlob = pdfDoc.output('blob');

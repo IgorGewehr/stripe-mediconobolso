@@ -623,9 +623,10 @@ export default function NotasSection({ pacienteId }) {
         setSelectedNota(null);
     };
 
-    const handleCloseReceitaDialog = () => {
+    const handleCloseReceitaDialog = async () => {
         setOpenReceitaDialog(false);
         setSelectedReceita(null);
+        await fetchNotas();
     };
     const handleCloseAnamneseDialog = async () => {
         setOpenAnamneseDialog(false);
