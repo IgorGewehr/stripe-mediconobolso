@@ -33,6 +33,7 @@ import PatientNoteDialog from "./novaNotaDialog";
 import AnamneseDialog from "./anamneseDialog";
 import ReceitaDialog from "./receitasDialog";
 import ReceitaNotaCard from "../basicComponents/receitasNotaCard";
+import ViewNoteDialog from "./viewNoteDialog";
 
 // Paleta de cores
 const themeColors = {
@@ -473,6 +474,7 @@ export default function NotasSection({ pacienteId }) {
     const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
     const [selectedNota, setSelectedNota] = useState(null);
     const [selectedReceita, setSelectedReceita] = useState(null);
+    const [openViewNoteDialog, setOpenViewNoteDialog] = useState(false);
 
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     const [successAction, setSuccessAction] = useState("");
@@ -585,22 +587,37 @@ export default function NotasSection({ pacienteId }) {
 
     // Função para abrir o dialog de edição/visualização de nota existente
     const handleOpenNota = (nota) => {
-
-        if (nota.noteType === "Receita" && nota.prescriptionId) {
-            // Abrir diálogo de receita se for uma receita e tiver ID de prescrição
-            setSelectedReceita({
-                id: nota.prescriptionId,
-                patientId: pacienteId
-            });
-            setOpenReceitaDialog(true);
-            return;
-        }
-
-        // Caso contrário, abre o diálogo padrão de nota
+        // Armazena a nota selecionada e abre o dialog de visualização
         setSelectedNota(nota);
-        setOpenNoteDialog(true);
+        setOpenViewNoteDialog(true);
+    };
+    const handleCloseViewNoteDialog = () => {
+        setOpenViewNoteDialog(false);
+        setSelectedNota(null);
     };
 
+    const handleEditFromView = (nota) => {
+        // Fecha o dialog de visualização
+        setOpenViewNoteDialog(false);
+
+        // Com base no tipo de nota, abre o dialog apropriado para edição
+        if (nota.noteType === "Receita" && nota.prescriptionId) {
+            // Abrir diálogo de receita
+            setSelectedReceita({
+                id: nota.prescriptionId
+            });
+            setOpenReceitaDialog(true);
+        } else if (nota.noteType === "Anamnese") {
+            // Para anamneses, abrimos o dialog de anamnese com o ID da nota
+            // Nota: isso pode requerer ajustes no AnamneseDialog para suportar edição
+            setOpenAnamneseDialog(true);
+            // Caso precise passar algum ID específico para o AnamneseDialog
+            // setSelectedAnamnese(nota.id);
+        } else {
+            // Para notas regulares, abre o diálogo padrão de nota
+            setOpenNoteDialog(true);
+        }
+    };
     // Fechar os diálogos
     const handleCloseNoteDialog = () => {
         setOpenNoteDialog(false);
@@ -611,7 +628,6 @@ export default function NotasSection({ pacienteId }) {
         setOpenReceitaDialog(false);
         setSelectedReceita(null);
     };
-
     const handleCloseAnamneseDialog = async () => {
         setOpenAnamneseDialog(false);
         await fetchNotas();
@@ -658,6 +674,7 @@ export default function NotasSection({ pacienteId }) {
 
             // Fecha o diálogo de receita
             setOpenReceitaDialog(false);
+            setSelectedReceita(null);
         } catch (error) {
             console.error("Erro ao salvar receita:", error);
             // Aqui você pode exibir um feedback de erro se necessário
@@ -1054,6 +1071,17 @@ export default function NotasSection({ pacienteId }) {
                 patientId={pacienteId}
                 doctorId={user?.uid}
                 onSave={handleSaveAnamnese}
+            />
+
+            <ViewNoteDialog
+                open={openViewNoteDialog}
+                onClose={handleCloseViewNoteDialog}
+                noteData={selectedNota}
+                noteType={selectedNota?.noteType}
+                patientId={pacienteId}
+                doctorId={user?.uid}
+                onEdit={handleEditFromView}
+                onDelete={handleDeleteNote}
             />
         </Box>
     );

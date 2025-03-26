@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Box,
     Typography,
@@ -29,9 +29,12 @@ import {
     Tooltip,
     CircularProgress,
     Fade,
-    Collapse
+    Collapse,
+    Autocomplete
 } from "@mui/material";
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider, createTheme, alpha } from '@mui/material/styles';
+
+// Ícones
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -49,14 +52,18 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MedicalInformationIcon from "@mui/icons-material/MedicalInformation";
 import LocalPharmacyIcon from "@mui/icons-material/LocalPharmacy";
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import PersonIcon from "@mui/icons-material/Person";
+import SearchIcon from "@mui/icons-material/Search";
+import AddIcon from "@mui/icons-material/Add";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+
 import { format, addDays, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import FirebaseService from "../../../lib/firebaseService";
 import { useAuth } from "../authProvider";
-import Autocomplete from '@mui/material/Autocomplete';
-import BookmarkIcon from "@mui/icons-material/Bookmark";
 
 // Tema principal
 const theme = createTheme({
@@ -239,7 +246,14 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
     const [editingMedicamentoIndex, setEditingMedicamentoIndex] = useState(null);
     const [medications, setMedications] = useState([]);
     const [loadingMedications, setLoadingMedications] = useState(false);
+    const [patients, setPatients] = useState([]);
+    const [loadingPatients, setLoadingPatients] = useState(false);
+    const [patientSearch, setPatientSearch] = useState('');
+    const [selectedPatient, setSelectedPatient] = useState(null);
+    const [showPatientSelector, setShowPatientSelector] = useState(false);
 
+    // Referência para o campo de orientação geral para focar quando necessário
+    const orientacaoGeralRef = useRef(null);
 
     useEffect(() => {
         const fetchMedications = async () => {
@@ -279,6 +293,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         posologia: "",
         duracao: "",
         quantidade: "",
+        observacao: ""
     });
 
     // Estado para feedback (Snackbar)
@@ -288,36 +303,88 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         severity: "success"
     });
 
+    // Carregar lista de pacientes se não tivermos um patientId
+    useEffect(() => {
+        if (open && !patientId && doctorId) {
+            setShowPatientSelector(true);
+            fetchPatients();
+        } else {
+            setShowPatientSelector(false);
+        }
+    }, [open, patientId, doctorId]);
+
+    // Função para buscar pacientes
+    const fetchPatients = async () => {
+        try {
+            setLoadingPatients(true);
+            const patientsData = await FirebaseService.listPatients(doctorId);
+            setPatients(patientsData);
+        } catch (error) {
+            console.error("Erro ao buscar pacientes:", error);
+            setSnackbar({
+                open: true,
+                message: "Erro ao carregar lista de pacientes.",
+                severity: "error"
+            });
+        } finally {
+            setLoadingPatients(false);
+        }
+    };
+
+    // Filtrar pacientes com base na pesquisa
+    const filteredPatients = patients.filter(patient => {
+        const name = patient.nome || patient.patientName || '';
+        return name.toLowerCase().includes(patientSearch.toLowerCase());
+    });
+
+    useEffect(() => {
+        if (!open) {
+            setIsSubmitting(false);
+            setIsSaved(false);
+            setLoading(true); // se necessário, para reiniciar o processo de carregamento
+            // opcionalmente, reset outras variáveis de estado
+        }
+    }, [open]);
+
     // Efeito para carregar dados do paciente quando o componente for montado
     useEffect(() => {
-        if (open && patientId) {
-            fetchPatientData();
+        if (open) {
+            // Se temos patientId ou se selecionamos um paciente
+            const currentPatientId = patientId || selectedPatient?.id;
 
-            // Se estiver no modo de edição, carrega os dados da receita
-            if (isEditMode && receitaId) {
-                loadReceitaData();
-            } else {
-                // Caso contrário, inicializa uma nova receita
-                setReceitaData({
-                    patientId: patientId,
-                    doctorId: doctorId,
-                    tipo: "comum",
-                    titulo: "",
-                    dataEmissao: new Date(),
-                    dataValidade: addMonths(new Date(), 6),
-                    uso: "interno",
-                    orientacaoGeral: "",
-                    medicamentos: []
-                });
+            if (currentPatientId && doctorId) {
+                fetchPatientData(currentPatientId);
+
+                // Se estiver no modo de edição, carrega os dados da receita
+                if (isEditMode && receitaId) {
+                    loadReceitaData();
+                } else {
+                    // Caso contrário, inicializa uma nova receita
+                    setReceitaData(prev => ({
+                        ...prev,
+                        patientId: currentPatientId,
+                        doctorId: doctorId,
+                        tipo: "comum",
+                        titulo: "",
+                        dataEmissao: new Date(),
+                        dataValidade: addMonths(new Date(), 6),
+                        uso: "interno",
+                        orientacaoGeral: "",
+                        medicamentos: []
+                    }));
+                    setLoading(false);
+                }
+            } else if (!patientId && !selectedPatient) {
+                // Se não temos patientId e não selecionamos um paciente, apenas indicamos que não estamos carregando
                 setLoading(false);
             }
         }
-    }, [open, patientId, receitaId, isEditMode]);
+    }, [open, patientId, receitaId, isEditMode, selectedPatient]);
 
     // Função para buscar dados da receita (no modo de edição)
     const loadReceitaData = async () => {
         try {
-            const receita = await FirebaseService.getPrescription(doctorId, patientId, receitaId);
+            const receita = await FirebaseService.getPrescription(doctorId, patientId || selectedPatient?.id, receitaId);
 
             if (receita) {
                 // Convertendo as datas de Timestamp para Date se necessário
@@ -344,9 +411,9 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
     };
 
     // Função para buscar dados do paciente no Firebase
-    const fetchPatientData = async () => {
+    const fetchPatientData = async (patId) => {
         try {
-            const patientDoc = await FirebaseService.getPatient(doctorId, patientId);
+            const patientDoc = await FirebaseService.getPatient(doctorId, patId);
 
             if (patientDoc) {
                 setPatientData(patientDoc);
@@ -356,6 +423,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 if (patientName && !receitaId) {
                     setReceitaData(prev => ({
                         ...prev,
+                        patientId: patId,
                         titulo: `Receita para ${patientName}`
                     }));
                 }
@@ -420,7 +488,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
     const validateMedicamento = () => {
         return medicamentoTemp.nome.trim() !== "" &&
             (medicamentoTemp.posologia.trim() !== "" ||
-                medicamentoTemp.observacao.trim() !== "");
+                medicamentoTemp.observacao?.trim() !== "");
     };
 
     const handleAddMedicamento = () => {
@@ -511,6 +579,15 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
             setSnackbar({
                 open: true,
                 message: "Por favor, informe um título para a receita.",
+                severity: "error"
+            });
+            return false;
+        }
+
+        if (!receitaData.patientId && !selectedPatient) {
+            setSnackbar({
+                open: true,
+                message: "Por favor, selecione um paciente.",
                 severity: "error"
             });
             return false;
@@ -701,8 +778,11 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
             // 4. Normaliza os dados da receita
             let receitaId;
+            const currentPatientId = patientId || selectedPatient?.id;
+
             const normalizedData = {
                 ...receitaData,
+                patientId: currentPatientId,
                 medications: receitaData.medicamentos.map(med => ({
                     medicationName: med.nome,
                     dosage: med.concentracao,
@@ -716,15 +796,15 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
             // Se estivermos editando, atualiza a receita existente; caso contrário, cria uma nova
             if (isEditMode) {
-                await FirebaseService.updatePrescription(doctorId, patientId, receitaData.id, normalizedData);
+                await FirebaseService.updatePrescription(doctorId, currentPatientId, receitaData.id, normalizedData);
                 receitaId = receitaData.id;
             } else {
                 normalizedData.createdAt = new Date();
-                receitaId = await FirebaseService.createPrescription(doctorId, patientId, normalizedData);
+                receitaId = await FirebaseService.createPrescription(doctorId, currentPatientId, normalizedData);
             }
 
             // 5. Faz upload do PDF para o Firebase Storage
-            const pdfPath = `users/${doctorId}/patients/${patientId}/prescriptions/${receitaId}/${pdfFileName}`;
+            const pdfPath = `users/${doctorId}/patients/${currentPatientId}/prescriptions/${receitaId}/${pdfFileName}`;
             const pdfUrl = await FirebaseService.uploadFile(pdfFile, pdfPath);
 
             // 6. Cria uma nota associada à receita
@@ -744,10 +824,10 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 pdfUrl // URL do PDF
             };
 
-            const noteId = await FirebaseService.createNote(doctorId, patientId, noteData);
+            const noteId = await FirebaseService.createNote(doctorId, currentPatientId, noteData);
 
             // 7. Anexa o PDF à nota
-            await FirebaseService.uploadNoteAttachment(pdfFile, doctorId, patientId, noteId);
+            await FirebaseService.uploadNoteAttachment(pdfFile, doctorId, currentPatientId, noteId);
 
             setSnackbar({
                 open: true,
@@ -775,7 +855,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         }
     };
 
-
     // Função para confirmar a exclusão da receita
     const handleConfirmDelete = () => {
         setIsDeleteConfirm(true);
@@ -789,7 +868,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         try {
             await FirebaseService.deletePrescription(
                 doctorId,
-                patientId,
+                patientId || selectedPatient?.id,
                 receitaData.id
             );
 
@@ -823,11 +902,21 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
     // Obter nome do paciente
     const getPatientName = () => {
+        if (selectedPatient) {
+            return selectedPatient.nome || selectedPatient.patientName || 'Paciente';
+        }
         return patientData?.nome || patientData?.patientName || 'Paciente';
     };
 
+    // Handler para selecionar paciente
+    const handleSelectPatient = (patient) => {
+        setSelectedPatient(patient);
+        setShowPatientSelector(false);
+        fetchPatientData(patient.id);
+    };
+
     // Renderização condicional para estado de carregamento
-    if (loading && open) {
+    if (loading && open && !showPatientSelector) {
         return (
             <ThemeProvider theme={theme}>
                 <StyledDialog
@@ -1019,556 +1108,686 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                 >
                                     {isEditMode ? 'Editar receita' : 'Nova receita'}
                                 </Typography>
-                                <Typography
-                                    variant="body1"
-                                    sx={{
-                                        color: '#64748B',
-                                        mt: 1
-                                    }}
-                                >
-                                    {patientData ? `Paciente: ${getPatientName()}` : 'Preencha os dados da receita'}
-                                </Typography>
+                                {(patientData || selectedPatient) && (
+                                    <Typography
+                                        variant="body1"
+                                        sx={{
+                                            color: '#64748B',
+                                            mt: 1
+                                        }}
+                                    >
+                                        Paciente: {getPatientName()}
+                                    </Typography>
+                                )}
                             </Box>
 
-                            {/* Formulário da Receita */}
-                            <Paper
-                                elevation={0}
-                                sx={{
-                                    width: '100%',
-                                    border: '1px solid #EAECEF',
-                                    borderRadius: '16px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    overflow: 'hidden',
-                                    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
-                                    minHeight: '420px',
-                                    position: 'relative',
-                                    mb: 3
-                                }}
-                            >
-                                {/* Seção de Informações Básicas */}
-                                <Box sx={{ p: 3, borderBottom: '1px solid #EAECEF' }}>
-                                    <Grid container spacing={3}>
-                                        <Grid item xs={12}>
-                                            <TextField
-                                                fullWidth
-                                                label="Título da Receita"
-                                                placeholder="Ex: Receita para tratamento de hipertensão"
-                                                name="titulo"
-                                                value={receitaData.titulo}
-                                                onChange={handleChange}
-                                                disabled={isSubmitting}
-                                                required
-                                                InputLabelProps={{
-                                                    shrink: true,
-                                                }}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={12} sm={6}>
-                                            <FormControl fullWidth>
-                                                <InputLabel id="tipo-receita-label">Tipo de Receita</InputLabel>
-                                                <Select
-                                                    labelId="tipo-receita-label"
-                                                    id="tipo-receita"
-                                                    value={receitaData.tipo}
-                                                    label="Tipo de Receita"
-                                                    onChange={handleChangeTipoReceita}
-                                                    disabled={isSubmitting}
-                                                >
-                                                    <MenuItem value="comum">Comum</MenuItem>
-                                                    <MenuItem value="controlada">Controlada</MenuItem>
-                                                    <MenuItem value="especial">Especial</MenuItem>
-                                                    <MenuItem value="antimicrobiano">Antimicrobiano</MenuItem>
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                        <Grid item xs={12} sm={6}>
-                                            <FormControl fullWidth>
-                                                <InputLabel id="uso-label">Uso</InputLabel>
-                                                <Select
-                                                    labelId="uso-label"
-                                                    id="uso"
-                                                    value={receitaData.uso}
-                                                    label="Uso"
-                                                    onChange={handleChange}
-                                                    name="uso"
-                                                    disabled={isSubmitting}
-                                                >
-                                                    <MenuItem value="interno">Interno</MenuItem>
-                                                    <MenuItem value="externo">Externo</MenuItem>
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                        <Grid item xs={12} sm={6}>
-                                            <TextField
-                                                fullWidth
-                                                label="Data de Emissão"
-                                                type="date"
-                                                name="dataEmissao"
-                                                value={formatDateForInput(receitaData.dataEmissao)}
-                                                onChange={handleDateChange}
-                                                disabled={isSubmitting}
-                                                InputLabelProps={{
-                                                    shrink: true,
-                                                }}
-                                                InputProps={{
-                                                    startAdornment: (
-                                                        <InputAdornment position="start">
-                                                            <CalendarTodayIcon fontSize="small" color="action" />
-                                                        </InputAdornment>
-                                                    ),
-                                                }}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={12} sm={6}>
-                                            <TextField
-                                                fullWidth
-                                                label="Data de Validade"
-                                                type="date"
-                                                name="dataValidade"
-                                                value={formatDateForInput(receitaData.dataValidade)}
-                                                onChange={handleDateChange}
-                                                disabled={isSubmitting}
-                                                InputLabelProps={{
-                                                    shrink: true,
-                                                }}
-                                                InputProps={{
-                                                    startAdornment: (
-                                                        <InputAdornment position="start">
-                                                            <EventIcon fontSize="small" color="action" />
-                                                        </InputAdornment>
-                                                    ),
-                                                }}
-                                            />
-                                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
-                                                {receitaData.tipo === "controlada" || receitaData.tipo === "antimicrobiano"
-                                                    ? "Validade: 30 dias"
-                                                    : receitaData.tipo === "especial"
-                                                        ? "Validade: 60 dias"
-                                                        : "Validade: 6 meses"}
-                                            </Typography>
-                                        </Grid>
-                                        <Grid item xs={12}>
-                                            <TextField
-                                                fullWidth
-                                                label="Orientações Gerais"
-                                                placeholder="Orientações gerais para o paciente"
-                                                multiline
-                                                rows={2}
-                                                name="orientacaoGeral"
-                                                value={receitaData.orientacaoGeral}
-                                                onChange={handleChange}
-                                                disabled={isSubmitting}
-                                                InputLabelProps={{
-                                                    shrink: true,
-                                                }}
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </Box>
-
-                                {/* Seção de Medicamentos */}
-                                <Box sx={{ p: 0 }}>
-                                    <Box
+                            {/* Seletor de Paciente (apenas se não tivermos um paciente selecionado) */}
+                            {showPatientSelector && (
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        width: '100%',
+                                        border: '1px solid #EAECEF',
+                                        borderRadius: '16px',
+                                        p: 3,
+                                        mb: 3,
+                                        bgcolor: '#FAFBFC',
+                                    }}
+                                >
+                                    <Typography
+                                        variant="h6"
                                         sx={{
-                                            p: 3,
+                                            mb: 2,
                                             display: 'flex',
-                                            justifyContent: 'space-between',
                                             alignItems: 'center',
-                                            borderBottom: expandedSection === "medicamentos" ? '1px solid #EAECEF' : 'none',
-                                            bgcolor: theme.palette.grey[100],
-                                            cursor: 'pointer'
+                                            fontWeight: 600
                                         }}
-                                        onClick={() => toggleSection("medicamentos")}
                                     >
-                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <MedicationIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                                Medicamentos
-                                            </Typography>
-                                            <Chip
-                                                label={receitaData.medicamentos.length}
-                                                size="small"
-                                                sx={{
-                                                    ml: 1,
-                                                    bgcolor: theme.palette.primary.light,
-                                                    color: theme.palette.primary.main,
-                                                    fontWeight: 600
-                                                }}
-                                            />
+                                        <PersonIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                                        Selecione um Paciente
+                                    </Typography>
+
+                                    <TextField
+                                        fullWidth
+                                        placeholder="Buscar paciente por nome..."
+                                        value={patientSearch}
+                                        onChange={(e) => setPatientSearch(e.target.value)}
+                                        sx={{ mb: 2 }}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <SearchIcon color="action" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+
+                                    {loadingPatients ? (
+                                        <Box sx={{ textAlign: 'center', py: 3 }}>
+                                            <CircularProgress size={40} />
                                         </Box>
-                                        <IconButton size="small">
-                                            {expandedSection === "medicamentos" ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-                                        </IconButton>
-                                    </Box>
-
-                                    <Collapse in={expandedSection === "medicamentos"}>
-                                        <Box sx={{ p: 3 }}>
-                                            {/* Lista de medicamentos adicionados */}
-                                            {receitaData.medicamentos.length > 0 ? (
-                                                <Box sx={{ mb: 3 }}>
-                                                    {receitaData.medicamentos.map((med, index) => (
-                                                        <MedicationCard key={index}>
-                                                            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                                    <Box>
-                                                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                                                            {med.nome}
-                                                                            {med.concentracao && (
-                                                                                <Typography component="span" sx={{ fontWeight: 500, ml: 1 }}>
-                                                                                    {med.concentracao}
-                                                                                </Typography>
-                                                                            )}
-                                                                        </Typography>
-
-                                                                        <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 1 }}>
-                                                                            {med.posologia}
-                                                                        </Typography>
-
-                                                                        <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                                                                            {med.quantidade && (
-                                                                                <Grid item>
-                                                                                    <Chip
-                                                                                        label={`Quantidade: ${med.quantidade}`}
-                                                                                        size="small"
-                                                                                        sx={{ bgcolor: theme.palette.grey[100] }}
-                                                                                    />
-                                                                                </Grid>
-                                                                            )}
-
-                                                                            {med.duracao && (
-                                                                                <Grid item>
-                                                                                    <Chip
-                                                                                        label={`Duração: ${med.duracao}`}
-                                                                                        size="small"
-                                                                                        sx={{ bgcolor: theme.palette.grey[100] }}
-                                                                                    />
-                                                                                </Grid>
-                                                                            )}
-                                                                        </Grid>
-
-                                                                        {med.observacao && (
-                                                                            <Typography
-                                                                                variant="body2"
-                                                                                sx={{
-                                                                                    mt: 1.5,
-                                                                                    color: theme.palette.text.secondary,
-                                                                                    fontSize: '13px',
-                                                                                    fontStyle: 'italic'
-                                                                                }}
-                                                                            >
-                                                                                Obs: {med.observacao}
-                                                                            </Typography>
-                                                                        )}
+                                    ) : (
+                                        <>
+                                            {filteredPatients.length > 0 ? (
+                                                <Box sx={{ maxHeight: '300px', overflow: 'auto', p: 1 }}>
+                                                    {filteredPatients.map((patient) => (
+                                                        <Card
+                                                            key={patient.id}
+                                                            sx={{
+                                                                mb: 1.5,
+                                                                border: '1px solid #EAECEF',
+                                                                borderRadius: '12px',
+                                                                boxShadow: 'none',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s',
+                                                                '&:hover': {
+                                                                    borderColor: theme.palette.primary.main,
+                                                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                                                }
+                                                            }}
+                                                            onClick={() => handleSelectPatient(patient)}
+                                                        >
+                                                            <CardContent sx={{ p: 2 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <Box
+                                                                        sx={{
+                                                                            width: 40,
+                                                                            height: 40,
+                                                                            bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                                                            borderRadius: '50%',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            mr: 2
+                                                                        }}
+                                                                    >
+                                                                        <PersonIcon sx={{ color: theme.palette.primary.main }} />
                                                                     </Box>
-
-                                                                    <Box sx={{ display: 'flex' }}>
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            onClick={() => handleEditMedicamento(index)}
-                                                                            disabled={isSubmitting || addingMedicamento}
-                                                                        >
-                                                                            <EditIcon fontSize="small" />
-                                                                        </IconButton>
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            color="error"
-                                                                            onClick={() => handleDeleteMedicamento(index)}
-                                                                            disabled={isSubmitting || addingMedicamento}
-                                                                        >
-                                                                            <DeleteIcon fontSize="small" />
-                                                                        </IconButton>
+                                                                    <Box>
+                                                                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                                                            {patient.nome || patient.patientName || 'Sem nome'}
+                                                                        </Typography>
+                                                                        <Typography variant="body2" color="text.secondary">
+                                                                            {patient.email || patient.telefone || patient.phone || 'Sem contato'}
+                                                                        </Typography>
                                                                     </Box>
                                                                 </Box>
                                                             </CardContent>
-                                                        </MedicationCard>
+                                                        </Card>
                                                     ))}
                                                 </Box>
                                             ) : (
-                                                <Box
-                                                    sx={{
-                                                        textAlign: 'center',
-                                                        py: 3,
-                                                        border: '1px dashed #CCD3DF',
-                                                        borderRadius: 2,
-                                                        bgcolor: theme.palette.grey[50],
-                                                        mb: 3
-                                                    }}
-                                                >
-                                                    <LocalPharmacyIcon sx={{ fontSize: 40, color: '#94A3B8', mb: 1 }} />
-                                                    <Typography sx={{ color: theme.palette.text.secondary }}>
-                                                        Nenhum medicamento adicionado
+                                                <Box sx={{ textAlign: 'center', py: 3, bgcolor: '#F9FAFB', borderRadius: 2 }}>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        Nenhum paciente encontrado
                                                     </Typography>
                                                 </Box>
                                             )}
+                                        </>
+                                    )}
+                                </Paper>
+                            )}
 
-                                            {!addingMedicamento ? (
-                                                <Button
-                                                    variant="outlined"
-                                                    startIcon={<AddCircleOutlineIcon />}
-                                                    onClick={() => setAddingMedicamento(true)}
-                                                    disabled={isSubmitting}
+                            {/* Formulário da Receita (apenas se um paciente estiver selecionado) */}
+                            {(patientId || selectedPatient) && (
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        width: '100%',
+                                        border: '1px solid #EAECEF',
+                                        borderRadius: '16px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        overflow: 'hidden',
+                                        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
+                                        minHeight: '420px',
+                                        position: 'relative',
+                                        mb: 3
+                                    }}
+                                >
+                                    {/* Seção de Informações Básicas */}
+                                    <Box sx={{ p: 3, borderBottom: '1px solid #EAECEF' }}>
+                                        <Grid container spacing={3}>
+                                            <Grid item xs={12}>
+                                                <TextField
                                                     fullWidth
-                                                    sx={{
-                                                        borderRadius: '10px',
-                                                        p: 1.5,
-                                                        borderStyle: 'dashed'
+                                                    label="Título da Receita"
+                                                    placeholder="Ex: Receita para tratamento de hipertensão"
+                                                    name="titulo"
+                                                    value={receitaData.titulo}
+                                                    onChange={handleChange}
+                                                    disabled={isSubmitting}
+                                                    required
+                                                    InputLabelProps={{
+                                                        shrink: true,
                                                     }}
-                                                >
-                                                    Adicionar Medicamento
-                                                </Button>
-                                            ) : (
-                                                <Paper sx={{ p: 2, border: '1px solid #EAECEF', borderRadius: '12px' }}>
-                                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                                                        {editingMedicamentoIndex !== null ? "Editar Medicamento" : "Novo Medicamento"}
-                                                    </Typography>
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={6} md={4}>
+                                                <FormControl fullWidth>
+                                                    <InputLabel id="tipo-receita-label">Tipo de Receita</InputLabel>
+                                                    <Select
+                                                        labelId="tipo-receita-label"
+                                                        id="tipo-receita"
+                                                        value={receitaData.tipo}
+                                                        label="Tipo de Receita"
+                                                        onChange={handleChangeTipoReceita}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        <MenuItem value="comum">Comum</MenuItem>
+                                                        <MenuItem value="controlada">Controlada</MenuItem>
+                                                        <MenuItem value="especial">Especial</MenuItem>
+                                                        <MenuItem value="antimicrobiano">Antimicrobiano</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                            <Grid item xs={12} sm={6} md={4}>
+                                                <FormControl fullWidth>
+                                                    <InputLabel id="uso-label">Uso</InputLabel>
+                                                    <Select
+                                                        labelId="uso-label"
+                                                        id="uso"
+                                                        value={receitaData.uso}
+                                                        label="Uso"
+                                                        onChange={handleChange}
+                                                        name="uso"
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        <MenuItem value="interno">Interno</MenuItem>
+                                                        <MenuItem value="externo">Externo</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                            <Grid item xs={12} sm={6} md={4}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Data de Emissão"
+                                                    type="date"
+                                                    name="dataEmissao"
+                                                    value={formatDateForInput(receitaData.dataEmissao)}
+                                                    onChange={handleDateChange}
+                                                    disabled={isSubmitting}
+                                                    InputLabelProps={{
+                                                        shrink: true,
+                                                    }}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <CalendarTodayIcon fontSize="small" color="action" />
+                                                            </InputAdornment>
+                                                        ),
+                                                    }}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Data de Validade"
+                                                    type="date"
+                                                    name="dataValidade"
+                                                    value={formatDateForInput(receitaData.dataValidade)}
+                                                    onChange={handleDateChange}
+                                                    disabled={isSubmitting}
+                                                    InputLabelProps={{
+                                                        shrink: true,
+                                                    }}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <EventIcon fontSize="small" color="action" />
+                                                            </InputAdornment>
+                                                        ),
+                                                    }}
+                                                />
+                                                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
+                                                    {receitaData.tipo === "controlada" || receitaData.tipo === "antimicrobiano"
+                                                        ? "Validade: 30 dias"
+                                                        : receitaData.tipo === "especial"
+                                                            ? "Validade: 60 dias"
+                                                            : "Validade: 6 meses"}
+                                                </Typography>
+                                            </Grid>
+                                        </Grid>
+                                    </Box>
 
-                                                    <Grid container spacing={2}>
-                                                        <Grid item xs={12} sm={6}>
-                                                            <Autocomplete
-                                                                id="medication-name"
-                                                                freeSolo
-                                                                loading={loadingMedications}
-                                                                options={medications.map(med => med.name)}
-                                                                value={medicamentoTemp.nome}
-                                                                size="small"
-                                                                onChange={(event, newValue) => {
-                                                                    // Preenche automaticamente outros campos quando um medicamento existente é selecionado
-                                                                    if (newValue) {
-                                                                        const selectedMed = medications.find(m => m.name === newValue);
-                                                                        if (selectedMed) {
-                                                                            setMedicamentoTemp({
-                                                                                ...medicamentoTemp,
-                                                                                nome: selectedMed.name,
-                                                                                // Adiciona a primeira dosagem disponível, se houver
-                                                                                concentracao: selectedMed.dosages && selectedMed.dosages.length > 0 ?
-                                                                                    selectedMed.dosages[0] : medicamentoTemp.concentracao,
-                                                                                // Adiciona instruções padrão do medicamento, se disponíveis
-                                                                                observacao: selectedMed.instructions || medicamentoTemp.observacao
-                                                                            });
-                                                                        } else {
-                                                                            // Se for um novo medicamento digitado manualmente
-                                                                            setMedicamentoTemp({
-                                                                                ...medicamentoTemp,
-                                                                                nome: newValue
-                                                                            });
-                                                                        }
-                                                                    }
-                                                                }}
-                                                                onInputChange={(event, newInputValue) => {
-                                                                    setMedicamentoTemp({
-                                                                        ...medicamentoTemp,
-                                                                        nome: newInputValue
-                                                                    });
-                                                                }}
-                                                                renderInput={(params) => (
-                                                                    <TextField
-                                                                        {...params}
-                                                                        label="Nome do Medicamento"
-                                                                        placeholder="Ex: Dipirona"
-                                                                        required
-                                                                        fullWidth
-                                                                        InputProps={{
-                                                                            ...params.InputProps,
-                                                                            endAdornment: (
-                                                                                <>
-                                                                                    {loadingMedications ? <CircularProgress color="inherit" size={20} /> : null}
-                                                                                    {params.InputProps.endAdornment}
-                                                                                </>
-                                                                            ),
-                                                                        }}
-                                                                    />
-                                                                )}
-                                                                renderOption={(props, option) => {
-                                                                    const medication = medications.find(med => med.name === option);
-                                                                    return (
-                                                                        <li {...props}>
-                                                                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                                                                <Typography variant="body1">{option}</Typography>
-                                                                                {medication?.form && (
-                                                                                    <Typography variant="caption" color="text.secondary">
-                                                                                        {medication.form}
-                                                                                        {medication.dosages && medication.dosages.length > 0 &&
-                                                                                            ` - ${medication.dosages.join(', ')}`}
+                                    {/* Seção de Orientações Gerais */}
+                                    <Box sx={{ p: 3, flexGrow: 1, borderBottom: '1px solid #EAECEF' }}>
+                                        <Typography
+                                            variant="subtitle1"
+                                            sx={{ mb: 2, display: 'flex', alignItems: 'center', fontWeight: 600 }}
+                                        >
+                                            <MedicalInformationIcon sx={{ mr: 1, fontSize: 20, color: theme.palette.primary.main }} />
+                                            Orientações Gerais
+                                        </Typography>
+                                        <TextField
+                                            fullWidth
+                                            placeholder="Orientações gerais para o paciente, instruções de uso, cuidados especiais..."
+                                            multiline
+                                            rows={6}
+                                            name="orientacaoGeral"
+                                            value={receitaData.orientacaoGeral}
+                                            onChange={handleChange}
+                                            disabled={isSubmitting}
+                                            inputRef={orientacaoGeralRef}
+                                            variant="outlined"
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderRadius: '12px',
+                                                    backgroundColor: '#FAFBFC',
+                                                }
+                                            }}
+                                            InputProps={{
+                                                sx: {
+                                                    fontSize: '15px',
+                                                    lineHeight: 1.6,
+                                                }
+                                            }}
+                                        />
+                                    </Box>
+
+                                    {/* Seção de Medicamentos */}
+                                    <Box sx={{ p: 0 }}>
+                                        <Box
+                                            sx={{
+                                                p: 3,
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                borderBottom: expandedSection === "medicamentos" ? '1px solid #EAECEF' : 'none',
+                                                bgcolor: theme.palette.grey[100],
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => toggleSection("medicamentos")}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <MedicationIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                                    Medicamentos
+                                                </Typography>
+                                                <Chip
+                                                    label={receitaData.medicamentos.length}
+                                                    size="small"
+                                                    sx={{
+                                                        ml: 1,
+                                                        bgcolor: theme.palette.primary.light,
+                                                        color: theme.palette.primary.main,
+                                                        fontWeight: 600
+                                                    }}
+                                                />
+                                            </Box>
+                                            <IconButton size="small">
+                                                {expandedSection === "medicamentos" ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                                            </IconButton>
+                                        </Box>
+
+                                        <Collapse in={expandedSection === "medicamentos"}>
+                                            <Box sx={{ p: 3 }}>
+                                                {/* Lista de medicamentos adicionados */}
+                                                {receitaData.medicamentos.length > 0 ? (
+                                                    <Box sx={{ mb: 3 }}>
+                                                        {receitaData.medicamentos.map((med, index) => (
+                                                            <MedicationCard key={index}>
+                                                                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                                        <Box>
+                                                                            <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                                                                {med.nome}
+                                                                                {med.concentracao && (
+                                                                                    <Typography component="span" sx={{ fontWeight: 500, ml: 1 }}>
+                                                                                        {med.concentracao}
                                                                                     </Typography>
                                                                                 )}
-                                                                            </Box>
-                                                                        </li>
-                                                                    );
-                                                                }}
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6}>
-                                                            {/* Campo de concentração - Se o medicamento existir, mostrar select de dosagens */}
-                                                            {medicamentoTemp.nome && medications.some(m => m.name === medicamentoTemp.nome) &&
-                                                            medications.find(m => m.name === medicamentoTemp.nome)?.dosages?.length > 0 ? (
-                                                                <FormControl fullWidth size="small">
-                                                                    <InputLabel id="dosage-select-label">Concentração</InputLabel>
-                                                                    <Select
-                                                                        labelId="dosage-select-label"
-                                                                        value={medicamentoTemp.concentracao || ''}
-                                                                        onChange={(e) => setMedicamentoTemp({
+                                                                            </Typography>
+
+                                                                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 1 }}>
+                                                                                {med.posologia}
+                                                                            </Typography>
+
+                                                                            <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                                                                                {med.quantidade && (
+                                                                                    <Grid item>
+                                                                                        <Chip
+                                                                                            label={`Quantidade: ${med.quantidade}`}
+                                                                                            size="small"
+                                                                                            sx={{ bgcolor: theme.palette.grey[100] }}
+                                                                                        />
+                                                                                    </Grid>
+                                                                                )}
+
+                                                                                {med.duracao && (
+                                                                                    <Grid item>
+                                                                                        <Chip
+                                                                                            label={`Duração: ${med.duracao}`}
+                                                                                            size="small"
+                                                                                            sx={{ bgcolor: theme.palette.grey[100] }}
+                                                                                        />
+                                                                                    </Grid>
+                                                                                )}
+                                                                            </Grid>
+
+                                                                            {med.observacao && (
+                                                                                <Typography
+                                                                                    variant="body2"
+                                                                                    sx={{
+                                                                                        mt: 1.5,
+                                                                                        color: theme.palette.text.secondary,
+                                                                                        fontSize: '13px',
+                                                                                        fontStyle: 'italic'
+                                                                                    }}
+                                                                                >
+                                                                                    Obs: {med.observacao}
+                                                                                </Typography>
+                                                                            )}
+                                                                        </Box>
+
+                                                                        <Box sx={{ display: 'flex' }}>
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                onClick={() => handleEditMedicamento(index)}
+                                                                                disabled={isSubmitting || addingMedicamento}
+                                                                            >
+                                                                                <EditIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                color="error"
+                                                                                onClick={() => handleDeleteMedicamento(index)}
+                                                                                disabled={isSubmitting || addingMedicamento}
+                                                                            >
+                                                                                <DeleteIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        </Box>
+                                                                    </Box>
+                                                                </CardContent>
+                                                            </MedicationCard>
+                                                        ))}
+                                                    </Box>
+                                                ) : (
+                                                    <Box
+                                                        sx={{
+                                                            textAlign: 'center',
+                                                            py: 3,
+                                                            border: '1px dashed #CCD3DF',
+                                                            borderRadius: 2,
+                                                            bgcolor: theme.palette.grey[50],
+                                                            mb: 3
+                                                        }}
+                                                    >
+                                                        <LocalPharmacyIcon sx={{ fontSize: 40, color: '#94A3B8', mb: 1 }} />
+                                                        <Typography sx={{ color: theme.palette.text.secondary }}>
+                                                            Nenhum medicamento adicionado
+                                                        </Typography>
+                                                    </Box>
+                                                )}
+
+                                                {!addingMedicamento ? (
+                                                    <Button
+                                                        variant="outlined"
+                                                        startIcon={<AddCircleOutlineIcon />}
+                                                        onClick={() => setAddingMedicamento(true)}
+                                                        disabled={isSubmitting}
+                                                        fullWidth
+                                                        sx={{
+                                                            borderRadius: '10px',
+                                                            p: 1.5,
+                                                            borderStyle: 'dashed'
+                                                        }}
+                                                    >
+                                                        Adicionar Medicamento
+                                                    </Button>
+                                                ) : (
+                                                    <Paper sx={{ p: 2, border: '1px solid #EAECEF', borderRadius: '12px' }}>
+                                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                                                            {editingMedicamentoIndex !== null ? "Editar Medicamento" : "Novo Medicamento"}
+                                                        </Typography>
+
+                                                        <Grid container spacing={2}>
+                                                            <Grid item xs={12} sm={6}>
+                                                                <Autocomplete
+                                                                    id="medication-name"
+                                                                    freeSolo
+                                                                    loading={loadingMedications}
+                                                                    options={medications.map(med => med.name)}
+                                                                    value={medicamentoTemp.nome}
+                                                                    size="small"
+                                                                    onChange={(event, newValue) => {
+                                                                        // Preenche automaticamente outros campos quando um medicamento existente é selecionado
+                                                                        if (newValue) {
+                                                                            const selectedMed = medications.find(m => m.name === newValue);
+                                                                            if (selectedMed) {
+                                                                                setMedicamentoTemp({
+                                                                                    ...medicamentoTemp,
+                                                                                    nome: selectedMed.name,
+                                                                                    // Adiciona a primeira dosagem disponível, se houver
+                                                                                    concentracao: selectedMed.dosages && selectedMed.dosages.length > 0 ?
+                                                                                        selectedMed.dosages[0] : medicamentoTemp.concentracao,
+                                                                                    // Adiciona instruções padrão do medicamento, se disponíveis
+                                                                                    observacao: selectedMed.instructions || medicamentoTemp.observacao
+                                                                                });
+                                                                            } else {
+                                                                                // Se for um novo medicamento digitado manualmente
+                                                                                setMedicamentoTemp({
+                                                                                    ...medicamentoTemp,
+                                                                                    nome: newValue
+                                                                                });
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    onInputChange={(event, newInputValue) => {
+                                                                        setMedicamentoTemp({
                                                                             ...medicamentoTemp,
-                                                                            concentracao: e.target.value
-                                                                        })}
+                                                                            nome: newInputValue
+                                                                        });
+                                                                    }}
+                                                                    renderInput={(params) => (
+                                                                        <TextField
+                                                                            {...params}
+                                                                            label="Nome do Medicamento"
+                                                                            placeholder="Ex: Dipirona"
+                                                                            required
+                                                                            fullWidth
+                                                                            InputProps={{
+                                                                                ...params.InputProps,
+                                                                                endAdornment: (
+                                                                                    <>
+                                                                                        {loadingMedications ? <CircularProgress color="inherit" size={20} /> : null}
+                                                                                        {params.InputProps.endAdornment}
+                                                                                    </>
+                                                                                ),
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                    renderOption={(props, option) => {
+                                                                        const medication = medications.find(med => med.name === option);
+                                                                        return (
+                                                                            <li {...props}>
+                                                                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                                                    <Typography variant="body1">{option}</Typography>
+                                                                                    {medication?.form && (
+                                                                                        <Typography variant="caption" color="text.secondary">
+                                                                                            {medication.form}
+                                                                                            {medication.dosages && medication.dosages.length > 0 &&
+                                                                                                ` - ${medication.dosages.join(', ')}`}
+                                                                                        </Typography>
+                                                                                    )}
+                                                                                </Box>
+                                                                            </li>
+                                                                        );
+                                                                    }}
+                                                                />
+                                                            </Grid>
+                                                            <Grid item xs={12} sm={6}>
+                                                                {/* Campo de concentração - Se o medicamento existir, mostrar select de dosagens */}
+                                                                {medicamentoTemp.nome && medications.some(m => m.name === medicamentoTemp.nome) &&
+                                                                medications.find(m => m.name === medicamentoTemp.nome)?.dosages?.length > 0 ? (
+                                                                    <FormControl fullWidth size="small">
+                                                                        <InputLabel id="dosage-select-label">Concentração</InputLabel>
+                                                                        <Select
+                                                                            labelId="dosage-select-label"
+                                                                            value={medicamentoTemp.concentracao || ''}
+                                                                            onChange={(e) => setMedicamentoTemp({
+                                                                                ...medicamentoTemp,
+                                                                                concentracao: e.target.value
+                                                                            })}
+                                                                            label="Concentração"
+                                                                        >
+                                                                            {medications
+                                                                                .find(m => m.name === medicamentoTemp.nome)?.dosages
+                                                                                .map((dosage, idx) => (
+                                                                                    <MenuItem key={idx} value={dosage}>
+                                                                                        {dosage}
+                                                                                    </MenuItem>
+                                                                                ))}
+                                                                        </Select>
+                                                                    </FormControl>
+                                                                ) : (
+                                                                    <TextField
+                                                                        fullWidth
                                                                         label="Concentração"
-                                                                    >
-                                                                        {medications
-                                                                            .find(m => m.name === medicamentoTemp.nome)?.dosages
-                                                                            .map((dosage, idx) => (
-                                                                                <MenuItem key={idx} value={dosage}>
-                                                                                    {dosage}
-                                                                                </MenuItem>
-                                                                            ))}
-                                                                    </Select>
-                                                                </FormControl>
-                                                            ) : (
+                                                                        placeholder="Ex: 500mg"
+                                                                        value={medicamentoTemp.concentracao || ''}
+                                                                        name="concentracao"
+                                                                        onChange={handleMedicamentoTempChange}
+                                                                        size="small"
+                                                                    />
+                                                                )}
+                                                            </Grid>
+                                                            <Grid item xs={12}>
                                                                 <TextField
                                                                     fullWidth
-                                                                    label="Concentração"
-                                                                    placeholder="Ex: 500mg"
-                                                                    value={medicamentoTemp.concentracao || ''}
-                                                                    name="concentracao"
+                                                                    label="Posologia"
+                                                                    placeholder="Ex: Tomar 1 comprimido a cada 6 horas em caso de dor"
+                                                                    value={medicamentoTemp.posologia}
+                                                                    name="posologia"
+                                                                    onChange={handleMedicamentoTempChange}
+                                                                    multiline
+                                                                    rows={2}
+                                                                    required
+                                                                    size="small"
+                                                                />
+                                                            </Grid>
+                                                            <Grid item xs={12} sm={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Quantidade"
+                                                                    placeholder="Ex: 20 comprimidos"
+                                                                    value={medicamentoTemp.quantidade}
+                                                                    name="quantidade"
                                                                     onChange={handleMedicamentoTempChange}
                                                                     size="small"
                                                                 />
-                                                            )}
-                                                        </Grid>
-                                                        <Grid item xs={12}>
-                                                            <TextField
-                                                                fullWidth
-                                                                label="Posologia"
-                                                                placeholder="Ex: Tomar 1 comprimido a cada 6 horas em caso de dor"
-                                                                value={medicamentoTemp.posologia}
-                                                                name="posologia"
-                                                                onChange={handleMedicamentoTempChange}
-                                                                multiline
-                                                                rows={2}
-                                                                required
-                                                                size="small"
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6}>
-                                                            <TextField
-                                                                fullWidth
-                                                                label="Quantidade"
-                                                                placeholder="Ex: 20 comprimidos"
-                                                                value={medicamentoTemp.quantidade}
-                                                                name="quantidade"
-                                                                onChange={handleMedicamentoTempChange}
-                                                                size="small"
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6}>
-                                                            <TextField
-                                                                fullWidth
-                                                                label="Duração"
-                                                                placeholder="Ex: Por 7 dias"
-                                                                value={medicamentoTemp.duracao}
-                                                                name="duracao"
-                                                                onChange={handleMedicamentoTempChange}
-                                                                size="small"
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={12}>
-                                                            <TextField
-                                                                fullWidth
-                                                                label="Observação"
-                                                                placeholder="Ex: Tomar após as refeições"
-                                                                value={medicamentoTemp.observacao}
-                                                                name="observacao"
-                                                                onChange={handleMedicamentoTempChange}
-                                                                multiline
-                                                                rows={2}
-                                                                size="small"
-                                                            />
-                                                        </Grid>
-                                                        {medicamentoTemp.nome && !medications.some(m => m.name === medicamentoTemp.nome) && (
+                                                            </Grid>
+                                                            <Grid item xs={12} sm={6}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Duração"
+                                                                    placeholder="Ex: Por 7 dias"
+                                                                    value={medicamentoTemp.duracao}
+                                                                    name="duracao"
+                                                                    onChange={handleMedicamentoTempChange}
+                                                                    size="small"
+                                                                />
+                                                            </Grid>
                                                             <Grid item xs={12}>
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                                                                    <Tooltip title="Salvar este medicamento para uso futuro">
-                                                                        <Button
-                                                                            size="small"
-                                                                            variant="outlined"
-                                                                            color="secondary"
-                                                                            startIcon={<BookmarkIcon />}
-                                                                            onClick={async () => {
-                                                                                try {
-                                                                                    // Verificar se o nome do medicamento está preenchido
-                                                                                    if (!medicamentoTemp.nome.trim()) {
+                                                                <TextField
+                                                                    fullWidth
+                                                                    label="Observação"
+                                                                    placeholder="Ex: Tomar após as refeições"
+                                                                    value={medicamentoTemp.observacao}
+                                                                    name="observacao"
+                                                                    onChange={handleMedicamentoTempChange}
+                                                                    multiline
+                                                                    rows={2}
+                                                                    size="small"
+                                                                />
+                                                            </Grid>
+                                                            {medicamentoTemp.nome && !medications.some(m => m.name === medicamentoTemp.nome) && (
+                                                                <Grid item xs={12}>
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                                                                        <Tooltip title="Salvar este medicamento para uso futuro">
+                                                                            <Button
+                                                                                size="small"
+                                                                                variant="outlined"
+                                                                                color="secondary"
+                                                                                startIcon={<BookmarkIcon />}
+                                                                                onClick={async () => {
+                                                                                    try {
+                                                                                        // Verificar se o nome do medicamento está preenchido
+                                                                                        if (!medicamentoTemp.nome.trim()) {
+                                                                                            setSnackbar({
+                                                                                                open: true,
+                                                                                                message: "Nome do medicamento é obrigatório",
+                                                                                                severity: "error"
+                                                                                            });
+                                                                                            return;
+                                                                                        }
+
+                                                                                        // Criar novo medicamento
+                                                                                        const medicationData = {
+                                                                                            name: medicamentoTemp.nome,
+                                                                                            dosages: medicamentoTemp.concentracao ? [medicamentoTemp.concentracao] : [],
+                                                                                            form: '',
+                                                                                            instructions: medicamentoTemp.observacao || ''
+                                                                                        };
+
+                                                                                        await FirebaseService.createMedication(doctorId, medicationData);
+
+                                                                                        // Atualizar a lista local de medicamentos
+                                                                                        setMedications(prev => [...prev, {
+                                                                                            ...medicationData,
+                                                                                            id: Date.now().toString() // Id temporário até recarregar
+                                                                                        }]);
+
                                                                                         setSnackbar({
                                                                                             open: true,
-                                                                                            message: "Nome do medicamento é obrigatório",
+                                                                                            message: "Medicamento salvo para uso futuro",
+                                                                                            severity: "success"
+                                                                                        });
+                                                                                    } catch (error) {
+                                                                                        console.error("Erro ao salvar medicamento:", error);
+                                                                                        setSnackbar({
+                                                                                            open: true,
+                                                                                            message: error.message || "Erro ao salvar medicamento",
                                                                                             severity: "error"
                                                                                         });
-                                                                                        return;
                                                                                     }
+                                                                                }}
+                                                                                sx={{ mr: 1 }}
+                                                                            >
+                                                                                Cadastrar medicamento
+                                                                            </Button>
+                                                                        </Tooltip>
+                                                                        <Typography variant="caption" color="text.secondary">
+                                                                            Cadastre este medicamento para reutilizá-lo em outras receitas
+                                                                        </Typography>
+                                                                    </Box>
+                                                                </Grid>
+                                                            )}
+                                                        </Grid>
 
-                                                                                    // Criar novo medicamento
-                                                                                    const medicationData = {
-                                                                                        name: medicamentoTemp.nome,
-                                                                                        dosages: medicamentoTemp.concentracao ? [medicamentoTemp.concentracao] : [],
-                                                                                        form: '',
-                                                                                        instructions: medicamentoTemp.observacao || ''
-                                                                                    };
-
-                                                                                    await FirebaseService.createMedication(doctorId, medicationData);
-
-                                                                                    // Atualizar a lista local de medicamentos
-                                                                                    setMedications(prev => [...prev, {
-                                                                                        ...medicationData,
-                                                                                        id: Date.now().toString() // Id temporário até recarregar
-                                                                                    }]);
-
-                                                                                    setSnackbar({
-                                                                                        open: true,
-                                                                                        message: "Medicamento salvo para uso futuro",
-                                                                                        severity: "success"
-                                                                                    });
-                                                                                } catch (error) {
-                                                                                    console.error("Erro ao salvar medicamento:", error);
-                                                                                    setSnackbar({
-                                                                                        open: true,
-                                                                                        message: error.message || "Erro ao salvar medicamento",
-                                                                                        severity: "error"
-                                                                                    });
-                                                                                }
-                                                                            }}
-                                                                            sx={{ mr: 1 }}
-                                                                        >
-                                                                            Cadastrar medicamento
-                                                                        </Button>
-                                                                    </Tooltip>
-                                                                    <Typography variant="caption" color="text.secondary">
-                                                                        Cadastre este medicamento para reutilizá-lo em outras receitas
-                                                                    </Typography>
-                                                                </Box>
-                                                            </Grid>
-                                                        )}
-                                                    </Grid>
-
-                                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
-                                                        <Button
-                                                            variant="text"
-                                                            onClick={handleCancelMedicamento}
-                                                            sx={{ color: theme.palette.grey[600] }}
-                                                        >
-                                                            Cancelar
-                                                        </Button>
-                                                        <Button
-                                                            variant="contained"
-                                                            onClick={handleAddMedicamento}
-                                                            disabled={!medicamentoTemp.nome || !medicamentoTemp.posologia}
-                                                        >
-                                                            {editingMedicamentoIndex !== null ? "Atualizar" : "Adicionar"}
-                                                        </Button>
-                                                    </Box>
-                                                </Paper>
-                                            )}
-                                        </Box>
-                                    </Collapse>
-                                </Box>
-                            </Paper>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
+                                                            <Button
+                                                                variant="text"
+                                                                onClick={handleCancelMedicamento}
+                                                                sx={{ color: theme.palette.grey[600] }}
+                                                            >
+                                                                Cancelar
+                                                            </Button>
+                                                            <Button
+                                                                variant="contained"
+                                                                onClick={handleAddMedicamento}
+                                                                disabled={!medicamentoTemp.nome || !medicamentoTemp.posologia}
+                                                            >
+                                                                {editingMedicamentoIndex !== null ? "Atualizar" : "Adicionar"}
+                                                            </Button>
+                                                        </Box>
+                                                    </Paper>
+                                                )}
+                                            </Box>
+                                        </Collapse>
+                                    </Box>
+                                </Paper>
+                            )}
                         </Box>
                     </Box>
                 </DialogContent>
@@ -1585,17 +1804,25 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                     <SecondaryButton
                         startIcon={<PictureAsPdfIcon />}
                         onClick={() => {
-                            const pdf = generateReceitaPDF();
-                            pdf.save(`receita_${getPatientName().replace(/\s+/g, '_')}.pdf`);
+                            if (patientId || selectedPatient) {
+                                const pdf = generateReceitaPDF();
+                                pdf.save(`receita_${getPatientName().replace(/\s+/g, '_')}.pdf`);
+                            } else {
+                                setSnackbar({
+                                    open: true,
+                                    message: "Selecione um paciente para visualizar o PDF",
+                                    severity: "warning"
+                                });
+                            }
                         }}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || (!patientId && !selectedPatient)}
                     >
                         Visualizar PDF
                     </SecondaryButton>
 
                     <PrimaryButton
                         onClick={handleSaveReceita}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || (!patientId && !selectedPatient)}
                         loading={isSubmitting}
                         success={isSaved}
                     >
