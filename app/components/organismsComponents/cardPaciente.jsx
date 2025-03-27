@@ -146,6 +146,11 @@ const getSafeValue = (obj, path, defaultValue = "-") => {
         result = result[key];
     }
 
+    // Se o valor for uma string vazia, retornar o valor padrão
+    if (result === '') {
+        return defaultValue;
+    }
+
     return result || defaultValue;
 };
 
@@ -436,6 +441,9 @@ const EditableChipList = ({
 // ----------------------
 // Enhanced Card1 Component
 // ----------------------
+// ----------------------
+// Enhanced Card1 Component
+// ----------------------
 function Card1({
                    paciente,
                    expanded,
@@ -450,6 +458,7 @@ function Card1({
                }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const [showAdditionalContactForm, setShowAdditionalContactForm] = useState(false);
 
     const handlePhotoChange = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -478,6 +487,8 @@ function Card1({
             value = applyPhoneMask(value, "(99) 99999-9999");
         } else if (field === 'contato.fixo') {
             value = applyPhoneMask(value, "(99) 9999-9999");
+        } else if (field === 'contato.adicional') {
+            value = applyPhoneMask(value, "(99) 99999-9999");
         } else if (field === 'endereco.cep') {
             value = applyCepMask(value);
         }
@@ -501,6 +512,11 @@ function Card1({
         }
     };
 
+    // Toggle additional contact form
+    const toggleAdditionalContactForm = () => {
+        setShowAdditionalContactForm(!showAdditionalContactForm);
+    };
+
     // Normalize chronic diseases to accept different data formats
     const getChronicDiseases = () => {
         // Check if we have an array in chronicDiseases
@@ -521,6 +537,30 @@ function Card1({
         }
 
         return diseases;
+    };
+
+    // Get health plans in a normalized format
+    const getHealthPlans = () => {
+        // If we already have an array of health plans
+        if (Array.isArray(formData.healthPlans) && formData.healthPlans.length > 0) {
+            return formData.healthPlans;
+        }
+
+        // If we have a single health plan object, convert to array
+        if (formData.healthPlan && typeof formData.healthPlan === 'object') {
+            return [formData.healthPlan];
+        }
+
+        return [];
+    };
+
+    // Get patient status
+    const getPatientStatus = () => {
+        if (Array.isArray(formData.statusList) && formData.statusList.length > 0) {
+            // Return only the first 3 status for Card1
+            return formData.statusList.slice(0, 4);
+        }
+        return [];
     };
 
     const handleAddChronicDisease = (disease) => {
@@ -558,7 +598,61 @@ function Card1({
         return themeColors.chronic.default;
     };
 
+    // Função para formatar datas
+    const formatDate = (dateValue) => {
+        if (!dateValue) return "-";
+
+        try {
+            // Checar se é um Timestamp do Firestore (com seconds e nanoseconds)
+            if (dateValue.seconds) {
+                return new Date(dateValue.seconds * 1000).toLocaleDateString('pt-BR');
+            }
+
+            // Checar se é um objeto Date
+            if (dateValue instanceof Date) {
+                return dateValue.toLocaleDateString('pt-BR');
+            }
+
+            // Tentar converter para Date
+            return new Date(dateValue).toLocaleDateString('pt-BR');
+        } catch (error) {
+            console.error("Erro ao formatar data:", error);
+            return "-";
+        }
+    };
+
+    // Generate a color for health plan based on plan name
+    const getHealthPlanColor = (planName) => {
+        const planColors = [
+            {bg: "#E5F8FF", color: "#1C94E0"},
+            {bg: "#E9EFFF", color: "#1852FE"},
+            {bg: "#EFE6FF", color: "#7B4BC9"},
+            {bg: "#FFF4E5", color: "#FFAB2B"},
+            {bg: "#E5FFF2", color: "#0CAF60"}
+        ];
+
+        // Generate a stable index based on the plan name
+        const hash = planName?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
+        return planColors[hash % planColors.length];
+    };
+
+    // Generate a color for status
+    const getStatusColor = (status) => {
+        const statusColors = {
+            "Particular": {bg: "#E5F8FF", color: "#1C94E0"},
+            "Convênio": {bg: "#E9EFFF", color: "#1852FE"},
+            "Internado": {bg: "#FFE8E5", color: "#FF4B55"},
+            "Pós-cirurgia": {bg: "#EFE6FF", color: "#7B4BC9"},
+            "Gestante": {bg: "#FFF4E5", color: "#FFAB2B"},
+            "Alta": {bg: "#E5FFF2", color: "#0CAF60"}
+        };
+
+        return statusColors[status] || {bg: "#F8F9FB", color: "#111E5A"};
+    };
+
     const chronicDiseases = getChronicDiseases();
+    const healthPlans = getHealthPlans();
+    const patientStatus = getPatientStatus();
 
     return (
         <Box
@@ -785,6 +879,135 @@ function Card1({
                 >
                     {expanded ? "Recolher informações" : "Ver mais informações"}
                 </Button>
+
+                {/* Status do Paciente */}
+                {patientStatus.length > 0 && (
+                    <>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix, sans-serif",
+                                fontSize: 14,
+                                fontWeight: 500,
+                                opacity: 0.6,
+                                mb: 1,
+                            }}
+                        >
+                            Status do Paciente
+                        </Typography>
+
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                            {patientStatus.map((status, index) => {
+                                const colorScheme = getStatusColor(status);
+                                return (
+                                    <Chip
+                                        key={index}
+                                        label={status}
+                                        sx={{
+                                            height: 36,
+                                            borderRadius: 99,
+                                            padding: "0 15px",
+                                            backgroundColor: colorScheme.bg,
+                                            color: colorScheme.color,
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontSize: 14,
+                                            fontWeight: 500,
+                                            border: `1px solid ${colorScheme.bg}`,
+                                        }}
+                                    />
+                                );
+                            })}
+                        </Box>
+                    </>
+                )}
+
+                {/* Health Plans */}
+                {healthPlans.length > 0 && (
+                    <>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{
+                                color: themeColors.textPrimary,
+                                fontFamily: "Gellix, sans-serif",
+                                fontSize: 14,
+                                fontWeight: 500,
+                                opacity: 0.6,
+                                mb: 1,
+                            }}
+                        >
+                            Planos de Saúde
+                        </Typography>
+
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+                            {healthPlans.map((plan, index) => {
+                                const planName = plan.name || "Plano";
+                                const planType = plan.type || "Não especificado";
+                                const planNumber = plan.number || "-";
+                                const planValidity = plan.validUntil ? formatDate(plan.validUntil) : "-";
+                                const colorScheme = getHealthPlanColor(planName);
+
+                                return (
+                                    <Box
+                                        key={index}
+                                        sx={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            backgroundColor: colorScheme.bg,
+                                            borderRadius: '10px',
+                                            padding: '8px 12px',
+                                            border: `1px solid ${colorScheme.bg}`,
+                                        }}
+                                    >
+                                        <Typography
+                                            sx={{
+                                                color: colorScheme.color,
+                                                fontFamily: "Gellix, sans-serif",
+                                                fontSize: 14,
+                                                fontWeight: 600,
+                                            }}
+                                        >
+                                            {planName}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography
+                                                sx={{
+                                                    color: colorScheme.color,
+                                                    fontFamily: "Gellix, sans-serif",
+                                                    fontSize: 12,
+                                                    opacity: 0.9,
+                                                }}
+                                            >
+                                                {planType}
+                                            </Typography>
+                                            <Typography
+                                                sx={{
+                                                    color: colorScheme.color,
+                                                    fontFamily: "Gellix, sans-serif",
+                                                    fontSize: 12,
+                                                    opacity: 0.9,
+                                                }}
+                                            >
+                                                Válido até: {planValidity}
+                                            </Typography>
+                                        </Box>
+                                        <Typography
+                                            sx={{
+                                                color: colorScheme.color,
+                                                fontFamily: "Gellix, sans-serif",
+                                                fontSize: 11,
+                                                mt: 0.5,
+                                                opacity: 0.85,
+                                            }}
+                                        >
+                                            Nº {planNumber}
+                                        </Typography>
+                                    </Box>
+                                );
+                            })}
+                        </Box>
+                    </>
+                )}
 
                 {/* Chronic Diseases */}
                 <Typography
@@ -1046,70 +1269,168 @@ function Card1({
                         )}
                     </Stack>
 
-                    {/* Landline */}
-                    <Stack direction="row" alignItems={isEditing ? "flex-start" : "center"} spacing={1}>
-                        <Box
-                            component="img"
-                            src="/telefone.svg"
-                            alt="Telefone"
-                            sx={{
-                                width: 24,
-                                height: 24,
-                                mt: isEditing ? 1.5 : 0
-                            }}
-                        />
-
-                        {isEditing ? (
-                            <TextField
-                                label="Telefone Fixo"
-                                value={getSafeValue(formData, 'contato.fixo') || formData.secondaryPhone || ""}
-                                onChange={handleChange('contato.fixo')}
-                                placeholder="(99) 9999-9999"
-                                size="small"
+                    {/* Landline - Only show if exists or in edit mode */}
+                    {(isEditing || (getSafeValue(formData, 'contato.fixo') && getSafeValue(formData, 'contato.fixo') !== "-") ||
+                        (formData.secondaryPhone && formData.secondaryPhone !== "-")) && (
+                        <Stack direction="row" alignItems={isEditing ? "flex-start" : "center"} spacing={1}>
+                            <Box
+                                component="img"
+                                src="/telefone.svg"
+                                alt="Telefone"
                                 sx={{
-                                    width: 200,
-                                    '& .MuiInputLabel-root': {
-                                        color: themeColors.textTertiary,
-                                        fontFamily: 'Gellix, sans-serif',
-                                        fontSize: '13px',
-                                    },
-                                    '& .MuiInputBase-input': {
-                                        fontFamily: 'Gellix, sans-serif',
-                                        fontSize: '14px',
-                                        color: themeColors.textPrimary,
-                                    }
-                                }}
-                                InputProps={{
-                                    sx: {
-                                        borderRadius: '10px',
-                                    }
+                                    width: 24,
+                                    height: 24,
+                                    mt: isEditing ? 1.5 : 0
                                 }}
                             />
-                        ) : (
-                            <>
-                                <Typography
+
+                            {isEditing ? (
+                                <TextField
+                                    label="Telefone Fixo"
+                                    value={getSafeValue(formData, 'contato.fixo') || formData.secondaryPhone || ""}
+                                    onChange={handleChange('contato.fixo')}
+                                    placeholder="(99) 9999-9999"
+                                    size="small"
                                     sx={{
-                                        color: themeColors.textPrimary,
-                                        fontFamily: "Gellix, sans-serif",
-                                        fontSize: 15,
-                                        fontWeight: 500,
+                                        width: 200,
+                                        '& .MuiInputLabel-root': {
+                                            color: themeColors.textTertiary,
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontSize: '13px',
+                                        },
+                                        '& .MuiInputBase-input': {
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontSize: '14px',
+                                            color: themeColors.textPrimary,
+                                        }
                                     }}
-                                >
-                                    Fixo:
-                                </Typography>
-                                <Typography
+                                    InputProps={{
+                                        sx: {
+                                            borderRadius: '10px',
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <>
+                                    <Typography
+                                        sx={{
+                                            color: themeColors.textPrimary,
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontSize: 15,
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        Fixo:
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            color: themeColors.primary,
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontSize: 15,
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        {getSafeValue(formData, 'contato.fixo') || formData.secondaryPhone}
+                                    </Typography>
+                                </>
+                            )}
+                        </Stack>
+                    )}
+
+                    {/* Additional Contact - Only show if exists or user clicked add button */}
+                    {(isEditing && showAdditionalContactForm) || (getSafeValue(formData, 'contato.adicional') && getSafeValue(formData, 'contato.adicional') !== "-") ? (
+                        <Stack direction="row" alignItems={isEditing ? "flex-start" : "center"} spacing={1}>
+                            <Box
+                                component="img"
+                                src="/celular.svg"
+                                alt="Contato Adicional"
+                                sx={{
+                                    width: 24,
+                                    height: 24,
+                                    mt: isEditing ? 1.5 : 0
+                                }}
+                            />
+
+                            {isEditing ? (
+                                <TextField
+                                    label="Contato Adicional"
+                                    value={getSafeValue(formData, 'contato.adicional') || ""}
+                                    onChange={handleChange('contato.adicional')}
+                                    placeholder="(99) 99999-9999"
+                                    size="small"
                                     sx={{
-                                        color: themeColors.primary,
-                                        fontFamily: "Gellix, sans-serif",
-                                        fontSize: 15,
-                                        fontWeight: 500,
+                                        width: 200,
+                                        '& .MuiInputLabel-root': {
+                                            color: themeColors.textTertiary,
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontSize: '13px',
+                                        },
+                                        '& .MuiInputBase-input': {
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontSize: '14px',
+                                            color: themeColors.textPrimary,
+                                        }
                                     }}
-                                >
-                                    {getSafeValue(formData, 'contato.fixo') || formData.secondaryPhone || "-"}
-                                </Typography>
-                            </>
-                        )}
-                    </Stack>
+                                    InputProps={{
+                                        sx: {
+                                            borderRadius: '10px',
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <>
+                                    <Typography
+                                        sx={{
+                                            color: themeColors.textPrimary,
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontSize: 15,
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        Contato adicional:
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            color: themeColors.primary,
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontSize: 15,
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        {getSafeValue(formData, 'contato.adicional')}
+                                    </Typography>
+                                </>
+                            )}
+                        </Stack>
+                    ) : null}
+
+                    {/* Add Contact Button - Only in edit mode */}
+                    {isEditing && !showAdditionalContactForm && (
+                        getSafeValue(formData, 'contato.adicional') === "-" ||
+                        getSafeValue(formData, 'contato.adicional') === "" ||
+                        !formData.contato?.adicional
+                    ) && (
+                        <Button
+                            variant="text"
+                            startIcon={<AddCircleOutlineIcon />}
+                            onClick={toggleAdditionalContactForm}
+                            sx={{
+                                textTransform: 'none',
+                                color: themeColors.primary,
+                                fontFamily: 'Gellix, sans-serif',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                justifyContent: 'flex-start',
+                                pl: 0,
+                                '&:hover': {
+                                    backgroundColor: 'transparent',
+                                    color: themeColors.primaryDark,
+                                }
+                            }}
+                        >
+                            Adicionar contato
+                        </Button>
+                    )}
 
                     {/* Email */}
                     <Stack direction="row" alignItems={isEditing ? "flex-start" : "center"} spacing={1}>
@@ -1185,7 +1506,6 @@ function Card1({
         </Box>
     );
 }
-
 // ----------------------
 // Enhanced Card2 Component
 // ----------------------
@@ -1552,6 +1872,8 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
         message: "",
         severity: "success"
     });
+    const [showHealthPlanForm, setShowHealthPlanForm] = useState(false);
+    const [currentPlanIndex, setCurrentPlanIndex] = useState(-1);
     const fileInputRef = useRef(null);
     // Add refs for keeping input focus
     const categoryRef = useRef(null);
@@ -1576,6 +1898,21 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
         { label: "Pós-cirurgia", bgColor: "#EFE6FF", textColor: "#7B4BC9"},
         { label: "Gestante", bgColor: "#FFF4E5", textColor: "#FFAB2B"},
         { label: "Alta", bgColor: "#E5FFF2", textColor: "#0CAF60"}
+    ];
+
+    // Tipos de planos de saúde
+    const healthPlanTypes = [
+        "Básico",
+        "Intermediário",
+        "Premium",
+        "Corporativo",
+        "Familiar",
+        "Completo",
+        "Individual",
+        "Odontológico",
+        "Hospitalar",
+        "Ambulatorial",
+        "Outro"
     ];
 
     // Fetch documentos ao carregar o componente
@@ -1649,6 +1986,97 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
                 [field]: value
             });
         }
+    };
+
+    // Handlers for health plans
+    const getHealthPlans = () => {
+        // If we already have an array of health plans
+        if (Array.isArray(formData.healthPlans) && formData.healthPlans.length > 0) {
+            return formData.healthPlans;
+        }
+
+        // If we have a single health plan object, convert to array
+        if (formData.healthPlan && typeof formData.healthPlan === 'object') {
+            return [formData.healthPlan];
+        }
+
+        return [];
+    };
+
+    // Atualiza apenas o plano em edição no estado local, mas não atualiza o formData ainda
+    const [currentEditingPlan, setCurrentEditingPlan] = useState({});
+
+
+
+
+
+    const handleAddHealthPlan = () => {
+        setCurrentPlanIndex(-1); // -1 means new plan
+        setShowHealthPlanForm(true);
+    };
+
+    const handleEditHealthPlan = (index) => {
+        setCurrentPlanIndex(index);
+        setShowHealthPlanForm(true);
+    };
+
+    const handleDeleteHealthPlan = (index) => {
+        const healthPlans = [...getHealthPlans()];
+        healthPlans.splice(index, 1);
+
+        setFormData({
+            ...formData,
+            healthPlans: healthPlans,
+            // Keep backward compatibility
+            healthPlan: healthPlans[0] || {}
+        });
+    };
+
+    const handleSaveHealthPlan = (updatedPlan) => {
+        // Salvar o plano enviado pelo diálogo para o formData
+        const healthPlans = [...getHealthPlans()];
+
+        if (currentPlanIndex >= 0 && currentPlanIndex < healthPlans.length) {
+            // Update existing plan
+            healthPlans[currentPlanIndex] = updatedPlan;
+        } else {
+            // Add new plan
+            healthPlans.push(updatedPlan);
+        }
+
+        setFormData({
+            ...formData,
+            healthPlans: healthPlans,
+            // Keep backward compatibility
+            healthPlan: healthPlans[0] || {}
+        });
+
+        setShowHealthPlanForm(false);
+    };
+
+    const handleCancelHealthPlan = () => {
+        setShowHealthPlanForm(false);
+        setCurrentEditingPlan({});
+    };
+
+    // Generate a color for health plan based on plan name
+    const getHealthPlanColor = (planName, index) => {
+        const planColors = [
+            {bg: "#E5F8FF", color: "#1C94E0", border: "#A8DCFF"},
+            {bg: "#E9EFFF", color: "#1852FE", border: "#B9C8FF"},
+            {bg: "#EFE6FF", color: "#7B4BC9", border: "#D3BDFF"},
+            {bg: "#FFF4E5", color: "#FFAB2B", border: "#FFD89E"},
+            {bg: "#E5FFF2", color: "#0CAF60", border: "#A8FFCF"}
+        ];
+
+        // Use index first for consistent colors across plans
+        if (index < planColors.length) {
+            return planColors[index];
+        }
+
+        // If more than available colors, generate from name
+        const hash = planName?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
+        return planColors[hash % planColors.length];
     };
 
     // Handlers for documents
@@ -2032,6 +2460,212 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
         </Dialog>
     ));
 
+    const HealthPlanFormDialog = React.memo(({
+                                                 open,
+                                                 onClose,
+                                                 onSave,
+                                                 plan,
+                                                 healthPlanTypes
+                                             }) => {
+        // Criar um estado local interno para o form, inicializado com os dados do plano
+        const [localPlan, setLocalPlan] = useState(plan);
+
+        // Sincronizar o estado local quando um novo plano é recebido como prop
+        useEffect(() => {
+            setLocalPlan(plan);
+        }, [plan.id]); // Apenas sincroniza quando muda o ID do plano (ou seja, quando é um plano diferente)
+
+        // Handler que atualiza apenas o estado LOCAL, sem afetar o componente pai
+        const handleChange = (field) => (e) => {
+            const value = e.target.value;
+            setLocalPlan(prev => ({
+                ...prev,
+                [field]: value
+            }));
+        };
+
+        // Enviar o plano local para o componente pai apenas quando o usuário clicar em salvar
+        const handleSave = () => {
+            onSave(localPlan);
+        };
+
+        return (
+            <Dialog
+                open={open}
+                onClose={onClose}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: '20px',
+                        padding: '10px'
+                    }
+                }}
+            >
+                <DialogTitle sx={{
+                    fontFamily: 'Gellix, sans-serif',
+                    fontSize: '18px',
+                    color: themeColors.textPrimary
+                }}>
+                    {plan.id ? "Editar Plano de Saúde" : "Adicionar Plano de Saúde"}
+                </DialogTitle>
+
+                <DialogContent>
+                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                label="Nome do Plano"
+                                value={localPlan.name || ""}
+                                onChange={handleChange('name')}
+                                fullWidth
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                    '& .MuiInputLabel-root': {
+                                        color: themeColors.textTertiary,
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontSize: '13px',
+                                    },
+                                    '& .MuiInputBase-input': {
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontSize: '14px',
+                                        color: themeColors.textPrimary,
+                                    }
+                                }}
+                                InputProps={{
+                                    sx: {
+                                        borderRadius: '10px',
+                                    }
+                                }}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                label="Número do Plano"
+                                value={localPlan.number || ""}
+                                onChange={handleChange('number')}
+                                fullWidth
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                    '& .MuiInputLabel-root': {
+                                        color: themeColors.textTertiary,
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontSize: '13px',
+                                    },
+                                    '& .MuiInputBase-input': {
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontSize: '14px',
+                                        color: themeColors.textPrimary,
+                                    }
+                                }}
+                                InputProps={{
+                                    sx: {
+                                        borderRadius: '10px',
+                                    }
+                                }}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                label="Data de Validade"
+                                type="date"
+                                value={localPlan.validUntil || ""}
+                                onChange={handleChange('validUntil')}
+                                fullWidth
+                                variant="outlined"
+                                size="small"
+                                InputLabelProps={{
+                                    shrink: true,
+                                }}
+                                sx={{
+                                    '& .MuiInputLabel-root': {
+                                        color: themeColors.textTertiary,
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontSize: '13px',
+                                    },
+                                    '& .MuiInputBase-input': {
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontSize: '14px',
+                                        color: themeColors.textPrimary,
+                                    }
+                                }}
+                                InputProps={{
+                                    sx: {
+                                        borderRadius: '10px',
+                                    }
+                                }}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel id="plan-type-label">Tipo de Plano</InputLabel>
+                                <Select
+                                    labelId="plan-type-label"
+                                    value={localPlan.type || ""}
+                                    onChange={handleChange('type')}
+                                    label="Tipo de Plano"
+                                    sx={{
+                                        borderRadius: '10px',
+                                        '& .MuiSelect-select': {
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontSize: '14px',
+                                            color: themeColors.textPrimary,
+                                        }
+                                    }}
+                                >
+                                    <MenuItem value="">
+                                        <em>Selecione um tipo</em>
+                                    </MenuItem>
+                                    {healthPlanTypes.map((type) => (
+                                        <MenuItem key={type} value={type}>{type}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+
+                <DialogActions sx={{ padding: '0 24px 20px 24px' }}>
+                    <Button
+                        onClick={onClose}
+                        sx={{
+                            fontFamily: 'Gellix, sans-serif',
+                            textTransform: 'none',
+                            color: themeColors.textSecondary,
+                            borderRadius: '8px',
+                            '&:hover': {
+                                backgroundColor: themeColors.lightBg,
+                            }
+                        }}
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={handleSave}
+                        variant="contained"
+                        sx={{
+                            fontFamily: 'Gellix, sans-serif',
+                            textTransform: 'none',
+                            backgroundColor: themeColors.primary,
+                            color: 'white',
+                            borderRadius: '8px',
+                            '&:hover': {
+                                backgroundColor: themeColors.primaryDark,
+                            }
+                        }}
+                    >
+                        Salvar
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        );
+    });
+
+
+
+    const healthPlans = getHealthPlans();
+
     return (
         <Box sx={{
             p: "25px 5px 5px 5px",
@@ -2118,61 +2752,233 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
 
             <Divider sx={{ width: '90%', mx: 'auto', mb: 2 }} />
 
-            {/* Plano de Saúde */}
-            <Typography
-                variant="subtitle2"
-                sx={{
-                    color: themeColors.textPrimary,
-                    fontFamily: "Gellix, sans-serif",
-                    fontSize: 16,
-                    fontWeight: 500,
-                    mb: 1.5,
-                    ml: "15px"
-                }}
-            >
-                Plano de Saúde
-            </Typography>
+            {/* Planos de Saúde */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mx: "15px", mb: 2 }}>
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        color: themeColors.textPrimary,
+                        fontFamily: "Gellix, sans-serif",
+                        fontSize: 16,
+                        fontWeight: 500,
+                    }}
+                >
+                    Planos de Saúde
+                </Typography>
+
+                {isEditing && (
+                    <Button
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddHealthPlan}
+                        sx={{
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            fontFamily: 'Gellix, sans-serif',
+                            fontSize: '13px',
+                            borderColor: themeColors.primary,
+                            color: themeColors.primary,
+                            '&:hover': {
+                                backgroundColor: themeColors.primaryLight,
+                                borderColor: themeColors.primary,
+                            }
+                        }}
+                    >
+                        Adicionar
+                    </Button>
+                )}
+            </Box>
 
             <Box sx={{ mx: "15px", mb: 3 }}>
-                <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                        <EditableField
-                            label="Nome do Plano"
-                            value={formData.healthPlan?.name || ""}
-                            isEditing={isEditing}
-                            onChange={handleChange('healthPlan.name')}
+                {healthPlans.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {healthPlans.map((plan, index) => {
+                            const colorScheme = getHealthPlanColor(plan.name, index);
+
+                            return (
+                                <Paper
+                                    key={plan.id || index}
+                                    elevation={0}
+                                    sx={{
+                                        padding: '16px',
+                                        borderRadius: '12px',
+                                        backgroundColor: '#fff',
+                                        border: `1px solid ${colorScheme.border}`,
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        '&::before': {
+                                            content: '""',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '6px',
+                                            height: '100%',
+                                            backgroundColor: colorScheme.color,
+                                        }
+                                    }}
+                                >
+                                    {isEditing && (
+                                        <Box sx={{
+                                            position: 'absolute',
+                                            top: 8,
+                                            right: 8,
+                                            display: 'flex',
+                                            gap: 0.5
+                                        }}>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => handleEditHealthPlan(index)}
+                                                sx={{
+                                                    backgroundColor: themeColors.primaryLight,
+                                                    color: themeColors.primary,
+                                                    width: 28,
+                                                    height: 28,
+                                                    '&:hover': {
+                                                        backgroundColor: `${themeColors.primaryLight}dd`,
+                                                    }
+                                                }}
+                                            >
+                                                <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => handleDeleteHealthPlan(index)}
+                                                sx={{
+                                                    backgroundColor: '#FFE8E5',
+                                                    color: themeColors.error,
+                                                    width: 28,
+                                                    height: 28,
+                                                    '&:hover': {
+                                                        backgroundColor: '#FFD6D6',
+                                                    }
+                                                }}
+                                            >
+                                                <DeleteIcon fontSize="small" sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                        </Box>
+                                    )}
+
+                                    <Box sx={{ pl: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                            <Typography
+                                                sx={{
+                                                    fontFamily: 'Gellix, sans-serif',
+                                                    fontSize: '16px',
+                                                    fontWeight: 600,
+                                                    color: colorScheme.color,
+                                                    mr: 1,
+                                                }}
+                                            >
+                                                {plan.name || "Plano sem nome"}
+                                            </Typography>
+                                            <Chip
+                                                label={plan.type || "Tipo não especificado"}
+                                                size="small"
+                                                sx={{
+                                                    height: 24,
+                                                    borderRadius: 12,
+                                                    backgroundColor: colorScheme.bg,
+                                                    color: colorScheme.color,
+                                                    fontSize: '11px',
+                                                    fontFamily: 'Gellix, sans-serif',
+                                                }}
+                                            />
+                                        </Box>
+
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography
+                                                    sx={{
+                                                        fontFamily: 'Gellix, sans-serif',
+                                                        fontSize: '12px',
+                                                        color: themeColors.textTertiary,
+                                                    }}
+                                                >
+                                                    Número do plano
+                                                </Typography>
+                                                <Typography
+                                                    sx={{
+                                                        fontFamily: 'Gellix, sans-serif',
+                                                        fontSize: '14px',
+                                                        fontWeight: 500,
+                                                        color: themeColors.textPrimary,
+                                                    }}
+                                                >
+                                                    {plan.number || "-"}
+                                                </Typography>
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography
+                                                    sx={{
+                                                        fontFamily: 'Gellix, sans-serif',
+                                                        fontSize: '12px',
+                                                        color: themeColors.textTertiary,
+                                                    }}
+                                                >
+                                                    Validade
+                                                </Typography>
+                                                <Typography
+                                                    sx={{
+                                                        fontFamily: 'Gellix, sans-serif',
+                                                        fontSize: '14px',
+                                                        fontWeight: 500,
+                                                        color: themeColors.textPrimary,
+                                                    }}
+                                                >
+                                                    {plan.validUntil ? formatDate(plan.validUntil) : "-"}
+                                                </Typography>
+                                            </Grid>
+                                        </Grid>
+                                    </Box>
+                                </Paper>
+                            );
+                        })}
+                    </Box>
+                ) : (
+                    <Box
+                        sx={{
+                            p: 3,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            backgroundColor: '#fff',
+                            borderRadius: '10px',
+                            border: `1px dashed ${themeColors.borderColor}`,
+                        }}
+                    >
+                        <Box
+                            component="img"
+                            src="/sangue.svg"
+                            alt="Planos de Saúde"
+                            sx={{ width: 60, height: 60, opacity: 0.5, mb: 2 }}
                         />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                        <EditableField
-                            label="Número do Plano"
-                            value={formData.healthPlan?.number || ""}
-                            isEditing={isEditing}
-                            onChange={handleChange('healthPlan.number')}
-                        />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                        <EditableField
-                            label="Data de Validade"
-                            value={formData.healthPlan?.validUntil || ""}
-                            isEditing={isEditing}
-                            onChange={handleChange('healthPlan.validUntil')}
-                            InputProps={{
-                                type: isEditing ? 'date' : 'text',
+                        <Typography
+                            sx={{
+                                fontFamily: 'Gellix, sans-serif',
+                                fontSize: '14px',
+                                color: themeColors.textSecondary,
+                                textAlign: 'center',
                             }}
-                        />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                        <EditableField
-                            label="Tipo de Plano"
-                            value={formData.healthPlan?.type || ""}
-                            isEditing={isEditing}
-                            onChange={handleChange('healthPlan.type')}
-                            select={isEditing}
-                            options={["Básico", "Intermediário", "Premium", "Corporativo", "Familiar", "Outro"]}
-                        />
-                    </Grid>
-                </Grid>
+                        >
+                            Nenhum plano de saúde cadastrado
+                        </Typography>
+                        {isEditing && (
+                            <Button
+                                variant="text"
+                                startIcon={<AddIcon />}
+                                onClick={handleAddHealthPlan}
+                                sx={{
+                                    mt: 2,
+                                    textTransform: 'none',
+                                    fontFamily: 'Gellix, sans-serif',
+                                    color: themeColors.primary,
+                                }}
+                            >
+                                Adicionar plano de saúde
+                            </Button>
+                        )}
+                    </Box>
+                )}
             </Box>
 
             <Divider sx={{ width: '90%', mx: 'auto', mb: 2 }} />
@@ -2398,6 +3204,17 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
             {/* Diálogo de upload de documento */}
             {docUploadOpen && <DocumentUploadDialog />}
 
+            {/* Diálogo de formulário de plano de saúde */}
+            {showHealthPlanForm && (
+                <HealthPlanFormDialog
+                    open={showHealthPlanForm}
+                    onClose={handleCancelHealthPlan}
+                    onSave={handleSaveHealthPlan}
+                    plan={currentPlanIndex >= 0 ? getHealthPlans()[currentPlanIndex] : {id: `plan-${Date.now()}`}}
+                    healthPlanTypes={healthPlanTypes}
+                />
+            )}
+
             {/* Snackbar para feedback */}
             <Snackbar
                 open={alert.open}
@@ -2478,7 +3295,7 @@ export default function PacienteCard({paciente}) {
         }
     };
 
-    // Process form data for Firebase
+    // Process form data for Firebase - versão corrigida
     const prepareFormDataForFirebase = () => {
         // Map the form data structure to what Firebase expects
         const processedData = {
@@ -2490,6 +3307,7 @@ export default function PacienteCard({paciente}) {
             // Contact
             patientPhone: getSafeValue(formData, 'contato.celular') || formData.patientPhone || formData.phone,
             secondaryPhone: getSafeValue(formData, 'contato.fixo') || formData.secondaryPhone,
+            contatoAdicional: getSafeValue(formData, 'contato.adicional'),
             patientEmail: getSafeValue(formData, 'contato.email') || formData.patientEmail || formData.email,
 
             // Address
@@ -2501,6 +3319,11 @@ export default function PacienteCard({paciente}) {
             // Medical info
             chronicDiseases: formData.chronicDiseases || [],
             allergies: formData.alergias || formData.allergies || [],
+
+            // Status list e Health Plans (explicitamente salvos)
+            statusList: formData.statusList || [],
+            healthPlans: formData.healthPlans || [],
+            healthPlan: formData.healthPlan || {}, // Manter compatibilidade
 
             // Mapped nested objects - maintain backward compatibility
             condicoesClinicas: {
@@ -2514,16 +3337,6 @@ export default function PacienteCard({paciente}) {
             historicoConduta: {
                 doencasHereditarias: formData.historicoMedico || ""
             },
-
-            // Maintain any other fields that might exist
-            ...Object.keys(paciente).reduce((acc, key) => {
-                if (!['nome', 'patientName', 'birthDate', 'bloodType', 'patientPhone', 'secondaryPhone',
-                    'patientEmail', 'patientAddress', 'city', 'state', 'cep', 'chronicDiseases',
-                    'allergies', 'condicoesClinicas', 'historicoConduta'].includes(key)) {
-                    acc[key] = paciente[key];
-                }
-                return acc;
-            }, {})
         };
 
         return processedData;

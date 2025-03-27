@@ -19,6 +19,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
     const doctorId = user.uid;
 
     // Efeito para carregar dados se apenas o ID for fornecido
+    // Efeito para carregar dados - versão corrigida
     useEffect(() => {
         // Se já temos os dados completos do paciente, não precisamos carregar
         if (paciente) {
@@ -39,9 +40,9 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                         return;
                     }
 
-                    // Preparar os dados para o template
+                    // Preparar os dados para o template - garantir que todos os dados estão sendo preservados
                     const processedPatient = {
-                        ...patientData,
+                        ...patientData, // Manter todos os campos originais
                         id: pacienteId, // Garantir que o ID esteja presente
                         nome: patientData.patientName,
                         fotoPerfil: patientData.patientPhotoUrl || "",
@@ -50,6 +51,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                         contato: {
                             celular: patientData.patientPhone || patientData.phone || "",
                             fixo: patientData.secondaryPhone || "",
+                            adicional: patientData.contatoAdicional || "",
                             email: patientData.patientEmail || patientData.email || "",
                         },
                         chronicDiseases: patientData.chronicDiseases || [],
@@ -65,6 +67,10 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                         alergias: patientData.allergies || patientData.condicoesClinicas?.alergias || [],
                         atividadeFisica: patientData.condicoesClinicas?.atividades || [],
                         historicoMedico: patientData.historicoConduta?.doencasHereditarias || "Nenhuma informação cadastrada",
+                        // Garantir que healthPlans e statusList estão presentes
+                        healthPlans: patientData.healthPlans || [],
+                        healthPlan: patientData.healthPlan || {},
+                        statusList: patientData.statusList || []
                     };
 
                     setPacienteData(processedPatient);
