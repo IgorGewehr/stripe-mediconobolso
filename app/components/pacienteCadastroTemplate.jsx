@@ -266,7 +266,6 @@ export default function PacienteCadastroTemplate() {
             return;
         }
 
-
         if (!user || !user.uid) {
             setSnackbar({
                 open: true,
@@ -302,33 +301,70 @@ export default function PacienteCadastroTemplate() {
                 cep: formData.infoBasicas.cep,
                 doctorId: doctorId,
                 createdAt: new Date(),
-                // Campos adicionais:
-                condicoesClinicas: formData.condicoesClinicas,
-                historicoConduta: {
-                    doencasHereditarias: formData.historicoConduta.doencasHereditarias,
-                    condutaInicial: formData.historicoConduta.condutaInicial,
+
+                // Atividades e condições clínicas
+                chronicDiseases: formData.condicoesClinicas.doencas || [],
+                allergies: formData.condicoesClinicas.alergias || [],
+
+                // Campos adicionais organizados
+                condicoesClinicas: {
+                    medicamentos: formData.condicoesClinicas.medicamentos || [],
+                    doencas: formData.condicoesClinicas.doencas || [],
+                    alergias: formData.condicoesClinicas.alergias || [],
+                    cirurgias: formData.condicoesClinicas.cirurgias || [],
+                    atividades: formData.condicoesClinicas.atividades || [],
+                    consumeAlcool: formData.condicoesClinicas.consumeAlcool || "Não",
+                    ehFumante: formData.condicoesClinicas.ehFumante || "Não"
                 },
+
+                // Histórico médico
+                historicoConduta: {
+                    doencasHereditarias: formData.historicoConduta.doencasHereditarias || "",
+                    condutaInicial: formData.historicoConduta.condutaInicial || "",
+                },
+
+                // Informações para o Card3
+                statusList: [],  // Lista inicial vazia de status
+                healthPlan: {    // Objeto vazio para plano de saúde
+                    name: "",
+                    number: "",
+                    validUntil: "",
+                    type: ""
+                }
             };
 
-            // Upload de foto e arquivos
+            // Upload de foto do paciente
             if (formData.infoBasicas.patientPhoto) {
-                const photoPath = `users/${doctorId}/patients/${patientId}/photo_${formData.infoBasicas.patientPhoto.name}`;
+                const photoPath = `users/${doctorId}/patients/${patientId}/profilePhoto/${Date.now()}_${formData.infoBasicas.patientPhoto.name}`;
                 const photoUrl = await firebaseService.uploadFile(
                     formData.infoBasicas.patientPhoto,
                     photoPath
                 );
-                newPatient.patientPhotoUrl = photoUrl;
+                newPatient.photoURL = photoUrl;  // Nome consistente com Card1
+                newPatient.fotoPerfil = photoUrl; // Para compatibilidade
             }
 
-            if (formData.historicoConduta.arquivoAnexo) {
-                const file = formData.historicoConduta.arquivoAnexo;
-                const historyPath = `users/${doctorId}/patients/${patientId}/historico_${file.name}`;
-                const historyFileUrl = await firebaseService.uploadFile(file, historyPath);
-                newPatient.historicoConduta.arquivoUrl = historyFileUrl;
-            }
-
-            // Salva o paciente com todos os dados combinados
+            // Salva o paciente com todos os dados básicos
             await setDoc(patientRef, newPatient);
+
+            // Agora, se tiver um arquivo anexo, use o novo método para documentos
+            if (formData.historicoConduta.arquivoAnexo) {
+                try {
+                    await firebaseService.uploadPatientDocument(
+                        formData.historicoConduta.arquivoAnexo,
+                        doctorId,
+                        patientId,
+                        {
+                            category: "Histórico",
+                            description: "Arquivo anexo ao histórico inicial"
+                        }
+                    );
+                    console.log("Documento do histórico salvo com sucesso");
+                } catch (docError) {
+                    console.error("Erro ao salvar documento do histórico:", docError);
+                    // Não falharemos todo o processo por causa do documento
+                }
+            }
 
             setSnackbar({
                 open: true,
@@ -450,6 +486,29 @@ export default function PacienteCadastroTemplate() {
                                 <HistoricoCondutaForm
                                     formData={formData.historicoConduta}
                                     updateFormData={(data) => updateFormData("historicoConduta", data)}
+                                    doctorId={patientId ? user?.uid : null}  // Só passa doctorId se já tiver um paciente (caso de edição)
+                                    patientId={patientId}
+                                    onFileUpload={async (file) => {
+                                        try {
+                                            if (!doctorId || !patientId) return; // Ignora upload se não tiver ID de paciente
+
+                                            // Usa a nova função para upload de documentos
+                                            await firebaseService.uploadPatientDocument(
+                                                file,
+                                                doctorId,
+                                                patientId,
+                                                {
+                                                    category: "Histórico",
+                                                    description: "Arquivo anexo ao histórico"
+                                                }
+                                            );
+
+                                            return true;
+                                        } catch (error) {
+                                            console.error("Erro ao fazer upload do arquivo de histórico:", error);
+                                            throw error;
+                                        }
+                                    }}
                                 />
                             </SectionContent>
                         )}

@@ -9,9 +9,11 @@ import {
     IconButton,
     Tooltip,
     styled,
+    CircularProgress,
 } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CloseIcon from "@mui/icons-material/Close";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 // ------------------ ESTILOS ------------------
 const SectionTitle = styled(Typography)(() => ({
@@ -40,22 +42,29 @@ const StyledTextField = styled(TextField)(() => ({
 }));
 
 const FileUploadBox = styled(Box, {
-    shouldForwardProp: (prop) => prop !== "$isdragover",
-})(({ $isdragover }) => ({
+    shouldForwardProp: (prop) => prop !== "$isdragover" && prop !== "$isUploading" && prop !== "$isUploaded",
+})(({ $isdragover, $isUploading, $isUploaded }) => ({
     border: "1px dashed rgba(17, 30, 90, 0.30)",
     borderRadius: "16px",
     padding: "24px",
     backgroundColor: $isdragover
         ? "rgba(17, 30, 90, 0.08)"
-        : "rgba(17, 30, 90, 0.05)",
+        : $isUploaded
+            ? "rgba(12, 175, 96, 0.05)"
+            : "rgba(17, 30, 90, 0.05)",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    cursor: "pointer",
+    cursor: $isUploading ? "default" : "pointer",
     transition: "all 0.2s ease",
+    borderColor: $isUploaded ? "#0CAF60" : $isdragover ? "rgba(17, 30, 90, 0.5)" : "rgba(17, 30, 90, 0.30)",
     "&:hover": {
-        backgroundColor: "rgba(17, 30, 90, 0.08)",
+        backgroundColor: $isUploading
+            ? "rgba(17, 30, 90, 0.05)"
+            : $isUploaded
+                ? "rgba(12, 175, 96, 0.08)"
+                : "rgba(17, 30, 90, 0.08)",
     },
 }));
 
@@ -73,7 +82,7 @@ const FilePreviewBox = styled(Box)(() => ({
 
 const FileTypeIndicator = styled(Box)(({ fileType }) => {
     const getColorByType = () => {
-        switch (fileType.toLowerCase()) {
+        switch (fileType?.toLowerCase()) {
             case "pdf":
                 return "#FA5C5C";
             case "png":
@@ -101,8 +110,11 @@ const FileTypeIndicator = styled(Box)(({ fileType }) => {
 
 // -------------------------------------------------
 
-const HistoricoCondutaForm = ({ formData, updateFormData }) => {
+const HistoricoCondutaForm = ({ formData, updateFormData, doctorId, patientId, onFileUpload }) => {
     const [isDragOver, setIsDragOver] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isUploaded, setIsUploaded] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     // Mudanças de texto
     const handleChange = (e) => {
@@ -110,18 +122,56 @@ const HistoricoCondutaForm = ({ formData, updateFormData }) => {
         updateFormData({ [name]: value });
     };
 
-    // Upload via botão
-    const handleFileUpload = (event) => {
+    // Upload de arquivo com feedback visual melhorado
+    const handleFileUpload = async (event) => {
         const file = event.target.files[0];
-        if (file) {
+        if (!file) return;
+
+        try {
+            // Primeiro atualiza o estado local para mostrar o arquivo selecionado
             updateFormData({ arquivoAnexo: file });
+
+            // Se estamos em modo de edição (tem doctorId e patientId)
+            // e onFileUpload foi fornecido, fazemos o upload imediatamente
+            if (doctorId && patientId && onFileUpload) {
+                setIsUploading(true);
+                setUploadProgress(0);
+
+                const fakeProgress = setInterval(() => {
+                    setUploadProgress(prev => {
+                        const newProgress = prev + (100 - prev) * 0.1;
+                        return newProgress > 95 ? 95 : newProgress;
+                    });
+                }, 200);
+
+                try {
+                    await onFileUpload(file);
+                    clearInterval(fakeProgress);
+                    setUploadProgress(100);
+                    setIsUploaded(true);
+                    setTimeout(() => {
+                        setIsUploading(false);
+                    }, 1000);
+                } catch (error) {
+                    clearInterval(fakeProgress);
+                    console.error("Erro no upload:", error);
+                    setIsUploading(false);
+                    setUploadProgress(0);
+                }
+            }
+        } catch (error) {
+            console.error("Erro ao processar o arquivo:", error);
+            setIsUploading(false);
+            setUploadProgress(0);
         }
     };
 
     // Drag and drop
     const handleDragOver = (e) => {
         e.preventDefault();
-        setIsDragOver(true);
+        if (!isUploading) {
+            setIsDragOver(true);
+        }
     };
 
     const handleDragLeave = () => {
@@ -131,24 +181,30 @@ const HistoricoCondutaForm = ({ formData, updateFormData }) => {
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragOver(false);
+
+        if (isUploading) return;
+
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             const file = e.dataTransfer.files[0];
-            updateFormData({ arquivoAnexo: file });
+            handleFileUpload({ target: { files: [file] } });
         }
     };
 
     // Remover arquivo
     const handleRemoveFile = () => {
         updateFormData({ arquivoAnexo: null });
+        setIsUploaded(false);
     };
 
     // Extensão do arquivo
     const getFileExtension = (filename) => {
+        if (!filename) return "";
         return filename.split(".").pop().toUpperCase();
     };
 
     // Formata tamanho do arquivo
     const formatFileSize = (bytes) => {
+        if (!bytes) return "";
         if (bytes < 1024) return bytes + " B";
         else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
         else return (bytes / 1048576).toFixed(1) + " MB";
@@ -190,10 +246,12 @@ const HistoricoCondutaForm = ({ formData, updateFormData }) => {
                     <SectionTitle>Anexo</SectionTitle>
                     <FileUploadBox
                         $isdragover={isDragOver}
+                        $isUploading={isUploading}
+                        $isUploaded={isUploaded}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        onClick={() => document.getElementById("fileInput").click()}
+                        onClick={() => !isUploading && document.getElementById("fileInput").click()}
                     >
                         <input
                             type="file"
@@ -276,33 +334,50 @@ const HistoricoCondutaForm = ({ formData, updateFormData }) => {
                                             </Typography>
                                         </Box>
                                     </Box>
-                                    <Tooltip title="Remover arquivo">
-                                        <IconButton
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleRemoveFile();
-                                            }}
-                                            sx={{
-                                                color: "rgba(17, 30, 90, 0.60)",
-                                                "&:hover": {
-                                                    color: "#FA5C5C",
-                                                },
-                                            }}
-                                        >
-                                            <CloseIcon />
-                                        </IconButton>
-                                    </Tooltip>
+
+                                    {isUploading ? (
+                                        <CircularProgress
+                                            size={24}
+                                            variant="determinate"
+                                            value={uploadProgress}
+                                            sx={{ color: "#1852FE" }}
+                                        />
+                                    ) : isUploaded ? (
+                                        <CheckCircleIcon sx={{ color: "#0CAF60" }} />
+                                    ) : (
+                                        <Tooltip title="Remover arquivo">
+                                            <IconButton
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRemoveFile();
+                                                }}
+                                                sx={{
+                                                    color: "rgba(17, 30, 90, 0.60)",
+                                                    "&:hover": {
+                                                        color: "#FA5C5C",
+                                                    },
+                                                }}
+                                            >
+                                                <CloseIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                 </FilePreviewBox>
-                                <Typography
-                                    sx={{
-                                        color: "rgba(17, 30, 90, 0.60)",
-                                        fontFamily: "Gellix, sans-serif",
-                                        fontSize: "14px",
-                                        textAlign: "center",
-                                    }}
-                                >
-                                    Clique para substituir o arquivo
-                                </Typography>
+
+                                {!isUploading && (
+                                    <Typography
+                                        sx={{
+                                            color: "rgba(17, 30, 90, 0.60)",
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontSize: "14px",
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        {isUploaded
+                                            ? "Arquivo salvo com sucesso"
+                                            : "Clique para substituir o arquivo"}
+                                    </Typography>
+                                )}
                             </Box>
                         )}
                     </FileUploadBox>
