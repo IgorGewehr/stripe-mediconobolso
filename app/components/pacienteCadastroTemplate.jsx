@@ -125,6 +125,7 @@ const LoadingOverlay = styled(Box)(({ theme }) => ({
 export default function PacienteCadastroTemplate() {
     // Obtenha o id do usuário (doctorId) a partir do AuthProvider
     const { user } = useAuth();
+    const [patientId, setPatientId] = useState(null);
 
     // Estado para controlar seções expandidas
     const [expandedSections, setExpandedSections] = useState({
@@ -365,6 +366,8 @@ export default function PacienteCadastroTemplate() {
                     // Não falharemos todo o processo por causa do documento
                 }
             }
+            const newPatientId = patientRef.id;
+            setPatientId(newPatientId);
 
             setSnackbar({
                 open: true,
