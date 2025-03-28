@@ -45,6 +45,7 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PeriodSelector from "../basicComponents/periodSelector";
+import ViewConsultationDialog from "./viewConsultationDialog";
 
 // Main component
 const AgendaMedica = () => {
@@ -66,6 +67,9 @@ const AgendaMedica = () => {
     // Sidebar começa fechado
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [showConsultationDialog, setShowConsultationDialog] = useState(false);
+    const [selectedConsultation, setSelectedConsultation] = useState(null);
+
 
     // Constants
     const currentHour = new Date().getHours();
@@ -392,6 +396,82 @@ const AgendaMedica = () => {
         });
     }
 
+    const handleChangeStatus = async (consultationId, newStatus) => {
+        try {
+            setIsLoading(true);
+
+            if (!user?.uid || !consultationId) {
+                setNotification({
+                    open: true,
+                    message: "Dados incompletos para atualização de status.",
+                    type: 'error'
+                });
+                return;
+            }
+
+            const doctorId = user.uid;
+
+            // Encontrar a consulta no estado atual
+            const consultationToUpdate = eventos.find(e => e.id === consultationId);
+
+            if (!consultationToUpdate) {
+                setNotification({
+                    open: true,
+                    message: "Consulta não encontrada.",
+                    type: 'error'
+                });
+                return;
+            }
+
+            const patientId = consultationToUpdate.patientId;
+
+            // Preparar os dados de atualização (apenas o status)
+            const updateData = {
+                ...consultationToUpdate,
+                status: newStatus
+            };
+
+            // Atualizar no Firebase
+            await FirebaseService.updateConsultation(
+                doctorId,
+                patientId,
+                consultationId,
+                { status: newStatus } // Enviamos apenas o campo que queremos atualizar
+            );
+
+            // Atualizar o estado local
+            setEventos(prev => {
+                return prev.map(ev => {
+                    if (ev.id === consultationId) {
+                        return {
+                            ...ev,
+                            status: newStatus
+                        };
+                    }
+                    return ev;
+                });
+            });
+
+            // Fechar o diálogo de visualização
+            setShowConsultationDialog(false);
+
+            setNotification({
+                open: true,
+                message: `Status da consulta atualizado para "${newStatus}"`,
+                type: 'success'
+            });
+        } catch (error) {
+            console.error("Erro ao atualizar status da consulta:", error);
+            setNotification({
+                open: true,
+                message: "Erro ao atualizar status. Tente novamente.",
+                type: 'error'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     function getMonthDays(date) {
         const year = date.getFullYear();
         const month = date.getMonth();
@@ -501,8 +581,8 @@ const AgendaMedica = () => {
     }, [activeView]);
 
     const handleEventClick = useCallback((event) => {
-        setEventoSelecionado(event);
-        setShowEventoModal(true);
+        setSelectedConsultation(event);
+        setShowConsultationDialog(true);
     }, []);
 
     const handleCreateEvent = useCallback(() => {
@@ -521,9 +601,20 @@ const AgendaMedica = () => {
         }
     }, []);
 
+    const handleEditFromDialog = (consultation) => {
+        setShowConsultationDialog(false);
+        setEventoSelecionado(consultation);
+        setShowEventoModal(true);
+    };
+
     // Mini calendar
     const handleCalendarOpen = (event) => {
         setCalendarAnchorEl(event.currentTarget);
+    };
+
+    const handleDeleteFromDialog = (consultationId) => {
+        // lógica de exclusão existente
+        setShowConsultationDialog(false);
     };
 
     const handleCalendarClose = () => {
@@ -1841,6 +1932,17 @@ const AgendaMedica = () => {
                     </Button>
                 </Box>
             )}
+
+            <ViewConsultationDialog
+                open={showConsultationDialog}
+                onClose={() => setShowConsultationDialog(false)}
+                consultationData={selectedConsultation}
+                patientId={selectedConsultation?.patientId}
+                doctorId={user?.uid}
+                onEdit={handleEditFromDialog}
+                onDelete={handleDeleteFromDialog}
+                onChangeStatus={handleChangeStatus}
+            />
         </Box>
     );
 };

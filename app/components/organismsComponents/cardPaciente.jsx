@@ -1859,36 +1859,10 @@ function Card2({formData, setFormData, isEditing, validationErrors}) {
 }
 
 function Card3({ doctorId, patientId, formData, setFormData, isEditing, validationErrors }) {
-    const [documents, setDocuments] = useState([]);
-    const [docUploadOpen, setDocUploadOpen] = useState(false);
-    const [newDocument, setNewDocument] = useState({
-        file: null,
-        category: "Geral",
-        description: ""
-    });
-    const [loading, setLoading] = useState(false);
-    const [alert, setAlert] = useState({
-        open: false,
-        message: "",
-        severity: "success"
-    });
+
     const [showHealthPlanForm, setShowHealthPlanForm] = useState(false);
     const [currentPlanIndex, setCurrentPlanIndex] = useState(-1);
-    const fileInputRef = useRef(null);
-    // Add refs for keeping input focus
-    const categoryRef = useRef(null);
-    const descriptionRef = useRef(null);
 
-    // Categorias de documentos
-    const documentCategories = [
-        "Geral",
-        "Exames",
-        "Laudos",
-        "Receitas",
-        "Atestados",
-        "Imagens",
-        "Relatórios"
-    ];
 
     // Status disponíveis para o paciente
     const availableStatus = [
@@ -1915,32 +1889,7 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
         "Outro"
     ];
 
-    // Fetch documentos ao carregar o componente
-    useEffect(() => {
-        if (doctorId && patientId) {
-            fetchDocuments();
-        } else {
-            // Resetar documentos se não tiver os IDs necessários
-            setDocuments([]);
-        }
-    }, [doctorId, patientId]);
 
-    const fetchDocuments = async () => {
-        try {
-            setLoading(true);
-            const docs = await FirebaseService.getPatientDocuments(doctorId, patientId);
-            setDocuments(docs || []);
-        } catch (error) {
-            console.error("Erro ao buscar documentos:", error);
-            setAlert({
-                open: true,
-                message: "Erro ao carregar documentos",
-                severity: "error"
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
 
     // Formatação segura para datas
     const formatDate = (dateValue) => {
@@ -2079,115 +2028,7 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
         return planColors[hash % planColors.length];
     };
 
-    // Handlers for documents
-    const handleFileChange = (e) => {
-        if (e.target.files?.length > 0) {
-            setNewDocument({
-                ...newDocument,
-                file: e.target.files[0]
-            });
-        }
-    };
 
-    // Modified function to preserve focus
-    const handleDocumentInputChange = (field) => (e) => {
-        const value = e.target.value;
-        setNewDocument(prevState => ({
-            ...prevState,
-            [field]: value
-        }));
-    };
-
-    const handleUploadDocument = async () => {
-        if (!newDocument.file) {
-            setAlert({
-                open: true,
-                message: "Selecione um arquivo para upload",
-                severity: "error"
-            });
-            return;
-        }
-
-        try {
-            setLoading(true);
-
-            const documentData = {
-                category: newDocument.category,
-                description: newDocument.description
-            };
-
-            await FirebaseService.uploadPatientDocument(
-                newDocument.file,
-                doctorId,
-                patientId,
-                documentData
-            );
-
-            // Reset form and fetch updated documents
-            setNewDocument({
-                file: null,
-                category: "Geral",
-                description: ""
-            });
-            setDocUploadOpen(false);
-            await fetchDocuments();
-
-            setAlert({
-                open: true,
-                message: "Documento anexado com sucesso!",
-                severity: "success"
-            });
-        } catch (error) {
-            console.error("Erro ao fazer upload:", error);
-            setAlert({
-                open: true,
-                message: `Erro: ${error.message}`,
-                severity: "error"
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleRemoveDocument = async (documentId) => {
-        try {
-            setLoading(true);
-            await FirebaseService.removePatientDocument(doctorId, patientId, documentId);
-            await fetchDocuments();
-
-            setAlert({
-                open: true,
-                message: "Documento removido com sucesso!",
-                severity: "success"
-            });
-        } catch (error) {
-            console.error("Erro ao remover documento:", error);
-            setAlert({
-                open: true,
-                message: `Erro: ${error.message}`,
-                severity: "error"
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Garantir formatação consistente do documento
-    const formatDocumentPreview = (doc) => {
-        if (!doc) return null;
-
-        // Garantir que o documento tenha todos os campos necessários
-        return {
-            id: doc.id || `doc-${Date.now()}`,
-            fileName: doc.fileName || "Documento sem nome",
-            fileType: doc.fileType || "application/octet-stream",
-            fileSize: doc.fileSize || "Tamanho desconhecido",
-            fileUrl: doc.fileUrl || "#",
-            category: doc.category || "Geral",
-            description: doc.description || "",
-            uploadedAt: doc.uploadedAt || new Date()
-        };
-    };
 
     // Handlers for status
     const getStatusColor = (statusLabel) => {
@@ -2214,251 +2055,6 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
         });
     };
 
-    const handleCloseAlert = () => {
-        setAlert({
-            ...alert,
-            open: false
-        });
-    };
-
-    // Formato de arquivo para ícone - mantendo o mesmo ícone como pedido
-    const getFileIcon = (fileType) => {
-        return "receitas.svg";
-    };
-
-    // Extract DocumentUploadDialog as a memoized component to prevent re-renders
-    const DocumentUploadDialog = React.memo(() => (
-        <Dialog
-            open={docUploadOpen}
-            onClose={() => setDocUploadOpen(false)}
-            maxWidth="sm"
-            fullWidth
-            PaperProps={{
-                sx: {
-                    borderRadius: '20px',
-                    padding: '10px'
-                }
-            }}
-        >
-            <DialogTitle sx={{
-                fontFamily: 'Gellix, sans-serif',
-                fontSize: '18px',
-                color: themeColors.textPrimary
-            }}>
-                Adicionar Documento
-            </DialogTitle>
-
-            <DialogContent>
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                    <Grid item xs={12}>
-                        <Box
-                            sx={{
-                                border: `1px dashed ${themeColors.borderColor}`,
-                                borderRadius: '16px',
-                                padding: '20px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: themeColors.lightBg,
-                                cursor: 'pointer',
-                                mb: 2,
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                    backgroundColor: themeColors.primaryLight,
-                                }
-                            }}
-                            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                            onDragOver={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                e.currentTarget.style.borderColor = themeColors.primary;
-                                e.currentTarget.style.backgroundColor = `${themeColors.primaryLight}`;
-                            }}
-                            onDragLeave={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                e.currentTarget.style.borderColor = themeColors.borderColor;
-                                e.currentTarget.style.backgroundColor = themeColors.lightBg;
-                            }}
-                            onDrop={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                e.currentTarget.style.borderColor = themeColors.borderColor;
-                                e.currentTarget.style.backgroundColor = themeColors.lightBg;
-
-                                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                    setNewDocument({
-                                        ...newDocument,
-                                        file: e.dataTransfer.files[0]
-                                    });
-                                }
-                            }}
-                        >
-                            <input
-                                type="file"
-                                style={{ display: 'none' }}
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                            />
-
-                            {!newDocument.file ? (
-                                <>
-                                    <Box
-                                        sx={{
-                                            width: 60,
-                                            height: 60,
-                                            borderRadius: '50%',
-                                            backgroundColor: themeColors.primaryLight,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            mb: 2
-                                        }}
-                                    >
-                                        <AddIcon sx={{ fontSize: 30, color: themeColors.primary }} />
-                                    </Box>
-                                    <Typography sx={{
-                                        fontFamily: 'Gellix, sans-serif',
-                                        color: themeColors.textPrimary,
-                                        fontWeight: 500,
-                                        fontSize: '16px'
-                                    }}>
-                                        Clique para selecionar um arquivo
-                                    </Typography>
-                                    <Typography sx={{
-                                        fontFamily: 'Gellix, sans-serif',
-                                        color: themeColors.textSecondary,
-                                        fontSize: '14px',
-                                        mt: 1
-                                    }}>
-                                        ou arraste e solte o arquivo aqui
-                                    </Typography>
-                                </>
-                            ) : (
-                                <Box sx={{ width: '100%', display: 'flex', alignItems: 'center' }}>
-                                    <Box
-                                        sx={{
-                                            width: 50,
-                                            height: 50,
-                                            borderRadius: '8px',
-                                            backgroundColor: '#E9EFFF',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            mr: 2
-                                        }}
-                                    >
-                                        <Box
-                                            component="img"
-                                            src={getFileIcon(newDocument.file.type)}
-                                            alt="file"
-                                            sx={{ width: 30, height: 30 }}
-                                        />
-                                    </Box>
-                                    <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-                                        <Typography
-                                            noWrap
-                                            sx={{
-                                                fontFamily: 'Gellix, sans-serif',
-                                                color: themeColors.textPrimary,
-                                                fontWeight: 500,
-                                                fontSize: '14px'
-                                            }}
-                                        >
-                                            {newDocument.file.name}
-                                        </Typography>
-                                        <Typography sx={{
-                                            fontFamily: 'Gellix, sans-serif',
-                                            color: themeColors.textSecondary,
-                                            fontSize: '12px'
-                                        }}>
-                                            {(newDocument.file.size / 1024 / 1024).toFixed(2)} MB
-                                        </Typography>
-                                    </Box>
-                                    <IconButton
-                                        size="small"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setNewDocument({...newDocument, file: null});
-                                        }}
-                                    >
-                                        <CloseIcon fontSize="small" />
-                                    </IconButton>
-                                </Box>
-                            )}
-                        </Box>
-                    </Grid>
-
-                    <Grid item xs={12}>
-                        <FormControl fullWidth sx={{ mb: 2 }}>
-                            <InputLabel id="doc-category-label">Categoria</InputLabel>
-                            <Select
-                                labelId="doc-category-label"
-                                value={newDocument.category}
-                                onChange={handleDocumentInputChange('category')}
-                                label="Categoria"
-                                inputRef={categoryRef}
-                                MenuProps={{
-                                    // This prevents re-render of the component when opening the menu
-                                    disablePortal: true
-                                }}
-                                sx={{
-                                    borderRadius: '10px',
-                                    '& .MuiSelect-select': {
-                                        fontFamily: 'Gellix, sans-serif',
-                                    }
-                                }}
-                            >
-                                {documentCategories.map((category) => (
-                                    <MenuItem key={category} value={category}>{category}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </Grid>
-                </Grid>
-            </DialogContent>
-
-            <DialogActions sx={{ padding: '0 24px 20px 24px' }}>
-                <Button
-                    onClick={() => setDocUploadOpen(false)}
-                    sx={{
-                        fontFamily: 'Gellix, sans-serif',
-                        textTransform: 'none',
-                        color: themeColors.textSecondary,
-                        borderRadius: '8px',
-                        '&:hover': {
-                            backgroundColor: themeColors.lightBg,
-                        }
-                    }}
-                >
-                    Cancelar
-                </Button>
-                <Button
-                    onClick={handleUploadDocument}
-                    disabled={!newDocument.file || loading}
-                    variant="contained"
-                    sx={{
-                        fontFamily: 'Gellix, sans-serif',
-                        textTransform: 'none',
-                        backgroundColor: themeColors.primary,
-                        color: 'white',
-                        borderRadius: '8px',
-                        '&:hover': {
-                            backgroundColor: themeColors.primaryDark,
-                        },
-                        '&.Mui-disabled': {
-                            backgroundColor: '#E5E9F2',
-                            color: '#AAA',
-                        }
-                    }}
-                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
-                >
-                    {loading ? 'Enviando...' : 'Adicionar Documento'}
-                </Button>
-            </DialogActions>
-        </Dialog>
-    ));
 
     const HealthPlanFormDialog = React.memo(({
                                                  open,
@@ -2983,7 +2579,7 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
 
             <Divider sx={{ width: '90%', mx: 'auto', mb: 2 }} />
 
-            {/* Documentos do Paciente */}
+            {/* Conduta Inicial */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mx: "15px", mb: 2 }}>
                 <Typography
                     variant="subtitle2"
@@ -2994,215 +2590,37 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
                         fontWeight: 500,
                     }}
                 >
-                    Documentos
+                    Conduta Inicial
                 </Typography>
-
-                {/* Botão de upload */}
-                {(isEditing || doctorId) && (
-                    <Button
-                        variant="outlined"
-                        startIcon={<AddIcon />}
-                        onClick={() => setDocUploadOpen(true)}
-                        sx={{
-                            borderRadius: '8px',
-                            textTransform: 'none',
-                            fontFamily: 'Gellix, sans-serif',
-                            fontSize: '13px',
-                            borderColor: themeColors.primary,
-                            color: themeColors.primary,
-                            '&:hover': {
-                                backgroundColor: themeColors.primaryLight,
-                                borderColor: themeColors.primary,
-                            }
-                        }}
-                    >
-                        Adicionar
-                    </Button>
-                )}
             </Box>
 
             <Box sx={{ mx: "15px", mb: 3 }}>
-                {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                        <CircularProgress size={30} sx={{ color: themeColors.primary }} />
-                    </Box>
-                ) : documents.length > 0 ? (
-                    <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-                        {documents.map((doc, index) => {
-                            const formattedDoc = formatDocumentPreview(doc);
-                            return (
-                                <Box
-                                    key={formattedDoc.id}
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        p: 1.5,
-                                        mb: 1,
-                                        borderRadius: '10px',
-                                        backgroundColor: '#fff',
-                                        border: `1px solid ${themeColors.borderColor}`,
-                                        '&:hover': {
-                                            backgroundColor: themeColors.primaryLight,
-                                        }
-                                    }}
-                                >
-                                    <Box
-                                        sx={{
-                                            width: 40,
-                                            height: 40,
-                                            borderRadius: '8px',
-                                            backgroundColor: '#E9EFFF',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            mr: 2,
-                                            flexShrink: 0 // Prevent icon from shrinking
-                                        }}
-                                    >
-                                        <Box
-                                            component="img"
-                                            src={getFileIcon(formattedDoc.fileType)}
-                                            alt="file"
-                                            sx={{ width: 24, height: 24 }}
-                                        />
-                                    </Box>
-
-                                    <Box sx={{ flexGrow: 1, overflow: 'hidden', minWidth: 0 }}>
-                                        <Typography
-                                            noWrap
-                                            title={formattedDoc.fileName} // Show full name on hover
-                                            sx={{
-                                                fontFamily: 'Gellix, sans-serif',
-                                                fontSize: '14px',
-                                                fontWeight: 500,
-                                                color: themeColors.textPrimary,
-                                                textOverflow: 'ellipsis',
-                                                overflow: 'hidden',
-                                                whiteSpace: 'nowrap'
-                                            }}
-                                        >
-                                            {formattedDoc.fileName}
-                                        </Typography>
-
-                                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                            <Chip
-                                                label={formattedDoc.category}
-                                                size="small"
-                                                sx={{
-                                                    height: 20,
-                                                    fontSize: '11px',
-                                                    fontFamily: 'Gellix, sans-serif',
-                                                    backgroundColor: themeColors.primaryLight,
-                                                    color: themeColors.primary,
-                                                    mr: 1
-                                                }}
-                                            />
-
-                                            <Typography
-                                                variant="caption"
-                                                sx={{
-                                                    color: themeColors.textTertiary,
-                                                    fontFamily: 'Gellix, sans-serif',
-                                                    fontSize: '11px',
-                                                    whiteSpace: 'nowrap'
-                                                }}
-                                            >
-                                                {formattedDoc.fileSize} • {formatDate(formattedDoc.uploadedAt)}
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-
-                                    <Box sx={{ display: 'flex', flexShrink: 0 }}>
-                                        <Tooltip title="Visualizar documento">
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => window.open(formattedDoc.fileUrl, '_blank')}
-                                                sx={{
-                                                    color: themeColors.primary,
-                                                    '&:hover': {
-                                                        backgroundColor: themeColors.primaryLight,
-                                                    }
-                                                }}
-                                            >
-                                                <Box
-                                                    component="img"
-                                                    src="importficha.svg"
-                                                    alt="view"
-                                                    sx={{ width: 18, height: 18 }}
-                                                />
-                                            </IconButton>
-                                        </Tooltip>
-
-                                        {(isEditing || doctorId) && (
-                                            <Tooltip title="Excluir documento">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleRemoveDocument(formattedDoc.id)}
-                                                    sx={{
-                                                        color: themeColors.error,
-                                                        '&:hover': {
-                                                            backgroundColor: '#FFE8E5',
-                                                        }
-                                                    }}
-                                                >
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        )}
-                                    </Box>
-                                </Box>
-                            );
-                        })}
-                    </Box>
-                ) : (
-                    <Box
-                        sx={{
-                            p: 3,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
+                <EditableField
+                    label="Conduta Inicial do Médico"
+                    value={formData.historicoConduta?.condutaInicial || ""}
+                    isEditing={isEditing}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData(prev => ({
+                            ...prev,
+                            historicoConduta: {
+                                ...prev.historicoConduta,
+                                condutaInicial: value
+                            }
+                        }));
+                    }}
+                    multiline
+                    rows={4}
+                    sx={{
+                        '& .MuiInputBase-root': {
                             backgroundColor: '#fff',
                             borderRadius: '10px',
-                            border: `1px dashed ${themeColors.borderColor}`,
-                        }}
-                    >
-                        <Box
-                            component="img"
-                            src="receitas.svg"
-                            alt="No documents"
-                            sx={{ width: 60, height: 60, opacity: 0.5, mb: 2 }}
-                        />
-                        <Typography
-                            sx={{
-                                fontFamily: 'Gellix, sans-serif',
-                                fontSize: '14px',
-                                color: themeColors.textSecondary,
-                                textAlign: 'center',
-                            }}
-                        >
-                            Nenhum documento anexado ainda
-                        </Typography>
-                        {(isEditing || doctorId) && (
-                            <Button
-                                variant="text"
-                                startIcon={<AddIcon />}
-                                onClick={() => setDocUploadOpen(true)}
-                                sx={{
-                                    mt: 2,
-                                    textTransform: 'none',
-                                    fontFamily: 'Gellix, sans-serif',
-                                    color: themeColors.primary,
-                                }}
-                            >
-                                Adicionar documento
-                            </Button>
-                        )}
-                    </Box>
-                )}
+                        }
+                    }}
+                />
             </Box>
 
-            {/* Diálogo de upload de documento */}
-            {docUploadOpen && <DocumentUploadDialog />}
+
 
             {/* Diálogo de formulário de plano de saúde */}
             {showHealthPlanForm && (
@@ -3214,27 +2632,6 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
                     healthPlanTypes={healthPlanTypes}
                 />
             )}
-
-            {/* Snackbar para feedback */}
-            <Snackbar
-                open={alert.open}
-                autoHideDuration={5000}
-                onClose={handleCloseAlert}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    onClose={handleCloseAlert}
-                    severity={alert.severity}
-                    variant="filled"
-                    sx={{
-                        width: '100%',
-                        fontFamily: 'Gellix, sans-serif',
-                        borderRadius: '10px'
-                    }}
-                >
-                    {alert.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 }
@@ -3335,7 +2732,8 @@ export default function PacienteCard({paciente}) {
             },
 
             historicoConduta: {
-                doencasHereditarias: formData.historicoMedico || ""
+                doencasHereditarias: formData.historicoMedico || formData.historicoConduta?.doencasHereditarias || "",
+                condutaInicial: formData.historicoConduta?.condutaInicial || "" // Adicionada esta linha
             },
         };
 
