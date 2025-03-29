@@ -141,7 +141,7 @@ const AnamneseNotesPanel = ({
 
     const muiTheme = useTheme();
     const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
-    const drawerWidth = isMobile ? '100%' : 380;
+    const drawerWidth = isMobile ? '100%' : 450
 
     // Métricas para chips
     const [metrics, setMetrics] = useState({
@@ -359,7 +359,7 @@ const AnamneseNotesPanel = ({
                 {/* Cabeçalho da nota */}
                 <Box
                     sx={{
-                        p: 2,
+                        p: 2.5, // Aumentado de p: 2
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -406,7 +406,7 @@ const AnamneseNotesPanel = ({
                     <Box
                         sx={{
                             p: 2,
-                            maxHeight: '250px',
+                            maxHeight: '280px',
                             overflowY: 'auto',
                         }}
                         onClick={() => handleSelectNote(note)}

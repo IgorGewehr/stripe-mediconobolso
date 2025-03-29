@@ -1692,7 +1692,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             </DialogHeader>
 
             {/* Body */}
-            <DialogBody sx={{...fontSizeStyle, transition: "padding-right 0.3s ease-in-out",...(notesDrawerOpen && !fullScreen ? { paddingRight: "380px" } : {})}}>
+            <DialogBody sx={{...fontSizeStyle, transition: "padding-right 0.3s ease-in-out",...(notesDrawerOpen && !fullScreen ? { paddingRight: "450px" } : {})}}>
                 <Box sx={{ p: 3 }}>
                     {/* Seção 1: Informações Principais */}
                     <SectionContainer>
@@ -2284,7 +2284,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 {/* Footer */}
                 <ActionButtonsContainer sx={{
                     transition: "padding-right 0.3s ease-in-out",
-                    ...(notesDrawerOpen && !fullScreen ? { paddingRight: "380px" } : {})
+                    ...(notesDrawerOpen && !fullScreen ? { paddingRight: "450px" } : {})
                 }}>
                     <ActionButton
                         variant="outlined"
