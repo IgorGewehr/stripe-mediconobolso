@@ -55,6 +55,8 @@ import ThermostatIcon from "@mui/icons-material/Thermostat";
 import SpeedIcon from "@mui/icons-material/Speed";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
 import FavoriteIcon from "@mui/icons-material/Favorite";
+import LabelIcon from "@mui/icons-material/Label";
+import CategoryIcon from "@mui/icons-material/Category";
 
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -97,6 +99,51 @@ const theme = createTheme({
             dark: '#D97706',
             contrastText: '#FFFFFF',
             background: '#FFFBEB',
+        },
+        // Novas cores para categorias
+        categoria: {
+            Geral: {
+                main: '#1852FE',
+                light: '#ECF1FF',
+                dark: '#0A3CC9',
+                background: '#F0F5FF',
+            },
+            Exames: {
+                main: '#F59E0B',
+                light: '#FEF9C3',
+                dark: '#D97706',
+                background: '#FFFBEB',
+            },
+            Laudos: {
+                main: '#F43F5E',
+                light: '#FEE2E2',
+                dark: '#E11D48',
+                background: '#FFF1F2',
+            },
+            Receitas: {
+                main: '#22C55E',
+                light: '#ECFDF5',
+                dark: '#16A34A',
+                background: '#F0FFF4',
+            },
+            Atestados: {
+                main: '#8B5CF6',
+                light: '#F3E8FF',
+                dark: '#7C3AED',
+                background: '#F5F3FF',
+            },
+            Imagens: {
+                main: '#10B981',
+                light: '#D1FAE5',
+                dark: '#059669',
+                background: '#ECFDF5',
+            },
+            Consultas: {
+                main: '#3B82F6',
+                light: '#DBEAFE',
+                dark: '#2563EB',
+                background: '#EFF6FF',
+            }
         },
         grey: {
             100: '#F6F7F9',
@@ -196,6 +243,12 @@ const ViewNoteDialog = ({
         }
     };
 
+    // Cores por categoria de nota
+    const getCategoryColor = (category) => {
+        if (!category) return theme.palette.categoria.Geral;
+        return theme.palette.categoria[category] || theme.palette.categoria.Geral;
+    };
+
     // Ícone por tipo de nota
     const getTypeIcon = (type) => {
         switch(type) {
@@ -204,11 +257,31 @@ const ViewNoteDialog = ({
             case 'Receita':
                 return <MedicationIcon />;
             case 'Exame':
-                return <BioTechIcon />;
+                return <BiotechIcon />;
             case 'Consulta':
                 return <EventNoteIcon />;
             default:
                 return <AssignmentIcon />;
+        }
+    };
+
+    // Ícone por categoria
+    const getCategoryIcon = (category) => {
+        switch(category) {
+            case 'Receitas':
+                return <MedicationIcon />;
+            case 'Exames':
+                return <BiotechIcon />;
+            case 'Laudos':
+                return <AssignmentIcon />;
+            case 'Atestados':
+                return <HistoryEduIcon />;
+            case 'Consultas':
+                return <EventNoteIcon />;
+            case 'Imagens':
+                return <ImageIcon />;
+            default:
+                return <ArticleIcon />;
         }
     };
 
@@ -315,6 +388,10 @@ const ViewNoteDialog = ({
     const typeColor = getTypeColor(noteType);
     const typeIcon = getTypeIcon(noteType);
     const typeLabel = getTypeLabel(noteType);
+
+    // Get category theme properties
+    const categoryColor = getCategoryColor(noteData?.category);
+    const categoryIcon = getCategoryIcon(noteData?.category);
 
     // Rendering da seção de medicamentos (para receitas)
     const renderMedicamentos = () => {
@@ -763,6 +840,62 @@ const ViewNoteDialog = ({
         );
     };
 
+    // Rendering para exibir a categoria da nota (para notas simples)
+    const renderCategoryBanner = () => {
+        if (noteType !== 'Rápida' && noteType !== 'Consulta') return null;
+        if (!noteData.category) return null;
+
+        return (
+            <Box
+                sx={{
+                    mb: 3,
+                    p: 2,
+                    borderRadius: '12px',
+                    backgroundColor: categoryColor.background,
+                    border: `1px solid ${categoryColor.light}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar
+                        sx={{
+                            bgcolor: categoryColor.main,
+                            color: 'white',
+                            width: 40,
+                            height: 40,
+                            mr: 2,
+                        }}
+                    >
+                        {categoryIcon}
+                    </Avatar>
+                    <Box>
+                        <Typography sx={{ fontSize: '14px', color: categoryColor.dark, fontWeight: 600 }}>
+                            CATEGORIA
+                        </Typography>
+                        <Typography sx={{ fontWeight: 600, color: categoryColor.dark, fontSize: '18px' }}>
+                            {noteData.category}
+                        </Typography>
+                    </Box>
+                </Box>
+                <Chip
+                    label={noteType === 'Consulta' ? 'Nota de Consulta' : 'Nota Rápida'}
+                    size="small"
+                    sx={{
+                        bgcolor: 'white',
+                        color: categoryColor.main,
+                        fontWeight: 500,
+                        border: `1px solid ${categoryColor.light}`,
+                        '& .MuiChip-label': {
+                            px: 1.5
+                        }
+                    }}
+                />
+            </Box>
+        );
+    };
+
     // Rendering para anexos
     const renderAttachments = () => {
         if (!noteData.attachments || noteData.attachments.length === 0) return null;
@@ -797,8 +930,8 @@ const ViewNoteDialog = ({
                                         cursor: 'pointer',
                                         transition: 'all 0.2s',
                                         '&:hover': {
-                                            backgroundColor: alpha(typeColor.light, 0.3),
-                                            borderColor: typeColor.light,
+                                            backgroundColor: alpha(categoryColor.light, 0.3),
+                                            borderColor: categoryColor.light,
                                         }
                                     }}
                                     onClick={() => handleOpenAttachment(attachment)}
@@ -850,6 +983,11 @@ const ViewNoteDialog = ({
 
     if (!noteData) return null;
 
+    // Determine o tema de cor com base no tipo e categoria
+    const themeToUse = noteType === 'Rápida' || noteType === 'Consulta'
+        ? categoryColor
+        : typeColor;
+
     return (
         <ThemeProvider theme={theme}>
             <Dialog
@@ -869,21 +1007,21 @@ const ViewNoteDialog = ({
                     }
                 }}
             >
-                {/* Header */}
+                {/* Header Enhanced with Category when appropriate */}
                 <Box
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         borderBottom: '1px solid #EAECEF',
-                        backgroundColor: typeColor.light,
+                        backgroundColor: themeToUse.light,
                         p: { xs: 2, sm: 3 }
                     }}
                 >
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <Avatar
                             sx={{
-                                bgcolor: typeColor.main,
+                                bgcolor: themeToUse.main,
                                 color: 'white',
                                 width: 40,
                                 height: 40,
@@ -891,19 +1029,19 @@ const ViewNoteDialog = ({
                                 display: { xs: 'none', sm: 'flex' }
                             }}
                         >
-                            {typeIcon}
+                            {noteType === 'Rápida' || noteType === 'Consulta' ? categoryIcon : typeIcon}
                         </Avatar>
                         <Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: typeColor.dark }}>
+                                <Typography variant="h6" sx={{ fontWeight: 600, color: themeToUse.dark }}>
                                     {noteData.noteTitle || noteData.titulo || `${typeLabel} - ${formatDate(noteData.createdAt)}`}
                                 </Typography>
                                 <Chip
-                                    label={typeLabel}
+                                    label={noteType === 'Rápida' || noteType === 'Consulta' ? noteData.category : typeLabel}
                                     size="small"
                                     sx={{
                                         ml: 1,
-                                        bgcolor: typeColor.main,
+                                        bgcolor: themeToUse.main,
                                         color: 'white',
                                         fontWeight: 600,
                                         fontSize: '11px',
@@ -911,7 +1049,7 @@ const ViewNoteDialog = ({
                                     }}
                                     icon={
                                         <Box component="span" sx={{ '& > svg': { color: 'white !important', fontSize: '14px !important' } }}>
-                                            {typeIcon}
+                                            {noteType === 'Rápida' || noteType === 'Consulta' ? categoryIcon : typeIcon}
                                         </Box>
                                     }
                                 />
@@ -933,7 +1071,7 @@ const ViewNoteDialog = ({
                             height: '100%',
                             p: { xs: 2, sm: 3 },
                             overflow: 'auto',
-                            backgroundColor: typeColor.background
+                            backgroundColor: themeToUse.background
                         }}
                     >
                         {/* Metadados e Datas */}
@@ -970,13 +1108,16 @@ const ViewNoteDialog = ({
 
                             {noteData.consultationDate && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', ml: { xs: 0, sm: 'auto' } }}>
-                                    <EventNoteIcon sx={{ color: typeColor.main, fontSize: 18, mr: 1 }} />
-                                    <Typography variant="body2" sx={{ fontWeight: 500, color: typeColor.main }}>
+                                    <EventNoteIcon sx={{ color: themeToUse.main, fontSize: 18, mr: 1 }} />
+                                    <Typography variant="body2" sx={{ fontWeight: 500, color: themeToUse.main }}>
                                         Consulta: {formatDate(noteData.consultationDate)}
                                     </Typography>
                                 </Box>
                             )}
                         </Box>
+
+                        {/* Category Banner for simple notes */}
+                        {renderCategoryBanner()}
 
                         {/* Conteúdo principal */}
                         <Paper
@@ -1007,8 +1148,8 @@ const ViewNoteDialog = ({
                                         mt: 2,
                                         p: 2,
                                         borderRadius: 2,
-                                        backgroundColor: typeColor.light,
-                                        border: `1px dashed ${typeColor.main}`
+                                        backgroundColor: themeToUse.light,
+                                        border: `1px dashed ${themeToUse.main}`
                                     }}
                                 >
                                     <Button
@@ -1016,10 +1157,10 @@ const ViewNoteDialog = ({
                                         startIcon={<PictureAsPdfIcon />}
                                         onClick={handleOpenPdf}
                                         sx={{
-                                            backgroundColor: typeColor.main,
+                                            backgroundColor: themeToUse.main,
                                             color: 'white',
                                             '&:hover': {
-                                                backgroundColor: typeColor.dark
+                                                backgroundColor: themeToUse.dark
                                             },
                                             mb: 1
                                         }}
@@ -1043,8 +1184,8 @@ const ViewNoteDialog = ({
                                         mt: 2,
                                         p: 2,
                                         borderRadius: 2,
-                                        backgroundColor: typeColor.light,
-                                        border: `1px dashed ${typeColor.main}`
+                                        backgroundColor: themeToUse.light,
+                                        border: `1px dashed ${themeToUse.main}`
                                     }}
                                 >
                                     <Button
@@ -1052,10 +1193,10 @@ const ViewNoteDialog = ({
                                         startIcon={<PictureAsPdfIcon />}
                                         onClick={handleOpenPdf}
                                         sx={{
-                                            backgroundColor: typeColor.main,
+                                            backgroundColor: themeToUse.main,
                                             color: 'white',
                                             '&:hover': {
-                                                backgroundColor: typeColor.dark
+                                                backgroundColor: themeToUse.dark
                                             },
                                             mb: 1
                                         }}
@@ -1144,10 +1285,10 @@ const ViewNoteDialog = ({
                                     startIcon={<EditIcon />}
                                     onClick={handleEdit}
                                     sx={{
-                                        backgroundColor: typeColor.main,
+                                        backgroundColor: themeToUse.main,
                                         color: 'white',
                                         '&:hover': {
-                                            backgroundColor: typeColor.dark
+                                            backgroundColor: themeToUse.dark
                                         }
                                     }}
                                 >

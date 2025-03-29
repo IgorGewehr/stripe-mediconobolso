@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -17,7 +17,11 @@ import {
     CircularProgress,
     Fade,
     Slide,
-    alpha
+    alpha,
+    Chip,
+    FormControl,
+    InputLabel,
+    Select
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -42,6 +46,12 @@ import FirebaseService from '../../../lib/firebaseService';
 import { useAuth } from '../authProvider';
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import MedicationIcon from "@mui/icons-material/Medication";
+import EventNoteIcon from "@mui/icons-material/EventNote";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import BiotechIcon from "@mui/icons-material/Biotech";
+import ArticleIcon from "@mui/icons-material/Article";
 
 // Theme creation for defining colors, fonts, and formats
 const theme = createTheme({
@@ -63,6 +73,51 @@ const theme = createTheme({
         error: {
             main: '#F04438',
             light: '#FEE4E2',
+        },
+        // Theme colors for note categories
+        noteCategory: {
+            Geral: {
+                main: '#1852FE',
+                light: '#ECF1FF',
+                dark: '#0A3CC9',
+                background: '#F0F5FF',
+            },
+            Exames: {
+                main: '#F59E0B',
+                light: '#FEF9C3',
+                dark: '#D97706',
+                background: '#FFFBEB',
+            },
+            Laudos: {
+                main: '#F43F5E',
+                light: '#FEE2E2',
+                dark: '#E11D48',
+                background: '#FFF1F2',
+            },
+            Receitas: {
+                main: '#22C55E',
+                light: '#ECFDF5',
+                dark: '#16A34A',
+                background: '#F0FFF4',
+            },
+            Atestados: {
+                main: '#8B5CF6',
+                light: '#F3E8FF',
+                dark: '#7C3AED',
+                background: '#F5F3FF',
+            },
+            Imagens: {
+                main: '#10B981',
+                light: '#D1FAE5',
+                dark: '#059669',
+                background: '#ECFDF5',
+            },
+            Consultas: {
+                main: '#3B82F6',
+                light: '#DBEAFE',
+                dark: '#2563EB',
+                background: '#EFF6FF',
+            }
         }
     },
     typography: {
@@ -185,11 +240,22 @@ const SecondaryButton = ({ children, ...props }) => (
 
 // Attachment chip with better styling
 const AttachmentChip = ({ file, onOpen, onRemove, disabled }) => {
-    const getFileIcon = (fileType) => {
-        if (fileType && fileType.startsWith('image/')) {
+    const getFileIcon = (fileType, fileName) => {
+        if (!fileType && !fileName) return <ArticleIcon fontSize="small" sx={{ color: '#94A3B8' }} />;
+
+        if (fileType && fileType.startsWith('image/') ||
+            (fileName && (fileName.toLowerCase().endsWith('.jpg') ||
+                fileName.toLowerCase().endsWith('.jpeg') ||
+                fileName.toLowerCase().endsWith('.png') ||
+                fileName.toLowerCase().endsWith('.gif')))) {
             return <ImageIcon fontSize="small" sx={{ color: '#34D399' }} />;
         }
-        return <PdfIcon fontSize="small" sx={{ color: '#F24E1E' }} />;
+
+        if (fileType === 'application/pdf' || (fileName && fileName.toLowerCase().endsWith('.pdf'))) {
+            return <PdfIcon fontSize="small" sx={{ color: '#F24E1E' }} />;
+        }
+
+        return <ArticleIcon fontSize="small" sx={{ color: '#3B82F6' }} />;
     };
 
     return (
@@ -219,7 +285,7 @@ const AttachmentChip = ({ file, onOpen, onRemove, disabled }) => {
                 onClick={onOpen}
             >
                 <Box sx={{ mr: 1.5 }}>
-                    {getFileIcon(file.fileType)}
+                    {getFileIcon(file.fileType, file.fileName)}
                 </Box>
                 <Typography sx={{ color: '#475467', fontWeight: 500 }}>
                     {file.fileName}
@@ -368,6 +434,26 @@ const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }
     );
 };
 
+// Get category icon component
+const getCategoryIcon = (category) => {
+    switch(category) {
+        case 'Receitas':
+            return <MedicationIcon />;
+        case 'Exames':
+            return <BiotechIcon />;
+        case 'Laudos':
+            return <AssignmentIcon />;
+        case 'Atestados':
+            return <HistoryEduIcon />;
+        case 'Consultas':
+            return <EventNoteIcon />;
+        case 'Imagens':
+            return <ImageIcon />;
+        default:
+            return <ArticleIcon />;
+    }
+};
+
 // Main component for patient notes dialog
 const PatientNoteDialog = ({
                                open,
@@ -379,12 +465,16 @@ const PatientNoteDialog = ({
                            }) => {
     const { user } = useAuth();
     const isEditMode = !!note;
+    const fileInputRef = useRef(null);
+    const dropAreaRef = useRef(null);
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [noteType, setNoteType] = useState('Rápida');
+    const [noteCategory, setNoteCategory] = useState('Geral');
     const [attachments, setAttachments] = useState([]);
     const [consultationDate, setConsultationDate] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
@@ -394,11 +484,28 @@ const PatientNoteDialog = ({
     const [isLoadingConsultations, setIsLoadingConsultations] = useState(false);
     const [anamneseId, setAnamneseId] = useState(null);
 
+    // Note categories
+    const noteCategories = [
+        "Geral",
+        "Exames",
+        "Laudos",
+        "Receitas",
+        "Atestados",
+        "Imagens",
+        "Consultas"
+    ];
+
+    // Get category color
+    const getCategoryColor = (category) => {
+        return theme.palette.noteCategory[category] || theme.palette.noteCategory.Geral;
+    };
+
     useEffect(() => {
         if (note) {
             setTitle(note.noteTitle || '');
             setContent(note.noteText || '');
             setNoteType(note.noteType || 'Rápida');
+            setNoteCategory(note.category || 'Geral');
             setAttachments(note.attachments || []);
             setConsultationDate(note.consultationDate ? note.consultationDate.toDate() : null);
 
@@ -413,6 +520,7 @@ const PatientNoteDialog = ({
             setTitle('');
             setContent('');
             setNoteType('Rápida');
+            setNoteCategory('Geral');
             setAttachments([]);
             setConsultationDate(null);
             setAnamneseId(null);
@@ -449,9 +557,9 @@ const PatientNoteDialog = ({
 
         setIsLoadingConsultations(true);
         try {
-            console.log("Carregando consultas para paciente:", patientId); // Log para depuração
+            console.log("Carregando consultas para paciente:", patientId);
             const cons = await FirebaseService.listPatientConsultations(user.uid, patientId);
-            console.log("Consultas carregadas:", cons); // Log para depuração
+            console.log("Consultas carregadas:", cons);
             setConsultations(cons);
         } catch (error) {
             console.error("Erro ao carregar consultas:", error);
@@ -464,20 +572,18 @@ const PatientNoteDialog = ({
         return format(new Date(), "dd/MM/yyyy", { locale: ptBR });
     };
 
-    const handleFileUpload = async () => {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
-        fileInput.click();
+    // Process files for upload
+    const processFiles = async (files) => {
+        if (!files || files.length === 0) return;
 
-        fileInput.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        const fileList = Array.from(files);
 
-            if (isEditMode && note.id) {
-                setIsLoading(true);
-                setUploadProgress('Fazendo upload do arquivo...');
-                try {
+        // For editing an existing note, upload immediately
+        if (isEditMode && note.id) {
+            setIsLoading(true);
+            setUploadProgress('Fazendo upload dos arquivos...');
+            try {
+                for (const file of fileList) {
                     const fileInfo = await FirebaseService.uploadNoteAttachment(
                         file,
                         user.uid,
@@ -485,24 +591,36 @@ const PatientNoteDialog = ({
                         note.id
                     );
                     setAttachments(prev => [...prev, fileInfo]);
-                } catch (error) {
-                    console.error("Erro ao fazer upload do arquivo:", error);
-                    alert("Erro ao fazer upload do arquivo. Tente novamente.");
-                } finally {
-                    setIsLoading(false);
-                    setUploadProgress(null);
                 }
-            } else {
-                const fileInfo = {
-                    fileName: file.name,
-                    fileType: file.type,
-                    fileSize: formatFileSize(file.size),
-                    file: file,
-                    uploadedAt: new Date()
-                };
-                setAttachments(prev => [...prev, fileInfo]);
+            } catch (error) {
+                console.error("Erro ao fazer upload dos arquivos:", error);
+                alert("Erro ao fazer upload dos arquivos. Tente novamente.");
+            } finally {
+                setIsLoading(false);
+                setUploadProgress(null);
             }
-        };
+        } else {
+            // For new notes, just store file info and the actual file
+            // (we'll upload when saving the note)
+            const newAttachments = fileList.map(file => ({
+                fileName: file.name,
+                fileType: file.type,
+                fileSize: formatFileSize(file.size),
+                file: file, // Keep the file object for later upload
+                uploadedAt: new Date()
+            }));
+            setAttachments(prev => [...prev, ...newAttachments]);
+        }
+    };
+
+    const handleFileUpload = async () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileInputChange = (e) => {
+        processFiles(e.target.files);
     };
 
     const formatFileSize = (sizeInBytes) => {
@@ -514,6 +632,28 @@ const PatientNoteDialog = ({
             return (sizeInBytes / (1024 * 1024)).toFixed(1) + 'MB';
         } else {
             return (sizeInBytes / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            processFiles(e.dataTransfer.files);
         }
     };
 
@@ -556,6 +696,7 @@ const PatientNoteDialog = ({
     const handleSelectConsultation = (consultation) => {
         // Adicione esta linha para definir o tipo da nota como "Consulta"
         setNoteType("Consulta");
+        setNoteCategory("Consultas");
 
         const consDate = consultation.consultationDate instanceof Date
             ? consultation.consultationDate
@@ -570,14 +711,55 @@ const PatientNoteDialog = ({
         }
         setIsLoading(true);
         try {
-            const noteData = {
-                noteTitle: title,
-                noteText: content,
-                noteType: noteType,
-                consultationDate: consultationDate
-            };
+            // Para notas em modo de edição, o processo permanece o mesmo
             if (isEditMode && note.id) {
-                // Atualização permanece igual
+                // Process attachments - upload files and keep only metadata
+                const processedAttachments = await Promise.all(
+                    attachments.map(async (attachment) => {
+                        // If the attachment already has a fileUrl, it's already uploaded
+                        if (attachment.fileUrl) {
+                            // Return attachment without the File object
+                            const { file, ...attachmentWithoutFile } = attachment;
+                            return attachmentWithoutFile;
+                        }
+
+                        // If there's a File object, we need to upload it
+                        if (attachment.file) {
+                            setUploadProgress(`Fazendo upload do arquivo ${attachment.fileName}...`);
+                            const fileInfo = await FirebaseService.uploadNoteAttachment(
+                                attachment.file,
+                                user.uid,
+                                patientId,
+                                note.id
+                            );
+
+                            // Return the file info without the actual File object
+                            return {
+                                fileName: attachment.fileName,
+                                fileType: attachment.fileType,
+                                fileSize: attachment.fileSize,
+                                fileUrl: fileInfo.fileUrl,
+                                uploadedAt: attachment.uploadedAt
+                            };
+                        }
+
+                        // Fallback (shouldn't happen)
+                        return null;
+                    })
+                );
+
+                // Filter out null values and prepare the note data
+                const validAttachments = processedAttachments.filter(att => att !== null);
+
+                const noteData = {
+                    noteTitle: title,
+                    noteText: content,
+                    noteType: noteType,
+                    category: noteCategory,
+                    consultationDate: consultationDate,
+                    attachments: validAttachments
+                };
+
                 await FirebaseService.updateNote(user.uid, patientId, note.id, noteData);
                 if (onSave) {
                     onSave({
@@ -587,20 +769,110 @@ const PatientNoteDialog = ({
                     });
                 }
             } else {
-                // Remova a criação de nota daqui e delegue ao pai:
+                // Para novas notas, vamos primeiro preparar os attachments sem URLs
+                // (apenas metadados para criar a nota)
+                const pendingAttachments = attachments.map(attachment => {
+                    const { file, ...attachmentWithoutFile } = attachment;
+                    return {
+                        fileName: attachment.fileName,
+                        fileType: attachment.fileType,
+                        fileSize: attachment.fileSize,
+                        uploadedAt: attachment.uploadedAt || new Date(),
+                        // Manteremos uma flag para identificar quais anexos precisam ser processados
+                        needsUpload: !!attachment.file
+                    };
+                });
+
+                // Criar a nota primeiro sem os URLs dos arquivos
+                const noteData = {
+                    noteTitle: title,
+                    noteText: content,
+                    noteType: noteType,
+                    category: noteCategory,
+                    consultationDate: consultationDate,
+                    attachments: pendingAttachments
+                };
+
+                // Chamar onSave para criar a nota
+                // Importante: o arquivo original de FirebaseService.createNote() deve retornar
+                // a nota criada com id, ou pelo menos o ID da nota
                 if (onSave) {
-                    onSave(noteData);
+                    // onSave pode retornar a nota completa ou apenas o ID
+                    const saveResult = await onSave(noteData);
+
+                    // Determinar o ID da nota criada
+                    const createdNoteId = saveResult?.id ||
+                        (typeof saveResult === 'string' ? saveResult : null);
+
+                    // Se há arquivos para upload, processá-los agora com o ID real da nota
+                    if (createdNoteId && attachments.some(att => att.file)) {
+                        setUploadProgress('Fazendo upload dos anexos...');
+
+                        // Criar objeto da nota com ID
+                        const createdNote = {
+                            id: createdNoteId,
+                            ...(typeof saveResult === 'object' ? saveResult : {})
+                        };
+
+                        // Coleção de anexos depois do upload
+                        const updatedAttachments = [];
+
+                        // Processar cada anexo
+                        for (const attachment of attachments) {
+                            if (attachment.file) {
+                                setUploadProgress(`Fazendo upload do arquivo ${attachment.fileName}...`);
+
+                                try {
+                                    // Fazer upload direto para o Storage (sem atualizar o documento)
+                                    const storageFilePath = `users/${user.uid}/patients/${patientId}/notes/${createdNote.id}/${attachment.fileName}`;
+                                    // Tentar usar o método oficial primeiro, se não estiver disponível, usar nossa função auxiliar
+                                    const fileUrl = FirebaseService.uploadFile
+                                        ? await FirebaseService.uploadFile(attachment.file, storageFilePath)
+                                        : await uploadFileToStorage(attachment.file, storageFilePath);
+
+                                    updatedAttachments.push({
+                                        fileName: attachment.fileName,
+                                        fileType: attachment.fileType,
+                                        fileSize: attachment.fileSize,
+                                        fileUrl: fileUrl,
+                                        uploadedAt: attachment.uploadedAt || new Date()
+                                    });
+                                } catch (uploadError) {
+                                    console.error(`Erro ao fazer upload do arquivo ${attachment.fileName}:`, uploadError);
+                                    // Continua mesmo com erro em um arquivo
+                                }
+                            } else if (attachment.fileUrl) {
+                                // Se já tem URL, mantém como está
+                                updatedAttachments.push(attachment);
+                            }
+                        }
+
+                        // Atualizar a nota com os anexos processados
+                        if (updatedAttachments.length > 0) {
+                            try {
+                                await FirebaseService.updateNote(user.uid, patientId, createdNoteId, {
+                                    attachments: updatedAttachments
+                                });
+                            } catch (updateError) {
+                                console.error("Erro ao atualizar nota com anexos:", updateError);
+                                // Não interromper o fluxo por causa de erro na atualização dos anexos
+                                // O usuário ainda verá os anexos na interface e poderá editar a nota depois
+                            }
+                        }
+                    }
                 }
             }
+
             setIsSaved(true);
             setTimeout(() => {
                 onClose();
             }, 1500);
         } catch (error) {
             console.error("Erro ao salvar nota:", error);
-            alert("Erro ao salvar nota. Tente novamente.");
+            alert(`Erro ao salvar nota: ${error.message}. Tente novamente.`);
         } finally {
             setIsLoading(false);
+            setUploadProgress(null);
         }
     };
 
@@ -629,16 +901,18 @@ const PatientNoteDialog = ({
         }
     };
 
+    const categoryColor = getCategoryColor(noteCategory);
+    const categoryIcon = getCategoryIcon(noteCategory);
+
     return (
         <ThemeProvider theme={theme}>
             <StyledDialog open={open} onClose={isLoading ? null : onClose}>
                 <DialogContent sx={{
                     p: 0,
-                    maxHeight: '90vh', // define a altura máxima do diálogo
-                    overflowY: 'auto', // permite a rolagem vertical
-                    // Estilização customizada da scrollbar para navegadores que suportam WebKit
-                    scrollbarWidth: 'thin', // para Firefox
-                    scrollbarColor: '#B0B0B0 #E0E0E0', // thumb e track
+                    maxHeight: '90vh',
+                    overflowY: 'auto',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#B0B0B0 #E0E0E0',
                     '&::-webkit-scrollbar': {
                         width: '8px',
                     },
@@ -743,7 +1017,7 @@ const PatientNoteDialog = ({
                     <Box sx={{
                         display: 'flex',
                         flexDirection: 'column',
-                        height: 'calc(100% - 65px)', // accounting for header height
+                        height: 'calc(100% - 65px)',
                         overflow: 'hidden',
                     }}>
                         <Box sx={{
@@ -760,15 +1034,23 @@ const PatientNoteDialog = ({
                             {/* Icon and Title */}
                             <Box sx={{ textAlign: 'center', mb: 4 }}>
                                 <Box
-                                    component="img"
-                                    src="/receitas.svg"
-                                    alt="Nota"
                                     sx={{
-                                        width: 36,
-                                        height: 36,
-                                        mb: 2
+                                        width: 56,
+                                        height: 56,
+                                        borderRadius: '18px',
+                                        backgroundColor: categoryColor.light,
+                                        color: categoryColor.main,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        mb: 2,
+                                        mx: 'auto'
                                     }}
-                                />
+                                >
+                                    {React.cloneElement(categoryIcon, {
+                                        style: { fontSize: 30 }
+                                    })}
+                                </Box>
                                 <Typography
                                     variant="h4"
                                     sx={{
@@ -781,7 +1063,7 @@ const PatientNoteDialog = ({
                                 </Typography>
                             </Box>
 
-                            {/* Note Type Selector */}
+                            {/* Note Type and Category Selectors */}
                             <Box sx={{
                                 display: 'flex',
                                 flexDirection: { xs: 'column', sm: 'row' },
@@ -791,10 +1073,14 @@ const PatientNoteDialog = ({
                                 justifyContent: 'center',
                                 gap: { xs: 2, sm: 3 }
                             }}>
+                                {/* Note Type */}
                                 <Button
                                     variant={noteType === 'Rápida' ? "contained" : "outlined"}
                                     color="primary"
-                                    onClick={() => setNoteType('Rápida')}
+                                    onClick={() => {
+                                        setNoteType('Rápida');
+                                        setConsultationDate(null);
+                                    }}
                                     disabled={isLoading}
                                     sx={{
                                         height: 44,
@@ -807,7 +1093,6 @@ const PatientNoteDialog = ({
                                     }}
                                 >
                                     Nota Rápida
-                                    {/* Quick add button */}
                                     <Box
                                         sx={{
                                             position: 'absolute',
@@ -843,6 +1128,57 @@ const PatientNoteDialog = ({
                                         loading={isLoadingConsultations}
                                     />
                                 </Box>
+                            </Box>
+
+                            {/* Category Selector */}
+                            <Box sx={{
+                                width: '100%',
+                                mb: 4
+                            }}>
+                                <FormControl fullWidth>
+                                    <InputLabel id="note-category-label">Categoria da Nota</InputLabel>
+                                    <Select
+                                        labelId="note-category-label"
+                                        value={noteCategory}
+                                        onChange={(e) => setNoteCategory(e.target.value)}
+                                        label="Categoria da Nota"
+                                        disabled={noteType === 'Consulta'}
+                                        sx={{
+                                            borderRadius: '10px',
+                                            '& .MuiSelect-select': {
+                                                fontFamily: 'Gellix, sans-serif',
+                                            }
+                                        }}
+                                    >
+                                        {noteCategories.map((category) => {
+                                            const catColor = getCategoryColor(category);
+                                            const catIcon = getCategoryIcon(category);
+
+                                            return (
+                                                <MenuItem
+                                                    key={category}
+                                                    value={category}
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 2
+                                                    }}
+                                                >
+                                                    <Box sx={{
+                                                        color: catColor.main,
+                                                        display: 'flex',
+                                                        alignItems: 'center'
+                                                    }}>
+                                                        {React.cloneElement(catIcon, {
+                                                            style: { fontSize: 22 }
+                                                        })}
+                                                    </Box>
+                                                    {category}
+                                                </MenuItem>
+                                            );
+                                        })}
+                                    </Select>
+                                </FormControl>
                             </Box>
 
                             {/* Main Editor Content */}
@@ -1018,6 +1354,7 @@ const PatientNoteDialog = ({
                                             )}
                                         </Box>
                                     </Box>
+
                                     {isEditMode && noteType === 'Anamnese' && (
                                         <Box sx={{
                                             mt: 2,
@@ -1052,6 +1389,7 @@ const PatientNoteDialog = ({
                                             </Button>
                                         </Box>
                                     )}
+
                                     {/* Content Area */}
                                     <Box sx={{
                                         p: 3,
@@ -1130,39 +1468,164 @@ const PatientNoteDialog = ({
                                         </Tooltip>
                                     </Box>
 
-                                    {/* Attachments Section */}
-                                    {attachments.length > 0 && (
-                                        <Box sx={{
+                                    {/* Enhanced Drag & Drop Area */}
+                                    <Box
+                                        ref={dropAreaRef}
+                                        sx={{
                                             p: 3,
-                                            pt: 2,
                                             borderTop: '1px solid #EAECEF',
-                                            bgcolor: '#FCFCFD'
-                                        }}>
-                                            <Typography sx={{ fontSize: '14px', fontWeight: 500, color: '#475467', mb: 1.5 }}>
-                                                Anexos ({attachments.length})
-                                            </Typography>
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
-                                                {attachments.map((file, index) => (
-                                                    <AttachmentChip
-                                                        key={index}
-                                                        file={file}
-                                                        onOpen={() => handleOpenAttachment(file)}
-                                                        onRemove={() => handleRemoveAttachment(index)}
-                                                        disabled={isLoading}
-                                                    />
-                                                ))}
+                                            bgcolor: isDragging ? alpha(categoryColor.light, 0.7) : '#FCFCFD',
+                                            transition: 'all 0.2s ease',
+                                            position: 'relative',
+                                            minHeight: '120px'
+                                        }}
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleDrop}
+                                    >
+                                        <input
+                                            type="file"
+                                            multiple
+                                            style={{ display: 'none' }}
+                                            ref={fileInputRef}
+                                            onChange={handleFileInputChange}
+                                        />
+
+                                        {attachments.length === 0 ? (
+                                            <Box
+                                                sx={{
+                                                    border: `2px dashed ${isDragging ? categoryColor.main : '#EAECEF'}`,
+                                                    borderRadius: '12px',
+                                                    p: 3,
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                        borderColor: categoryColor.main,
+                                                        backgroundColor: alpha(categoryColor.light, 0.3)
+                                                    }
+                                                }}
+                                                onClick={handleFileUpload}
+                                            >
+                                                <Box
+                                                    sx={{
+                                                        width: 56,
+                                                        height: 56,
+                                                        borderRadius: '50%',
+                                                        backgroundColor: categoryColor.light,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        mb: 2
+                                                    }}
+                                                >
+                                                    <AttachFileOutlinedIcon sx={{ fontSize: 28, color: categoryColor.main }} />
+                                                </Box>
+                                                <Typography sx={{ fontWeight: 600, mb: 1, color: '#344054' }}>
+                                                    Arraste e solte os arquivos aqui
+                                                </Typography>
+                                                <Typography sx={{ color: '#64748B', mb: 2, textAlign: 'center' }}>
+                                                    ou clique para selecionar arquivos
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ color: '#94A3B8', textAlign: 'center' }}>
+                                                    Formatos suportados: PDF, DOC, DOCX, JPG, PNG
+                                                </Typography>
                                             </Box>
-                                        </Box>
-                                    )}
+                                        ) : (
+                                            <>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                                    <Typography sx={{ fontSize: '14px', fontWeight: 500, color: '#475467' }}>
+                                                        Anexos ({attachments.length})
+                                                    </Typography>
+                                                    <Button
+                                                        variant="text"
+                                                        startIcon={<AddIcon />}
+                                                        onClick={handleFileUpload}
+                                                        disabled={isLoading}
+                                                        sx={{
+                                                            color: categoryColor.main,
+                                                            fontSize: '14px',
+                                                            fontWeight: 500,
+                                                            '&:hover': {
+                                                                backgroundColor: alpha(categoryColor.light, 0.5)
+                                                            }
+                                                        }}
+                                                    >
+                                                        Adicionar mais arquivos
+                                                    </Button>
+                                                </Box>
+
+                                                <Box
+                                                    sx={{
+                                                        display: 'flex',
+                                                        flexWrap: 'wrap',
+                                                        border: isDragging ? `2px dashed ${categoryColor.main}` : 'none',
+                                                        borderRadius: '12px',
+                                                        p: isDragging ? 2 : 0
+                                                    }}
+                                                >
+                                                    {attachments.map((file, index) => (
+                                                        <AttachmentChip
+                                                            key={index}
+                                                            file={file}
+                                                            onOpen={() => handleOpenAttachment(file)}
+                                                            onRemove={() => handleRemoveAttachment(index)}
+                                                            disabled={isLoading}
+                                                        />
+                                                    ))}
+                                                </Box>
+                                            </>
+                                        )}
+
+                                        {isDragging && (
+                                            <Box
+                                                sx={{
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    left: 0,
+                                                    right: 0,
+                                                    bottom: 0,
+                                                    bgcolor: alpha(categoryColor.light, 0.8),
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    zIndex: 5,
+                                                    borderRadius: '0 0 16px 16px'
+                                                }}
+                                            >
+                                                <Box
+                                                    sx={{
+                                                        width: 64,
+                                                        height: 64,
+                                                        borderRadius: '50%',
+                                                        backgroundColor: 'white',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        mb: 2,
+                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                                    }}
+                                                >
+                                                    <AttachFileOutlinedIcon sx={{ fontSize: 32, color: categoryColor.main }} />
+                                                </Box>
+                                                <Typography sx={{ fontWeight: 600, fontSize: '18px', color: categoryColor.dark }}>
+                                                    Solte os arquivos aqui
+                                                </Typography>
+                                            </Box>
+                                        )}
+                                    </Box>
 
                                     {/* Actions Footer */}
                                     <Box sx={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         p: 3,
-                                        pt: 2,
                                         borderTop: '1px solid #EAECEF',
-                                        bgcolor: attachments.length > 0 ? '#fff' : '#FCFCFD'
+                                        bgcolor: '#fff'
                                     }}>
                                         <SecondaryButton
                                             onClick={handleFileUpload}
@@ -1177,6 +1640,12 @@ const PatientNoteDialog = ({
                                             disabled={isLoading || !title.trim()}
                                             loading={isLoading}
                                             success={isSaved}
+                                            sx={{
+                                                backgroundColor: categoryColor.main,
+                                                '&:hover': {
+                                                    backgroundColor: categoryColor.dark,
+                                                }
+                                            }}
                                         >
                                             {isSaved ? "Salvado com sucesso!" : "Salvar nota"}
                                         </PrimaryButton>
