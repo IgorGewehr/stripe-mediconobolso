@@ -23,7 +23,8 @@ import {
     AccordionDetails,
     useTheme,
     useMediaQuery,
-    Badge
+    Badge,
+    Skeleton
 } from "@mui/material";
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { alpha } from '@mui/material/styles';
@@ -49,8 +50,6 @@ import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import MedicalInformationIcon from "@mui/icons-material/MedicalInformation";
 import HistoryIcon from "@mui/icons-material/History";
 import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
@@ -64,6 +63,7 @@ import BadgeIcon from "@mui/icons-material/Badge";
 import SpaIcon from "@mui/icons-material/Spa";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -71,19 +71,25 @@ import { ptBR } from 'date-fns/locale';
 // Serviço Firebase
 import FirebaseService from "../../../lib/firebaseService";
 
-// Tema personalizado
+// Tema personalizado com melhorias estéticas
 const theme = createTheme({
     palette: {
         mode: 'light',
         primary: {
-            main: '#1E40AF',
-            light: '#E0E7FF',
-            dark: '#1E3A8A',
+            main: '#2563EB', // Azul mais vibrante
+            light: '#EEF2FF',
+            dark: '#1E40AF',
+            contrastText: '#FFFFFF',
+        },
+        secondary: {
+            main: '#7C3AED', // Roxo vibrante para destaques
+            light: '#F5F3FF',
+            dark: '#5B21B6',
             contrastText: '#FFFFFF',
         },
         status: {
             agendada: {
-                main: '#3B82F6',  // Azul para consultas agendadas
+                main: '#3B82F6',
                 light: '#EFF6FF',
                 dark: '#1D4ED8',
                 contrastText: '#FFFFFF',
@@ -91,7 +97,7 @@ const theme = createTheme({
                 gradient: 'linear-gradient(135deg, #DBEAFE 0%, #EFF6FF 100%)',
             },
             confirmada: {
-                main: '#10B981',  // Verde para consultas confirmadas
+                main: '#10B981',
                 light: '#ECFDF5',
                 dark: '#059669',
                 contrastText: '#FFFFFF',
@@ -99,7 +105,7 @@ const theme = createTheme({
                 gradient: 'linear-gradient(135deg, #D1FAE5 0%, #ECFDF5 100%)',
             },
             emAndamento: {
-                main: '#F59E0B',  // Amarelo para consultas em andamento
+                main: '#F59E0B',
                 light: '#FFFBEB',
                 dark: '#D97706',
                 contrastText: '#FFFFFF',
@@ -107,7 +113,7 @@ const theme = createTheme({
                 gradient: 'linear-gradient(135deg, #FEF3C7 0%, #FFFBEB 100%)',
             },
             cancelada: {
-                main: '#EF4444',  // Vermelho para consultas canceladas
+                main: '#EF4444',
                 light: '#FEF2F2',
                 dark: '#DC2626',
                 contrastText: '#FFFFFF',
@@ -117,13 +123,13 @@ const theme = createTheme({
         },
         tipo: {
             presencial: {
-                main: '#1E40AF',
-                light: '#E0E7FF',
-                gradient: 'linear-gradient(135deg, #DBEAFE 0%, #E0E7FF 100%)',
+                main: '#2563EB',
+                light: '#EEF2FF',
+                gradient: 'linear-gradient(135deg, #DBEAFE 0%, #EEF2FF 100%)',
                 contrastText: '#FFFFFF',
             },
             telemedicina: {
-                main: '#7C3AED',
+                main: '#8B5CF6',
                 light: '#F5F3FF',
                 gradient: 'linear-gradient(135deg, #EDE9FE 0%, #F5F3FF 100%)',
                 contrastText: '#FFFFFF',
@@ -140,9 +146,15 @@ const theme = createTheme({
     },
     typography: {
         fontFamily: '"Gellix", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+        h5: {
+            fontWeight: 700,
+            fontSize: '1.25rem',
+            letterSpacing: '-0.01em',
+        },
         h6: {
             fontWeight: 600,
             fontSize: '1.125rem',
+            letterSpacing: '-0.01em',
         },
         subtitle1: {
             fontWeight: 600,
@@ -150,22 +162,26 @@ const theme = createTheme({
         },
         body1: {
             fontSize: '0.9375rem',
+            lineHeight: 1.5,
         },
         body2: {
             fontSize: '0.875rem',
+            lineHeight: 1.5,
         },
         caption: {
             fontSize: '0.75rem',
+            letterSpacing: '0.01em',
         },
     },
     shape: {
-        borderRadius: 12,
+        borderRadius: 16,
     },
     components: {
         MuiDialog: {
             styleOverrides: {
                 paper: {
                     borderRadius: 24,
+                    boxShadow: '0px 20px 40px rgba(0, 0, 0, 0.12)'
                 }
             }
         },
@@ -175,10 +191,16 @@ const theme = createTheme({
                     textTransform: 'none',
                     fontWeight: 600,
                     borderRadius: 50,
+                    padding: '8px 18px',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     boxShadow: 'none',
                     '&:hover': {
-                        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)',
                     }
+                },
+                contained: {
+                    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.08)',
                 }
             }
         },
@@ -193,14 +215,41 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     fontWeight: 500,
-                    transition: 'all 0.2s ease',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                        transform: 'translateY(-1px)',
+                    }
                 }
             }
         },
         MuiPaper: {
             styleOverrides: {
                 root: {
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }
+            }
+        },
+        MuiAccordion: {
+            styleOverrides: {
+                root: {
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }
+            }
+        },
+        MuiTypography: {
+            styleOverrides: {
+                root: {
+                    letterSpacing: '-0.01em',
+                }
+            }
+        },
+        MuiIconButton: {
+            styleOverrides: {
+                root: {
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                        transform: 'scale(1.05)',
+                    }
                 }
             }
         }
@@ -212,20 +261,33 @@ const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-// Componente de item de informação
+// Componente de item de informação - melhorado
 const InfoItem = ({ icon, label, value, sx }) => {
     return (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, ...sx }}>
+        <Box
+            sx={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 1.5,
+                transition: 'all 0.2s',
+                '&:hover': {
+                    transform: 'translateY(-2px)'
+                },
+                ...sx
+            }}
+        >
             <Box
                 sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '10px',
+                    width: 42,
+                    height: 42,
+                    borderRadius: '12px',
                     backgroundColor: alpha(theme.palette.primary.main, 0.1),
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    transition: 'all 0.2s'
                 }}
             >
                 {icon}
@@ -236,7 +298,8 @@ const InfoItem = ({ icon, label, value, sx }) => {
                     sx={{
                         color: 'text.secondary',
                         display: 'block',
-                        mb: 0.5
+                        mb: 0.5,
+                        fontWeight: 500
                     }}
                 >
                     {label}
@@ -244,7 +307,7 @@ const InfoItem = ({ icon, label, value, sx }) => {
                 <Typography
                     variant="body1"
                     sx={{
-                        fontWeight: 500,
+                        fontWeight: 600,
                         color: 'text.primary',
                         wordBreak: 'break-word'
                     }}
@@ -256,7 +319,7 @@ const InfoItem = ({ icon, label, value, sx }) => {
     );
 };
 
-// Cartão de plano de saúde estilizado
+// Cartão de plano de saúde estilizado - melhorado
 const HealthPlanCard = ({ plan, formatDate }) => {
     // Gerar uma cor baseada no nome do plano
     const getColorFromName = (name) => {
@@ -287,14 +350,14 @@ const HealthPlanCard = ({ plan, formatDate }) => {
             sx={{
                 position: 'relative',
                 overflow: 'hidden',
-                borderRadius: '16px',
+                borderRadius: '20px',
                 border: `1px solid ${planColor.medium}`,
                 backgroundImage: `linear-gradient(135deg, ${planColor.light} 0%, white 100%)`,
                 mb: 2,
                 transition: 'all 0.3s',
                 '&:hover': {
-                    boxShadow: `0 4px 12px ${alpha(planColor.main, 0.3)}`,
-                    transform: 'translateY(-2px)'
+                    boxShadow: `0 8px 20px ${alpha(planColor.main, 0.2)}`,
+                    transform: 'translateY(-4px)'
                 }
             }}
         >
@@ -303,27 +366,28 @@ const HealthPlanCard = ({ plan, formatDate }) => {
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    width: '6px',
+                    width: '8px',
                     height: '100%',
                     backgroundColor: planColor.main
                 }}
             />
 
-            <CardContent sx={{ p: 2 }}>
+            <CardContent sx={{ p: 2.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                             <Box
                                 sx={{
-                                    width: 32,
-                                    height: 32,
-                                    borderRadius: '8px',
+                                    width: 38,
+                                    height: 38,
+                                    borderRadius: '10px',
                                     backgroundColor: alpha(planColor.main, 0.15),
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     mr: 1.5,
-                                    color: planColor.main
+                                    color: planColor.main,
+                                    boxShadow: `0 2px 8px ${alpha(planColor.main, 0.2)}`
                                 }}
                             >
                                 <HealthAndSafetyIcon fontSize="small" />
@@ -332,7 +396,7 @@ const HealthPlanCard = ({ plan, formatDate }) => {
                             <Typography
                                 variant="subtitle1"
                                 color={planColor.main}
-                                sx={{ fontWeight: 600 }}
+                                sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}
                             >
                                 {plan.name}
                             </Typography>
@@ -344,38 +408,39 @@ const HealthPlanCard = ({ plan, formatDate }) => {
                             label={plan.type}
                             size="small"
                             sx={{
-                                height: 24,
+                                height: 26,
                                 fontSize: '0.75rem',
                                 backgroundColor: alpha(planColor.main, 0.1),
                                 color: planColor.main,
                                 fontWeight: 600,
-                                borderRadius: '12px'
+                                borderRadius: '13px',
+                                boxShadow: `0 2px 4px ${alpha(planColor.main, 0.1)}`
                             }}
                         />
                     )}
                 </Box>
 
-                <Divider sx={{ my: 1.5, borderColor: alpha(planColor.main, 0.2) }} />
+                <Divider sx={{ my: 2, borderColor: alpha(planColor.main, 0.2) }} />
 
-                <Grid container spacing={2}>
+                <Grid container spacing={2.5}>
                     {plan.number && (
                         <Grid item xs={12} sm={6}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <FingerprintIcon
                                     sx={{
-                                        color: alpha(planColor.main, 0.7),
-                                        mr: 1,
-                                        fontSize: '1rem'
+                                        color: alpha(planColor.main, 0.8),
+                                        mr: 1.5,
+                                        fontSize: '1.1rem'
                                     }}
                                 />
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
                                         Número
                                     </Typography>
                                     <Typography
                                         variant="body2"
                                         sx={{
-                                            fontWeight: 500,
+                                            fontWeight: 600,
                                             fontFamily: 'monospace',
                                             letterSpacing: '0.5px'
                                         }}
@@ -392,18 +457,18 @@ const HealthPlanCard = ({ plan, formatDate }) => {
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <EventAvailableIcon
                                     sx={{
-                                        color: alpha(planColor.main, 0.7),
-                                        mr: 1,
-                                        fontSize: '1rem'
+                                        color: alpha(planColor.main, 0.8),
+                                        mr: 1.5,
+                                        fontSize: '1.1rem'
                                     }}
                                 />
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
                                         Validade
                                     </Typography>
                                     <Typography
                                         variant="body2"
-                                        sx={{ fontWeight: 500 }}
+                                        sx={{ fontWeight: 600 }}
                                     >
                                         {formatDate(plan.validUntil)}
                                     </Typography>
@@ -417,7 +482,7 @@ const HealthPlanCard = ({ plan, formatDate }) => {
     );
 };
 
-// Componente de status do paciente
+// Componente de status do paciente - melhorado
 const StatusIndicator = ({ status }) => {
     // Mapeamento de status para ícones e cores
     const getStatusDetails = (status) => {
@@ -476,27 +541,28 @@ const StatusIndicator = ({ status }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1.5,
-                p: 1.5,
-                borderRadius: '12px',
+                p: 2,
+                borderRadius: '16px',
                 backgroundColor: bg,
                 border: `1px solid ${border}`,
-                transition: 'all 0.2s',
+                transition: 'all 0.3s',
                 '&:hover': {
-                    boxShadow: `0 2px 8px ${alpha(color, 0.2)}`,
-                    transform: 'translateY(-1px)'
+                    boxShadow: `0 8px 16px ${alpha(color, 0.2)}`,
+                    transform: 'translateY(-4px)'
                 }
             }}
         >
             <Box
                 sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '10px',
+                    width: 44,
+                    height: 44,
+                    borderRadius: '12px',
                     backgroundColor: alpha(color, 0.2),
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: color
+                    color: color,
+                    boxShadow: `0 4px 8px ${alpha(color, 0.15)}`
                 }}
             >
                 {icon}
@@ -504,8 +570,9 @@ const StatusIndicator = ({ status }) => {
             <Typography
                 variant="body1"
                 sx={{
-                    fontWeight: 600,
-                    color: color
+                    fontWeight: 700,
+                    color: color,
+                    letterSpacing: '-0.01em'
                 }}
             >
                 {status}
@@ -514,7 +581,7 @@ const StatusIndicator = ({ status }) => {
     );
 };
 
-// Chip para condições clínicas e alergias
+// Chip para condições clínicas e alergias - melhorado
 const ConditionChip = ({ label, type = "condition" }) => {
     // Determinar cores com base no tipo e texto
     const getChipColor = (label, type) => {
@@ -547,24 +614,25 @@ const ConditionChip = ({ label, type = "condition" }) => {
         <Chip
             label={label}
             sx={{
-                height: 30,
-                borderRadius: '15px',
+                height: 32,
+                borderRadius: '16px',
                 backgroundColor: bg,
                 color: color,
-                fontWeight: 500,
-                boxShadow: `0 1px 2px ${alpha(color, 0.1)}`,
-                px: 0.5,
+                fontWeight: 600,
+                boxShadow: `0 2px 4px ${alpha(color, 0.1)}`,
+                px: 0.8,
                 '&:hover': {
                     backgroundColor: alpha(bg, 0.8),
-                    transform: 'translateY(-1px)',
-                    boxShadow: `0 2px 4px ${alpha(color, 0.2)}`
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 4px 8px ${alpha(color, 0.2)}`
                 },
-                transition: 'all 0.2s'
+                transition: 'all 0.3s'
             }}
         />
     );
 };
 
+// Componente principal
 const ViewConsultationDialog = ({
                                     open,
                                     onClose,
@@ -572,7 +640,6 @@ const ViewConsultationDialog = ({
                                     patientId,
                                     doctorId,
                                     onEdit,
-                                    onDelete,
                                     onChangeStatus
                                 }) => {
     const [loading, setLoading] = useState(false);
@@ -581,7 +648,6 @@ const ViewConsultationDialog = ({
         history: false,
         conduta: false,
     });
-    const [deleteConfirm, setDeleteConfirm] = useState(false);
     const [statusChangeConfirm, setStatusChangeConfirm] = useState(null);
 
     const muiTheme = useTheme();
@@ -682,7 +748,6 @@ const ViewConsultationDialog = ({
         }
     };
 
-
     const formatDateTime = (date) => {
         try {
             if (!date) return "";
@@ -710,7 +775,6 @@ const ViewConsultationDialog = ({
         }
     };
 
-
     const formatTimeAgo = (date) => {
         try {
             if (!date) return "";
@@ -737,6 +801,7 @@ const ViewConsultationDialog = ({
             return "";
         }
     };
+
     const formatDuration = (minutes) => {
         if (!minutes) return "30 minutos";
 
@@ -753,7 +818,7 @@ const ViewConsultationDialog = ({
     };
 
     const getPatientName = () => {
-        if (!patientData) return "Carregando...";
+        if (!patientData) return loading ? "Carregando..." : "Paciente";
         return patientData.nome || patientData.patientName || "Paciente";
     };
 
@@ -764,24 +829,20 @@ const ViewConsultationDialog = ({
         }));
     };
 
+    const parseLocalDate = (dateValue) => {
+        if (!dateValue) return new Date();
+        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+            const [year, month, day] = dateValue.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        return new Date(dateValue);
+    };
+
+
     const handleEdit = () => {
         if (onEdit) {
             onEdit(consultationData);
         }
-    };
-
-    const handleDeleteClick = () => {
-        setDeleteConfirm(true);
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (onDelete) {
-            onDelete(consultationData.id);
-        }
-    };
-
-    const handleDeleteCancel = () => {
-        setDeleteConfirm(false);
     };
 
     const handleStatusChangeClick = (newStatus) => {
@@ -790,10 +851,19 @@ const ViewConsultationDialog = ({
 
     const handleStatusChangeConfirm = async () => {
         if (onChangeStatus && statusChangeConfirm) {
-            onChangeStatus(consultationData.id, statusChangeConfirm);
+            // Tratar a data para evitar alteração automática do fuso horário
+            const treatedDate = parseLocalDate(consultationData.consultationDate);
+            // Se necessário, formate para string no formato "YYYY-MM-DD"
+            const formattedDate = `${treatedDate.getFullYear()}-${(treatedDate.getMonth() + 1)
+                .toString()
+                .padStart(2, '0')}-${treatedDate.getDate().toString().padStart(2, '0')}`;
+
+            // Atualize a consulta passando a data tratada
+            onChangeStatus(consultationData.id, statusChangeConfirm, formattedDate);
             setStatusChangeConfirm(null);
         }
     };
+
 
     const handleStatusChangeCancel = () => {
         setStatusChangeConfirm(null);
@@ -821,25 +891,27 @@ const ViewConsultationDialog = ({
                 <Typography
                     variant="h6"
                     sx={{
-                        fontWeight: 600,
+                        fontWeight: 700,
                         color: 'text.primary',
                         display: 'flex',
                         alignItems: 'center',
-                        mb: 2,
+                        mb: 2.5,
                         position: 'relative',
+                        paddingLeft: 2,
                         '&:before': {
                             content: '""',
                             position: 'absolute',
-                            left: -16,
-                            top: 0,
-                            bottom: 0,
-                            width: 4,
-                            borderRadius: 4,
+                            left: 0,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            height: '80%',
+                            width: 6,
+                            borderRadius: 8,
                             backgroundColor: theme.palette.primary.main,
                         }
                     }}
                 >
-                    <HealthAndSafetyIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                    <HealthAndSafetyIcon sx={{ mr: 1.5, color: theme.palette.primary.main }} />
                     Plano de Saúde
                 </Typography>
 
@@ -874,29 +946,31 @@ const ViewConsultationDialog = ({
                 <Typography
                     variant="h6"
                     sx={{
-                        fontWeight: 600,
+                        fontWeight: 700,
                         color: 'text.primary',
                         display: 'flex',
                         alignItems: 'center',
-                        mb: 2,
+                        mb: 2.5,
                         position: 'relative',
+                        paddingLeft: 2,
                         '&:before': {
                             content: '""',
                             position: 'absolute',
-                            left: -16,
-                            top: 0,
-                            bottom: 0,
-                            width: 4,
-                            borderRadius: 4,
+                            left: 0,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            height: '80%',
+                            width: 6,
+                            borderRadius: 8,
                             backgroundColor: theme.palette.primary.main,
                         }
                     }}
                 >
-                    <MedicalInformationIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                    <MedicalInformationIcon sx={{ mr: 1.5, color: theme.palette.primary.main }} />
                     Status do Paciente
                 </Typography>
 
-                <Grid container spacing={2} sx={{ ml: 1 }}>
+                <Grid container spacing={2.5} sx={{ ml: 0.5 }}>
                     {patientData.statusList.map((status, index) => (
                         <Grid item xs={12} sm={6} md={4} key={index}>
                             <StatusIndicator status={status} />
@@ -942,33 +1016,35 @@ const ViewConsultationDialog = ({
         return (
             <Box sx={{ mt: 4 }}>
                 {uniqueChronicDiseases.length > 0 && (
-                    <Box sx={{ mb: 3 }}>
+                    <Box sx={{ mb: 3.5 }}>
                         <Typography
                             variant="h6"
                             sx={{
-                                fontWeight: 600,
+                                fontWeight: 700,
                                 color: 'text.primary',
                                 display: 'flex',
                                 alignItems: 'center',
-                                mb: 2,
+                                mb: 2.5,
                                 position: 'relative',
+                                paddingLeft: 2,
                                 '&:before': {
                                     content: '""',
                                     position: 'absolute',
-                                    left: -16,
-                                    top: 0,
-                                    bottom: 0,
-                                    width: 4,
-                                    borderRadius: 4,
+                                    left: 0,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    height: '80%',
+                                    width: 6,
+                                    borderRadius: 8,
                                     backgroundColor: theme.palette.primary.main,
                                 }
                             }}
                         >
-                            <MedicalServicesIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                            <MedicalServicesIcon sx={{ mr: 1.5, color: theme.palette.primary.main }} />
                             Condições Clínicas
                         </Typography>
 
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, ml: 1 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, ml: 1 }}>
                             {uniqueChronicDiseases.map((disease, index) => (
                                 <ConditionChip
                                     key={index}
@@ -985,29 +1061,31 @@ const ViewConsultationDialog = ({
                         <Typography
                             variant="h6"
                             sx={{
-                                fontWeight: 600,
+                                fontWeight: 700,
                                 color: 'text.primary',
                                 display: 'flex',
                                 alignItems: 'center',
-                                mb: 2,
+                                mb: 2.5,
                                 position: 'relative',
+                                paddingLeft: 2,
                                 '&:before': {
                                     content: '""',
                                     position: 'absolute',
-                                    left: -16,
-                                    top: 0,
-                                    bottom: 0,
-                                    width: 4,
-                                    borderRadius: 4,
+                                    left: 0,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    height: '80%',
+                                    width: 6,
+                                    borderRadius: 8,
                                     backgroundColor: '#EF4444',
                                 }
                             }}
                         >
-                            <PriorityHighIcon sx={{ mr: 1, color: '#EF4444' }} />
+                            <PriorityHighIcon sx={{ mr: 1.5, color: '#EF4444' }} />
                             Alergias
                         </Typography>
 
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, ml: 1 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, ml: 1 }}>
                             {uniqueAllergies.map((allergy, index) => (
                                 <ConditionChip
                                     key={index}
@@ -1049,27 +1127,62 @@ const ViewConsultationDialog = ({
                         borderRadius: 3,
                         overflow: 'hidden',
                         border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                        boxShadow: expanded.history ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.12)}` : 'none',
+                        transition: 'all 0.3s',
+                        '&:hover': {
+                            boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.12)}`,
+                            borderColor: alpha(theme.palette.primary.main, 0.3),
+                        }
                     }}
                 >
                     <AccordionSummary
-                        expandIcon={<ExpandMoreIcon sx={{ color: theme.palette.primary.main }} />}
+                        expandIcon={<ExpandMoreIcon sx={{ color: theme.palette.primary.main, fontSize: '1.5rem' }} />}
                         sx={{
                             backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                            borderRadius: expanded.history ? '12px 12px 0 0' : 3,
+                            borderRadius: expanded.history ? '16px 16px 0 0' : 3,
+                            padding: '8px 16px',
                             '&:hover': {
                                 backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                            },
+                            '.MuiAccordionSummary-content': {
+                                margin: '8px 0',
                             }
                         }}
                     >
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <HistoryIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                            <Typography sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
+                            <Box
+                                sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: '12px',
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mr: 2,
+                                    color: theme.palette.primary.main,
+                                    boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`
+                                }}
+                            >
+                                <HistoryIcon />
+                            </Box>
+                            <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
                                 Histórico Médico
                             </Typography>
                         </Box>
                     </AccordionSummary>
-                    <AccordionDetails sx={{ p: 3, backgroundColor: alpha(theme.palette.primary.main, 0.02) }}>
-                        <Typography sx={{ whiteSpace: 'pre-line', color: 'text.primary' }}>
+                    <AccordionDetails sx={{ p: 3.5, backgroundColor: alpha(theme.palette.primary.main, 0.02) }}>
+                        <Typography
+                            sx={{
+                                whiteSpace: 'pre-line',
+                                color: 'text.primary',
+                                lineHeight: 1.6,
+                                '&:first-letter': {
+                                    fontSize: '1.2em',
+                                    fontWeight: 600,
+                                }
+                            }}
+                        >
                             {history}
                         </Typography>
                     </AccordionDetails>
@@ -1100,27 +1213,62 @@ const ViewConsultationDialog = ({
                         borderRadius: 3,
                         overflow: 'hidden',
                         border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                        boxShadow: expanded.conduta ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.12)}` : 'none',
+                        transition: 'all 0.3s',
+                        '&:hover': {
+                            boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.12)}`,
+                            borderColor: alpha(theme.palette.primary.main, 0.3),
+                        }
                     }}
                 >
                     <AccordionSummary
-                        expandIcon={<ExpandMoreIcon sx={{ color: theme.palette.primary.main }} />}
+                        expandIcon={<ExpandMoreIcon sx={{ color: theme.palette.primary.main, fontSize: '1.5rem' }} />}
                         sx={{
                             backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                            borderRadius: expanded.conduta ? '12px 12px 0 0' : 3,
+                            borderRadius: expanded.conduta ? '16px 16px 0 0' : 3,
+                            padding: '8px 16px',
                             '&:hover': {
                                 backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                            },
+                            '.MuiAccordionSummary-content': {
+                                margin: '8px 0',
                             }
                         }}
                     >
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <AssignmentIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                            <Typography sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
+                            <Box
+                                sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: '12px',
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mr: 2,
+                                    color: theme.palette.primary.main,
+                                    boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`
+                                }}
+                            >
+                                <AssignmentIcon />
+                            </Box>
+                            <Typography sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
                                 Conduta Inicial
                             </Typography>
                         </Box>
                     </AccordionSummary>
-                    <AccordionDetails sx={{ p: 3, backgroundColor: alpha(theme.palette.primary.main, 0.02) }}>
-                        <Typography sx={{ whiteSpace: 'pre-line', color: 'text.primary' }}>
+                    <AccordionDetails sx={{ p: 3.5, backgroundColor: alpha(theme.palette.primary.main, 0.02) }}>
+                        <Typography
+                            sx={{
+                                whiteSpace: 'pre-line',
+                                color: 'text.primary',
+                                lineHeight: 1.6,
+                                '&:first-letter': {
+                                    fontSize: '1.2em',
+                                    fontWeight: 600,
+                                }
+                            }}
+                        >
                             {patientData.historicoConduta.condutaInicial}
                         </Typography>
                     </AccordionDetails>
@@ -1128,6 +1276,38 @@ const ViewConsultationDialog = ({
             </Box>
         );
     };
+
+    // Skeleton para carregamento
+    const renderSkeletons = () => (
+        <>
+            <Box sx={{ mb: 4 }}>
+                <Skeleton variant="text" width="50%" height={32} sx={{ mb: 2 }} />
+                <Paper
+                    elevation={0}
+                    sx={{
+                        p: 3,
+                        borderRadius: '20px',
+                        backgroundColor: 'white',
+                        border: `1px solid ${theme.palette.grey[200]}`,
+                    }}
+                >
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={2}>
+                            <Skeleton variant="circular" width={80} height={80} />
+                        </Grid>
+                        <Grid item xs={12} sm={10}>
+                            <Skeleton variant="text" width="40%" height={28} sx={{ mb: 1 }} />
+                            <Skeleton variant="text" width="60%" height={20} />
+                        </Grid>
+                    </Grid>
+                </Paper>
+            </Box>
+            <Box sx={{ mb: 4 }}>
+                <Skeleton variant="text" width="40%" height={32} sx={{ mb: 2 }} />
+                <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 3 }} />
+            </Box>
+        </>
+    );
 
     if (!consultationData) return null;
 
@@ -1144,40 +1324,45 @@ const ViewConsultationDialog = ({
                     sx: {
                         borderRadius: '24px',
                         overflow: 'hidden',
-                        boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.15)',
                         height: fullScreen ? '100%' : 'auto',
-                        maxHeight: fullScreen ? '100%' : '90vh'
+                        maxHeight: fullScreen ? '100%' : '90vh',
                     }
                 }}
             >
-                {/* Header */}
+                {/* Header - Melhorado */}
                 <Box
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        borderBottom: '1px solid #EAECEF',
+                        borderBottom: `1px solid ${alpha(statusColor.main, 0.2)}`,
                         background: statusColor.gradient,
-                        p: { xs: 2, sm: 3 }
+                        p: { xs: 2.5, sm: 3.5 },
+                        transition: 'all 0.3s'
                     }}
                 >
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                            sx={{
-                                bgcolor: statusColor.main,
-                                color: 'white',
-                                width: 48,
-                                height: 48,
-                                mr: 2,
-                                display: { xs: 'none', sm: 'flex' },
-                                boxShadow: `0 4px 8px ${alpha(statusColor.main, 0.3)}`
-                            }}
-                        >
-                            <EventNoteIcon />
-                        </Avatar>
+                        <Fade in={true} timeout={800}>
+                            <Avatar
+                                sx={{
+                                    bgcolor: statusColor.main,
+                                    color: 'white',
+                                    width: 56,
+                                    height: 56,
+                                    mr: 2.5,
+                                    display: { xs: 'none', sm: 'flex' },
+                                    boxShadow: `0 8px 16px ${alpha(statusColor.main, 0.4)}`,
+                                    border: '3px solid white',
+                                    transition: 'all 0.3s'
+                                }}
+                            >
+                                <EventNoteIcon fontSize="large" />
+                            </Avatar>
+                        </Fade>
                         <Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 0.5 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: statusColor.dark }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 0.8 }}>
+                                <Typography variant="h5" sx={{ fontWeight: 700, color: statusColor.dark, letterSpacing: '-0.02em' }}>
                                     Consulta: {getPatientName()}
                                 </Typography>
                                 <Chip
@@ -1187,9 +1372,15 @@ const ViewConsultationDialog = ({
                                         bgcolor: statusColor.main,
                                         color: 'white',
                                         fontWeight: 600,
-                                        fontSize: '11px',
-                                        height: '22px',
-                                        boxShadow: `0 2px 4px ${alpha(statusColor.main, 0.3)}`
+                                        fontSize: '0.75rem',
+                                        height: '24px',
+                                        borderRadius: '12px',
+                                        boxShadow: `0 4px 8px ${alpha(statusColor.main, 0.3)}`,
+                                        transition: 'all 0.3s',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: `0 6px 12px ${alpha(statusColor.main, 0.4)}`
+                                        }
                                     }}
                                 />
                                 <Chip
@@ -1199,9 +1390,15 @@ const ViewConsultationDialog = ({
                                         bgcolor: tipoColor.main,
                                         color: 'white',
                                         fontWeight: 600,
-                                        fontSize: '11px',
-                                        height: '22px',
-                                        boxShadow: `0 2px 4px ${alpha(tipoColor.main, 0.3)}`
+                                        fontSize: '0.75rem',
+                                        height: '24px',
+                                        borderRadius: '12px',
+                                        boxShadow: `0 4px 8px ${alpha(tipoColor.main, 0.3)}`,
+                                        transition: 'all 0.3s',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: `0 6px 12px ${alpha(tipoColor.main, 0.4)}`
+                                        }
                                     }}
                                     icon={
                                         <Box component="span" sx={{ '& > svg': { color: 'white !important', fontSize: '14px !important' } }}>
@@ -1216,7 +1413,8 @@ const ViewConsultationDialog = ({
                                     color: alpha(statusColor.dark, 0.8),
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 0.5
+                                    gap: 0.8,
+                                    fontWeight: 500
                                 }}
                             >
                                 <CalendarTodayIcon sx={{ fontSize: '0.875rem' }} />
@@ -1228,9 +1426,13 @@ const ViewConsultationDialog = ({
                         onClick={onClose}
                         sx={{
                             color: statusColor.dark,
-                            backgroundColor: alpha('#fff', 0.2),
+                            backgroundColor: alpha('#fff', 0.3),
+                            width: 42,
+                            height: 42,
+                            transition: 'all 0.2s',
                             '&:hover': {
-                                backgroundColor: alpha('#fff', 0.3)
+                                backgroundColor: alpha('#fff', 0.4),
+                                transform: 'scale(1.05)'
                             }
                         }}
                     >
@@ -1238,12 +1440,12 @@ const ViewConsultationDialog = ({
                     </IconButton>
                 </Box>
 
-                {/* Body */}
+                {/* Body - Melhorado */}
                 <DialogContent
                     sx={{
                         p: 0,
                         '&::-webkit-scrollbar': {
-                            width: '8px',
+                            width: '10px',
                         },
                         '&::-webkit-scrollbar-thumb': {
                             backgroundColor: alpha(theme.palette.primary.main, 0.2),
@@ -1257,487 +1459,486 @@ const ViewConsultationDialog = ({
                     <Box
                         sx={{
                             height: '100%',
-                            p: { xs: 2, sm: 4 },
+                            p: { xs: 2.5, sm: 4 },
                             overflow: 'auto',
-                            backgroundColor: '#FAFBFF'
+                            backgroundColor: '#FBFCFF'
                         }}
                     >
-                        {/* Metadados da consulta */}
-                        <Grid container spacing={3} sx={{ mb: 4 }}>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <Paper
-                                    elevation={0}
-                                    sx={{
-                                        borderRadius: '16px',
-                                        height: '100%',
-                                        overflow: 'hidden',
-                                        border: `1px solid ${theme.palette.grey[200]}`,
-                                        transition: 'transform 0.3s, box-shadow 0.3s',
-                                        '&:hover': {
-                                            transform: 'translateY(-4px)',
-                                            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    <Box sx={{
-                                        height: 5,
-                                        backgroundColor: statusColor.main
-                                    }} />
-                                    <Box sx={{ p: 2 }}>
-                                        <InfoItem
-                                            icon={<CalendarTodayIcon sx={{ color: statusColor.main }} />}
-                                            label="Data"
-                                            value={formatDate(consultationData.consultationDate)}
-                                        />
-                                    </Box>
-                                </Paper>
-                            </Grid>
-
-                            <Grid item xs={12} sm={6} md={3}>
-                                <Paper
-                                    elevation={0}
-                                    sx={{
-                                        borderRadius: '16px',
-                                        height: '100%',
-                                        overflow: 'hidden',
-                                        border: `1px solid ${theme.palette.grey[200]}`,
-                                        transition: 'transform 0.3s, box-shadow 0.3s',
-                                        '&:hover': {
-                                            transform: 'translateY(-4px)',
-                                            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    <Box sx={{
-                                        height: 5,
-                                        backgroundColor: statusColor.main
-                                    }} />
-                                    <Box sx={{ p: 2 }}>
-                                        <InfoItem
-                                            icon={<AccessTimeIcon sx={{ color: statusColor.main }} />}
-                                            label="Horário"
-                                            value={consultationData.consultationTime || consultationData.horaInicio}
-                                        />
-                                    </Box>
-                                </Paper>
-                            </Grid>
-
-                            <Grid item xs={12} sm={6} md={3}>
-                                <Paper
-                                    elevation={0}
-                                    sx={{
-                                        borderRadius: '16px',
-                                        height: '100%',
-                                        overflow: 'hidden',
-                                        border: `1px solid ${theme.palette.grey[200]}`,
-                                        transition: 'transform 0.3s, box-shadow 0.3s',
-                                        '&:hover': {
-                                            transform: 'translateY(-4px)',
-                                            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    <Box sx={{
-                                        height: 5,
-                                        backgroundColor: statusColor.main
-                                    }} />
-                                    <Box sx={{ p: 2 }}>
-                                        <InfoItem
-                                            icon={<TimerIcon sx={{ color: statusColor.main }} />}
-                                            label="Duração"
-                                            value={formatDuration(consultationData.consultationDuration)}
-                                        />
-                                    </Box>
-                                </Paper>
-                            </Grid>
-
-                            <Grid item xs={12} sm={6} md={3}>
-                                <Paper
-                                    elevation={0}
-                                    sx={{
-                                        borderRadius: '16px',
-                                        height: '100%',
-                                        overflow: 'hidden',
-                                        border: `1px solid ${theme.palette.grey[200]}`,
-                                        transition: 'transform 0.3s, box-shadow 0.3s',
-                                        '&:hover': {
-                                            transform: 'translateY(-4px)',
-                                            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    <Box sx={{
-                                        height: 5,
-                                        backgroundColor: tipoColor.main
-                                    }} />
-                                    <Box sx={{ p: 2 }}>
-                                        <InfoItem
-                                            icon={tipoIcon && React.cloneElement(tipoIcon, {
-                                                sx: { color: tipoColor.main }
-                                            })}
-                                            label="Tipo"
-                                            value={consultationData.consultationType || 'Presencial'}
-                                        />
-                                    </Box>
-                                </Paper>
-                            </Grid>
-                        </Grid>
-
-                        {/* Informações do Paciente */}
-                        <Box sx={{ mb: 4 }}>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    fontWeight: 600,
-                                    color: 'text.primary',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    mb: 3,
-                                    position: 'relative',
-                                    '&:before': {
-                                        content: '""',
-                                        position: 'absolute',
-                                        left: -16,
-                                        top: 0,
-                                        bottom: 0,
-                                        width: 4,
-                                        borderRadius: 4,
-                                        backgroundColor: theme.palette.primary.main,
-                                    }
-                                }}
-                            >
-                                <PersonIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                                Informações do Paciente
-                            </Typography>
-
-                            <Paper
-                                elevation={0}
-                                sx={{
-                                    p: 0,
-                                    borderRadius: '20px',
-                                    backgroundColor: 'white',
-                                    border: `1px solid ${theme.palette.grey[200]}`,
-                                    overflow: 'hidden'
-                                }}
-                            >
-                                {loading ? (
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                                        <Typography>Carregando dados do paciente...</Typography>
-                                    </Box>
-                                ) : patientData ? (
-                                    <>
-                                        <Box
+                        {loading ? (
+                            renderSkeletons()
+                        ) : (
+                            <>
+                                {/* Metadados da consulta - Cards melhorados */}
+                                <Grid container spacing={3} sx={{ mb: 4 }}>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Paper
+                                            elevation={0}
                                             sx={{
-                                                p: 3,
-                                                backgroundImage: 'linear-gradient(135deg, #E0E7FF 0%, #F5F3FF 100%)',
-                                                borderBottom: `1px solid ${theme.palette.grey[200]}`
+                                                borderRadius: '20px',
+                                                height: '100%',
+                                                overflow: 'hidden',
+                                                border: `1px solid ${theme.palette.grey[200]}`,
+                                                transition: 'all 0.3s',
+                                                '&:hover': {
+                                                    transform: 'translateY(-6px)',
+                                                    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.1)'
+                                                }
                                             }}
                                         >
-                                            <Grid container spacing={3}>
-                                                <Grid item xs={12} sm={7}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                        <Badge
-                                                            overlap="circular"
-                                                            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                                            badgeContent={
-                                                                <Avatar
-                                                                    sx={{
-                                                                        width: 22,
-                                                                        height: 22,
-                                                                        border: '2px solid white',
-                                                                        bgcolor: statusColor.main,
-                                                                        color: 'white',
-                                                                        fontSize: '0.75rem'
-                                                                    }}
-                                                                >
-                                                                    <PersonIcon sx={{ fontSize: '0.875rem' }} />
-                                                                </Avatar>
-                                                            }
-                                                        >
-                                                            <Avatar
-                                                                src={patientData.photoURL || patientData.fotoPerfil}
-                                                                alt={getPatientName()}
-                                                                sx={{
-                                                                    width: 84,
-                                                                    height: 84,
-                                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                                                    border: '2px solid white'
-                                                                }}
-                                                            >
-                                                                {getPatientName().charAt(0).toUpperCase()}
-                                                            </Avatar>
-                                                        </Badge>
+                                            <Box sx={{
+                                                height: 6,
+                                                backgroundColor: statusColor.main
+                                            }} />
+                                            <Box sx={{ p: 2.5 }}>
+                                                <InfoItem
+                                                    icon={<CalendarTodayIcon sx={{ color: statusColor.main }} />}
+                                                    label="Data"
+                                                    value={formatDate(consultationData.consultationDate)}
+                                                />
+                                            </Box>
+                                        </Paper>
+                                    </Grid>
 
-                                                        <Box sx={{ ml: 2 }}>
-                                                            <Typography
-                                                                variant="h6"
-                                                                sx={{
-                                                                    fontWeight: 700,
-                                                                    color: theme.palette.grey[800]
-                                                                }}
-                                                            >
-                                                                {getPatientName()}
-                                                            </Typography>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Paper
+                                            elevation={0}
+                                            sx={{
+                                                borderRadius: '20px',
+                                                height: '100%',
+                                                overflow: 'hidden',
+                                                border: `1px solid ${theme.palette.grey[200]}`,
+                                                transition: 'all 0.3s',
+                                                '&:hover': {
+                                                    transform: 'translateY(-6px)',
+                                                    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.1)'
+                                                }
+                                            }}
+                                        >
+                                            <Box sx={{
+                                                height: 6,
+                                                backgroundColor: statusColor.main
+                                            }} />
+                                            <Box sx={{ p: 2.5 }}>
+                                                <InfoItem
+                                                    icon={<AccessTimeIcon sx={{ color: statusColor.main }} />}
+                                                    label="Horário"
+                                                    value={consultationData.consultationTime || consultationData.horaInicio}
+                                                />
+                                            </Box>
+                                        </Paper>
+                                    </Grid>
 
-                                                            {patientData.birthDate && (
-                                                                <Typography
-                                                                    variant="body2"
-                                                                    sx={{
-                                                                        color: theme.palette.grey[600],
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        mt: 0.5,
-                                                                        gap: 0.5
-                                                                    }}
-                                                                >
-                                                                    <CalendarTodayIcon sx={{ fontSize: '0.875rem' }} />
-                                                                    {formatDate(patientData.birthDate)}
-                                                                </Typography>
-                                                            )}
-                                                        </Box>
-                                                    </Box>
-                                                </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Paper
+                                            elevation={0}
+                                            sx={{
+                                                borderRadius: '20px',
+                                                height: '100%',
+                                                overflow: 'hidden',
+                                                border: `1px solid ${theme.palette.grey[200]}`,
+                                                transition: 'all 0.3s',
+                                                '&:hover': {
+                                                    transform: 'translateY(-6px)',
+                                                    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.1)'
+                                                }
+                                            }}
+                                        >
+                                            <Box sx={{
+                                                height: 6,
+                                                backgroundColor: statusColor.main
+                                            }} />
+                                            <Box sx={{ p: 2.5 }}>
+                                                <InfoItem
+                                                    icon={<TimerIcon sx={{ color: statusColor.main }} />}
+                                                    label="Duração"
+                                                    value={formatDuration(consultationData.consultationDuration)}
+                                                />
+                                            </Box>
+                                        </Paper>
+                                    </Grid>
 
-                                                <Grid item xs={12} sm={5}>
-                                                    <Box sx={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: 1,
-                                                        height: '100%',
-                                                        justifyContent: 'center'
-                                                    }}>
-                                                        {(patientData.patientPhone || patientData.phone) && (
-                                                            <Box sx={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: 1.5
-                                                            }}>
-                                                                <Box
-                                                                    sx={{
-                                                                        width: 36,
-                                                                        height: 36,
-                                                                        borderRadius: '10px',
-                                                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center'
-                                                                    }}
-                                                                >
-                                                                    <PhoneIcon sx={{ color: theme.palette.primary.main }} />
-                                                                </Box>
-                                                                <Typography
-                                                                    variant="body1"
-                                                                    sx={{
-                                                                        fontWeight: 500,
-                                                                        color: theme.palette.grey[700]
-                                                                    }}
-                                                                >
-                                                                    {patientData.patientPhone || patientData.phone}
-                                                                </Typography>
-                                                            </Box>
-                                                        )}
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Paper
+                                            elevation={0}
+                                            sx={{
+                                                borderRadius: '20px',
+                                                height: '100%',
+                                                overflow: 'hidden',
+                                                border: `1px solid ${theme.palette.grey[200]}`,
+                                                transition: 'all 0.3s',
+                                                '&:hover': {
+                                                    transform: 'translateY(-6px)',
+                                                    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.1)'
+                                                }
+                                            }}
+                                        >
+                                            <Box sx={{
+                                                height: 6,
+                                                backgroundColor: tipoColor.main
+                                            }} />
+                                            <Box sx={{ p: 2.5 }}>
+                                                <InfoItem
+                                                    icon={tipoIcon && React.cloneElement(tipoIcon, {
+                                                        sx: { color: tipoColor.main }
+                                                    })}
+                                                    label="Tipo"
+                                                    value={consultationData.consultationType || 'Presencial'}
+                                                />
+                                            </Box>
+                                        </Paper>
+                                    </Grid>
+                                </Grid>
 
-                                                        {(patientData.patientEmail || patientData.email) && (
-                                                            <Box sx={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: 1.5
-                                                            }}>
-                                                                <Box
-                                                                    sx={{
-                                                                        width: 36,
-                                                                        height: 36,
-                                                                        borderRadius: '10px',
-                                                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center'
-                                                                    }}
-                                                                >
-                                                                    <EmailIcon sx={{ color: theme.palette.primary.main }} />
-                                                                </Box>
-                                                                <Typography
-                                                                    variant="body1"
-                                                                    sx={{
-                                                                        fontWeight: 500,
-                                                                        color: theme.palette.grey[700],
-                                                                        wordBreak: 'break-word'
-                                                                    }}
-                                                                >
-                                                                    {patientData.patientEmail || patientData.email}
-                                                                </Typography>
-                                                            </Box>
-                                                        )}
-                                                    </Box>
-                                                </Grid>
-                                            </Grid>
-                                        </Box>
-                                    </>
-                                ) : (
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                                        <Typography>Dados do paciente não disponíveis</Typography>
-                                    </Box>
-                                )}
-                            </Paper>
-                        </Box>
-
-                        {/* Motivo da Consulta */}
-                        {consultationData.reasonForVisit && (
-                            <Box sx={{ mb: 4 }}>
-                                <Typography
-                                    variant="h6"
-                                    sx={{
-                                        fontWeight: 600,
-                                        color: 'text.primary',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        mb: 3,
-                                        position: 'relative',
-                                        '&:before': {
-                                            content: '""',
-                                            position: 'absolute',
-                                            left: -16,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: 4,
-                                            borderRadius: 4,
-                                            backgroundColor: theme.palette.primary.main,
-                                        }
-                                    }}
-                                >
-                                    <AssignmentIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                                    Motivo da Consulta
-                                </Typography>
-
-                                <Paper
-                                    elevation={0}
-                                    sx={{
-                                        p: 3,
-                                        borderRadius: '16px',
-                                        backgroundColor: 'white',
-                                        border: `1px solid ${theme.palette.grey[200]}`,
-                                        position: 'relative',
-                                        overflow: 'hidden'
-                                    }}
-                                >
-                                    <Box
-                                        sx={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            width: '6px',
-                                            height: '100%',
-                                            backgroundColor: statusColor.main
-                                        }}
-                                    />
+                                {/* Informações do Paciente - Melhorado */}
+                                <Box sx={{ mb: 4 }}>
                                     <Typography
-                                        variant="body1"
+                                        variant="h6"
                                         sx={{
-                                            whiteSpace: 'pre-line',
-                                            pl: 2,
-                                            color: theme.palette.grey[800]
+                                            fontWeight: 700,
+                                            color: 'text.primary',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            mb: 3,
+                                            position: 'relative',
+                                            paddingLeft: 2,
+                                            '&:before': {
+                                                content: '""',
+                                                position: 'absolute',
+                                                left: 0,
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                height: '80%',
+                                                width: 6,
+                                                borderRadius: 8,
+                                                backgroundColor: theme.palette.primary.main,
+                                            }
                                         }}
                                     >
-                                        {consultationData.reasonForVisit}
+                                        <PersonIcon sx={{ mr: 1.5, color: theme.palette.primary.main }} />
+                                        Informações do Paciente
                                     </Typography>
-                                </Paper>
-                            </Box>
+
+                                    <Paper
+                                        elevation={0}
+                                        sx={{
+                                            p: 0,
+                                            borderRadius: '24px',
+                                            backgroundColor: 'white',
+                                            border: `1px solid ${theme.palette.grey[200]}`,
+                                            overflow: 'hidden',
+                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+                                            transition: 'all 0.3s',
+                                            '&:hover': {
+                                                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+                                                transform: 'translateY(-4px)'
+                                            }
+                                        }}
+                                    >
+                                        {loading ? (
+                                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                                                <Typography>Carregando dados do paciente...</Typography>
+                                            </Box>
+                                        ) : patientData ? (
+                                            <>
+                                                <Box
+                                                    sx={{
+                                                        p: 3.5,
+                                                        backgroundImage: 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%)',
+                                                        borderBottom: `1px solid ${theme.palette.grey[200]}`
+                                                    }}
+                                                >
+                                                    <Grid container spacing={3}>
+                                                        <Grid item xs={12} sm={7}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                <Badge
+                                                                    overlap="circular"
+                                                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                                                    badgeContent={
+                                                                        <Avatar
+                                                                            sx={{
+                                                                                width: 24,
+                                                                                height: 24,
+                                                                                border: '2px solid white',
+                                                                                bgcolor: statusColor.main,
+                                                                                color: 'white',
+                                                                                fontSize: '0.75rem',
+                                                                                boxShadow: `0 2px 6px ${alpha(statusColor.main, 0.4)}`
+                                                                            }}
+                                                                        >
+                                                                            <PersonIcon sx={{ fontSize: '0.9rem' }} />
+                                                                        </Avatar>
+                                                                    }
+                                                                >
+                                                                    <Avatar
+                                                                        src={patientData.photoURL || patientData.fotoPerfil}
+                                                                        alt={getPatientName()}
+                                                                        sx={{
+                                                                            width: 90,
+                                                                            height: 90,
+                                                                            boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                                                                            border: '3px solid white',
+                                                                            transition: 'all 0.3s',
+                                                                            '&:hover': {
+                                                                                transform: 'scale(1.05)'
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {getPatientName().charAt(0).toUpperCase()}
+                                                                    </Avatar>
+                                                                </Badge>
+
+                                                                <Box sx={{ ml: 2.5 }}>
+                                                                    <Typography
+                                                                        variant="h6"
+                                                                        sx={{
+                                                                            fontWeight: 700,
+                                                                            color: theme.palette.grey[800],
+                                                                            letterSpacing: '-0.02em',
+                                                                            fontSize: '1.25rem'
+                                                                        }}
+                                                                    >
+                                                                        {getPatientName()}
+                                                                    </Typography>
+
+                                                                    {patientData.birthDate && (
+                                                                        <Typography
+                                                                            variant="body2"
+                                                                            sx={{
+                                                                                color: theme.palette.grey[600],
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                mt: 0.8,
+                                                                                gap: 0.8,
+                                                                                fontWeight: 500
+                                                                            }}
+                                                                        >
+                                                                            <CalendarTodayIcon sx={{ fontSize: '0.9rem' }} />
+                                                                            {formatDate(patientData.birthDate)}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            </Box>
+                                                        </Grid>
+
+                                                        <Grid item xs={12} sm={5}>
+                                                            <Box sx={{
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                gap: 1.5,
+                                                                height: '100%',
+                                                                justifyContent: 'center'
+                                                            }}>
+                                                                {(patientData.patientPhone || patientData.phone) && (
+                                                                    <Box sx={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 1.5,
+                                                                        transition: 'all 0.2s',
+                                                                        '&:hover': {
+                                                                            transform: 'translateY(-2px)'
+                                                                        }
+                                                                    }}>
+                                                                        <Box
+                                                                            sx={{
+                                                                                width: 42,
+                                                                                height: 42,
+                                                                                borderRadius: '12px',
+                                                                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`
+                                                                            }}
+                                                                        >
+                                                                            <PhoneIcon sx={{ color: theme.palette.primary.main }} />
+                                                                        </Box>
+                                                                        <Typography
+                                                                            variant="body1"
+                                                                            sx={{
+                                                                                fontWeight: 600,
+                                                                                color: theme.palette.grey[700]
+                                                                            }}
+                                                                        >
+                                                                            {patientData.patientPhone || patientData.phone}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                )}
+
+                                                                {(patientData.patientEmail || patientData.email) && (
+                                                                    <Box sx={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 1.5,
+                                                                        transition: 'all 0.2s',
+                                                                        '&:hover': {
+                                                                            transform: 'translateY(-2px)'
+                                                                        }
+                                                                    }}>
+                                                                        <Box
+                                                                            sx={{
+                                                                                width: 42,
+                                                                                height: 42,
+                                                                                borderRadius: '12px',
+                                                                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`
+                                                                            }}
+                                                                        >
+                                                                            <EmailIcon sx={{ color: theme.palette.primary.main }} />
+                                                                        </Box>
+                                                                        <Typography
+                                                                            variant="body1"
+                                                                            sx={{
+                                                                                fontWeight: 600,
+                                                                                color: theme.palette.grey[700],
+                                                                                wordBreak: 'break-word'
+                                                                            }}
+                                                                        >
+                                                                            {patientData.patientEmail || patientData.email}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                )}
+                                                            </Box>
+                                                        </Grid>
+                                                    </Grid>
+                                                </Box>
+                                            </>
+                                        ) : (
+                                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                                                <Typography>Dados do paciente não disponíveis</Typography>
+                                            </Box>
+                                        )}
+                                    </Paper>
+                                </Box>
+
+                                {/* Motivo da Consulta - Melhorado */}
+                                {consultationData.reasonForVisit && (
+                                    <Box sx={{ mb: 4 }}>
+                                        <Typography
+                                            variant="h6"
+                                            sx={{
+                                                fontWeight: 700,
+                                                color: 'text.primary',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                mb: 3,
+                                                position: 'relative',
+                                                paddingLeft: 2,
+                                                '&:before': {
+                                                    content: '""',
+                                                    position: 'absolute',
+                                                    left: 0,
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    height: '80%',
+                                                    width: 6,
+                                                    borderRadius: 8,
+                                                    backgroundColor: theme.palette.primary.main,
+                                                }
+                                            }}
+                                        >
+                                            <AssignmentIcon sx={{ mr: 1.5, color: theme.palette.primary.main }} />
+                                            Motivo da Consulta
+                                        </Typography>
+
+                                        <Paper
+                                            elevation={0}
+                                            sx={{
+                                                p: 3.5,
+                                                borderRadius: '20px',
+                                                backgroundColor: 'white',
+                                                border: `1px solid ${theme.palette.grey[200]}`,
+                                                position: 'relative',
+                                                overflow: 'hidden',
+                                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+                                                transition: 'all 0.3s',
+                                                '&:hover': {
+                                                    boxShadow: `0 8px 30px ${alpha(statusColor.main, 0.15)}`,
+                                                    transform: 'translateY(-4px)'
+                                                }
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: '8px',
+                                                    height: '100%',
+                                                    backgroundColor: statusColor.main
+                                                }}
+                                            />
+                                            <Typography
+                                                variant="body1"
+                                                sx={{
+                                                    whiteSpace: 'pre-line',
+                                                    pl: 2.5,
+                                                    color: theme.palette.grey[800],
+                                                    lineHeight: 1.6,
+                                                    '&:first-letter': {
+                                                        fontSize: '1.2em',
+                                                        fontWeight: 600,
+                                                    }
+                                                }}
+                                            >
+                                                {consultationData.reasonForVisit}
+                                            </Typography>
+                                        </Paper>
+                                    </Box>
+                                )}
+
+                                {/* Seções do Paciente */}
+                                {renderHealthPlan()}
+                                {renderPatientStatus()}
+                                {renderPatientConditions()}
+                                {renderPatientHistory()}
+                                {renderPatientConduta()}
+                            </>
                         )}
-
-                        {/* Plano de Saúde */}
-                        {renderHealthPlan()}
-
-                        {/* Status do Paciente */}
-                        {renderPatientStatus()}
-
-                        {/* Condições Clínicas */}
-                        {renderPatientConditions()}
-
-                        {/* Histórico Médico */}
-                        {renderPatientHistory()}
-
-                        {/* Conduta Inicial */}
-                        {renderPatientConduta()}
                     </Box>
                 </DialogContent>
 
-                {/* Footer */}
+                {/* Footer - Melhorado */}
                 <Box
                     sx={{
                         display: 'flex',
                         justifyContent: 'space-between',
-                        p: { xs: 2, sm: 3 },
+                        p: { xs: 2.5, sm: 3.5 },
                         borderTop: '1px solid #EAECEF',
                         backgroundColor: 'white'
                     }}
                 >
-                    {deleteConfirm ? (
+                    {statusChangeConfirm ? (
                         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                             <Box
                                 sx={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: '50%',
-                                    backgroundColor: alpha(theme.palette.error.main, 0.1),
-                                    mr: 2
-                                }}
-                            >
-                                <WarningIcon sx={{ color: theme.palette.error.main }} />
-                            </Box>
-                            <Typography sx={{ color: theme.palette.error.main, fontWeight: 500, mr: 'auto' }}>
-                                Tem certeza que deseja excluir esta consulta?
-                            </Typography>
-                            <Button
-                                variant="outlined"
-                                onClick={handleDeleteCancel}
-                                sx={{
-                                    mr: 1,
-                                    borderColor: theme.palette.grey[300],
-                                    color: theme.palette.grey[700]
-                                }}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                variant="contained"
-                                color="error"
-                                onClick={handleDeleteConfirm}
-                                sx={{
-                                    boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.3)}`
-                                }}
-                            >
-                                Excluir
-                            </Button>
-                        </Box>
-                    ) : statusChangeConfirm ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                            <Box
-                                sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    width: 40,
-                                    height: 40,
+                                    width: 48,
+                                    height: 48,
                                     borderRadius: '50%',
                                     backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                    mr: 2
+                                    mr: 2.5,
+                                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.15)}`
                                 }}
                             >
-                                <WarningIcon sx={{ color: theme.palette.primary.main }} />
+                                <WarningIcon sx={{ color: theme.palette.primary.main, fontSize: '1.5rem' }} />
                             </Box>
-                            <Typography sx={{ color: theme.palette.primary.main, fontWeight: 500, mr: 'auto' }}>
+                            <Typography sx={{ color: theme.palette.primary.main, fontWeight: 600, mr: 'auto', letterSpacing: '-0.01em' }}>
                                 Alterar status da consulta para "{statusChangeConfirm}"?
                             </Typography>
                             <Button
                                 variant="outlined"
                                 onClick={handleStatusChangeCancel}
                                 sx={{
-                                    mr: 1,
+                                    mr: 1.5,
                                     borderColor: theme.palette.grey[300],
-                                    color: theme.palette.grey[700]
+                                    color: theme.palette.grey[700],
+                                    minWidth: 100,
+                                    borderRadius: '12px'
                                 }}
                             >
                                 Não
@@ -1747,7 +1948,9 @@ const ViewConsultationDialog = ({
                                 color="primary"
                                 onClick={handleStatusChangeConfirm}
                                 sx={{
-                                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
+                                    boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
+                                    minWidth: 120,
+                                    borderRadius: '12px'
                                 }}
                             >
                                 Confirmar
@@ -1755,27 +1958,9 @@ const ViewConsultationDialog = ({
                         </Box>
                     ) : (
                         <>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<DeleteOutlineIcon />}
-                                onClick={handleDeleteClick}
-                                sx={{
-                                    borderColor: theme.palette.error.light,
-                                    color: theme.palette.error.main,
-                                    '&:hover': {
-                                        backgroundColor: alpha(theme.palette.error.main, 0.04),
-                                        borderColor: theme.palette.error.main,
-                                        boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.2)}`
-                                    }
-                                }}
-                            >
-                                Excluir
-                            </Button>
-
-                            <Box>
+                            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
                                 {consultationData.status !== 'Concluída' && consultationData.status !== 'Cancelada' && (
-                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Box sx={{ display: 'flex', gap: 1.5 }}>
                                         {consultationData.status !== 'Em Andamento' && (
                                             <Button
                                                 variant="outlined"
@@ -1783,13 +1968,12 @@ const ViewConsultationDialog = ({
                                                 startIcon={<PlayArrowIcon />}
                                                 onClick={() => handleStatusChangeClick('Em Andamento')}
                                                 sx={{
-                                                    mr: 1,
                                                     borderColor: theme.palette.status.emAndamento.main,
                                                     color: theme.palette.status.emAndamento.main,
                                                     '&:hover': {
                                                         backgroundColor: alpha(theme.palette.status.emAndamento.main, 0.04),
                                                         borderColor: theme.palette.status.emAndamento.dark,
-                                                        boxShadow: `0 4px 12px ${alpha(theme.palette.status.emAndamento.main, 0.2)}`
+                                                        boxShadow: `0 6px 16px ${alpha(theme.palette.status.emAndamento.main, 0.2)}`
                                                     }
                                                 }}
                                             >
@@ -1803,13 +1987,12 @@ const ViewConsultationDialog = ({
                                                 startIcon={<CancelOutlinedIcon />}
                                                 onClick={() => handleStatusChangeClick('Cancelada')}
                                                 sx={{
-                                                    mr: 1,
                                                     borderColor: theme.palette.status.cancelada.main,
                                                     color: theme.palette.status.cancelada.main,
                                                     '&:hover': {
                                                         backgroundColor: alpha(theme.palette.status.cancelada.main, 0.04),
                                                         borderColor: theme.palette.status.cancelada.dark,
-                                                        boxShadow: `0 4px 12px ${alpha(theme.palette.status.cancelada.main, 0.2)}`
+                                                        boxShadow: `0 6px 16px ${alpha(theme.palette.status.cancelada.main, 0.2)}`
                                                     }
                                                 }}
                                             >
@@ -1823,13 +2006,12 @@ const ViewConsultationDialog = ({
                                                 startIcon={<CheckCircleOutlineIcon />}
                                                 onClick={() => handleStatusChangeClick('Concluída')}
                                                 sx={{
-                                                    mr: 2,
                                                     borderColor: theme.palette.status.confirmada.main,
                                                     color: theme.palette.status.confirmada.main,
                                                     '&:hover': {
                                                         backgroundColor: alpha(theme.palette.status.confirmada.main, 0.04),
                                                         borderColor: theme.palette.status.confirmada.dark,
-                                                        boxShadow: `0 4px 12px ${alpha(theme.palette.status.confirmada.main, 0.2)}`
+                                                        boxShadow: `0 6px 16px ${alpha(theme.palette.status.confirmada.main, 0.2)}`
                                                     }
                                                 }}
                                             >
@@ -1846,14 +2028,16 @@ const ViewConsultationDialog = ({
                                     sx={{
                                         backgroundColor: statusColor.main,
                                         color: 'white',
-                                        boxShadow: `0 4px 12px ${alpha(statusColor.main, 0.3)}`,
+                                        boxShadow: `0 6px 16px ${alpha(statusColor.main, 0.3)}`,
                                         '&:hover': {
                                             backgroundColor: statusColor.dark,
-                                            boxShadow: `0 6px 16px ${alpha(statusColor.main, 0.4)}`
-                                        }
+                                            boxShadow: `0 8px 24px ${alpha(statusColor.main, 0.4)}`
+                                        },
+                                        fontSize: '0.95rem',
+                                        height: 46
                                     }}
                                 >
-                                    Editar
+                                    Editar Consulta
                                 </Button>
                             </Box>
                         </>

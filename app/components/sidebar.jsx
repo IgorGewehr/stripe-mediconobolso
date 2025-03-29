@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Typography, Avatar } from "@mui/material";
 import {useResponsiveScale} from "./useScale";
+import {useAuth} from "./authProvider";
 
-const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRole = "Cirurgião", onMenuSelect, onLogout }) => {
+const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRole = "Cirurgião", onMenuSelect, onLogout, onProfileClick }) => {
     const [selected, setSelected] = useState(initialSelected);
 
+    const { user } = useAuth();
     const { scaleStyle } = useResponsiveScale();
 
     const principalItems = [
@@ -33,6 +35,15 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
 
         setSelected(label);
         if (onMenuSelect) onMenuSelect(label);
+    };
+
+    const handleProfileClick = () => {
+        if (onProfileClick) {
+            onProfileClick();
+        } else if (onMenuSelect) {
+            // Fallback: use o onMenuSelect com "Meu Perfil" se onProfileClick não for fornecido
+            onMenuSelect("Meu Perfil");
+        }
     };
 
     const buttonStyles = (isSelected, label, isLogout) => ({
@@ -222,33 +233,56 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     </Box>
                 </Box>
 
-                {/* Perfil do usuário */}
+                {/* Perfil do usuário - Botão clicável */}
                 <Box
+                    onClick={handleProfileClick}
                     sx={{
                         display: "flex",
                         alignItems: "center",
                         py: 1.8,
                         px: 1.5,
                         mt: 2,
-                        mb: 0, // Ajustado para 0, já que temos padding no container principal
+                        mb: 0,
                         borderRadius: "12px",
                         border: "1px solid rgba(66, 133, 244, 0.15)",
                         backgroundColor: "rgba(248, 250, 255, 0.8)",
-                        flexShrink: 0, // Impede que esta seção encolha
+                        flexShrink: 0,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                            backgroundColor: "rgba(66, 133, 244, 0.08)",
+                            borderColor: "rgba(66, 133, 244, 0.3)"
+                        }
                     }}
                 >
-                    <Box
-                        component="img"
-                        src="/doctorimage.png"
-                        alt="Doctor"
-                        sx={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "50%",
-                            border: "2px solid #4285F4",
-                            flexShrink: 0,
-                        }}
-                    />
+                    {/* Avatar do usuário - Agora usa photoURL quando disponível */}
+                    {user?.photoURL ? (
+                        <Avatar
+                            src={user.photoURL}
+                            alt={userName || "Doctor"}
+                            sx={{
+                                width: "32px",
+                                height: "32px",
+                                borderRadius: "50%",
+                                border: "2px solid #4285F4",
+                                flexShrink: 0,
+                            }}
+                        />
+                    ) : (
+                        <Box
+                            component="img"
+                            src="/doctorimage.png"
+                            alt="Doctor"
+                            sx={{
+                                width: "32px",
+                                height: "32px",
+                                borderRadius: "50%",
+                                border: "2px solid #4285F4",
+                                flexShrink: 0,
+                            }}
+                        />
+                    )}
+
                     <Box sx={{ ml: 1.2, flex: 1, minWidth: 0 }}>
                         <Typography
                             sx={{
@@ -262,7 +296,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                 whiteSpace: "nowrap",
                             }}
                         >
-                            Dr. {userName}
+                            Dr. {user ? user.fullName?.split(' ')[0] : userName}
                         </Typography>
                         <Typography
                             sx={{
@@ -276,7 +310,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                 whiteSpace: "nowrap",
                             }}
                         >
-                            {userRole}
+                            {user?.especialidade || userRole}
                         </Typography>
                     </Box>
                     <Box

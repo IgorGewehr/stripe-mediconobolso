@@ -340,10 +340,12 @@ const AgendaMedica = () => {
             );
 
             // Crie o objeto de evento atualizado
+            const patient = await FirebaseService.getPatient(doctorId, patientId);
             const updatedEvent = createEventObject(
                 dataToSave,
-                eventos.find(e => e.id === consultationId)?.nome || "Paciente"
+                patient ? (patient.patientName || patient.nome) : "Paciente"
             );
+
 
             // Atualize o estado
             setEventos(prev => {

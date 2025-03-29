@@ -812,12 +812,6 @@ export default function NotasSection({ pacienteId }) {
                 </Typography>
             </Box>
 
-            {/* Quick Documents Section */}
-            <QuickDocumentsSection
-                patientId={pacienteId}
-                doctorId={user?.uid}
-            />
-
             {/* Filters, View All and New Note buttons in one line */}
             <Box sx={{
                 display: "flex",

@@ -15,6 +15,7 @@ import PatientsListPage from "../components/patientsListTemplate";
 import PrescriptionsPage from "../components/receitasTemplate";
 import {useResponsiveScale} from "../components/useScale";
 import CentralAjudaTemplate from "../components/centralAjudaTemplate";
+import UserProfileTemplate from "../components/userProfileTemplate";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -122,6 +123,8 @@ export default function AppLayout({ children }) {
                 return <CentralAjudaTemplate />;
             case "reportar":
                 return <CentralAjudaTemplate isReporte={true} />;
+            case "meu perfil": // Adicione este novo case para a tela de perfil
+                return <UserProfileTemplate />;
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
@@ -135,6 +138,11 @@ export default function AppLayout({ children }) {
             setSelectedPatientId(null);
         }
     };
+
+    const handleProfileClick = () => {
+        setActivePage("Meu Perfil");
+    };
+
 
     // Callback para o botão "Paciente" da TopAppBar
     const handlePacienteTopAppBarClick = () => {
@@ -168,6 +176,7 @@ export default function AppLayout({ children }) {
                 initialSelected={activePage}
                 onMenuSelect={handleMenuSelect}
                 onLogout={logout}
+                onProfileClick={handleProfileClick} // Adicione esta prop
                 userName={user?.fullName?.split(' ')[0] || "Médico"}
                 userRole={user?.especialidade || ""}
             />
@@ -177,40 +186,43 @@ export default function AppLayout({ children }) {
                         title={
                             activePage === "PatientProfile"
                                 ? "Perfil do Paciente"
-                                : activePage === "Dashboard"
-                                    ? (
-                                        <>
-                                            Bem vindo,{" "}
-                                            <span style={{color: "#1852FE"}}>
-                                                Dr. {user?.fullName}
-                                            </span>
-                                        </>
-                                    )
-                                    : activePage === "Agenda"
+                                : activePage === "Meu Perfil"
+                                    ? "Meu Perfil"
+                                    : activePage === "Dashboard"
                                         ? (
                                             <>
-                                            <span style={{color: "#1852FE"}}>
-                                                Dr. {user?.fullName}
-                                            </span>
-                                                {", confira sua agenda"}
+                                                Bem vindo,{" "}
+                                                <span style={{color: "#1852FE"}}>
+                                Dr. {user?.fullName}
+                            </span>
                                             </>
                                         )
-                                        : activePage === "Pacientes"
+                                        : activePage === "Agenda"
                                             ? (
                                                 <>
-                                                <span style={{color: "#1852FE"}}>
-                                                    Dr. {user?.fullName}
-                                                </span>
-                                                    {", gerencie seus pacientes"}
+                            <span style={{color: "#1852FE"}}>
+                                Dr. {user?.fullName}
+                            </span>
+                                                    {", confira sua agenda"}
                                                 </>
                                             )
-                                            : activePage
+                                            : activePage === "Pacientes"
+                                                ? (
+                                                    <>
+                                <span style={{color: "#1852FE"}}>
+                                    Dr. {user?.fullName}
+                                </span>
+                                                        {", gerencie seus pacientes"}
+                                                    </>
+                                                )
+                                                : activePage
                         }
                         onPacienteClick={handlePacienteTopAppBarClick}
                         onAgendamentoClick={handleAgendamentoClick}
                         // Sempre usa handleBackToDashboard para o botão de voltar
                         onBackClick={handleBackToDashboard}
                         onReceitaClick={handleReceitaClick}
+                        onProfileClick={handleProfileClick}
                     />
                 </Box>
                 <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>

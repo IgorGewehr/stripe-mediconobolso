@@ -923,7 +923,7 @@ function Card1({
                 )}
 
                 {/* Health Plans */}
-                {healthPlans.length > 0 && (
+                {healthPlans.length > 0 ? (
                     <>
                         <Typography
                             variant="subtitle2"
@@ -1007,6 +1007,19 @@ function Card1({
                             })}
                         </Box>
                     </>
+                ) : (
+                    <Typography
+                        variant="subtitle2"
+                        sx={{
+                            color: themeColors.textPrimary,
+                            fontFamily: "Gellix, sans-serif",
+                            fontSize: 14,
+                            fontWeight: 500,
+                            mb: 2,
+                        }}
+                    >
+                        plano de saúde não cadastrado
+                    </Typography>
                 )}
 
                 {/* Chronic Diseases */}
@@ -1939,16 +1952,9 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
 
     // Handlers for health plans
     const getHealthPlans = () => {
-        // If we already have an array of health plans
         if (Array.isArray(formData.healthPlans) && formData.healthPlans.length > 0) {
             return formData.healthPlans;
         }
-
-        // If we have a single health plan object, convert to array
-        if (formData.healthPlan && typeof formData.healthPlan === 'object') {
-            return [formData.healthPlan];
-        }
-
         return [];
     };
 
@@ -1996,8 +2002,6 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
         setFormData({
             ...formData,
             healthPlans: healthPlans,
-            // Keep backward compatibility
-            healthPlan: healthPlans[0] || {}
         });
 
         setShowHealthPlanForm(false);
