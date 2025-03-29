@@ -1627,6 +1627,47 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {/* Notes Button */}
+                    <Tooltip title="Ver histórico de anotações" placement="bottom">
+                        <IconButton
+                            sx={{
+                                mr: 1,
+                                color: "#3366FF",
+                                backgroundColor: "rgba(51, 102, 255, 0.08)",
+                                "&:hover": {
+                                    backgroundColor: "rgba(51, 102, 255, 0.12)",
+                                },
+                                position: "relative" // Importante para posicionar o Badge
+                            }}
+                            onClick={() => setNotesDrawerOpen(true)}
+                        >
+                            <DescriptionIcon />
+                            {patientNotes.length > 0 && (
+                                <Box
+                                    sx={{
+                                        position: "absolute",
+                                        top: -8,
+                                        left: -8,
+                                        bgcolor: "error.main",
+                                        color: "white",
+                                        borderRadius: "50%",
+                                        width: 20,
+                                        height: 20,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: 12,
+                                        fontWeight: "bold",
+                                        border: "2px solid white"
+                                    }}
+                                >
+                                    {patientNotes.length}
+                                </Box>
+                            )}
+                        </IconButton>
+                    </Tooltip>
+
+                    {/* Font Size Button */}
                     <Tooltip title="Ajustar tamanho da fonte" placement="bottom">
                         <IconButton
                             sx={{
@@ -1642,6 +1683,8 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                             <FormatSizeIcon />
                         </IconButton>
                     </Tooltip>
+
+                    {/* Close Button */}
                     <CloseButton onClick={() => onClose()}>
                         <CloseIcon />
                     </CloseButton>
@@ -1649,7 +1692,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             </DialogHeader>
 
             {/* Body */}
-            <DialogBody sx={fontSizeStyle}>
+            <DialogBody sx={{...fontSizeStyle, transition: "padding-right 0.3s ease-in-out",...(notesDrawerOpen && !fullScreen ? { paddingRight: "380px" } : {})}}>
                 <Box sx={{ p: 3 }}>
                     {/* Seção 1: Informações Principais */}
                     <SectionContainer>
@@ -2239,7 +2282,10 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
             <>
                 {/* Footer */}
-                <ActionButtonsContainer>
+                <ActionButtonsContainer sx={{
+                    transition: "padding-right 0.3s ease-in-out",
+                    ...(notesDrawerOpen && !fullScreen ? { paddingRight: "380px" } : {})
+                }}>
                     <ActionButton
                         variant="outlined"
                         disabled={isSubmitting}
@@ -2295,69 +2341,6 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                         <TextIncreaseIcon />
                     </FontSizeButton>
                 </FontSizeControl>
-
-                {/* Botão flutuante para abrir o painel de notas */}
-                <Box
-                    sx={{
-                        position: "fixed",
-                        bottom: theme.spacing(4),
-                        left: theme.spacing(4),
-                        zIndex: 1200,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                    }}
-                >
-                    <Tooltip title="Ver histórico de anotações" placement="right">
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => setNotesDrawerOpen(true)}
-                            sx={{
-                                borderRadius: "50%",
-                                minWidth: "56px",
-                                height: "56px",
-                                backgroundColor: "#3366FF",
-                                boxShadow: "0px 4px 12px rgba(51, 102, 255, 0.25)",
-                                "&:hover": {
-                                    backgroundColor: "#2952CC",
-                                    transform: "translateY(-2px)",
-                                    boxShadow: "0px 6px 16px rgba(51, 102, 255, 0.35)",
-                                },
-                                transition: "all 0.2s ease-in-out",
-                            }}
-                        >
-                            <DescriptionIcon />
-                        </Button>
-                    </Tooltip>
-                    {patientNotes.length > 0 && (
-                        <Badge
-                            badgeContent={patientNotes.length}
-                            color="error"
-                            sx={{
-                                ".MuiBadge-badge": {
-                                    top: "-8px",
-                                    right: "-8px",
-                                }
-                            }}
-                        >
-                            <Typography
-                                variant="caption"
-                                sx={{
-                                    mt: 1,
-                                    backgroundColor: "white",
-                                    color: "#111E5A",
-                                    padding: "4px 8px",
-                                    borderRadius: "12px",
-                                    fontWeight: 600,
-                                    boxShadow: "0px 2px 6px rgba(0, 0, 0, 0.1)",
-                                }}
-                            >
-                                Notas
-                            </Typography>
-                        </Badge>
-                    )}
-                </Box>
 
                 {/* Painel de Notas */}
                 <AnamneseNotesPanel

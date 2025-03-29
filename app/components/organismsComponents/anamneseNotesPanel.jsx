@@ -47,6 +47,7 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import {ChevronRightIcon} from "lucide-react";
 
 // Tema com cores para cada tipo de nota
 const theme = createTheme({
@@ -305,6 +306,12 @@ const AnamneseNotesPanel = ({
         }
     };
 
+    const [collapsed, setCollapsed] = useState(false);
+
+    const handleCollapsePanel = () => {
+        setCollapsed(!collapsed);
+    };
+
     // Formatação de data
     const formatDate = (date) => {
         if (!date) return "";
@@ -470,16 +477,23 @@ const AnamneseNotesPanel = ({
                 anchor="right"
                 open={open}
                 onClose={onClose}
-                variant="temporary"
-                transitionDuration={300}
-                ModalProps={{ container: document.body }} // Renderiza fora do contexto do dialog
+                variant="persistent" // Mudança crucial: usar persistent em vez de temporary
+                ModalProps={{
+                    hideBackdrop: true,
+                }}
                 PaperProps={{
                     sx: {
                         width: drawerWidth,
                         borderTopLeftRadius: isMobile ? 0 : '20px',
                         borderBottomLeftRadius: isMobile ? 0 : '20px',
                         maxWidth: '100%',
-                        zIndex: 1600,
+                        zIndex: 1200, // Mantém um z-index alto
+                        boxShadow: "0px 0px 24px rgba(0, 0, 0, 0.2)",
+                        borderLeft: "1px solid rgba(0, 0, 0, 0.12)",
+                        position: "fixed", // Importante para manter fixo
+                        height: "100vh",
+                        top: 0,
+                        right: 0
                     }
                 }}
             >
@@ -489,15 +503,19 @@ const AnamneseNotesPanel = ({
                         <Typography variant="h6" sx={{ fontWeight: 600 }}>
                             Histórico de anotações
                         </Typography>
-                        <IconButton
-                            edge="end"
-                            onClick={onClose}
-                            sx={{ ml: 'auto' }}
-                        >
-                            <CloseIcon />
-                        </IconButton>
+                        <Box sx={{ ml: 'auto', display: 'flex' }}>
+                            <Button
+                                variant="outlined"
+                                color="inherit"
+                                startIcon={<CloseIcon />}
+                                onClick={onClose}
+                                size="small"
+                                sx={{ borderRadius: "50px" }}
+                            >
+                                Fechar
+                            </Button>
+                        </Box>
                     </Toolbar>
-
                     {/* Barra de busca e filtros */}
                     <Box sx={{ p: 2, borderBottom: '1px solid #EAECEF' }}>
                         <TextField
