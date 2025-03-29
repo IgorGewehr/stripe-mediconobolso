@@ -127,7 +127,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
             let consultDate;
             if (consultation.consultationDate instanceof Date) {
                 consultDate = consultation.consultationDate;
-            } else if (consultation.consultationDate && typeof consultation.consultationDate.toDate === 'function') {
+            } else if (consultation.consultationDate != null && typeof consultation.consultationDate.toDate === 'function') {
                 consultDate = consultation.consultationDate.toDate();
             } else if (consultation.data) {
                 consultDate = parseISO(consultation.data);
@@ -175,6 +175,30 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
             return patientData.statusList.slice(0, 1);
         }
         return [];
+    };
+
+    // Helper function to safely get consultation date
+    const getConsultationDate = () => {
+        if (!nextConsultation) return new Date();
+
+        // Check if consultationDate is a Date object
+        if (nextConsultation.consultationDate instanceof Date) {
+            return nextConsultation.consultationDate;
+        }
+
+        // Check if consultationDate is a Firestore Timestamp that has toDate method
+        if (nextConsultation.consultationDate != null && typeof nextConsultation.consultationDate.toDate === 'function') {
+            return nextConsultation.consultationDate.toDate();
+        }
+
+        // If we have a string date in data property
+        if (nextConsultation.data) {
+            const parsed = parseISO(nextConsultation.data);
+            if (isValid(parsed)) return parsed;
+        }
+
+        // Fallback to current date
+        return new Date();
     };
 
     // Renderização para ausência de consulta agendada
@@ -228,6 +252,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
     const healthPlan = getPatientHealthPlan();
     const chronicDiseases = getChronicDiseases();
     const patientStatus = getPatientStatus();
+    const consultationDate = getConsultationDate();
 
     return (
         <Box sx={{ display: 'flex', gap: 2 }}>
@@ -430,21 +455,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <CalendarTodayIcon sx={{ fontSize: 12, mr: 0.25 }} /> {/* Aumentado de 11 para 12 */}
                                     <Typography variant="caption" sx={{ fontSize: '0.75rem' }}> {/* Aumentado de 0.7rem para 0.75rem */}
-                                        {isToday(new Date(
-                                            nextConsultation?.consultationDate instanceof Date
-                                                ? nextConsultation?.consultationDate
-                                                : nextConsultation?.consultationDate.toDate
-                                                    ? nextConsultation?.consultationDate.toDate()
-                                                    : new Date()
-                                        ))
-                                            ? 'Hoje'
-                                            : format(new Date(
-                                                nextConsultation?.consultationDate instanceof Date
-                                                    ? nextConsultation?.consultationDate
-                                                    : nextConsultation?.consultationDate.toDate
-                                                        ? nextConsultation?.consultationDate.toDate()
-                                                        : new Date()
-                                            ), 'dd/MM', { locale: ptBR })}
+                                        {isToday(consultationDate) ? 'Hoje' : format(consultationDate, 'dd/MM', { locale: ptBR })}
                                     </Typography>
                                 </Box>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -479,7 +490,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                             variant="contained"
                             size="small"
                             endIcon={<ArrowForwardIcon fontSize="small" />}
-                            onClick={() => handleSelectPatient(nextConsultation.patientId)}
+                            onClick={() => handleSelectPatient(nextConsultation?.patientId)}
                             sx={{
                                 borderRadius: '50px',
                                 bgcolor: 'white',

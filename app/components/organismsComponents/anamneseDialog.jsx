@@ -23,7 +23,7 @@ import {
     Slide,
     useTheme,
     useMediaQuery,
-    CircularProgress, Tooltip
+    CircularProgress, Tooltip, Badge
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -48,6 +48,8 @@ import FormatSizeIcon from "@mui/icons-material/FormatSize";
 // Firebase service
 import firebaseService from "../../../lib/firebaseService";
 import { parse } from 'date-fns';
+import DescriptionIcon from "@mui/icons-material/Description";
+import AnamneseNotesPanel from "./anamneseNotesPanel";
 
 
 // ------------------ ESTILOS ------------------
@@ -287,6 +289,9 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
     const [error, setError] = useState(null);
     const [fontSizeScale, setFontSizeScale] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
+    const [selectedNote, setSelectedNote] = useState(null);
+    const [patientNotes, setPatientNotes] = useState([]);
 
     const MIN_SCALE = 1;
     const MAX_SCALE = 2;
@@ -298,6 +303,29 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             setFontSizeScale(prev => Math.min(prev + SCALE_STEP, MAX_SCALE));
         }
     };
+
+    const fetchPatientNotes = async () => {
+        try {
+            const notes = await firebaseService.listNotes(doctorId, patientId);
+            setPatientNotes(notes);
+        } catch (err) {
+            console.error("Erro ao buscar notas do paciente:", err);
+            // Não definimos um erro aqui para não interferir com a experiência da anamnese
+        }
+    };
+
+    const handleSelectNote = (note) => {
+        setSelectedNote(note);
+        // Opcional: você pode usar as informações da nota selecionada para
+        // preencher automaticamente campos relevantes na anamnese
+    };
+
+
+    useEffect(() => {
+        if (open && patientId && doctorId) {
+            fetchPatientNotes();
+        }
+    }, [open, patientId, doctorId]);
 
     // Função para diminuir a fonte
     const decreaseFontSize = () => {
@@ -2267,6 +2295,114 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                         <TextIncreaseIcon />
                     </FontSizeButton>
                 </FontSizeControl>
+
+                {/* Botão flutuante para abrir o painel de notas */}
+                <Box
+                    sx={{
+                        position: "fixed",
+                        bottom: theme.spacing(4),
+                        left: theme.spacing(4),
+                        zIndex: 1200,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                    }}
+                >
+                    <Tooltip title="Ver histórico de anotações" placement="right">
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setNotesDrawerOpen(true)}
+                            sx={{
+                                borderRadius: "50%",
+                                minWidth: "56px",
+                                height: "56px",
+                                backgroundColor: "#3366FF",
+                                boxShadow: "0px 4px 12px rgba(51, 102, 255, 0.25)",
+                                "&:hover": {
+                                    backgroundColor: "#2952CC",
+                                    transform: "translateY(-2px)",
+                                    boxShadow: "0px 6px 16px rgba(51, 102, 255, 0.35)",
+                                },
+                                transition: "all 0.2s ease-in-out",
+                            }}
+                        >
+                            <DescriptionIcon />
+                        </Button>
+                    </Tooltip>
+                    {patientNotes.length > 0 && (
+                        <Badge
+                            badgeContent={patientNotes.length}
+                            color="error"
+                            sx={{
+                                ".MuiBadge-badge": {
+                                    top: "-8px",
+                                    right: "-8px",
+                                }
+                            }}
+                        >
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    mt: 1,
+                                    backgroundColor: "white",
+                                    color: "#111E5A",
+                                    padding: "4px 8px",
+                                    borderRadius: "12px",
+                                    fontWeight: 600,
+                                    boxShadow: "0px 2px 6px rgba(0, 0, 0, 0.1)",
+                                }}
+                            >
+                                Notas
+                            </Typography>
+                        </Badge>
+                    )}
+                </Box>
+
+                {/* Painel de Notas */}
+                <AnamneseNotesPanel
+                    open={notesDrawerOpen}
+                    onClose={() => setNotesDrawerOpen(false)}
+                    patientData={patientData}
+                    notesData={patientNotes}
+                    onSelectNote={handleSelectNote}
+                />
+
+                {/* Se você quiser mostrar uma indicação de que uma nota foi selecionada */}
+                {selectedNote && (
+                    <Box
+                        sx={{
+                            position: "fixed",
+                            bottom: theme.spacing(14),
+                            left: theme.spacing(4),
+                            zIndex: 1100,
+                            maxWidth: "280px",
+                            backgroundColor: "#ECF1FF",
+                            borderRadius: "12px",
+                            padding: "12px",
+                            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.08)",
+                            border: "1px solid #EAECEF",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                        }}
+                    >
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: "#3366FF" }}>
+                            Nota selecionada:
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {selectedNote.noteTitle || "Sem título"}
+                        </Typography>
+                        <IconButton
+                            size="small"
+                            sx={{ position: "absolute", top: "4px", right: "4px" }}
+                            onClick={() => setSelectedNote(null)}
+                        >
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    </Box>
+                )}
+
 
                 {/* Snackbar de feedback */}
                 <Snackbar
