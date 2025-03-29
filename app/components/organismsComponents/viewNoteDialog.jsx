@@ -359,9 +359,58 @@ const ViewNoteDialog = ({
         }
     };
 
+    // Função corrigida para abrir anexos
     const handleOpenAttachment = (attachment) => {
-        if (attachment && attachment.fileUrl) {
-            window.open(attachment.fileUrl, '_blank');
+        if (attachment) {
+            // Verificar se o anexo tem uma URL direta
+            if (attachment.fileUrl) {
+                window.open(attachment.fileUrl, '_blank');
+                return;
+            }
+
+            // Para compatibilidade com diferentes formatos de dados
+            if (attachment.url) {
+                window.open(attachment.url, '_blank');
+                return;
+            }
+
+            // Verificar se o anexo tem um downloadURL (formato alternativo)
+            if (attachment.downloadURL) {
+                window.open(attachment.downloadURL, '_blank');
+                return;
+            }
+
+            // Se o anexo for salvo em outro formato
+            if (attachment.file && attachment.file.url) {
+                window.open(attachment.file.url, '_blank');
+                return;
+            }
+
+            // Caso seja um objeto com referência a storage mas sem URL direta
+            if (attachment.storagePath) {
+                // Neste caso, seria necessário obter a URL do Storage
+                // através do FirebaseService ou diretamente do firebase/storage
+                console.log("Anexo precisa ser obtido do Storage:", attachment.storagePath);
+                try {
+                    // Exemplo de como obter a URL dinamicamente (ajustar conforme seu FirebaseService)
+                    FirebaseService.getDownloadURLFromPath(attachment.storagePath)
+                        .then(url => window.open(url, '_blank'))
+                        .catch(error => {
+                            console.error("Erro ao obter URL do anexo:", error);
+                            alert("Não foi possível abrir este anexo. Tente novamente mais tarde.");
+                        });
+                } catch (error) {
+                    console.error("Erro ao processar o anexo:", error);
+                    alert("Não foi possível abrir este anexo. Tente novamente mais tarde.");
+                }
+                return;
+            }
+
+            console.error("Formato de anexo não reconhecido:", attachment);
+            alert("Não foi possível abrir este anexo. Formato desconhecido.");
+        } else {
+            console.error("Tentativa de abrir anexo nulo ou indefinido");
+            alert("Não foi possível abrir este anexo.");
         }
     };
 
