@@ -1629,30 +1629,38 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     {/* Notes Button */}
                     <Tooltip title="Ver histórico de anotações" placement="bottom">
-                        <IconButton
-                            sx={{
-                                mr: 1,
-                                color: "#3366FF",
-                                backgroundColor: "rgba(51, 102, 255, 0.08)",
-                                "&:hover": {
-                                    backgroundColor: "rgba(51, 102, 255, 0.12)",
-                                },
-                                position: "relative" // Importante para posicionar o Badge
-                            }}
+                        <Button
+                            variant="contained"
                             onClick={() => setNotesDrawerOpen(true)}
+                            startIcon={<DescriptionIcon />}
+                            sx={{
+                                mr: 2,
+                                backgroundColor: "rgba(51, 102, 255, 0.12)",
+                                color: "#3366FF",
+                                borderRadius: "50px",
+                                padding: "8px 16px",
+                                textTransform: "none",
+                                fontWeight: 600,
+                                boxShadow: "none",
+                                position: "relative",
+                                "&:hover": {
+                                    backgroundColor: "rgba(51, 102, 255, 0.2)",
+                                    boxShadow: "0px 2px 6px rgba(51, 102, 255, 0.2)",
+                                }
+                            }}
                         >
-                            <DescriptionIcon />
+                            Notas
                             {patientNotes.length > 0 && (
                                 <Box
                                     sx={{
                                         position: "absolute",
                                         top: -8,
-                                        left: -8,
+                                        right: -8,
                                         bgcolor: "error.main",
                                         color: "white",
                                         borderRadius: "50%",
-                                        width: 20,
-                                        height: 20,
+                                        width: 22,
+                                        height: 22,
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
@@ -1664,26 +1672,8 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                                     {patientNotes.length}
                                 </Box>
                             )}
-                        </IconButton>
+                        </Button>
                     </Tooltip>
-
-                    {/* Font Size Button */}
-                    <Tooltip title="Ajustar tamanho da fonte" placement="bottom">
-                        <IconButton
-                            sx={{
-                                mr: 1,
-                                color: "#3366FF",
-                                backgroundColor: "rgba(51, 102, 255, 0.08)",
-                                "&:hover": {
-                                    backgroundColor: "rgba(51, 102, 255, 0.12)",
-                                }
-                            }}
-                            onClick={resetFontSize}
-                        >
-                            <FormatSizeIcon />
-                        </IconButton>
-                    </Tooltip>
-
                     {/* Close Button */}
                     <CloseButton onClick={() => onClose()}>
                         <CloseIcon />
@@ -2325,13 +2315,23 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     >
                         <TextDecreaseIcon />
                     </FontSizeButton>
+
+                    {/* Botão de restaurar - corrigido */}
                     <FontSizeButton
                         size="small"
                         onClick={resetFontSize}
+                        disabled={fontSizeScale === MIN_SCALE}
                         aria-label="Restaurar tamanho da fonte padrão"
+                        sx={{
+                            color: fontSizeScale !== MIN_SCALE ? "#1852FE" : "rgba(17, 30, 90, 0.38)",
+                            "&:hover": {
+                                backgroundColor: fontSizeScale !== MIN_SCALE ? "rgba(24, 82, 254, 0.08)" : "transparent",
+                            }
+                        }}
                     >
                         <AccessibilityNewIcon />
                     </FontSizeButton>
+
                     <FontSizeButton
                         size="small"
                         onClick={increaseFontSize}
