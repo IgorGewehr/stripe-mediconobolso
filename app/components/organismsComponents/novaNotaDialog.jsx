@@ -408,13 +408,11 @@ const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }
                             <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                                 <CalendarTodayIcon sx={{ fontSize: 18, color: '#1852FE', mr: 2 }} />
                                 <Typography sx={{ color: '#111828', fontWeight: 500 }}>
-                                    {format(
-                                        cons.consultationDate instanceof Date
-                                            ? cons.consultationDate
-                                            : cons.consultationDate.toDate(),
+                                    {cons.consultationDate ? format(
+                                        getDateValue(cons.consultationDate),
                                         "dd/MM/yyyy",
                                         { locale: ptBR }
-                                    )}
+                                    ) : "Data não disponível"}
                                 </Typography>
                             </Box>
                         </MenuItem>
@@ -1344,7 +1342,11 @@ const PatientNoteDialog = ({
                                                         }}
                                                     >
                                                         <CalendarTodayIcon sx={{ fontSize: 14, mr: 0.5, color: '#64748B' }} />
-                                                        {`Consulta: ${format(getDateValue(selectedDate), "dd/MM/yyyy", { locale: ptBR })}`}
+                                                        {consultationDate && (
+                                                            <Typography>
+                                                                {`Consulta: ${format(getDateValue(consultationDate), "dd/MM/yyyy", { locale: ptBR })}`}
+                                                            </Typography>
+                                                        )}
                                                     </Typography>
                                                 </Box>
                                             )}
