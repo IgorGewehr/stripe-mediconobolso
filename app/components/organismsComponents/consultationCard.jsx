@@ -33,7 +33,7 @@ import {
 import { format, addMonths, parseISO, isValid, isSameDay, isToday, getDay, startOfMonth, endOfMonth, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from '../../../lib/firebaseService';
-import WeatherCard from "../basicComponents/weatherCard";
+import WeatherContainer from "./weatherContainer";
 
 const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgenda, onSelectPatient }) => {
     const theme = useTheme();
@@ -258,17 +258,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
         <Box sx={{ display: 'flex', gap: 2 }}>
             {/* Card de Clima (à esquerda) */}
             <Box sx={{ width: '25%' }}>
-                <WeatherCard
-                    cityName="São Paulo"
-                    currentTemp={weatherData.temperature}
-                    currentWeather={weatherData.condition}
-                    highTemp={weatherData.temperature + 2}
-                    lowTemp={weatherData.temperature - 3}
-                    forecast={[
-                        { day: 'Ter', weather: 'Sol', lowTemp: weatherData.temperature - 2, highTemp: weatherData.temperature + 1 },
-                        { day: 'Qua', weather: 'Sol', lowTemp: weatherData.temperature - 1, highTemp: weatherData.temperature + 2 }
-                    ]}
-                />
+                <WeatherContainer/>
             </Box>
 
             <Card
