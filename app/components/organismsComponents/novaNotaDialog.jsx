@@ -322,6 +322,11 @@ const AttachmentChip = ({ file, onOpen, onRemove, disabled }) => {
     );
 };
 
+function getDateValue(selectedDate) {
+    if (!selectedDate) return null;
+    return selectedDate instanceof Date ? selectedDate : selectedDate.toDate();
+}
+
 // Enhanced consultation dropdown component
 const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }) => {
     const [anchorEl, setAnchorEl] = useState(null);
@@ -361,11 +366,7 @@ const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }
                 {selectedDate ? (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <CalendarTodayIcon sx={{ fontSize: 18, mr: 1 }} />
-                        {format(
-                            selectedDate instanceof Date ? selectedDate : selectedDate.toDate(),
-                            "dd/MM/yyyy",
-                            { locale: ptBR }
-                        )}
+                        {format(getDateValue(selectedDate), "dd/MM/yyyy", { locale: ptBR })}
                     </Box>
                 ) : (
                     "Escolha a consulta"
@@ -874,6 +875,11 @@ const PatientNoteDialog = ({
             setIsLoading(false);
             setUploadProgress(null);
         }
+    };
+
+    const getDateValue = (dateValue) => {
+        if (!dateValue) return null;
+        return dateValue instanceof Date ? dateValue : dateValue.toDate();
     };
 
     const handleConfirmDelete = () => {
