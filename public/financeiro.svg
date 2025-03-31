@@ -1,0 +1,13 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g id="Frame">
+        <path id="Vector" d="M8.00033 1.33334V3.33334" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Vector_2" d="M8.00033 12.6667V14.6667" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Vector_3" d="M4.66699 3.33337L6.06699 4.73337" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Vector_4" d="M9.93359 11.2667L11.3336 12.6667" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Vector_5" d="M2.66699 6.66669H4.66699" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Vector_6" d="M11.334 6.66669H13.334" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Vector_7" d="M4.66699 11.2667L6.06699 9.86669" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Vector_8" d="M9.93359 4.73337L11.3336 3.33337" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="Circulo" d="M8.00033 10.0C9.10433 10.0 10.0003 8.88 10.0003 8.0C10.0003 7.12 9.10433 6.0 8.00033 6.0C6.89633 6.0 6.00033 7.12 6.00033 8.0C6.00033 8.88 6.89633 10.0 8.00033 10.0Z" stroke="#111E5A" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+</svg>

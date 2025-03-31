@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Box, Button, Typography, Avatar } from "@mui/material";
 import {useResponsiveScale} from "./useScale";
 import {useAuth} from "./authProvider";
+import LockIcon from '@mui/icons-material/Lock';
 
 const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRole = "Cirurgião", onMenuSelect, onLogout, onProfileClick }) => {
     const [selected, setSelected] = useState(initialSelected);
@@ -16,6 +17,8 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         { label: "Pacientes", icon: "/pacientes.svg" },
         { label: "Receitas", icon: "/receitas.svg" },
         { label: "Agenda", icon: "/agenda.svg" },
+        { label: "Métricas", icon: "/metricas.svg", disabled: true },
+        { label: "Financeiro", icon: "/financeiro.svg", disabled: true },
     ];
 
     const suporteItems = [
@@ -27,7 +30,12 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         { label: "Sair", icon: "/logout.svg", isLogout: true }, // Novo item de logout na seção "Sair"
     ];
 
-    const handleMenuClick = (label, isLogout) => {
+    const handleMenuClick = (label, isLogout, disabled) => {
+        // Se o item estiver desabilitado, não fazemos nada
+        if (disabled) {
+            return;
+        }
+
         if (isLogout && onLogout) {
             onLogout();
             return;
@@ -46,7 +54,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         }
     };
 
-    const buttonStyles = (isSelected, label, isLogout) => ({
+    const buttonStyles = (isSelected, label, isLogout, disabled) => ({
         display: "flex",
         alignItems: "center",
         justifyContent: "flex-start",
@@ -61,13 +69,15 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         my: 0.5,
         borderRadius: "18px",
         transition: "background-color 0.2s ease, color 0.2s ease",
-        color: isSelected ? "#FFF" : (isLogout ? "#DB4437" : "#111E5A"),
+        color: disabled ? "#8A94A6" : (isSelected ? "#FFF" : (isLogout ? "#DB4437" : "#111E5A")),
         backgroundColor: isSelected ? "#4285F4" : "transparent",
-        opacity: isSelected ? 0.77 : 1,
+        opacity: disabled ? 0.6 : (isSelected ? 0.77 : 1),
+        cursor: disabled ? "default" : "pointer",
+        pointerEvents: disabled ? "auto" : "auto", // Mantém os eventos de ponteiro para visual consistente
         "&:hover": {
-            backgroundColor: isSelected
+            backgroundColor: disabled ? "transparent" : (isSelected
                 ? "#4285F4"
-                : (isLogout ? "rgba(219, 68, 55, 0.08)" : "rgba(66, 133, 244, 0.08)"),
+                : (isLogout ? "rgba(219, 68, 55, 0.08)" : "rgba(66, 133, 244, 0.08)")),
         },
     });
 
@@ -75,6 +85,13 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         width: "18px",
         height: "18px",
         mr: 1.2,
+    };
+
+    const lockIconStyles = {
+        width: "14px",
+        height: "14px",
+        ml: 0.8,
+        color: "#8A94A6",
     };
 
     const categoryLabelStyle = {
@@ -170,18 +187,20 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     </Typography>
                     <Box>
                         {principalItems.map((item) => {
-                            const isSelected = selected === item.label;
+                            const isSelected = selected === item.label && !item.disabled;
                             return (
                                 <Button
                                     key={item.label}
-                                    onClick={() => handleMenuClick(item.label)}
+                                    onClick={() => handleMenuClick(item.label, false, item.disabled)}
                                     variant="text"
-                                    sx={buttonStyles(isSelected, item.label)}
+                                    sx={buttonStyles(isSelected, item.label, false, item.disabled)}
                                     startIcon={
                                         <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
                                     }
+                                    disableRipple={item.disabled}
                                 >
                                     {item.label}
+                                    {item.disabled && <LockIcon sx={lockIconStyles} />}
                                 </Button>
                             );
                         })}
