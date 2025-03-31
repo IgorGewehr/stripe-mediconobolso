@@ -703,8 +703,8 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         // Aplicar filtro de gênero
         if (activeFilters.gender) {
             filtered = filtered.filter(patient =>
-                patient.gender === activeFilters.gender ||
-                activeFilters.gender === 'Ambos'
+                patient.gender.toLowerCase() === activeFilters.gender.toLowerCase() ||
+                activeFilters.gender.toLowerCase() === 'ambos'
             );
         }
 
