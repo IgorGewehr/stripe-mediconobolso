@@ -116,6 +116,57 @@ const SortableHeaderCell = ({ label, field, sortConfig, onSortChange }) => {
     );
 };
 
+const MetricCard = ({ icon, title, value, active, onClick, color, loading }) => {
+    const theme = useTheme();
+
+    return (
+        <Card
+            elevation={0}
+            onClick={onClick}
+            sx={{
+                p: 1.5,
+                borderRadius: '16px',
+                border: `1px solid ${active
+                    ? color.main
+                    : alpha(theme.palette.primary.main, 0.2)
+                }`,
+                backgroundColor: active ? alpha(color.main, 0.05) : 'white',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                }
+            }}
+        >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Avatar sx={{
+                    bgcolor: active
+                        ? color.main
+                        : alpha(color.main, 0.1),
+                    color: active
+                        ? 'white'
+                        : color.main,
+                    width: 32,
+                    height: 32,
+                    mr: 1.5,
+                    transition: 'all 0.2s ease',
+                }}>
+                    {icon}
+                </Avatar>
+                <Box>
+                    <Typography variant="caption" color={active ? color.main : "text.secondary"} sx={{ fontWeight: active ? 600 : 400 }}>
+                        {title}
+                    </Typography>
+                    <Typography variant="h6" fontWeight={600} color={active ? color.main : "text.primary"}>
+                        {loading ? <Skeleton width={30} /> : value}
+                    </Typography>
+                </Box>
+            </Box>
+        </Card>
+    );
+};
+
 // Estilos para filtros
 const FilterChip = ({ label, colorscheme, onDelete }) => {
     const theme = useTheme();
@@ -449,6 +500,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         todayConsultations: 0,
         upcomingConsultations: 0
     });
+
 
     // Carregar consultas se não foram fornecidas como props
     useEffect(() => {
@@ -864,6 +916,37 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         ));
     };
 
+    const handleMetricCardClick = (option) => {
+        handleViewOptionsChange(option);
+    };
+
+    // Cores para os diferentes estados
+    const viewStateColors = {
+        all: {
+            main: theme.palette.primary.main,
+            light: alpha(theme.palette.primary.main, 0.1)
+        },
+        today: {
+            main: theme.palette.error.main,
+            light: alpha(theme.palette.error.main, 0.1)
+        },
+        upcoming: {
+            main: theme.palette.success.main,
+            light: alpha(theme.palette.success.main, 0.1)
+        }
+    };
+
+    // Determinar a cor do card de conteúdo baseado no estado atual
+    const getContentCardStyle = () => {
+        return {
+            backgroundColor: alpha(viewStateColors[viewOptions].main, 0.03),
+            borderLeftWidth: 3,
+            borderLeftStyle: 'solid',
+            borderLeftColor: viewStateColors[viewOptions].main,
+            transition: 'all 0.3s ease'
+        };
+    };
+
     const isLoadingData = loading || loadingConsultations;
 
     return (
@@ -891,7 +974,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                 }}
             >
                 {/* Cabeçalho com métricas e opções */}
-                <Box sx={{ p: 3, backgroundColor: alpha(theme.palette.primary.main, 0.05) }}>
+                <Box sx={{ p: 3, backgroundColor: alpha(viewStateColors[viewOptions].main, 0.05) }}>
                     <Box
                         sx={{
                             display: 'flex',
@@ -900,7 +983,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                             mb: 2
                         }}
                     >
-                        <Typography variant="h6" fontWeight={600} color="primary">
+                        <Typography variant="h6" fontWeight={600} color={viewStateColors[viewOptions].main}>
                             Pacientes
                         </Typography>
 
@@ -911,6 +994,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 sx={{
                                     '& .MuiButton-root': {
                                         borderRadius: 0,
+                                        borderColor: viewStateColors[viewOptions].main,
                                         '&:first-of-type': {
                                             borderTopLeftRadius: '50px',
                                             borderBottomLeftRadius: '50px',
@@ -918,6 +1002,10 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                         '&:last-of-type': {
                                             borderTopRightRadius: '50px',
                                             borderBottomRightRadius: '50px',
+                                        },
+                                        '&.Mui-selected': {
+                                            backgroundColor: viewStateColors[viewOptions].main,
+                                            color: 'white'
                                         }
                                     }
                                 }}
@@ -925,6 +1013,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 <Button
                                     onClick={() => handleViewOptionsChange('all')}
                                     variant={viewOptions === 'all' ? 'contained' : 'outlined'}
+                                    color={viewOptions === 'all' ? 'primary' : 'inherit'}
                                     size="small"
                                 >
                                     Todos
@@ -932,6 +1021,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 <Button
                                     onClick={() => handleViewOptionsChange('today')}
                                     variant={viewOptions === 'today' ? 'contained' : 'outlined'}
+                                    color={viewOptions === 'today' ? 'error' : 'inherit'}
                                     size="small"
                                 >
                                     <Badge
@@ -945,6 +1035,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 <Button
                                     onClick={() => handleViewOptionsChange('upcoming')}
                                     variant={viewOptions === 'upcoming' ? 'contained' : 'outlined'}
+                                    color={viewOptions === 'upcoming' ? 'success' : 'inherit'}
                                     size="small"
                                 >
                                     Próximos
@@ -954,87 +1045,48 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                     </Box>
 
                     <Grid container spacing={2} sx={{ mb: 2 }}>
-                        {/* Métricas com cards mini */}
+                        {/* Cards de métricas clicáveis */}
                         <Grid item xs={4}>
-                            <Card elevation={0} sx={{
-                                p: 1.5,
-                                borderRadius: '16px',
-                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
-                            }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Avatar sx={{
-                                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                        color: theme.palette.primary.main,
-                                        width: 32,
-                                        height: 32,
-                                        mr: 1.5
-                                    }}>
-                                        <PersonIcon fontSize="small" />
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Total de Pacientes
-                                        </Typography>
-                                        <Typography variant="h6" fontWeight={600}>
-                                            {isLoadingData ? <Skeleton width={30} /> : metrics.totalPatients}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </Card>
+                            <MetricCard
+                                icon={<PersonIcon fontSize="small" />}
+                                title="Total de Pacientes"
+                                value={metrics.totalPatients}
+                                active={viewOptions === 'all'}
+                                onClick={() => handleMetricCardClick('all')}
+                                color={{
+                                    main: theme.palette.primary.main,
+                                    light: alpha(theme.palette.primary.main, 0.1)
+                                }}
+                                loading={isLoadingData}
+                            />
                         </Grid>
                         <Grid item xs={4}>
-                            <Card elevation={0} sx={{
-                                p: 1.5,
-                                borderRadius: '16px',
-                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
-                            }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Avatar sx={{
-                                        bgcolor: alpha(theme.palette.error.main, 0.1),
-                                        color: theme.palette.error.main,
-                                        width: 32,
-                                        height: 32,
-                                        mr: 1.5
-                                    }}>
-                                        <EventIcon fontSize="small" />
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Consultas Hoje
-                                        </Typography>
-                                        <Typography variant="h6" fontWeight={600} color={metrics.todayConsultations > 0 ? "error.main" : "text.primary"}>
-                                            {isLoadingData ? <Skeleton width={30} /> : metrics.todayConsultations}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </Card>
+                            <MetricCard
+                                icon={<EventIcon fontSize="small" />}
+                                title="Consultas Hoje"
+                                value={metrics.todayConsultations}
+                                active={viewOptions === 'today'}
+                                onClick={() => handleMetricCardClick('today')}
+                                color={{
+                                    main: theme.palette.error.main,
+                                    light: alpha(theme.palette.error.main, 0.1)
+                                }}
+                                loading={isLoadingData}
+                            />
                         </Grid>
                         <Grid item xs={4}>
-                            <Card elevation={0} sx={{
-                                p: 1.5,
-                                borderRadius: '16px',
-                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
-                            }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Avatar sx={{
-                                        bgcolor: alpha(theme.palette.success.main, 0.1),
-                                        color: theme.palette.success.main,
-                                        width: 32,
-                                        height: 32,
-                                        mr: 1.5
-                                    }}>
-                                        <EventAvailableIcon fontSize="small" />
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Próximas
-                                        </Typography>
-                                        <Typography variant="h6" fontWeight={600} color={theme.palette.success.main}>
-                                            {isLoadingData ? <Skeleton width={30} /> : metrics.upcomingConsultations}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </Card>
+                            <MetricCard
+                                icon={<EventAvailableIcon fontSize="small" />}
+                                title="Próximas"
+                                value={metrics.upcomingConsultations}
+                                active={viewOptions === 'upcoming'}
+                                onClick={() => handleMetricCardClick('upcoming')}
+                                color={{
+                                    main: theme.palette.success.main,
+                                    light: alpha(theme.palette.success.main, 0.1)
+                                }}
+                                loading={isLoadingData}
+                            />
                         </Grid>
                     </Grid>
 
@@ -1058,13 +1110,16 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 '& .MuiOutlinedInput-root': {
                                     borderRadius: '50px',
                                     backgroundColor: '#fff',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: viewStateColors[viewOptions].main,
+                                    }
                                 }
                             }}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
-                                        <SearchIcon />
+                                        <SearchIcon color={searchTerm ? viewStateColors[viewOptions].main : 'inherit'} />
                                     </InputAdornment>
                                 ),
                             }}
@@ -1088,6 +1143,8 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                     onClick={handleClearFilters}
                                     sx={{
                                         borderRadius: '50px',
+                                        borderColor: viewStateColors[viewOptions].main,
+                                        color: viewStateColors[viewOptions].main,
                                     }}
                                 >
                                     Limpar Filtros
@@ -1099,10 +1156,11 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 variant="outlined"
                                 startIcon={<FilterListIcon />}
                                 onClick={handleFilterClick}
-                                color={hasActiveFilters ? "primary" : "inherit"}
+                                color={hasActiveFilters ? viewOptions : "inherit"}
                                 sx={{
                                     borderRadius: '50px',
-                                    fontWeight: hasActiveFilters ? 600 : 400
+                                    fontWeight: hasActiveFilters ? 600 : 400,
+                                    borderColor: hasActiveFilters ? viewStateColors[viewOptions].main : theme.palette.divider,
                                 }}
                             >
                                 Filtrar
@@ -1147,12 +1205,13 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                     )}
                 </Box>
 
-                {/* Container flexível para a tabela */}
+                {/* Container flexível para a tabela com borda colorida baseada no viewOptions */}
                 <Box sx={{
                     flexGrow: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    ...getContentCardStyle()
                 }}>
                     <TableContainer
                         sx={{
@@ -1166,11 +1225,11 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 height: '8px',
                             },
                             '&::-webkit-scrollbar-thumb': {
-                                backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                                backgroundColor: alpha(viewStateColors[viewOptions].main, 0.2),
                                 borderRadius: '4px',
                             },
                             '&::-webkit-scrollbar-track': {
-                                backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                                backgroundColor: alpha(viewStateColors[viewOptions].main, 0.05),
                             }
                         }}
                     >
@@ -1244,7 +1303,13 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                                     Nenhum paciente encontrado
                                                 </Typography>
                                                 <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
-                                                    Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo paciente.
+                                                    {viewOptions === 'all' ? (
+                                                        'Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo paciente.'
+                                                    ) : viewOptions === 'today' ? (
+                                                        'Não há consultas agendadas para hoje. Verifique outros dias ou adicione uma nova consulta.'
+                                                    ) : (
+                                                        'Não há consultas futuras agendadas. Agende novas consultas com seus pacientes.'
+                                                    )}
                                                 </Typography>
                                             </Box>
                                         </TableCell>

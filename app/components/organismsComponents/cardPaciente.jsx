@@ -2116,6 +2116,7 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
                             <TextField
                                 label="Nome do Plano"
                                 value={localPlan.name || ""}
+                                autoComplete="new-password"
                                 onChange={handleChange('name')}
                                 fullWidth
                                 variant="outlined"
@@ -2143,6 +2144,7 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
                             <TextField
                                 label="Número do Plano"
                                 value={localPlan.number || ""}
+                                autoComplete="new-password"
                                 onChange={handleChange('number')}
                                 fullWidth
                                 variant="outlined"
@@ -2170,6 +2172,7 @@ function Card3({ doctorId, patientId, formData, setFormData, isEditing, validati
                             <TextField
                                 label="Data de Validade"
                                 type="date"
+                                autoComplete="new-password"
                                 value={localPlan.validUntil || ""}
                                 onChange={handleChange('validUntil')}
                                 fullWidth
