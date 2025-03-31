@@ -1,26 +1,41 @@
+"use client";
+
 import React from 'react';
 import { Box, Typography, Paper } from '@mui/material';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
+import AcUnitIcon from '@mui/icons-material/AcUnit';
+import GrainIcon from '@mui/icons-material/Grain';
 import CloudIcon from '@mui/icons-material/Cloud';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+
+const weatherIcons = {
+    Clear: <WbSunnyIcon sx={{ fontSize: 18, color: '#f59e0b' }} />,
+    Rain: <GrainIcon sx={{ fontSize: 18, color: '#3b82f6' }} />,
+    Snow: <AcUnitIcon sx={{ fontSize: 18, color: '#64748b' }} />,
+    Clouds: <CloudIcon sx={{ fontSize: 18, color: '#6b7280' }} />
+};
+
+const getWeatherLabel = (weather) => {
+    switch(weather) {
+        case 'Clear': return 'Ensolarado';
+        case 'Clouds': return 'Nublado';
+        case 'Rain': return 'Chuvoso';
+        case 'Snow': return 'Nevando';
+        default: return weather;
+    }
+};
 
 const WeatherCard = ({
-                         cityName = 'Florianópolis',
-                         currentTemp = 32,
-                         currentWeather = 'Sol',
-                         highTemp = 72,
-                         lowTemp = 55,
-                         forecast = [
-                             { day: 'Ter', weather: 'Sol', lowTemp: 25, highTemp: 33 },
-                             { day: 'Qua', weather: 'Sol', lowTemp: 26, highTemp: 32 }
-                         ]
+                         cityName,
+                         currentTemp,
+                         currentWeather,
+                         highTemp,
+                         lowTemp,
+                         forecast = []
                      }) => {
-    const getWeatherIcon = (weather) => {
-        if (weather.toLowerCase().includes('sol') || weather.toLowerCase().includes('sun')) {
-            return <WbSunnyIcon sx={{ fontSize: 18 }} />;
-        }
-        return <CloudIcon sx={{ fontSize: 18 }} />;
-    };
+    // Log para diagnóstico - para ver o que está chegando no componente
+    console.log("WeatherCard recebeu:", { cityName, currentTemp, currentWeather, highTemp, lowTemp });
+    console.log("Previsão recebida pelo WeatherCard:", forecast);
 
     return (
         <Paper
@@ -36,7 +51,12 @@ const WeatherCard = ({
                 border: '1px solid',
                 borderColor: '#e0e0e0',
                 backgroundColor: 'white',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.08)',
+                    borderColor: '#d0d7e6'
+                }
             }}
         >
             {/* Seção do clima atual */}
@@ -50,18 +70,18 @@ const WeatherCard = ({
 
                 <Box sx={{ display: 'flex', gap: '2px', alignItems: 'flex-start' }}>
                     <Typography variant="h3" sx={{ fontWeight: 600, color: '#2563EB', lineHeight: 1, fontSize: '2.5rem' }}>
-                        {currentTemp}°
+                        {currentTemp !== undefined ? `${currentTemp}°` : "--°"}
                     </Typography>
 
                     <Box sx={{ display: 'flex', flexDirection: 'column', ml: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <Typography variant="body2" sx={{ fontWeight: 500, color: '#172554', fontSize: '0.85rem' }}>
-                                {currentWeather}
+                                {currentWeather ? getWeatherLabel(currentWeather) : "Indisponível"}
                             </Typography>
-                            {getWeatherIcon(currentWeather)}
+                            {currentWeather && weatherIcons[currentWeather] ? weatherIcons[currentWeather] : <CloudIcon sx={{ fontSize: 18, color: '#6b7280' }} />}
                         </Box>
                         <Typography variant="body2" sx={{ fontWeight: 500, color: '#172554', fontSize: '0.85rem', mt: 0.5 }}>
-                            H:{highTemp}° L:{lowTemp}°
+                            Max:{highTemp !== undefined ? `${highTemp}°` : "--°"} Min:{lowTemp !== undefined ? `${lowTemp}°` : "--°"}
                         </Typography>
                     </Box>
                 </Box>
@@ -79,51 +99,72 @@ const WeatherCard = ({
 
             {/* Seção de previsão */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                {forecast.map((day, index) => (
-                    <Box key={index} sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        width: '45%'
-                    }}>
-                        <Typography variant="body2" sx={{
-                            fontWeight: 600,
-                            color: '#172554',
-                            fontSize: '0.9rem',
-                            lineHeight: 1,
-                            mb: 0.5
-                        }}>
-                            {day.day}
-                        </Typography>
-
-                        {getWeatherIcon(day.weather)}
-
-                        <Box sx={{
+                {Array.isArray(forecast) && forecast.length > 0 ? (
+                    // Mostramos exatamente os 2 dias de previsão (amanhã e depois)
+                    forecast.slice(0, 2).map((day, index) => (
+                        <Box key={index} sx={{
                             display: 'flex',
-                            justifyContent: 'center',
+                            flexDirection: 'column',
                             alignItems: 'center',
-                            gap: '4px',
-                            mt: 0.5
+                            width: '45%',
+                            padding: '6px',
+                            borderRadius: '12px',
+                            transition: 'background-color 0.2s ease',
+                            '&:hover': {
+                                backgroundColor: 'rgba(241, 245, 249, 0.8)'
+                            }
                         }}>
-                            <Typography variant="body2" sx={{
-                                fontWeight: 500,
-                                color: '#172554',
-                                fontSize: '0.85rem',
-                                lineHeight: 1
-                            }}>
-                                {day.lowTemp}°
-                            </Typography>
                             <Typography variant="body2" sx={{
                                 fontWeight: 600,
                                 color: '#172554',
-                                fontSize: '0.85rem',
-                                lineHeight: 1
+                                fontSize: '0.9rem',
+                                lineHeight: 1,
+                                mb: 0.5
                             }}>
-                                {day.highTemp}°
+                                {day.day}
                             </Typography>
+
+                            {weatherIcons[day.weather] || <CloudIcon sx={{ fontSize: 18, color: '#6b7280' }} />}
+
+                            <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '4px',
+                                mt: 0.5
+                            }}>
+                                <Typography variant="body2" sx={{
+                                    fontWeight: 500,
+                                    color: '#172554',
+                                    fontSize: '0.85rem',
+                                    lineHeight: 1
+                                }}>
+                                    {day.lowTemp}°
+                                </Typography>
+                                <Typography variant="body2" sx={{
+                                    fontWeight: 600,
+                                    color: '#172554',
+                                    fontSize: '0.85rem',
+                                    lineHeight: 1,
+                                    ml: 1
+                                }}>
+                                    {day.highTemp}°
+                                </Typography>
+                            </Box>
                         </Box>
-                    </Box>
-                ))}
+                    ))
+                ) : (
+                    // Mensagem de fallback quando não há previsão
+                    <Typography variant="body2" sx={{
+                        fontWeight: 500,
+                        color: '#64748b',
+                        fontSize: '0.85rem',
+                        width: '100%',
+                        textAlign: 'center'
+                    }}>
+                        Previsão para os próximos dias não disponível
+                    </Typography>
+                )}
             </Box>
         </Paper>
     );

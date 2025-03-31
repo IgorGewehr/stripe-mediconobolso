@@ -255,9 +255,9 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
     const consultationDate = getConsultationDate();
 
     return (
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1 }}>
             {/* Card de Clima (à esquerda) */}
-            <Box sx={{ width: '25%' }}>
+            <Box sx={{ width: '25%', height: 180 }}>
                 <WeatherContainer/>
             </Box>
 
