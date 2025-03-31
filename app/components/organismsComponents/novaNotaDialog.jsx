@@ -328,6 +328,11 @@ const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
+    const getDateValue = (dateValue) => {
+        if (!dateValue) return null;
+        return dateValue instanceof Date ? dateValue : dateValue.toDate();
+    };
+
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);
     };
