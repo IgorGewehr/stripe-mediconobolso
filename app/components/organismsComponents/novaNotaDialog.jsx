@@ -322,10 +322,6 @@ const AttachmentChip = ({ file, onOpen, onRemove, disabled }) => {
     );
 };
 
-function getDateValue(selectedDate) {
-    if (!selectedDate) return null;
-    return selectedDate instanceof Date ? selectedDate : selectedDate.toDate();
-}
 
 // Enhanced consultation dropdown component
 const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }) => {
@@ -508,7 +504,7 @@ const PatientNoteDialog = ({
             setNoteType(note.noteType || 'Rápida');
             setNoteCategory(note.category || 'Geral');
             setAttachments(note.attachments || []);
-            setConsultationDate(note.consultationDate ? note.consultationDate.toDate() : null);
+            setConsultationDate(getDateValue(note.consultationDate));
 
             // Se for uma nota de anamnese, guarda o ID da anamnese
             if (note.noteType === 'Anamnese' && note.anamneseId) {
@@ -1348,13 +1344,7 @@ const PatientNoteDialog = ({
                                                         }}
                                                     >
                                                         <CalendarTodayIcon sx={{ fontSize: 14, mr: 0.5, color: '#64748B' }} />
-                                                        {`Consulta: ${format(
-                                                            consultationDate instanceof Date
-                                                                ? consultationDate
-                                                                : consultationDate.toDate(),
-                                                            "dd/MM/yyyy",
-                                                            { locale: ptBR }
-                                                        )}`}
+                                                        {`Consulta: ${format(getDateValue(selectedDate), "dd/MM/yyyy", { locale: ptBR })}`}
                                                     </Typography>
                                                 </Box>
                                             )}
