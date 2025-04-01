@@ -11,9 +11,12 @@ const WeatherContainer = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const userCity =
-        user && user.address && user.address.city ? user.address.city : "São Paulo,BR";
-    const STORAGE_KEY = `weather-${userCity}`;
+    // Se o usuário estiver logado e possuir uma cidade cadastrada, usamos essa cidade
+    const userCity = user && user.address && user.address.city ? user.address.city : "São Paulo,BR";
+    // Incluímos o uid do usuário na chave de cache para torná-la única por usuário.
+    const STORAGE_KEY = user && user.uid
+        ? `weather-${user.uid}-${userCity}`
+        : `weather-guest-${userCity}`;
 
     const fetchWeather = async () => {
         try {
@@ -21,9 +24,7 @@ const WeatherContainer = () => {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
-            // Log para diagnóstico
-            console.log("Dados recebidos da API:", data);
-
+            // Salva os dados com o timestamp no localStorage utilizando a chave única
             localStorage.setItem(
                 STORAGE_KEY,
                 JSON.stringify({ timestamp: Date.now(), data })
@@ -38,11 +39,13 @@ const WeatherContainer = () => {
     };
 
     useEffect(() => {
+        // Tenta carregar os dados do cache
         const cached = localStorage.getItem(STORAGE_KEY);
         if (cached) {
             try {
                 const { timestamp, data } = JSON.parse(cached);
                 const threeHours = 3 * 60 * 60 * 1000;
+                // Se o cache estiver dentro do tempo válido, usamos os dados
                 if (Date.now() - timestamp < threeHours) {
                     console.log("Usando dados em cache:", data);
                     setWeatherData(data);
@@ -51,11 +54,11 @@ const WeatherContainer = () => {
                 }
             } catch (err) {
                 console.error("Erro ao processar cache:", err);
-                // Se houver erro no cache, busca novos dados
             }
         }
+        // Caso contrário, busca novos dados
         fetchWeather();
-    }, [userCity]);
+    }, [userCity, STORAGE_KEY]);
 
     if (loading) {
         return (
@@ -71,63 +74,33 @@ const WeatherContainer = () => {
         return <Box sx={{ p: 2 }}>Não foi possível carregar o clima.</Box>;
     }
 
-    // Verificando se temos dados de previsão
+    // Ajuste da previsão caso os dados não venham completos
     if (!weatherData.forecast || !Array.isArray(weatherData.forecast) || weatherData.forecast.length === 0) {
         console.warn("Dados de previsão ausentes ou inválidos:", weatherData);
-
-        // Adiciona dados de previsão para os próximos dias
-        // Começando a partir de amanhã
         const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
         const hoje = new Date();
-
         weatherData.forecast = [];
-
-        // Próximos 2 dias (amanhã e depois de amanhã)
         for (let i = 1; i <= 2; i++) {
             const proximoDia = new Date();
             proximoDia.setDate(hoje.getDate() + i);
-
             weatherData.forecast.push({
                 day: diasSemana[proximoDia.getDay()],
-                weather: "Clouds", // padrão
+                weather: "Clouds",
                 lowTemp: Math.round(weatherData.lowTemp || 20) - 2 + i,
                 highTemp: Math.round(weatherData.highTemp || 30) - 2 + i
             });
         }
     } else {
-        // Se já temos forecast na API, garantir que são os próximos 2 dias (não hoje)
-        // Se o primeiro dia for "hoje", removemos e pegamos só os 2 seguintes
+        // Se a previsão estiver retornando dados de hoje, removemos para mostrar apenas os próximos dias
         const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
         const hoje = new Date();
         const diaAtual = diasSemana[hoje.getDay()];
-
-        // Se o primeiro dia da previsão for hoje, removemos ele
         if (weatherData.forecast.length > 2 && weatherData.forecast[0].day === diaAtual) {
             weatherData.forecast = weatherData.forecast.slice(1);
         }
-
-        // Limita a 2 dias
         weatherData.forecast = weatherData.forecast.slice(0, 2);
     }
 
-    // Garante que temos dados atuais e temperaturas max/min para hoje
-    if (!weatherData.currentTemp) {
-        console.warn("Dados de temperatura atual ausentes, usando valores padrão");
-        weatherData.currentTemp = weatherData.currentTemp || 25;
-        weatherData.currentWeather = weatherData.currentWeather || "Clear";
-    }
-
-    // Garante que temos dados de max/min para hoje
-    if (weatherData.highTemp === undefined || weatherData.lowTemp === undefined) {
-        console.warn("Temperaturas máxima/mínima ausentes, usando valores derivados");
-        weatherData.highTemp = Math.round(weatherData.currentTemp * 1.1); // 10% acima da atual
-        weatherData.lowTemp = Math.round(weatherData.currentTemp * 0.9);  // 10% abaixo da atual
-    }
-
-    // Log para diagnóstico da previsão
-    console.log("Dados de previsão processados:", weatherData.forecast);
-
-    // Preparando os dados para o WeatherCard
     const weatherProps = {
         cityName: weatherData.cityName || userCity,
         currentTemp: weatherData.currentTemp,
@@ -136,9 +109,6 @@ const WeatherContainer = () => {
         lowTemp: weatherData.lowTemp,
         forecast: weatherData.forecast || [],
     };
-
-    // Log final dos dados passados para o WeatherCard
-    console.log("Dados enviados para WeatherCard:", weatherProps);
 
     return <WeatherCard {...weatherProps} />;
 };
