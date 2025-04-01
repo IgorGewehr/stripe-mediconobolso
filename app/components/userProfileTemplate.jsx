@@ -100,23 +100,23 @@ const applyCepMask = (value) => {
 
 // Campo editável com UI melhorada
 const EditableField = ({
-                           label,
-                           value,
-                           isEditing,
-                           onChange,
-                           error,
-                           helperText,
-                           type = "text",
-                           required = false,
-                           startIcon,
-                           disabled = false,
-                           multiline = false,
-                           rows = 1,
-                           mask = null,
-                           ...props
-                       }) => {
+                          label,
+                          value,
+                          isEditing,
+                          onChange,
+                          error,
+                          helperText,
+                          type = "text",
+                          required = false,
+                          startIcon,
+                          disabled = false,
+                          multiline = false,
+                          rows = 1,
+                          mask = null,
+                          ...props
+                      }) => {
     return (
-        <Box sx={{mb: 2, position: 'relative'}}>
+        <Box sx={{ mb: 2.5, position: 'relative' }}>
             {isEditing ? (
                 <TextField
                     fullWidth
@@ -135,84 +135,130 @@ const EditableField = ({
                         '& .MuiInputLabel-root': {
                             color: themeColors.textTertiary,
                             fontFamily: 'Gellix, sans-serif',
+                            fontWeight: 500,
+                            fontSize: '14px',
                             '&.Mui-focused': {
                                 color: error ? themeColors.error : themeColors.primary,
+                                fontWeight: 600,
                             }
                         },
                         '& .MuiOutlinedInput-root': {
-                            borderRadius: '10px',
+                            borderRadius: '12px',
+                            backgroundColor: alpha(themeColors.backgroundSecondary, 0.5),
+                            transition: 'all 0.2s ease-in-out',
                             '& fieldset': {
                                 borderColor: error ? themeColors.error : themeColors.borderColor,
+                                borderWidth: '1.5px',
                             },
                             '&:hover fieldset': {
                                 borderColor: error ? themeColors.error : themeColors.primary,
                             },
-                            '&.Mui-focused fieldset': {
-                                borderColor: error ? themeColors.error : themeColors.primary,
+                            '&.Mui-focused': {
+                                backgroundColor: 'white',
+                                boxShadow: error
+                                    ? `0 0 0 3px ${alpha(themeColors.error, 0.1)}`
+                                    : `0 0 0 3px ${alpha(themeColors.primary, 0.1)}`,
+                                '& fieldset': {
+                                    borderColor: error ? themeColors.error : themeColors.primary,
+                                    borderWidth: '1.5px',
+                                },
                             }
                         },
                         '& .MuiInputBase-input': {
                             fontFamily: 'Gellix, sans-serif',
-                            fontSize: '14px',
+                            fontSize: '15px',
                             color: themeColors.textPrimary,
+                            fontWeight: 500,
+                            padding: '14px 14px',
+                        },
+                        '& .MuiFormHelperText-root': {
+                            fontFamily: 'Gellix, sans-serif',
+                            marginLeft: '4px',
+                            fontSize: '12px',
+                            fontWeight: 500,
                         }
                     }}
                     InputProps={{
                         startAdornment: startIcon ? (
                             <InputAdornment position="start">
-                                {startIcon}
+                                <Box sx={{
+                                    color: error ? themeColors.error : themeColors.primary,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mr: 0.5
+                                }}>
+                                    {startIcon}
+                                </Box>
                             </InputAdornment>
                         ) : null
                     }}
                     {...props}
                 />
             ) : (
-                <Box sx={{display: 'flex', alignItems: 'flex-start', py: 1}}>
+                <Paper
+                    elevation={0}
+                    sx={{
+                        p: 2,
+                        borderRadius: '12px',
+                        backgroundColor: alpha(themeColors.backgroundSecondary, 0.5),
+                        border: '1.5px solid',
+                        borderColor: 'transparent',
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                            backgroundColor: alpha(themeColors.backgroundSecondary, 0.8),
+                            borderColor: alpha(themeColors.primary, 0.1),
+                        },
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                    }}
+                >
                     {startIcon && (
                         <Box
                             sx={{
                                 color: themeColors.primary,
                                 mr: 1.5,
-                                mt: 0.3,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: '24px',
-                                height: '24px'
+                                mt: 0.3,
                             }}
                         >
                             {startIcon}
                         </Box>
                     )}
-                    <Box sx={{flex: 1}}>
+                    <Box sx={{ flex: 1 }}>
                         <Typography
                             variant="caption"
                             sx={{
                                 color: themeColors.textTertiary,
                                 fontFamily: "Gellix, sans-serif",
-                                fontSize: '11px',
-                                fontWeight: 500,
+                                fontSize: '12px',
+                                fontWeight: 600,
                                 display: 'block',
-                                mb: 0.5
+                                mb: 0.5,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
                             }}
                         >
-                            {label}
+                            {label} {required && <span style={{ color: themeColors.error }}>*</span>}
                         </Typography>
                         <Typography
                             variant="body1"
                             sx={{
-                                color: disabled ? themeColors.textTertiary : themeColors.textPrimary,
+                                color: value ? (disabled ? themeColors.textTertiary : themeColors.textPrimary) : alpha(themeColors.textTertiary, 0.7),
                                 fontFamily: "Gellix, sans-serif",
                                 fontSize: '15px',
                                 fontWeight: 500,
                                 wordBreak: multiline ? "break-word" : "normal",
-                                whiteSpace: multiline ? "pre-wrap" : "normal"
+                                whiteSpace: multiline ? "pre-wrap" : "normal",
+                                fontStyle: value ? 'normal' : 'italic',
                             }}
                         >
-                            {value || "-"}
+                            {value || "Não informado"}
                         </Typography>
                     </Box>
-                </Box>
+                </Paper>
             )}
         </Box>
     );
@@ -775,30 +821,79 @@ const UserProfileTemplate = ({onLogout}) => {
 
                 {/* Coluna da Direita - Detalhes Profissionais */}
                 <Grid item xs={12} md={8}>
+                    {/* Improved Personal Information Card */}
                     <Card
                         elevation={0}
                         sx={{
                             borderRadius: '20px',
-                            boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                            boxShadow: '0px 8px 25px rgba(17, 30, 90, 0.08)',
                             overflow: 'hidden',
                             position: 'relative',
-                            minHeight: '300px'
+                            minHeight: '300px',
+                            transition: 'all 0.3s ease',
+                            border: '1px solid',
+                            borderColor: alpha(themeColors.borderColor, 0.5),
+                            '&:hover': {
+                                boxShadow: '0px 12px 30px rgba(17, 30, 90, 0.12)',
+                            }
                         }}
                     >
-                        <CardContent sx={{p: 3}}>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    mb: 3,
-                                    fontWeight: 600,
-                                    color: themeColors.textPrimary,
-                                    fontFamily: "Gellix, sans-serif"
-                                }}
-                            >
-                                Dados Pessoais
-                            </Typography>
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: '8px',
+                                background: `linear-gradient(90deg, ${themeColors.primary} 0%, ${alpha(themeColors.primary, 0.7)} 100%)`,
+                            }}
+                        />
 
-                            <Divider sx={{mb: 3}}/>
+                        <CardContent sx={{ p: { xs: 2, md: 3 }, pt: { xs: 3, md: 4 } }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <PersonIcon
+                                        sx={{
+                                            color: themeColors.primary,
+                                            mr: 1.5,
+                                            fontSize: 28,
+                                            padding: '6px',
+                                            borderRadius: '50%',
+                                            backgroundColor: alpha(themeColors.primary, 0.1),
+                                        }}
+                                    />
+                                    <Typography
+                                        variant="h6"
+                                        sx={{
+                                            fontWeight: 700,
+                                            color: themeColors.textPrimary,
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontSize: '20px',
+                                        }}
+                                    >
+                                        Dados Pessoais
+                                    </Typography>
+                                </Box>
+
+                                {!isEditing ? (
+                                    <Tooltip title="Editar Informações">
+                                        <IconButton
+                                            onClick={() => setIsEditing(true)}
+                                            sx={{
+                                                backgroundColor: alpha(themeColors.primary, 0.1),
+                                                color: themeColors.primary,
+                                                '&:hover': {
+                                                    backgroundColor: alpha(themeColors.primary, 0.2),
+                                                }
+                                            }}
+                                        >
+                                            <EditIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                ) : null}
+                            </Box>
+
+                            <Divider sx={{ mb: 3, borderColor: alpha(themeColors.borderColor, 0.7) }}/>
 
                             <Grid container spacing={3}>
                                 <Grid item xs={12} md={6}>
@@ -810,7 +905,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         error={errors.fullName}
                                         helperText={errors.fullName}
                                         required
-                                        startIcon={<PersonIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<PersonIcon sx={{ color: errors.fullName ? themeColors.error : themeColors.primary }}/>}
                                     />
                                 </Grid>
 
@@ -823,7 +918,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         error={errors.cpf}
                                         helperText={errors.cpf}
                                         required
-                                        startIcon={<BadgeIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<BadgeIcon sx={{ color: errors.cpf ? themeColors.error : themeColors.primary }}/>}
                                     />
                                 </Grid>
 
@@ -836,7 +931,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         error={errors.email}
                                         helperText={errors.email}
                                         required
-                                        startIcon={<EmailIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<EmailIcon sx={{ color: errors.email ? themeColors.error : themeColors.primary }}/>}
                                         type="email"
                                     />
                                 </Grid>
@@ -850,37 +945,141 @@ const UserProfileTemplate = ({onLogout}) => {
                                         error={errors.phone}
                                         helperText={errors.phone}
                                         required
-                                        startIcon={<PhoneIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<PhoneIcon sx={{ color: errors.phone ? themeColors.error : themeColors.primary }}/>}
                                     />
                                 </Grid>
                             </Grid>
                         </CardContent>
                     </Card>
 
+                    {/* Improved Address Card */}
                     <Card
                         elevation={0}
                         sx={{
                             borderRadius: '20px',
-                            boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                            boxShadow: '0px 8px 25px rgba(17, 30, 90, 0.08)',
                             overflow: 'hidden',
                             position: 'relative',
-                            mt: 3
+                            mt: 3,
+                            transition: 'all 0.3s ease',
+                            border: '1px solid',
+                            borderColor: alpha(themeColors.borderColor, 0.5),
+                            '&:hover': {
+                                boxShadow: '0px 12px 30px rgba(17, 30, 90, 0.12)',
+                            }
                         }}
                     >
-                        <CardContent sx={{p: 3}}>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    mb: 3,
-                                    fontWeight: 600,
-                                    color: themeColors.textPrimary,
-                                    fontFamily: "Gellix, sans-serif"
-                                }}
-                            >
-                                Endereço
-                            </Typography>
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: '8px',
+                                background: `linear-gradient(90deg, ${themeColors.primary} 0%, ${alpha(themeColors.primary, 0.7)} 100%)`,
+                            }}
+                        />
 
-                            <Divider sx={{mb: 3}}/>
+                        <CardContent sx={{ p: { xs: 2, md: 3 }, pt: { xs: 3, md: 4 } }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <LocationOnIcon
+                                        sx={{
+                                            color: themeColors.primary,
+                                            mr: 1.5,
+                                            fontSize: 28,
+                                            padding: '6px',
+                                            borderRadius: '50%',
+                                            backgroundColor: alpha(themeColors.primary, 0.1),
+                                        }}
+                                    />
+                                    <Typography
+                                        variant="h6"
+                                        sx={{
+                                            fontWeight: 700,
+                                            color: themeColors.textPrimary,
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontSize: '20px',
+                                        }}
+                                    >
+                                        Endereço
+                                    </Typography>
+                                </Box>
+
+                                {!isEditing ? (
+                                    <Tooltip title="Editar Endereço">
+                                        <IconButton
+                                            onClick={() => setIsEditing(true)}
+                                            sx={{
+                                                backgroundColor: alpha(themeColors.primary, 0.1),
+                                                color: themeColors.primary,
+                                                '&:hover': {
+                                                    backgroundColor: alpha(themeColors.primary, 0.2),
+                                                }
+                                            }}
+                                        >
+                                            <EditIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                ) : null}
+                            </Box>
+
+                            <Divider sx={{ mb: 3, borderColor: alpha(themeColors.borderColor, 0.7) }}/>
+
+                            {!isEditing && (
+                                <Box
+                                    sx={{
+                                        mb: 3,
+                                        p: 2,
+                                        borderRadius: '12px',
+                                        backgroundColor: alpha(themeColors.backgroundSecondary, 0.7),
+                                        border: '1px dashed',
+                                        borderColor: alpha(themeColors.borderColor, 0.7),
+                                    }}
+                                >
+                                    <Typography
+                                        variant="body1"
+                                        sx={{
+                                            color: themeColors.textPrimary,
+                                            fontFamily: "Gellix, sans-serif",
+                                            fontWeight: 500,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                        }}
+                                    >
+                                        <HomeIcon sx={{ color: themeColors.primary, mr: 1.5, fontSize: 20 }} />
+                                        {formData.address?.street ? (
+                                            <>
+                                                {formData.address?.street}, {formData.address?.number || 'S/N'}
+                                                {formData.address?.complement ? ` - ${formData.address.complement}` : ''}
+                                                {formData.address?.neighborhood ? `, ${formData.address.neighborhood}` : ''}
+                                            </>
+                                        ) : (
+                                            <span style={{ fontStyle: 'italic', color: alpha(themeColors.textTertiary, 0.7) }}>
+                            Endereço não informado
+                        </span>
+                                        )}
+                                    </Typography>
+
+                                    {formData.address?.city && (
+                                        <Typography
+                                            variant="body1"
+                                            sx={{
+                                                color: themeColors.textPrimary,
+                                                fontFamily: "Gellix, sans-serif",
+                                                fontWeight: 500,
+                                                mt: 1.5,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                            }}
+                                        >
+                                            <LocationCityIcon sx={{ color: themeColors.primary, mr: 1.5, fontSize: 20 }} />
+                                            {formData.address?.city} - {formData.address?.state}
+                                            {formData.address?.cep ? `, CEP ${formData.address.cep}` : ''}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            )}
 
                             <Grid container spacing={3}>
                                 <Grid item xs={12} md={8}>
@@ -892,7 +1091,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         error={errors['address.street']}
                                         helperText={errors['address.street']}
                                         required
-                                        startIcon={<HomeIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<HomeIcon sx={{ color: errors['address.street'] ? themeColors.error : themeColors.primary }}/>}
                                     />
                                 </Grid>
 
@@ -902,7 +1101,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         value={formData.address?.number || ""}
                                         isEditing={isEditing}
                                         onChange={handleChange('address.number')}
-                                        startIcon={<MarginIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<MarginIcon sx={{ color: themeColors.primary }}/>}
                                     />
                                 </Grid>
 
@@ -912,7 +1111,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         value={formData.address?.complement || ""}
                                         isEditing={isEditing}
                                         onChange={handleChange('address.complement')}
-                                        startIcon={<ApartmentIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<ApartmentIcon sx={{ color: themeColors.primary }}/>}
                                     />
                                 </Grid>
 
@@ -922,7 +1121,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         value={formData.address?.neighborhood || ""}
                                         isEditing={isEditing}
                                         onChange={handleChange('address.neighborhood')}
-                                        startIcon={<LocationOnIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<LocationOnIcon sx={{ color: themeColors.primary }}/>}
                                     />
                                 </Grid>
 
@@ -932,7 +1131,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         value={formData.address?.cep || ""}
                                         isEditing={isEditing}
                                         onChange={handleChange('address.cep')}
-                                        startIcon={<PinDropIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<PinDropIcon sx={{ color: themeColors.primary }}/>}
                                     />
                                 </Grid>
 
@@ -945,7 +1144,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         error={errors['address.city']}
                                         helperText={errors['address.city']}
                                         required
-                                        startIcon={<LocationCityIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<LocationCityIcon sx={{ color: errors['address.city'] ? themeColors.error : themeColors.primary }}/>}
                                     />
                                 </Grid>
 
@@ -958,7 +1157,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         error={errors['address.state']}
                                         helperText={errors['address.state']}
                                         required
-                                        startIcon={<LocationOnIcon sx={{color: themeColors.primary}}/>}
+                                        startIcon={<LocationOnIcon sx={{ color: errors['address.state'] ? themeColors.error : themeColors.primary }}/>}
                                     />
                                 </Grid>
                             </Grid>
