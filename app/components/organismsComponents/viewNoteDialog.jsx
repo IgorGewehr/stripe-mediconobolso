@@ -955,95 +955,62 @@ const ViewNoteDialog = ({
                         {renderCategoryBanner()}
 
                         {/* Conteúdo principal */}
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 3,
-                                borderRadius: 2,
-                                border: '1px solid #EAECEF',
-                                mb: 3,
-                                backgroundColor: 'white'
-                            }}
-                        >
-                            {/* Texto principal da nota */}
-                            {noteData.noteText && (
-                                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                    {noteData.noteText}
-                                </Typography>
-                            )}
+                        {noteType !== 'Anamnese' && (
+                            <Paper
+                                elevation={0}
+                                sx={{
+                                    p: 3,
+                                    borderRadius: 2,
+                                    border: '1px solid #EAECEF',
+                                    mb: 3,
+                                    backgroundColor: 'white'
+                                }}
+                            >
+                                {/* Texto principal da nota */}
+                                {noteData.noteText &&(
+                                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                                        {noteData.noteText}
+                                    </Typography>
+                                )}
 
-                            {/* Se for uma receita, mostra uma mensagem para ver o PDF */}
-                            {noteType === 'Receita' && noteData.pdfUrl && (
-                                <Box
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexDirection: 'column',
-                                        mt: 2,
-                                        p: 2,
-                                        borderRadius: 2,
-                                        backgroundColor: themeToUse.light,
-                                        border: `1px dashed ${themeToUse.main}`
-                                    }}
-                                >
-                                    <Button
-                                        variant="contained"
-                                        startIcon={<PictureAsPdfIcon />}
-                                        onClick={handleOpenPdf}
+                                {/* Se for uma receita, mostra uma mensagem para ver o PDF */}
+                                {noteType === 'Receita' && noteData.pdfUrl && (
+                                    <Box
                                         sx={{
-                                            backgroundColor: themeToUse.main,
-                                            color: 'white',
-                                            '&:hover': {
-                                                backgroundColor: themeToUse.dark
-                                            },
-                                            mb: 1
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexDirection: 'column',
+                                            mt: 2,
+                                            p: 2,
+                                            borderRadius: 2,
+                                            backgroundColor: themeToUse.light,
+                                            border: `1px dashed ${themeToUse.main}`
                                         }}
                                     >
-                                        Visualizar Receita Completa (PDF)
-                                    </Button>
-                                    <Typography variant="caption" color="textSecondary">
-                                        Clique para abrir a receita em formato PDF
-                                    </Typography>
-                                </Box>
-                            )}
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<PictureAsPdfIcon />}
+                                            onClick={handleOpenPdf}
+                                            sx={{
+                                                backgroundColor: themeToUse.main,
+                                                color: 'white',
+                                                '&:hover': {
+                                                    backgroundColor: themeToUse.dark
+                                                },
+                                                mb: 1
+                                            }}
+                                        >
+                                            Visualizar Receita Completa (PDF)
+                                        </Button>
+                                        <Typography variant="caption" color="textSecondary">
+                                            Clique para abrir a receita em formato PDF
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Paper>
+                        )}
 
-                            {/* Se for uma anamnese, mostra uma mensagem para ver o PDF */}
-                            {noteType === 'Anamnese' && noteData.pdfUrl && (
-                                <Box
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexDirection: 'column',
-                                        mt: 2,
-                                        p: 2,
-                                        borderRadius: 2,
-                                        backgroundColor: themeToUse.light,
-                                        border: `1px dashed ${themeToUse.main}`
-                                    }}
-                                >
-                                    <Button
-                                        variant="contained"
-                                        startIcon={<PictureAsPdfIcon />}
-                                        onClick={handleOpenPdf}
-                                        sx={{
-                                            backgroundColor: themeToUse.main,
-                                            color: 'white',
-                                            '&:hover': {
-                                                backgroundColor: themeToUse.dark
-                                            },
-                                            mb: 1
-                                        }}
-                                    >
-                                        Visualizar Anamnese Completa (PDF)
-                                    </Button>
-                                    <Typography variant="caption" color="textSecondary">
-                                        Clique para abrir a anamnese em formato PDF
-                                    </Typography>
-                                </Box>
-                            )}
-                        </Paper>
 
                         {/* Detalhes específicos do tipo de nota */}
                         {noteType === 'Receita' && renderReceitaDetails()}
