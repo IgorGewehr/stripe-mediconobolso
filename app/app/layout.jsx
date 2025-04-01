@@ -25,6 +25,17 @@ export default function AppLayout({ children }) {
     const logout = auth?.logout;
     const router = useRouter();
 
+
+    const handleMenuSelect = (page, consultationId = null) => {
+        setActivePage(page);
+        if (page.toLowerCase() === "agenda" && consultationId) {
+            setAgendaConsultationId(consultationId);
+        } else if (page.toLowerCase() !== "patientprofile") {
+            setSelectedPatientId(null);
+            setAgendaConsultationId(null);
+        }
+    };
+
     // Verificar autenticação quando o componente carrega
     useEffect(() => {
         if (!loading && !user) {
@@ -37,6 +48,7 @@ export default function AppLayout({ children }) {
 
     // Novo estado para armazenar o paciente selecionado
     const [selectedPatientId, setSelectedPatientId] = useState(null);
+    const [agendaConsultationId, setAgendaConsultationId] = useState(null);
 
     // Estilo de escala para o conteúdo
     const contentScaleStyle = {
@@ -102,6 +114,13 @@ export default function AppLayout({ children }) {
         };
     }, []);
 
+    useEffect(() => {
+        window.handleMenuSelect = handleMenuSelect;
+        return () => {
+            delete window.handleMenuSelect;
+        };
+    }, [handleMenuSelect]);
+
     const renderContent = () => {
         // Converte para lowercase para facilitar a comparação
         switch (activePage.toLowerCase()) {
@@ -114,7 +133,7 @@ export default function AppLayout({ children }) {
                 // Recebendo o handler de clique no paciente diretamente
                 return <PrescriptionsPage />;
             case "agenda":
-                return <AgendaMedica />;
+                return <AgendaMedica initialConsultationId={agendaConsultationId} />;
             case "patientprofile":
                 return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToDashboard} />;
             case "criar novo paciente":
@@ -124,20 +143,12 @@ export default function AppLayout({ children }) {
             case "reportar":
                 return <CentralAjudaTemplate isReporte={true} />;
             case "meu perfil": // Adicione este novo case para a tela de perfil
-                return <UserProfileTemplate />;
+                return <UserProfileTemplate onLogout={logout}/>;
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
     };
 
-    // Callback chamado pela Sidebar ao clicar em um item
-    const handleMenuSelect = (page) => {
-        setActivePage(page);
-        // Se estamos navegando para uma página diferente, resetamos o paciente selecionado
-        if (page.toLowerCase() !== "patientprofile") {
-            setSelectedPatientId(null);
-        }
-    };
 
     const handleProfileClick = () => {
         setActivePage("Meu Perfil");

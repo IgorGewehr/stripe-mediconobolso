@@ -48,7 +48,7 @@ import PeriodSelector from "../basicComponents/periodSelector";
 import ViewConsultationDialog from "./viewConsultationDialog";
 
 // Main component
-const AgendaMedica = () => {
+const AgendaMedica = ({initialConsultationId}) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { user } = useAuth();
@@ -96,6 +96,16 @@ const AgendaMedica = () => {
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     };
+
+    useEffect(() => {
+        if (initialConsultationId && eventos.length > 0) {
+            const consultation = eventos.find(ev => ev.id === initialConsultationId);
+            if (consultation) {
+                setSelectedConsultation(consultation);
+                setShowConsultationDialog(true);
+            }
+        }
+    }, [initialConsultationId, eventos]);
 
     // Função para converter qualquer valor de data para objeto Date
     const parseAnyDate = (dateValue) => {
@@ -432,21 +442,24 @@ const AgendaMedica = () => {
 
             const patientId = consultationToUpdate.patientId;
 
-            // Preparar os dados de atualização (apenas o status)
+            // MODIFICAÇÃO AQUI: Preservar a data original formatada corretamente
             const updateData = {
-                ...consultationToUpdate,
-                status: newStatus
+                status: newStatus,
+                // Incluir a data original da consulta para preservá-la
+                consultationDate: formatDateForFirebase(consultationToUpdate.consultationDate || consultationToUpdate.data),
+                // Garantir que o campo 'data' também seja preservado (usado em algumas partes do código)
+                data: formatDateForFirebase(consultationToUpdate.consultationDate || consultationToUpdate.data)
             };
 
-            // Atualizar no Firebase
+            // Atualizar no Firebase com a data preservada
             await FirebaseService.updateConsultation(
                 doctorId,
                 patientId,
                 consultationId,
-                { status: newStatus } // Enviamos apenas o campo que queremos atualizar
+                updateData  // Enviar status E data
             );
 
-            // Atualizar o estado local
+            // Atualizar o estado local (sem modificação necessária aqui)
             setEventos(prev => {
                 return prev.map(ev => {
                     if (ev.id === consultationId) {

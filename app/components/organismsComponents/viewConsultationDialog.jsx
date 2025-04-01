@@ -690,6 +690,23 @@ const ViewConsultationDialog = ({
         }
     };
 
+    const getLocalDate = (dateValue) => {
+        if (!dateValue) return new Date();
+        // Se já for um objeto Date, retorne-o
+        if (dateValue instanceof Date) return dateValue;
+        // Se for um Timestamp do Firebase
+        if (dateValue && typeof dateValue.toDate === 'function') return dateValue.toDate();
+        // Se for uma string no formato "YYYY-MM-DD"
+        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+            const [year, month, day] = dateValue.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        // Caso contrário, tenta converter diretamente
+        const parsed = new Date(dateValue);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
+
     // Busca dados do paciente
     useEffect(() => {
         const fetchPatientData = async () => {
@@ -710,43 +727,16 @@ const ViewConsultationDialog = ({
     }, [open, patientId, doctorId]);
 
     // Formatação de data
-    const formatDate = (date) => {
-        try {
-            // Retorna string vazia para valores vazios
-            if (!date) return "";
-
-            let dateObj;
-
-            // Se já for um objeto Date
-            if (date instanceof Date) {
-                dateObj = date;
-            }
-            // Se for um Timestamp do Firestore com método toDate()
-            else if (date && typeof date.toDate === 'function') {
-                dateObj = date.toDate();
-            }
-            // Se for uma string no formato 'YYYY-MM-DD'
-            else if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                const [year, month, day] = date.split('-').map(Number);
-                dateObj = new Date(year, month - 1, day);
-            }
-            // Se for uma string ou número que podemos tentar converter
-            else {
-                dateObj = new Date(date);
-            }
-
-            // Verificar se a data resultante é válida
-            if (isNaN(dateObj.getTime())) {
-                console.warn("Data inválida:", date);
-                return "";
-            }
-
-            return format(dateObj, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-        } catch (error) {
-            console.error("Erro ao formatar data:", error, date);
+    const formatDate = (dateValue) => {
+        const localDate = getLocalDate(dateValue);
+        // Se por algum motivo localDate for inválido, retorne uma string vazia
+        if (isNaN(localDate.getTime())) {
+            console.warn("Data inválida", dateValue);
             return "";
         }
+        return format(localDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
     };
+
 
     const formatDateTime = (date) => {
         try {
@@ -831,9 +821,16 @@ const ViewConsultationDialog = ({
 
     const parseLocalDate = (dateValue) => {
         if (!dateValue) return new Date();
+        // Se for uma string no formato "YYYY-MM-DD"
         if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
             const [year, month, day] = dateValue.split('-').map(Number);
             return new Date(year, month - 1, day);
+        }
+        // Se já for um objeto Date ou tiver método toDate (Timestamp do Firebase)
+        if (dateValue instanceof Date) return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+        if (dateValue && typeof dateValue.toDate === 'function') {
+            const temp = dateValue.toDate();
+            return new Date(temp.getFullYear(), temp.getMonth(), temp.getDate());
         }
         return new Date(dateValue);
     };
@@ -850,20 +847,16 @@ const ViewConsultationDialog = ({
         setStatusChangeConfirm(newStatus);
     };
 
+
+
     const handleStatusChangeConfirm = async () => {
         if (onChangeStatus && statusChangeConfirm) {
-            // Tratar a data para evitar alteração automática do fuso horário
-            const treatedDate = parseLocalDate(consultationData.consultationDate);
-            // Se necessário, formate para string no formato "YYYY-MM-DD"
-            const formattedDate = `${treatedDate.getFullYear()}-${(treatedDate.getMonth() + 1)
-                .toString()
-                .padStart(2, '0')}-${treatedDate.getDate().toString().padStart(2, '0')}`;
-
-            // Atualize a consulta passando a data tratada
-            onChangeStatus(consultationData.id, statusChangeConfirm, formattedDate);
+            // Atualiza o status sem alterar a data original
+            await onChangeStatus(consultationData.id, statusChangeConfirm);
             setStatusChangeConfirm(null);
         }
     };
+
 
 
     const handleStatusChangeCancel = () => {
@@ -1419,7 +1412,9 @@ const ViewConsultationDialog = ({
                                 }}
                             >
                                 <CalendarTodayIcon sx={{ fontSize: '0.875rem' }} />
-                                {formatDate(consultationData.consultationDate)} às {consultationData.consultationTime || consultationData.horaInicio}
+                                <Typography variant="body2">
+                                    {formatDate(getLocalDate(consultationData.consultationDate))} às {consultationData.consultationTime || consultationData.horaInicio}
+                                </Typography>
                             </Typography>
                         </Box>
                     </Box>
@@ -1494,7 +1489,7 @@ const ViewConsultationDialog = ({
                                                 <InfoItem
                                                     icon={<CalendarTodayIcon sx={{ color: statusColor.main }} />}
                                                     label="Data"
-                                                    value={formatDate(consultationData.consultationDate)}
+                                                    value={formatDate(getLocalDate(consultationData.consultationDate))}
                                                 />
                                             </Box>
                                         </Paper>

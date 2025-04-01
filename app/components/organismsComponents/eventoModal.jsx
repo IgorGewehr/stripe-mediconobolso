@@ -618,7 +618,7 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                                 >
                                     <MenuItem value="Agendada">Agendada</MenuItem>
                                     <MenuItem value="Em Andamento">Em Andamento</MenuItem>
-                                    <MenuItem value="Concluída">Concluída</MenuItem>
+                                    <MenuItem value="Concluída">Confirmado</MenuItem>
                                     <MenuItem value="Cancelada">Cancelada</MenuItem>
                                 </Select>
                             </StyledSelect>

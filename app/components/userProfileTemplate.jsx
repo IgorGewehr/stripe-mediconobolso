@@ -40,6 +40,7 @@ import {
 } from "@mui/icons-material";
 import FirebaseService from "../../lib/firebaseService";
 import {useAuth} from "./authProvider";
+import LogoutIcon from '@mui/icons-material/Logout';
 
 // Enhanced color palette
 const themeColors = {
@@ -217,7 +218,7 @@ const EditableField = ({
     );
 };
 
-const UserProfileTemplate = () => {
+const UserProfileTemplate = ({onLogout}) => {
     const theme = useTheme();
     const {user, loading: authLoading} = useAuth();
     const [isEditing, setIsEditing] = useState(false);
@@ -300,6 +301,24 @@ const UserProfileTemplate = () => {
                 ...prev,
                 [field]: null
             }));
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            setLoading(true);
+            await FirebaseService.logout();
+            // Redirecionar para login ou home após logout bem-sucedido
+            // Você pode ajustar isso conforme necessário
+        } catch (error) {
+            console.error("Erro ao fazer logout:", error);
+            setAlert({
+                open: true,
+                message: 'Erro ao fazer logout. Tente novamente.',
+                severity: 'error'
+            });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -723,6 +742,33 @@ const UserProfileTemplate = () => {
                                         : "Não disponível"}
                                 </Typography>
                             </Box>
+
+                            <Divider sx={{ my: 2 }} />
+
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<LogoutIcon />}
+                                onClick={onLogout}
+                                fullWidth
+                                sx={{
+                                    borderRadius: '12px',
+                                    textTransform: 'none',
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontWeight: 500,
+                                    color: themeColors.error,
+                                    borderColor: alpha(themeColors.error, 0.5),
+                                    py: 1,
+                                    mt: 1,
+                                    '&:hover': {
+                                        backgroundColor: alpha(themeColors.error, 0.08),
+                                        borderColor: themeColors.error
+                                    },
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                Sair da Conta
+                            </Button>
                         </CardContent>
                     </Card>
                 </Grid>

@@ -26,10 +26,6 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         { label: "Reportar", icon: "/reportar.svg" },
     ];
 
-    const sairItems = [
-        { label: "Sair", icon: "/logout.svg", isLogout: true }, // Novo item de logout na seção "Sair"
-    ];
-
     const handleMenuClick = (label, isLogout, disabled) => {
         // Se o item estiver desabilitado, não fazemos nada
         if (disabled) {
@@ -218,29 +214,6 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                     onClick={() => handleMenuClick(item.label)}
                                     variant="text"
                                     sx={buttonStyles(isSelected, item.label)}
-                                    startIcon={
-                                        <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
-                                    }
-                                >
-                                    {item.label}
-                                </Button>
-                            );
-                        })}
-                    </Box>
-
-                    {/* Nova seção "Sair" */}
-                    <Typography sx={categoryLabelStyle}>
-                        Sair
-                    </Typography>
-                    <Box>
-                        {sairItems.map((item) => {
-                            const isSelected = selected === item.label;
-                            return (
-                                <Button
-                                    key={item.label}
-                                    onClick={() => handleMenuClick(item.label, item.isLogout)}
-                                    variant="text"
-                                    sx={buttonStyles(isSelected, item.label, item.isLogout)}
                                     startIcon={
                                         <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
                                     }

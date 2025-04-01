@@ -150,16 +150,27 @@ const Dashboard = ({ onClickPatients }) => {
     const getNextConsultation = () => {
         const now = new Date();
 
-        // Filtra as consultas futuras e as ordena por data
+        // Filtra as consultas futuras, ignorando as canceladas, e as ordena por data
         const futureConsultations = consultations
             .filter(consultation => {
-                const consultDate = consultation.consultationDate instanceof Date
-                    ? consultation.consultationDate
-                    : consultation.consultationDate && typeof consultation.consultationDate.toDate === 'function'
-                        ? consultation.consultationDate.toDate()
-                        : new Date();
+                // Ignorar se a consulta estiver cancelada
+                if (
+                    consultation.status &&
+                    consultation.status.toLowerCase() === 'cancelada'
+                ) {
+                    return false;
+                }
 
-                // Considerar a hora da consulta também
+                // Obter a data da consulta de forma segura
+                const consultDate =
+                    consultation.consultationDate instanceof Date
+                        ? consultation.consultationDate
+                        : consultation.consultationDate &&
+                        typeof consultation.consultationDate.toDate === 'function'
+                            ? consultation.consultationDate.toDate()
+                            : new Date();
+
+                // Se houver horário, ajusta a data com a hora da consulta
                 if (consultation.consultationTime) {
                     const [hour, minute] = consultation.consultationTime.split(':').map(Number);
                     consultDate.setHours(hour, minute, 0, 0);
@@ -168,19 +179,21 @@ const Dashboard = ({ onClickPatients }) => {
                 return consultDate >= now;
             })
             .sort((a, b) => {
-                const dateA = a.consultationDate instanceof Date
-                    ? a.consultationDate
-                    : a.consultationDate && typeof a.consultationDate.toDate === 'function'
-                        ? a.consultationDate.toDate()
-                        : new Date();
+                const dateA =
+                    a.consultationDate instanceof Date
+                        ? a.consultationDate
+                        : a.consultationDate &&
+                        typeof a.consultationDate.toDate === 'function'
+                            ? a.consultationDate.toDate()
+                            : new Date();
+                const dateB =
+                    b.consultationDate instanceof Date
+                        ? b.consultationDate
+                        : b.consultationDate &&
+                        typeof b.consultationDate.toDate === 'function'
+                            ? b.consultationDate.toDate()
+                            : new Date();
 
-                const dateB = b.consultationDate instanceof Date
-                    ? b.consultationDate
-                    : b.consultationDate && typeof b.consultationDate.toDate === 'function'
-                        ? b.consultationDate.toDate()
-                        : new Date();
-
-                // Considerar a hora da consulta também
                 if (a.consultationTime) {
                     const [hourA, minuteA] = a.consultationTime.split(':').map(Number);
                     dateA.setHours(hourA, minuteA, 0, 0);
@@ -197,6 +210,7 @@ const Dashboard = ({ onClickPatients }) => {
         return futureConsultations.length > 0 ? futureConsultations[0] : null;
     };
 
+
     // Handlers para a SPA
     const handlePatientClick = (patientId) => {
         // Passamos o patientId para a função de callback recebida como prop
@@ -205,10 +219,10 @@ const Dashboard = ({ onClickPatients }) => {
         }
     };
 
-    const handleViewAgenda = () => {
-        // Chamamos o handler do menu de navegação do componente pai
+    const handleViewAgenda = (consultation) => {
         if (window.handleMenuSelect) {
-            window.handleMenuSelect("Agenda");
+            // Passa o ID da consulta para o menu, que por sua vez salvará no estado do AppLayout
+            window.handleMenuSelect("Agenda", consultation.id);
         }
     };
 
