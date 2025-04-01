@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import {
     Drawer,
@@ -48,6 +50,9 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {ChevronRightIcon} from "lucide-react";
+
+// Importar o AnamneseViewer
+import AnamneseViewer from "./anamneseViwer";
 
 // Tema com cores para cada tipo de nota
 const theme = createTheme({
@@ -139,6 +144,10 @@ const AnamneseNotesPanel = ({
     const [expandedNotes, setExpandedNotes] = useState({});
     const [selectedNoteId, setSelectedNoteId] = useState(null);
 
+    // Novos estados para visualização de anamnese
+    const [viewingAnamneseDetail, setViewingAnamneseDetail] = useState(false);
+    const [selectedAnamneseData, setSelectedAnamneseData] = useState(null);
+
     const muiTheme = useTheme();
     const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
     const drawerWidth = isMobile ? '100%' : 450
@@ -229,6 +238,8 @@ const AnamneseNotesPanel = ({
         if (open) {
             setSearchTerm("");
             setActiveFilter("todas");
+            setViewingAnamneseDetail(false);
+            setSelectedAnamneseData(null);
         }
     }, [open]);
 
@@ -250,9 +261,25 @@ const AnamneseNotesPanel = ({
         }));
     };
 
+    // Função para abrir PDF
+    const handleOpenPdf = () => {
+        if (selectedAnamneseData && selectedAnamneseData.pdfUrl) {
+            window.open(selectedAnamneseData.pdfUrl, '_blank');
+        }
+    };
+
     // Handler para seleção de nota
     const handleSelectNote = (note) => {
         setSelectedNoteId(note.id);
+
+        // Se for uma anamnese, configura para visualização detalhada
+        if (note.noteType === 'Anamnese') {
+            setSelectedAnamneseData(note);
+            setViewingAnamneseDetail(true);
+        } else {
+            setViewingAnamneseDetail(false);
+        }
+
         if (onSelectNote) {
             onSelectNote(note);
         }
@@ -472,7 +499,6 @@ const AnamneseNotesPanel = ({
 
     return (
         <ThemeProvider theme={theme}>
-
             <Drawer
                 anchor="right"
                 open={open}
@@ -635,6 +661,41 @@ const AnamneseNotesPanel = ({
                         As anotações são organizadas da mais recente para a mais antiga
                     </Typography>
                 </Box>
+
+                {/* Visualização detalhada da anamnese quando selecionada */}
+                {viewingAnamneseDetail && selectedAnamneseData && (
+                    <Box sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        bgcolor: 'white',
+                        zIndex: 1300,
+                        overflow: 'auto',
+                        p: 2
+                    }}>
+                        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                Detalhes da Anamnese
+                            </Typography>
+                            <Button
+                                variant="outlined"
+                                startIcon={<CloseIcon />}
+                                onClick={() => setViewingAnamneseDetail(false)}
+                                size="small"
+                            >
+                                Voltar
+                            </Button>
+                        </Box>
+                        <Divider sx={{ mb: 2 }} />
+                        <AnamneseViewer
+                            anamneseData={selectedAnamneseData}
+                            typeColor={getTypeColor('Anamnese')}
+                            onOpenPdf={handleOpenPdf}
+                        />
+                    </Box>
+                )}
             </Drawer>
         </ThemeProvider>
     );

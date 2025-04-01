@@ -514,7 +514,6 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
 
             {/* Acordo em acordeões para melhor organização */}
             <Accordion
-                defaultExpanded
                 disableGutters
                 elevation={0}
                 sx={{
@@ -579,7 +578,6 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
 
             {/* Exame Físico */}
             <Accordion
-                defaultExpanded
                 disableGutters
                 elevation={0}
                 sx={{
@@ -603,7 +601,6 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
 
             {/* Histórico */}
             <Accordion
-                defaultExpanded
                 disableGutters
                 elevation={0}
                 sx={{
@@ -672,7 +669,6 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
 
             {/* Hábitos de Vida */}
             <Accordion
-                defaultExpanded
                 disableGutters
                 elevation={0}
                 sx={{

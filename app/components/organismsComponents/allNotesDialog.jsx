@@ -61,6 +61,7 @@ import BiotechIcon from "@mui/icons-material/Biotech";
 
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import AnamneseViewer from "./anamneseViwer";
 
 // Tema com cores para cada tipo de nota
 const theme = createTheme({
@@ -572,222 +573,14 @@ const AllNotesViewDialog = ({
 
         const typeColor = getTypeColor(note.noteType);
 
-        // Como estamos apenas visualizando, vamos verificar se existem campos específicos de anamnese
-        // na estrutura dos dados. Caso contrário, apenas mostramos o texto da nota.
-        const hasAnamneseDetails = note.chiefComplaint ||
-            note.illnessHistory ||
-            (note.physicalExam && Object.keys(note.physicalExam).length > 0);
+        // Função para abrir o PDF da anamnese
+        const handleOpenPdf = () => {
+            if (note.pdfUrl) {
+                window.open(note.pdfUrl, '_blank');
+            }
+        };
 
-        if (!hasAnamneseDetails) return null;
-
-        return (
-            <Box sx={{ mt: 3 }}>
-                {note.chiefComplaint && (
-                    <Accordion
-                        expanded={expanded.chiefComplaint}
-                        onChange={() => handleToggleExpand('chiefComplaint')}
-                        sx={{
-                            mb: 2,
-                            boxShadow: 'none',
-                            backgroundColor: alpha(typeColor.light, 0.5),
-                            border: `1px solid ${typeColor.light}`,
-                            '&:before': { display: 'none' },
-                            borderRadius: 2,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <AccordionSummary
-                            expandIcon={<ExpandMoreIcon />}
-                            sx={{
-                                backgroundColor: alpha(typeColor.light, 0.7),
-                                borderRadius: expanded.chiefComplaint ? '8px 8px 0 0' : 2
-                            }}
-                        >
-                            <Typography sx={{ fontWeight: 600, color: typeColor.dark }}>
-                                Queixa Principal
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Typography>{note.chiefComplaint}</Typography>
-                        </AccordionDetails>
-                    </Accordion>
-                )}
-
-                {note.illnessHistory && (
-                    <Accordion
-                        expanded={expanded.illnessHistory}
-                        onChange={() => handleToggleExpand('illnessHistory')}
-                        sx={{
-                            mb: 2,
-                            boxShadow: 'none',
-                            backgroundColor: alpha(typeColor.light, 0.5),
-                            border: `1px solid ${typeColor.light}`,
-                            '&:before': { display: 'none' },
-                            borderRadius: 2,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <AccordionSummary
-                            expandIcon={<ExpandMoreIcon />}
-                            sx={{
-                                backgroundColor: alpha(typeColor.light, 0.7),
-                                borderRadius: expanded.illnessHistory ? '8px 8px 0 0' : 2
-                            }}
-                        >
-                            <Typography sx={{ fontWeight: 600, color: typeColor.dark }}>
-                                História da Doença Atual
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Typography>{note.illnessHistory}</Typography>
-                        </AccordionDetails>
-                    </Accordion>
-                )}
-
-                {note.physicalExam && note.physicalExam.vitalSigns && (
-                    <Accordion
-                        expanded={expanded.vitalSigns}
-                        onChange={() => handleToggleExpand('vitalSigns')}
-                        sx={{
-                            mb: 2,
-                            boxShadow: 'none',
-                            backgroundColor: alpha(typeColor.light, 0.5),
-                            border: `1px solid ${typeColor.light}`,
-                            '&:before': { display: 'none' },
-                            borderRadius: 2,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <AccordionSummary
-                            expandIcon={<ExpandMoreIcon />}
-                            sx={{
-                                backgroundColor: alpha(typeColor.light, 0.7),
-                                borderRadius: expanded.vitalSigns ? '8px 8px 0 0' : 2
-                            }}
-                        >
-                            <Typography sx={{ fontWeight: 600, color: typeColor.dark }}>
-                                Sinais Vitais
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={2}>
-                                {note.physicalExam.vitalSigns.bloodPressure && (
-                                    <Grid item xs={6} sm={4} md={2.4}>
-                                        <Paper sx={{ p: 2, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                                            <MonitorHeartIcon sx={{ color: "#3366FF", fontSize: 36, mb: 1 }} />
-                                            <Typography variant="body2" color="textSecondary" gutterBottom>Pressão Arterial</Typography>
-                                            <Typography variant="h6">{note.physicalExam.vitalSigns.bloodPressure} mmHg</Typography>
-                                        </Paper>
-                                    </Grid>
-                                )}
-
-                                {note.physicalExam.vitalSigns.heartRate && (
-                                    <Grid item xs={6} sm={4} md={2.4}>
-                                        <Paper sx={{ p: 2, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                                            <FavoriteIcon sx={{ color: "#F50057", fontSize: 36, mb: 1 }} />
-                                            <Typography variant="body2" color="textSecondary" gutterBottom>Freq. Cardíaca</Typography>
-                                            <Typography variant="h6">{note.physicalExam.vitalSigns.heartRate} bpm</Typography>
-                                        </Paper>
-                                    </Grid>
-                                )}
-
-                                {note.physicalExam.vitalSigns.temperature && (
-                                    <Grid item xs={6} sm={4} md={2.4}>
-                                        <Paper sx={{ p: 2, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                                            <ThermostatIcon sx={{ color: "#FF6D00", fontSize: 36, mb: 1 }} />
-                                            <Typography variant="body2" color="textSecondary" gutterBottom>Temperatura</Typography>
-                                            <Typography variant="h6">{note.physicalExam.vitalSigns.temperature} °C</Typography>
-                                        </Paper>
-                                    </Grid>
-                                )}
-
-                                {note.physicalExam.vitalSigns.respiratoryRate && (
-                                    <Grid item xs={6} sm={4} md={2.4}>
-                                        <Paper sx={{ p: 2, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                                            <SpeedIcon sx={{ color: "#00BFA5", fontSize: 36, mb: 1 }} />
-                                            <Typography variant="body2" color="textSecondary" gutterBottom>Freq. Respiratória</Typography>
-                                            <Typography variant="h6">{note.physicalExam.vitalSigns.respiratoryRate} irpm</Typography>
-                                        </Paper>
-                                    </Grid>
-                                )}
-
-                                {note.physicalExam.vitalSigns.oxygenSaturation && (
-                                    <Grid item xs={6} sm={4} md={2.4}>
-                                        <Paper sx={{ p: 2, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                                            <BubbleChartIcon sx={{ color: "#651FFF", fontSize: 36, mb: 1 }} />
-                                            <Typography variant="body2" color="textSecondary" gutterBottom>Saturação O₂</Typography>
-                                            <Typography variant="h6">{note.physicalExam.vitalSigns.oxygenSaturation}%</Typography>
-                                        </Paper>
-                                    </Grid>
-                                )}
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
-                )}
-
-                {note.diagnosis && (
-                    <Accordion
-                        expanded={expanded.diagnosis}
-                        onChange={() => handleToggleExpand('diagnosis')}
-                        sx={{
-                            mb: 2,
-                            boxShadow: 'none',
-                            backgroundColor: alpha(typeColor.light, 0.5),
-                            border: `1px solid ${typeColor.light}`,
-                            '&:before': { display: 'none' },
-                            borderRadius: 2,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <AccordionSummary
-                            expandIcon={<ExpandMoreIcon />}
-                            sx={{
-                                backgroundColor: alpha(typeColor.light, 0.7),
-                                borderRadius: expanded.diagnosis ? '8px 8px 0 0' : 2
-                            }}
-                        >
-                            <Typography sx={{ fontWeight: 600, color: typeColor.dark }}>
-                                Diagnóstico
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Typography>{note.diagnosis}</Typography>
-                        </AccordionDetails>
-                    </Accordion>
-                )}
-
-                {note.treatmentPlan && (
-                    <Accordion
-                        expanded={expanded.treatmentPlan}
-                        onChange={() => handleToggleExpand('treatmentPlan')}
-                        sx={{
-                            mb: 2,
-                            boxShadow: 'none',
-                            backgroundColor: alpha(typeColor.light, 0.5),
-                            border: `1px solid ${typeColor.light}`,
-                            '&:before': { display: 'none' },
-                            borderRadius: 2,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <AccordionSummary
-                            expandIcon={<ExpandMoreIcon />}
-                            sx={{
-                                backgroundColor: alpha(typeColor.light, 0.7),
-                                borderRadius: expanded.treatmentPlan ? '8px 8px 0 0' : 2
-                            }}
-                        >
-                            <Typography sx={{ fontWeight: 600, color: typeColor.dark }}>
-                                Plano de Tratamento
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Typography>{note.treatmentPlan}</Typography>
-                        </AccordionDetails>
-                    </Accordion>
-                )}
-            </Box>
-        );
+        return <AnamneseViewer anamneseData={note} typeColor={typeColor} onOpenPdf={handleOpenPdf} />;
     };
 
     // Rendering para informações de receita
@@ -1548,7 +1341,10 @@ const AllNotesViewDialog = ({
                                         <Divider sx={{ mb: 3 }} />
 
                                         {/* Note Content */}
-                                        {renderNoteContent(currentNote)}
+
+                                        {currentNote.noteType !== 'Anamnese'&&(
+                                            renderNoteContent(currentNote)
+                                        )}
 
                                         {/* Note Type Specific Content */}
                                         {currentNote.noteType === 'Receita' && renderReceitaDetails(currentNote)}
