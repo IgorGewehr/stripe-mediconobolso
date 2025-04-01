@@ -548,8 +548,8 @@ function EmptyState({ onCreate }) {
 }
 
 // Main notes section component
-export default function NotasSection({ pacienteId }) {
-    // States
+export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) {
+    // Estados
     const [notasData, setNotasData] = useState([]);
     const [filteredNotas, setFilteredNotas] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -624,10 +624,7 @@ export default function NotasSection({ pacienteId }) {
             });
 
             setNotasData(sortedNotes);
-
-            // Calculate metrics
             calculateMetrics(sortedNotes);
-
         } catch (error) {
             console.error("Erro ao carregar notas:", error);
             setError("Não foi possível carregar as notas. Tente novamente mais tarde.");
@@ -635,6 +632,15 @@ export default function NotasSection({ pacienteId }) {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        // Quando as notas recebidas por props mudarem, atualize o estado local
+        if (notas && notas.length > 0) {
+            console.log("Recebendo novas notas via props:", notas.length);
+            setNotasData(notas);
+            setIsLoading(false);
+        }
+    }, [notas]);
 
     // Calculate metrics for badges
     const calculateMetrics = (notas) => {
@@ -782,8 +788,6 @@ export default function NotasSection({ pacienteId }) {
     // Handler to save prescription
     const handleSaveReceita = async (receitaId) => {
         try {
-            // Update notes list with latest data from Firebase
-            await fetchNotas();
 
             // Show success message
             setSuccessAction("criada");
@@ -793,16 +797,25 @@ export default function NotasSection({ pacienteId }) {
             // Close prescription dialog
             setOpenReceitaDialog(false);
             setSelectedReceita(null);
+            if (onNotaUpdated) {
+                onNotaUpdated();
+            } else {
+                await fetchNotas();
+            }
         } catch (error) {
             console.error("Erro ao salvar receita:", error);
-            // Optional: show error feedback
         }
     };
 
     // Handler to save anamnese
     const handleSaveAnamnese = async (anamneseId) => {
         try {
-            await fetchNotas(); // Recarrega a lista de notas
+
+            if (onNotaUpdated) {
+                onNotaUpdated();
+            } else {
+                await fetchNotas();
+            }
             setSuccessAction("criada");
             setShowSuccessMessage(true);
             setTimeout(() => setShowSuccessMessage(false), 3000);

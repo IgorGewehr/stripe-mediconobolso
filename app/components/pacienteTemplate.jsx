@@ -13,12 +13,43 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
     const { user } = useAuth();
     const [pacienteData, setPacienteData] = useState(null);
     const [notasData, setNotasData] = useState([]);
-    const [loading, setLoading] = useState(!!pacienteId); // Se recebemos apenas o ID, começamos carregando
+    const [loading, setLoading] = useState(!!pacienteId);
     const [error, setError] = useState(null);
+    const [notasUpdated, setNotasUpdated] = useState(false); // Estado para controlar atualizações
 
     const doctorId = user.uid;
 
-    // Efeito para carregar dados se apenas o ID for fornecido
+    const forceUpdateNotas = async () => {
+        console.log("Forçando atualização de notas...");
+        try {
+            const notes = await FirebaseService.listNotes(user.uid, pacienteId);
+            // Ordena as notas por data (mais recentes primeiro)
+            const sortedNotes = notes.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+                return dateB - dateA;
+            });
+
+            setNotasData(sortedNotes);
+            return sortedNotes;
+        } catch (err) {
+            console.error("Erro ao carregar anotações:", err);
+            return [];
+        }
+    };
+
+    // Função para buscar notas
+    const fetchNotas = async () => {
+        if (pacienteId && user?.uid) {
+            try {
+                const notes = await FirebaseService.listNotes(user.uid, pacienteId);
+                setNotasData(notes);
+            } catch (err) {
+                console.error("Erro ao carregar anotações:", err);
+            }
+        }
+    };
+
     // Efeito para carregar dados - versão corrigida
     useEffect(() => {
         // Se já temos os dados completos do paciente, não precisamos carregar
@@ -44,7 +75,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                     const processedPatient = {
                         ...patientData, // Manter todos os campos originais
                         id: pacienteId, // Garantir que o ID esteja presente
-                        nome: patientData.patientName,
+                        nome: patientData.patientName || patientData.nome || "",
                         fotoPerfil: patientData.patientPhotoUrl || "",
                         tipoSanguineo: patientData.bloodType || "",
                         dataNascimento: patientData.birthDate || "",
@@ -75,15 +106,8 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
 
                     setPacienteData(processedPatient);
 
-                    // Carregar anotações (opcional)
-                    try {
-                        // Aqui você pode carregar as anotações do paciente
-                        // const anamneses = await FirebaseService.listAnamneses(doctorId, pacienteId);
-                        // Formatar as anotações para o componente NotasSection
-                        // setNotasData(anamneses.map(...));
-                    } catch (err) {
-                        console.error("Erro ao carregar anotações:", err);
-                    }
+                    // Carregar anotações
+                    fetchNotas();
 
                 } catch (err) {
                     console.error("Erro ao carregar dados do paciente:", err);
@@ -96,6 +120,26 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
             fetchPacienteData();
         }
     }, [pacienteId, paciente, user]);
+
+    // Efeito para atualizar notas quando houver mudanças
+    useEffect(() => {
+        if (notasUpdated) {
+            fetchNotas();
+            setNotasUpdated(false);
+        }
+    }, [notasUpdated]);
+
+    // Handler para atualização de notas
+    const handleNotaUpdated = () => {
+        setNotasUpdated(true);
+
+        // Use um setTimeout para garantir que a atualização aconteça após completar outras operações
+        setTimeout(() => {
+            fetchNotas();
+        }, 500);
+    };
+
+
 
     // Função para voltar à lista de pacientes
     const handleBack = () => {
@@ -181,11 +225,20 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                     marginLeft: "0px", // Mantem a margem fixa quando o card se expande
                 }}
             >
-                {/* Accompaniment Section */}
-                <AcompanhamentoSection pacienteId={pacienteId || pacienteData.id} doctorId={doctorId} />
+                {/* Passa a função de atualização para AcompanhamentoSection */}
+                <AcompanhamentoSection
+                    pacienteId={pacienteId || pacienteData.id}
+                    doctorId={doctorId}
+                    onNotaUpdated={handleNotaUpdated}
+                    forceUpdateNotas={forceUpdateNotas}
+                />
 
-                {/* Notes Section */}
-                <NotasSection notas={notasData.length > 0 ? notasData : undefined} pacienteId={pacienteId || pacienteData.id} />
+                {/* Passa as notas atualizadas e função de atualização para NotasSection */}
+                <NotasSection
+                    notas={notasData}
+                    pacienteId={pacienteId || pacienteData.id}
+                    onNotaUpdated={handleNotaUpdated}
+                />
             </Box>
         </Box>
     );

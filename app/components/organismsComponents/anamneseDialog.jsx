@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
     Box,
     Typography,
@@ -279,6 +279,32 @@ const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
+// Memoized components
+const MemoizedSectionHeader = React.memo(({ title, expanded, onToggle }) => (
+    <SectionHeader>
+        <SectionTitle>{title}</SectionTitle>
+        <IconButton onClick={onToggle}>
+            {expanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+        </IconButton>
+    </SectionHeader>
+));
+
+const MemoizedVitalSignCard = React.memo(({ icon, title, name, value, onChange, unit, placeholder }) => (
+    <VitalSignCard>
+        {icon}
+        <Typography sx={{ color: "#666", mb: 1, fontSize: 14 }}>{title}</Typography>
+        <StyledTextField
+            size="small"
+            placeholder={placeholder}
+            name={name}
+            value={value}
+            onChange={onChange}
+            InputProps={{
+                endAdornment: unit ? <InputAdornment position="end">{unit}</InputAdornment> : null,
+            }}
+        />
+    </VitalSignCard>
+));
 
 // ------------------ COMPONENTE PRINCIPAL DE DIÁLOGO ------------------
 export default function AnamneseDialog({ open, onClose, patientId, doctorId, anamneseId, onSave }) {
@@ -298,49 +324,26 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
     const SCALE_STEP = 0.1;
 
     // Função para aumentar a fonte
-    const increaseFontSize = () => {
+    const increaseFontSize = useCallback(() => {
         if (fontSizeScale < MAX_SCALE) {
             setFontSizeScale(prev => Math.min(prev + SCALE_STEP, MAX_SCALE));
         }
-    };
-
-    const fetchPatientNotes = async () => {
-        try {
-            const notes = await firebaseService.listNotes(doctorId, patientId);
-            setPatientNotes(notes);
-        } catch (err) {
-            console.error("Erro ao buscar notas do paciente:", err);
-            // Não definimos um erro aqui para não interferir com a experiência da anamnese
-        }
-    };
-
-    const handleSelectNote = (note) => {
-        setSelectedNote(note);
-        // Opcional: você pode usar as informações da nota selecionada para
-        // preencher automaticamente campos relevantes na anamnese
-    };
-
-
-    useEffect(() => {
-        if (open && patientId && doctorId) {
-            fetchPatientNotes();
-        }
-    }, [open, patientId, doctorId]);
+    }, [fontSizeScale]);
 
     // Função para diminuir a fonte
-    const decreaseFontSize = () => {
+    const decreaseFontSize = useCallback(() => {
         if (fontSizeScale > MIN_SCALE) {
             setFontSizeScale(prev => Math.max(prev - SCALE_STEP, MIN_SCALE));
         }
-    };
+    }, [fontSizeScale]);
 
     // Função para resetar a fonte
-    const resetFontSize = () => {
+    const resetFontSize = useCallback(() => {
         setFontSizeScale(1);
-    };
+    }, []);
 
-    // Estilo dinâmico com base no tamanho da fonte
-    const fontSizeStyle = {
+    // Estilo dinâmico com base no tamanho da fonte (memoizado)
+    const fontSizeStyle = useMemo(() => ({
         fontSize: `${fontSizeScale}rem`,
         "& .MuiTypography-root": {
             fontSize: `${fontSizeScale}rem`,
@@ -357,151 +360,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
         "& .MuiChip-label": {
             fontSize: `${0.8 * fontSizeScale}rem`,
         },
-    };
-
-    // Carregar dados do paciente quando o componente for montado
-    useEffect(() => {
-        if (open && patientId) {
-            fetchPatientData();
-        }
-    }, [open, patientId]);
-
-    // Add this after the existing useEffect for loading patient data
-    useEffect(() => {
-        if (open && anamneseId && patientId && doctorId) {
-            fetchAnamneseData();
-        }
-    }, [open, anamneseId, patientId, doctorId]);
-
-// Add this function to fetch anamnese data
-    const fetchAnamneseData = async () => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const data = await firebaseService.getAnamnese(doctorId, patientId, anamneseId);
-
-            if (data) {
-                // Populate the form with the existing anamnese data
-                setAnamneseData({
-                    ...data,
-                    // Ensure proper date format
-                    anamneseDate: data.anamneseDate?.toDate ? data.anamneseDate.toDate() : new Date(data.anamneseDate || new Date()),
-                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || new Date())
-                });
-            } else {
-                setError("Anamnese não encontrada.");
-            }
-        } catch (err) {
-            console.error("Erro ao buscar dados da anamnese:", err);
-            setError("Erro ao carregar dados da anamnese.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-// Função para buscar dados do paciente no Firebase
-    const fetchPatientData = async () => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const patientDoc = await firebaseService.getPatient(doctorId, patientId);
-
-            if (patientDoc) {
-                setPatientData(patientDoc);
-                populateFormWithPatientData(patientDoc);
-            } else {
-                setError("Paciente não encontrado.");
-            }
-        } catch (err) {
-            console.error("Erro ao buscar dados do paciente:", err);
-            setError("Erro ao carregar dados do paciente.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Função para popular o formulário com os dados do paciente
-    const populateFormWithPatientData = (patient) => {
-        // Pre-populate certain fields if available in patient data
-        let medicalHistory = [];
-        if (patient.doencas && patient.doencas.length > 0) {
-            medicalHistory = [...patient.doencas];
-        } else if (patient.chronicDiseases && patient.chronicDiseases.length > 0) {
-            medicalHistory = [...patient.chronicDiseases];
-        } else if (patient.condicoesClinicas?.doencas && patient.condicoesClinicas.doencas.length > 0) {
-            medicalHistory = [...patient.condicoesClinicas.doencas];
-        }
-
-        let allergies = [];
-        if (patient.alergias && patient.alergias.length > 0) {
-            allergies = [...patient.alergias];
-        } else if (patient.allergies && patient.allergies.length > 0) {
-            allergies = [...patient.allergies];
-        } else if (patient.condicoesClinicas?.alergias && patient.condicoesClinicas.alergias.length > 0) {
-            allergies = [...patient.condicoesClinicas.alergias];
-        }
-
-        let surgicalHistory = [];
-        if (patient.cirurgias && patient.cirurgias.length > 0) {
-            surgicalHistory = [...patient.cirurgias];
-        } else if (patient.condicoesClinicas?.cirurgias && patient.condicoesClinicas.cirurgias.length > 0) {
-            surgicalHistory = [...patient.condicoesClinicas.cirurgias];
-        }
-
-        let medications = [];
-        if (patient.medicamentos && patient.medicamentos.length > 0) {
-            medications = [...patient.medicamentos];
-        } else if (patient.medications && patient.medications.length > 0) {
-            medications = [...patient.medications];
-        } else if (patient.condicoesClinicas?.medicamentos && patient.condicoesClinicas.medicamentos.length > 0) {
-            medications = [...patient.condicoesClinicas.medicamentos];
-        }
-
-        // Set social history data if available
-        let socialHistory = { ...anamneseData.socialHistory };
-
-        if (patient.ehFumante === "Sim" || patient.isSmoker) {
-            socialHistory.isSmoker = true;
-        }
-
-        if (patient.consumeAlcool === "Sim" || patient.consumesAlcohol) {
-            socialHistory.isAlcoholConsumer = true;
-        }
-
-        let physicalActivity = "";
-        if (patient.atividades && patient.atividades.length > 0) {
-            physicalActivity = patient.atividades.join(", ");
-        } else if (patient.physicalActivities && patient.physicalActivities.length > 0) {
-            physicalActivity = patient.physicalActivities.join(", ");
-        } else if (patient.condicoesClinicas?.atividades && patient.condicoesClinicas.atividades.length > 0) {
-            physicalActivity = patient.condicoesClinicas.atividades.join(", ");
-        }
-
-        socialHistory.physicalActivity = physicalActivity;
-
-        // Add family history if available
-        let familyHistory = "";
-        if (patient.doencasHereditarias) {
-            familyHistory = patient.doencasHereditarias;
-        } else if (patient.hereditaryDiseases) {
-            familyHistory = patient.hereditaryDiseases;
-        } else if (patient.historicoConduta?.doencasHereditarias) {
-            familyHistory = patient.historicoConduta.doencasHereditarias;
-        }
-
-        // Update anamnese data with patient information
-        setAnamneseData(prev => ({
-            ...prev,
-            medicalHistory,
-            allergies,
-            surgicalHistory,
-            currentMedications: medications,
-            socialHistory,
-            familyHistory
-        }));
-    };
+    }), [fontSizeScale]);
 
     // Estado para controlar seções expandidas
     const [expandedSections, setExpandedSections] = useState({
@@ -601,90 +460,92 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
         message: "",
         severity: "success",
     });
+
+    // Função para buscar dados do paciente e notas
+    useEffect(() => {
+        if (open && patientId && doctorId) {
+            let isMounted = true;
+
+            const fetchAllData = async () => {
+                setLoading(true);
+                setError(null);
+
+                try {
+                    // Carregar dados em paralelo
+                    const [patientDoc, notes] = await Promise.all([
+                        firebaseService.getPatient(doctorId, patientId),
+                        firebaseService.listNotes(doctorId, patientId)
+                    ]);
+
+                    if (!isMounted) return;
+
+                    if (patientDoc) {
+                        setPatientData(patientDoc);
+                        populateFormWithPatientData(patientDoc);
+                    } else {
+                        setError("Paciente não encontrado.");
+                    }
+
+                    setPatientNotes(notes);
+
+                } catch (err) {
+                    console.error("Erro ao buscar dados:", err);
+                    if (isMounted) setError("Erro ao carregar dados do paciente.");
+                } finally {
+                    if (isMounted) setLoading(false);
+                }
+            };
+
+            fetchAllData();
+
+            return () => { isMounted = false; };
+        }
+    }, [open, patientId, doctorId]);
+
+    // Efeito para buscar dados da anamnese se for modo de edição
+    useEffect(() => {
+        if (open && anamneseId && patientId && doctorId) {
+            let isMounted = true;
+
+            const fetchAnamneseData = async () => {
+                try {
+                    const data = await firebaseService.getAnamnese(doctorId, patientId, anamneseId);
+
+                    if (!isMounted) return;
+
+                    if (data) {
+                        // Populate the form with the existing anamnese data
+                        setAnamneseData({
+                            ...data,
+                            // Ensure proper date format
+                            anamneseDate: data.anamneseDate?.toDate ? data.anamneseDate.toDate() : new Date(data.anamneseDate || new Date()),
+                            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || new Date())
+                        });
+                    } else {
+                        setError("Anamnese não encontrada.");
+                    }
+                } catch (err) {
+                    console.error("Erro ao buscar dados da anamnese:", err);
+                    if (isMounted) setError("Erro ao carregar dados da anamnese.");
+                }
+            };
+
+            fetchAnamneseData();
+
+            return () => { isMounted = false; };
+        }
+    }, [open, anamneseId, patientId, doctorId]);
+
     useEffect(() => {
         if (!open) {
             setIsSubmitting(false);
-        } else if(open){
+        } else if(open) {
             resetForm();
         }
     }, [open]);
 
-
-    // Carrega dados do paciente se disponíveis
-    useEffect(() => {
-        if (patientData && open) {
-            // Pre-populate certain fields if available in patient data
-            if (patientData.doencas && patientData.doencas.length > 0) {
-                setAnamneseData(prev => ({
-                    ...prev,
-                    medicalHistory: [...patientData.doencas]
-                }));
-            }
-
-            if (patientData.alergias && patientData.alergias.length > 0) {
-                setAnamneseData(prev => ({
-                    ...prev,
-                    allergies: [...patientData.alergias]
-                }));
-            }
-
-            if (patientData.cirurgias && patientData.cirurgias.length > 0) {
-                setAnamneseData(prev => ({
-                    ...prev,
-                    surgicalHistory: [...patientData.cirurgias]
-                }));
-            }
-
-            if (patientData.medicamentos && patientData.medicamentos.length > 0) {
-                setAnamneseData(prev => ({
-                    ...prev,
-                    currentMedications: [...patientData.medicamentos]
-                }));
-            }
-
-            // Set social history data if available
-            if (patientData.ehFumante === "Sim") {
-                setAnamneseData(prev => ({
-                    ...prev,
-                    socialHistory: {
-                        ...prev.socialHistory,
-                        isSmoker: true
-                    }
-                }));
-            }
-
-            if (patientData.consumeAlcool === "Sim") {
-                setAnamneseData(prev => ({
-                    ...prev,
-                    socialHistory: {
-                        ...prev.socialHistory,
-                        isAlcoholConsumer: true
-                    }
-                }));
-            }
-
-            if (patientData.atividades && patientData.atividades.length > 0) {
-                setAnamneseData(prev => ({
-                    ...prev,
-                    socialHistory: {
-                        ...prev.socialHistory,
-                        physicalActivity: patientData.atividades.join(", ")
-                    }
-                }));
-            }
-
-            // Add family history if available
-            if (patientData.doencasHereditarias) {
-                setAnamneseData(prev => ({
-                    ...prev,
-                    familyHistory: patientData.doencasHereditarias
-                }));
-            }
-        }
-    }, [patientData, open]);
-
     // Resetar formulário
-    const resetForm = () => {
+    const resetForm = useCallback(() => {
         setAnamneseData({
             patientId: patientId,
             doctorId: doctorId,
@@ -747,26 +608,107 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             currentMedications: "",
             allergies: "",
         });
-    };
+    }, [patientId, doctorId]);
+
+    // Função para popular o formulário com os dados do paciente
+    const populateFormWithPatientData = useCallback((patient) => {
+        // Pre-populate certain fields if available in patient data
+        let medicalHistory = [];
+        if (patient.doencas && patient.doencas.length > 0) {
+            medicalHistory = [...patient.doencas];
+        } else if (patient.chronicDiseases && patient.chronicDiseases.length > 0) {
+            medicalHistory = [...patient.chronicDiseases];
+        } else if (patient.condicoesClinicas?.doencas && patient.condicoesClinicas.doencas.length > 0) {
+            medicalHistory = [...patient.condicoesClinicas.doencas];
+        }
+
+        let allergies = [];
+        if (patient.alergias && patient.alergias.length > 0) {
+            allergies = [...patient.alergias];
+        } else if (patient.allergies && patient.allergies.length > 0) {
+            allergies = [...patient.allergies];
+        } else if (patient.condicoesClinicas?.alergias && patient.condicoesClinicas.alergias.length > 0) {
+            allergies = [...patient.condicoesClinicas.alergias];
+        }
+
+        let surgicalHistory = [];
+        if (patient.cirurgias && patient.cirurgias.length > 0) {
+            surgicalHistory = [...patient.cirurgias];
+        } else if (patient.condicoesClinicas?.cirurgias && patient.condicoesClinicas.cirurgias.length > 0) {
+            surgicalHistory = [...patient.condicoesClinicas.cirurgias];
+        }
+
+        let medications = [];
+        if (patient.medicamentos && patient.medicamentos.length > 0) {
+            medications = [...patient.medicamentos];
+        } else if (patient.medications && patient.medications.length > 0) {
+            medications = [...patient.medications];
+        } else if (patient.condicoesClinicas?.medicamentos && patient.condicoesClinicas.medicamentos.length > 0) {
+            medications = [...patient.condicoesClinicas.medicamentos];
+        }
+
+        // Set social history data if available
+        let socialHistory = { ...anamneseData.socialHistory };
+
+        if (patient.ehFumante === "Sim" || patient.isSmoker) {
+            socialHistory.isSmoker = true;
+        }
+
+        if (patient.consumeAlcool === "Sim" || patient.consumesAlcohol) {
+            socialHistory.isAlcoholConsumer = true;
+        }
+
+        let physicalActivity = "";
+        if (patient.atividades && patient.atividades.length > 0) {
+            physicalActivity = patient.atividades.join(", ");
+        } else if (patient.physicalActivities && patient.physicalActivities.length > 0) {
+            physicalActivity = patient.physicalActivities.join(", ");
+        } else if (patient.condicoesClinicas?.atividades && patient.condicoesClinicas.atividades.length > 0) {
+            physicalActivity = patient.condicoesClinicas.atividades.join(", ");
+        }
+
+        socialHistory.physicalActivity = physicalActivity;
+
+        // Add family history if available
+        let familyHistory = "";
+        if (patient.doencasHereditarias) {
+            familyHistory = patient.doencasHereditarias;
+        } else if (patient.hereditaryDiseases) {
+            familyHistory = patient.hereditaryDiseases;
+        } else if (patient.historicoConduta?.doencasHereditarias) {
+            familyHistory = patient.historicoConduta.doencasHereditarias;
+        }
+
+        // Update anamnese data with patient information
+        setAnamneseData(prev => ({
+            ...prev,
+            medicalHistory,
+            allergies,
+            surgicalHistory,
+            currentMedications: medications,
+            socialHistory,
+            familyHistory
+        }));
+    }, [anamneseData.socialHistory]);
 
     // Função para alternar expandir/contrair seções
-    const handleToggleSection = (section) => {
+    const handleToggleSection = useCallback((section) => {
         setExpandedSections((prev) => ({
             ...prev,
             [section]: !prev[section],
         }));
-    };
+    }, []);
 
     // Funções para atualizar o estado de anamnese
-    const handleChange = (e) => {
+    const handleChange = useCallback((e) => {
         const { name, value } = e.target;
         setAnamneseData((prev) => ({
             ...prev,
             [name]: value,
         }));
-    };
+    }, []);
 
-    const handleSystemsReviewChange = (e) => {
+    const handleSystemsReviewChange = useCallback((e) => {
         const { name, value } = e.target;
         setAnamneseData((prev) => ({
             ...prev,
@@ -775,9 +717,9 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 [name]: value,
             },
         }));
-    };
+    }, []);
 
-    const handlePhysicalExamChange = (e) => {
+    const handlePhysicalExamChange = useCallback((e) => {
         const { name, value } = e.target;
         setAnamneseData((prev) => ({
             ...prev,
@@ -786,9 +728,9 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 [name]: value,
             },
         }));
-    };
+    }, []);
 
-    const handleVitalSignChange = (e) => {
+    const handleVitalSignChange = useCallback((e) => {
         const { name, value } = e.target;
         setAnamneseData((prev) => ({
             ...prev,
@@ -800,9 +742,9 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 },
             },
         }));
-    };
+    }, []);
 
-    const handleSocialHistoryChange = (e) => {
+    const handleSocialHistoryChange = useCallback((e) => {
         const { name, value } = e.target;
         setAnamneseData((prev) => ({
             ...prev,
@@ -811,9 +753,9 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 [name]: value,
             },
         }));
-    };
+    }, []);
 
-    const handleToggleSocialHistory = (field, value) => {
+    const handleToggleSocialHistory = useCallback((field, value) => {
         setAnamneseData((prev) => ({
             ...prev,
             socialHistory: {
@@ -821,45 +763,49 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 [field]: value,
             },
         }));
-    };
+    }, []);
 
     // Funções para gerenciar listas (histórico médico, cirurgias, medicamentos, alergias)
-    const handleInputChange = (e, type) => {
-        setInputValues({
-            ...inputValues,
+    const handleInputChange = useCallback((e, type) => {
+        setInputValues(prev => ({
+            ...prev,
             [type]: e.target.value,
-        });
-    };
+        }));
+    }, []);
 
-    const addItem = (type) => {
+    const addItem = useCallback((type) => {
         if (inputValues[type].trim() !== "") {
             setAnamneseData(prev => ({
                 ...prev,
                 [type]: [...prev[type], inputValues[type].trim()]
             }));
-            setInputValues({
-                ...inputValues,
+            setInputValues(prev => ({
+                ...prev,
                 [type]: "",
-            });
+            }));
         }
-    };
+    }, [inputValues]);
 
-    const removeItem = (type, index) => {
+    const removeItem = useCallback((type, index) => {
         setAnamneseData(prev => ({
             ...prev,
             [type]: prev[type].filter((_, i) => i !== index)
         }));
-    };
+    }, []);
 
-    const handleKeyPress = (e, type) => {
+    const handleKeyPress = useCallback((e, type) => {
         if (e.key === "Enter") {
             e.preventDefault();
             addItem(type);
         }
-    };
+    }, [addItem]);
+
+    const handleSelectNote = useCallback((note) => {
+        setSelectedNote(note);
+    }, []);
 
     // Função para validar o formulário antes de enviar
-    const validateForm = () => {
+    const validateForm = useCallback(() => {
         // Validação mínima - exige pelo menos a queixa principal
         if (!anamneseData.chiefComplaint.trim()) {
             setSnackbar({
@@ -870,382 +816,387 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             return false;
         }
         return true;
-    };
+    }, [anamneseData.chiefComplaint]);
 
+    const getPatientName = useCallback(() => {
+        return patientData?.nome || patientData?.patientName || 'Paciente';
+    }, [patientData]);
+
+
+    // Função para gerar PDF da anamnese de forma assíncrona
+    const generateAnamnesePDFAsync = useCallback((anamneseData) => {
+        return new Promise((resolve) => {
+            // Use setTimeout para não bloquear a thread principal
+            setTimeout(() => {
+                // Create new PDF document
+                const doc = new jsPDF();
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const margin = 20;
+                let yPos = 20;
+
+                // Helper function to add text with wrapping
+                const addWrappedText = (text, x, y, maxWidth, lineHeight = 7) => {
+                    if (!text) return y;
+                    const textArray = typeof text === 'string' ? [text] : text;
+                    const textString = textArray.join(', ');
+                    const lines = doc.splitTextToSize(textString, maxWidth);
+                    doc.text(lines, x, y);
+                    return y + (lines.length * lineHeight);
+                };
+
+                // Title
+                doc.setFontSize(22);
+                doc.setFont('helvetica', 'bold');
+                doc.text('ANAMNESE MÉDICA', pageWidth / 2, yPos, { align: 'center' });
+                yPos += 15;
+
+                // Patient information
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Paciente: ${getPatientName()}`, margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                if (patientData?.dataNascimento) {
+                    const birthDate = patientData.dataNascimento instanceof Date
+                        ? patientData.dataNascimento
+                        : parse(patientData.dataNascimento, 'dd/MM/yyyy', new Date());
+                    doc.text(`Data de Nascimento: ${format(birthDate, 'dd/MM/yyyy')}`, margin, yPos);
+                } else {
+                    doc.text(`Data de Nascimento: N/A`, margin, yPos);
+                }
+
+                yPos += 7;
+                doc.text(`Data da Anamnese: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, margin, yPos);
+                yPos += 15;
+
+                // Section: Main Information
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Informações Principais', margin, yPos);
+                yPos += 10;
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Queixa Principal:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.chiefComplaint, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('História da Doença Atual:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.illnessHistory, margin, yPos, pageWidth - (2 * margin)) + 10;
+
+                // Check if we need a new page
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Section: Histories
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Históricos', margin, yPos);
+                yPos += 10;
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Histórico Médico:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.medicalHistory, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Histórico Cirúrgico:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.surgicalHistory, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Histórico Familiar:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.familyHistory, margin, yPos, pageWidth - (2 * margin)) + 10;
+
+                // Check if we need a new page
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Section: Social History
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Hábitos de Vida', margin, yPos);
+                yPos += 10;
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Tabagismo:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                let socialText = anamneseData.socialHistory.isSmoker ?
+                    `Sim (${anamneseData.socialHistory.cigarettesPerDay} cigarros/dia)` : 'Não';
+                yPos = addWrappedText(socialText, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Uso de Álcool:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                socialText = anamneseData.socialHistory.isAlcoholConsumer ?
+                    `Sim (${anamneseData.socialHistory.alcoholFrequency})` : 'Não';
+                yPos = addWrappedText(socialText, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Outras Substâncias:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                socialText = anamneseData.socialHistory.isDrugUser ?
+                    `Sim (${anamneseData.socialHistory.drugDetails})` : 'Não';
+                yPos = addWrappedText(socialText, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                // Check if we need a new page
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Atividade Física:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.socialHistory.physicalActivity, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Hábitos Alimentares:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.socialHistory.dietHabits, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Ocupação:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.socialHistory.occupation, margin, yPos, pageWidth - (2 * margin)) + 10;
+
+                // Check if we need a new page
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Section: Medications and Allergies
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Medicamentos e Alergias', margin, yPos);
+                yPos += 10;
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Medicamentos em Uso:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.currentMedications, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Alergias:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.allergies, margin, yPos, pageWidth - (2 * margin)) + 10;
+
+                // Check if we need a new page
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Section: Systems Review
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Revisão de Sistemas', margin, yPos);
+                yPos += 10;
+
+                // Add each system
+                const systemsReview = anamneseData.systemsReview;
+                const systems = [
+                    { title: 'Cardiovascular', value: systemsReview.cardiovascular },
+                    { title: 'Respiratório', value: systemsReview.respiratory },
+                    { title: 'Gastrointestinal', value: systemsReview.gastrointestinal },
+                    { title: 'Geniturinário', value: systemsReview.genitourinary },
+                    { title: 'Neurológico', value: systemsReview.neurological },
+                    { title: 'Musculoesquelético', value: systemsReview.musculoskeletal },
+                    { title: 'Endócrino', value: systemsReview.endocrine },
+                    { title: 'Hematológico', value: systemsReview.hematologic },
+                    { title: 'Psiquiátrico', value: systemsReview.psychiatric },
+                    { title: 'Dermatológico', value: systemsReview.dermatological }
+                ];
+
+                for (const system of systems) {
+                    if (system.value) {
+                        // Add a new page if needed
+                        if (yPos > 250) {
+                            doc.addPage();
+                            yPos = 20;
+                        }
+
+                        doc.setFontSize(12);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(`${system.title}:`, margin, yPos);
+                        yPos += 7;
+                        doc.setFont('helvetica', 'normal');
+                        yPos = addWrappedText(system.value, margin, yPos, pageWidth - (2 * margin)) + 5;
+                    }
+                }
+
+                // Check if we need a new page
+                if (yPos > 230) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Section: Physical Exam
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Exame Físico', margin, yPos);
+                yPos += 10;
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Aparência Geral:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.physicalExam.generalAppearance, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                // Vital signs
+                doc.setFont('helvetica', 'bold');
+                doc.text('Sinais Vitais:', margin, yPos);
+                yPos += 10;
+
+                // Create table for vital signs
+                const vitalSigns = [
+                    ['Pressão Arterial', 'Freq. Cardíaca', 'Temperatura', 'Freq. Respiratória', 'Sat. O2'],
+                    [
+                        anamneseData.physicalExam.vitalSigns.bloodPressure || '-',
+                        anamneseData.physicalExam.vitalSigns.heartRate ? `${anamneseData.physicalExam.vitalSigns.heartRate} bpm` : '-',
+                        anamneseData.physicalExam.vitalSigns.temperature ? `${anamneseData.physicalExam.vitalSigns.temperature} °C` : '-',
+                        anamneseData.physicalExam.vitalSigns.respiratoryRate ? `${anamneseData.physicalExam.vitalSigns.respiratoryRate} irpm` : '-',
+                        anamneseData.physicalExam.vitalSigns.oxygenSaturation ? `${anamneseData.physicalExam.vitalSigns.oxygenSaturation}%` : '-'
+                    ]
+                ];
+
+                const cellWidth = (pageWidth - 2 * margin) / 5;
+                const tableY = yPos;
+
+                // Cabeçalho da tabela
+                doc.setFillColor(17, 30, 90);
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(10);
+                for (let i = 0; i < vitalSigns[0].length; i++) {
+                    doc.rect(margin + (i * cellWidth), tableY, cellWidth, 10, 'F');
+                    doc.text(vitalSigns[0][i], margin + (i * cellWidth) + 2, tableY + 6);
+                }
+
+                // Corpo da tabela
+                doc.setFillColor(255, 255, 255);
+                doc.setTextColor(0, 0, 0);
+                for (let i = 0; i < vitalSigns[1].length; i++) {
+                    doc.rect(margin + (i * cellWidth), tableY + 10, cellWidth, 10, 'S');
+                    doc.text(vitalSigns[1][i], margin + (i * cellWidth) + 2, tableY + 16);
+                }
+
+                yPos = tableY + 25;
+
+                // Check if we need a new page
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Add physical exam details
+                const physicalExam = anamneseData.physicalExam;
+                const examParts = [
+                    { title: 'Cabeça e Pescoço', value: physicalExam.headAndNeck },
+                    { title: 'Cardiovascular', value: physicalExam.cardiovascular },
+                    { title: 'Respiratório', value: physicalExam.respiratory },
+                    { title: 'Abdômen', value: physicalExam.abdomen },
+                    { title: 'Extremidades', value: physicalExam.extremities },
+                    { title: 'Neurológico', value: physicalExam.neurological },
+                    { title: 'Outros', value: physicalExam.other }
+                ];
+
+                for (const part of examParts) {
+                    if (part.value) {
+                        // Add a new page if needed
+                        if (yPos > 250) {
+                            doc.addPage();
+                            yPos = 20;
+                        }
+
+                        doc.setFontSize(12);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(`${part.title}:`, margin, yPos);
+                        yPos += 7;
+                        doc.setFont('helvetica', 'normal');
+                        yPos = addWrappedText(part.value, margin, yPos, pageWidth - (2 * margin)) + 5;
+                    }
+                }
+
+                // Check if we need a new page
+                if (yPos > 230) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Section: Diagnosis and Treatment
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Conclusões', margin, yPos);
+                yPos += 10;
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Diagnóstico:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.diagnosis, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text('Plano de Tratamento:', margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(anamneseData.treatmentPlan, margin, yPos, pageWidth - (2 * margin)) + 5;
+
+                if (anamneseData.additionalNotes) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Observações Adicionais:', margin, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    yPos = addWrappedText(anamneseData.additionalNotes, margin, yPos, pageWidth - (2 * margin)) + 10;
+                }
+
+                // Footer with page numbers
+                const totalPages = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'italic');
+                    doc.text(
+                        `Página ${i} de ${totalPages}`,
+                        pageWidth - margin,
+                        doc.internal.pageSize.getHeight() - 10,
+                        { align: 'right' }
+                    );
+                }
+
+                resolve(doc);
+            }, 0);
+        });
+    }, [patientData, getPatientName]);
 
 
 
     // Função para salvar a anamnese
-    const generateAnamnesePDF = (anamneseData) => {
-        // Create new PDF document
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 20;
-        let yPos = 20;
-
-        // Helper function to add text with wrapping
-        const addWrappedText = (text, x, y, maxWidth, lineHeight = 7) => {
-            if (!text) return y;
-            const textArray = typeof text === 'string' ? [text] : text;
-            const textString = textArray.join(', ');
-            const lines = doc.splitTextToSize(textString, maxWidth);
-            doc.text(lines, x, y);
-            return y + (lines.length * lineHeight);
-        };
-
-        // Title
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text('ANAMNESE MÉDICA', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 15;
-
-        // Patient information
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Paciente: ${getPatientName()}`, margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        if (patientData?.dataNascimento) {
-            const birthDate = patientData.dataNascimento instanceof Date
-                ? patientData.dataNascimento
-                : parse(patientData.dataNascimento, 'dd/MM/yyyy', new Date());
-            doc.text(`Data de Nascimento: ${format(birthDate, 'dd/MM/yyyy')}`, margin, yPos);
-        } else {
-            doc.text(`Data de Nascimento: N/A`, margin, yPos);
-        }
-
-        yPos += 7;
-        doc.text(`Data da Anamnese: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, margin, yPos);
-        yPos += 15;
-
-        // Section: Main Information
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Informações Principais', margin, yPos);
-        yPos += 10;
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Queixa Principal:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.chiefComplaint, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('História da Doença Atual:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.illnessHistory, margin, yPos, pageWidth - (2 * margin)) + 10;
-
-        // Check if we need a new page
-        if (yPos > 250) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        // Section: Histories
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Históricos', margin, yPos);
-        yPos += 10;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Histórico Médico:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.medicalHistory, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Histórico Cirúrgico:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.surgicalHistory, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Histórico Familiar:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.familyHistory, margin, yPos, pageWidth - (2 * margin)) + 10;
-
-        // Check if we need a new page
-        if (yPos > 250) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        // Section: Social History
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Hábitos de Vida', margin, yPos);
-        yPos += 10;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Tabagismo:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        let socialText = anamneseData.socialHistory.isSmoker ?
-            `Sim (${anamneseData.socialHistory.cigarettesPerDay} cigarros/dia)` : 'Não';
-        yPos = addWrappedText(socialText, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Uso de Álcool:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        socialText = anamneseData.socialHistory.isAlcoholConsumer ?
-            `Sim (${anamneseData.socialHistory.alcoholFrequency})` : 'Não';
-        yPos = addWrappedText(socialText, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Outras Substâncias:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        socialText = anamneseData.socialHistory.isDrugUser ?
-            `Sim (${anamneseData.socialHistory.drugDetails})` : 'Não';
-        yPos = addWrappedText(socialText, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        // Check if we need a new page
-        if (yPos > 250) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Atividade Física:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.socialHistory.physicalActivity, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Hábitos Alimentares:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.socialHistory.dietHabits, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Ocupação:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.socialHistory.occupation, margin, yPos, pageWidth - (2 * margin)) + 10;
-
-        // Check if we need a new page
-        if (yPos > 250) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        // Section: Medications and Allergies
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Medicamentos e Alergias', margin, yPos);
-        yPos += 10;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Medicamentos em Uso:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.currentMedications, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Alergias:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.allergies, margin, yPos, pageWidth - (2 * margin)) + 10;
-
-        // Check if we need a new page
-        if (yPos > 250) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        // Section: Systems Review
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Revisão de Sistemas', margin, yPos);
-        yPos += 10;
-
-        // Add each system
-        const systemsReview = anamneseData.systemsReview;
-        const systems = [
-            { title: 'Cardiovascular', value: systemsReview.cardiovascular },
-            { title: 'Respiratório', value: systemsReview.respiratory },
-            { title: 'Gastrointestinal', value: systemsReview.gastrointestinal },
-            { title: 'Geniturinário', value: systemsReview.genitourinary },
-            { title: 'Neurológico', value: systemsReview.neurological },
-            { title: 'Musculoesquelético', value: systemsReview.musculoskeletal },
-            { title: 'Endócrino', value: systemsReview.endocrine },
-            { title: 'Hematológico', value: systemsReview.hematologic },
-            { title: 'Psiquiátrico', value: systemsReview.psychiatric },
-            { title: 'Dermatológico', value: systemsReview.dermatological }
-        ];
-
-        for (const system of systems) {
-            if (system.value) {
-                // Add a new page if needed
-                if (yPos > 250) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`${system.title}:`, margin, yPos);
-                yPos += 7;
-                doc.setFont('helvetica', 'normal');
-                yPos = addWrappedText(system.value, margin, yPos, pageWidth - (2 * margin)) + 5;
-            }
-        }
-
-        // Check if we need a new page
-        if (yPos > 230) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        // Section: Physical Exam
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Exame Físico', margin, yPos);
-        yPos += 10;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Aparência Geral:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.physicalExam.generalAppearance, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        // Vital signs
-        doc.setFont('helvetica', 'bold');
-        doc.text('Sinais Vitais:', margin, yPos);
-        yPos += 10;
-
-        // Create table for vital signs
-        const vitalSigns = [
-            ['Pressão Arterial', 'Freq. Cardíaca', 'Temperatura', 'Freq. Respiratória', 'Sat. O2'],
-            [
-                anamneseData.physicalExam.vitalSigns.bloodPressure || '-',
-                anamneseData.physicalExam.vitalSigns.heartRate ? `${anamneseData.physicalExam.vitalSigns.heartRate} bpm` : '-',
-                anamneseData.physicalExam.vitalSigns.temperature ? `${anamneseData.physicalExam.vitalSigns.temperature} °C` : '-',
-                anamneseData.physicalExam.vitalSigns.respiratoryRate ? `${anamneseData.physicalExam.vitalSigns.respiratoryRate} irpm` : '-',
-                anamneseData.physicalExam.vitalSigns.oxygenSaturation ? `${anamneseData.physicalExam.vitalSigns.oxygenSaturation}%` : '-'
-            ]
-        ];
-
-        const cellWidth = (pageWidth - 2 * margin) / 5;
-        const tableY = yPos;
-
-// Cabeçalho da tabela
-        doc.setFillColor(17, 30, 90);
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(10);
-        for (let i = 0; i < vitalSigns[0].length; i++) {
-            doc.rect(margin + (i * cellWidth), tableY, cellWidth, 10, 'F');
-            doc.text(vitalSigns[0][i], margin + (i * cellWidth) + 2, tableY + 6);
-        }
-
-// Corpo da tabela
-        doc.setFillColor(255, 255, 255);
-        doc.setTextColor(0, 0, 0);
-        for (let i = 0; i < vitalSigns[1].length; i++) {
-            doc.rect(margin + (i * cellWidth), tableY + 10, cellWidth, 10, 'S');
-            doc.text(vitalSigns[1][i], margin + (i * cellWidth) + 2, tableY + 16);
-        }
-
-        yPos = tableY + 25;
-
-        // Check if we need a new page
-        if (yPos > 250) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        // Add physical exam details
-        const physicalExam = anamneseData.physicalExam;
-        const examParts = [
-            { title: 'Cabeça e Pescoço', value: physicalExam.headAndNeck },
-            { title: 'Cardiovascular', value: physicalExam.cardiovascular },
-            { title: 'Respiratório', value: physicalExam.respiratory },
-            { title: 'Abdômen', value: physicalExam.abdomen },
-            { title: 'Extremidades', value: physicalExam.extremities },
-            { title: 'Neurológico', value: physicalExam.neurological },
-            { title: 'Outros', value: physicalExam.other }
-        ];
-
-        for (const part of examParts) {
-            if (part.value) {
-                // Add a new page if needed
-                if (yPos > 250) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`${part.title}:`, margin, yPos);
-                yPos += 7;
-                doc.setFont('helvetica', 'normal');
-                yPos = addWrappedText(part.value, margin, yPos, pageWidth - (2 * margin)) + 5;
-            }
-        }
-
-        // Check if we need a new page
-        if (yPos > 230) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        // Section: Diagnosis and Treatment
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Conclusões', margin, yPos);
-        yPos += 10;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Diagnóstico:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.diagnosis, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Plano de Tratamento:', margin, yPos);
-        yPos += 7;
-        doc.setFont('helvetica', 'normal');
-        yPos = addWrappedText(anamneseData.treatmentPlan, margin, yPos, pageWidth - (2 * margin)) + 5;
-
-        if (anamneseData.additionalNotes) {
-            doc.setFont('helvetica', 'bold');
-            doc.text('Observações Adicionais:', margin, yPos);
-            yPos += 7;
-            doc.setFont('helvetica', 'normal');
-            yPos = addWrappedText(anamneseData.additionalNotes, margin, yPos, pageWidth - (2 * margin)) + 10;
-        }
-
-        // Footer with page numbers
-        const totalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-            doc.setPage(i);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'italic');
-            doc.text(
-                `Página ${i} de ${totalPages}`,
-                pageWidth - margin,
-                doc.internal.pageSize.getHeight() - 10,
-                { align: 'right' }
-            );
-        }
-
-        return doc;
-    };
-
-    const getPatientName = () => {
-        return patientData?.nome || patientData?.patientName || 'Paciente';
-    };
-
-// Update the handleSaveAnamnese function to include PDF generation and note creation
-    const handleSaveAnamnese = async () => {
+    const handleSaveAnamnese = useCallback(async () => {
         if (!validateForm()) {
             return;
         }
@@ -1256,12 +1207,12 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             let isNewAnamnese = true;
 
             // Check if we're editing an existing anamnese
-            if (anamneseId) {  // Use anamneseId em vez de props.anamneseId
+            if (anamneseId) {
                 // Update existing anamnese
                 await firebaseService.updateAnamnese(
                     doctorId,
                     patientId,
-                    anamneseId,  // Use anamneseId em vez de props.anamneseId
+                    anamneseId,
                     anamneseData
                 );
                 isNewAnamnese = false;
@@ -1273,8 +1224,9 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     anamneseData
                 );
             }
-            // Generate PDF
-            const pdfDoc = generateAnamnesePDF(anamneseData);
+
+            // Generate PDF asynchronously
+            const pdfDoc = await generateAnamnesePDFAsync(anamneseData);
             const pdfBlob = pdfDoc.output('blob');
 
             // Create a File object from the Blob
@@ -1365,7 +1317,9 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
             // Close dialog after a short delay
             setTimeout(() => {
-                onSave(anamneseId);
+                if (onSave) {
+                    onSave(anamneseId);
+                }
             }, 1500);
 
         } catch (error) {
@@ -1377,15 +1331,15 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             });
             setIsSubmitting(false);
         }
-    };
+    }, [anamneseData, validateForm, generateAnamnesePDFAsync, doctorId, patientId, getPatientName, onSave]);
 
     // Função para fechar o snackbar
-    const handleCloseSnackbar = () => {
+    const handleCloseSnackbar = useCallback(() => {
         setSnackbar((prev) => ({ ...prev, open: false }));
-    };
+    }, []);
 
     // Componente para renderizar seções de itens (histórico médico, cirurgias, etc.)
-    const renderItemSection = (title, type, placeholder) => (
+    const renderItemSection = useCallback((title, type, placeholder) => (
         <Box sx={{ mb: 3 }}>
             <SectionSubtitle>{title}</SectionSubtitle>
             <StyledTextField
@@ -1415,10 +1369,10 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 ))}
             </Box>
         </Box>
-    );
+    ), [inputValues, anamneseData, handleInputChange, handleKeyPress, addItem, removeItem]);
 
     // Componente para renderizar botões de toggle (sim/não)
-    const renderToggleSection = (title, field, description) => (
+    const renderToggleSection = useCallback((title, field, description) => (
         <Box sx={{ mb: 3 }}>
             <SectionSubtitle>{title}</SectionSubtitle>
             {description && (
@@ -1511,7 +1465,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 </Box>
             )}
         </Box>
-    );
+    ), [anamneseData.socialHistory, handleToggleSocialHistory, handleSocialHistoryChange]);
 
     // Renderização condicional para estado de carregamento
     if (loading && open) {
@@ -1543,7 +1497,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
         );
     }
 
-// Renderização para estado de erro
+    // Renderização para estado de erro
     if (error && open) {
         return (
             <FullScreenDialog
@@ -1569,7 +1523,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>
                     <Button
                         variant="contained"
-                        onClick={fetchPatientData}
+                        onClick={() => window.location.reload()}
                         sx={{ mb: 2 }}
                     >
                         Tentar Novamente
@@ -1687,16 +1641,11 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 <Box sx={{ p: 3 }}>
                     {/* Seção 1: Informações Principais */}
                     <SectionContainer>
-                        <SectionHeader>
-                            <SectionTitle>Informações Principais</SectionTitle>
-                            <IconButton onClick={() => handleToggleSection("mainInfo")}>
-                                {expandedSections.mainInfo ? (
-                                    <KeyboardArrowUpIcon />
-                                ) : (
-                                    <KeyboardArrowDownIcon />
-                                )}
-                            </IconButton>
-                        </SectionHeader>
+                        <MemoizedSectionHeader
+                            title="Informações Principais"
+                            expanded={expandedSections.mainInfo}
+                            onToggle={() => handleToggleSection("mainInfo")}
+                        />
                         {expandedSections.mainInfo && (
                             <SectionContent>
                                 <Grid container spacing={3}>
@@ -1731,16 +1680,11 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
                     {/* Seção 2: Históricos Médicos */}
                     <SectionContainer>
-                        <SectionHeader>
-                            <SectionTitle>Históricos</SectionTitle>
-                            <IconButton onClick={() => handleToggleSection("histories")}>
-                                {expandedSections.histories ? (
-                                    <KeyboardArrowUpIcon />
-                                ) : (
-                                    <KeyboardArrowDownIcon />
-                                )}
-                            </IconButton>
-                        </SectionHeader>
+                        <MemoizedSectionHeader
+                            title="Históricos"
+                            expanded={expandedSections.histories}
+                            onToggle={() => handleToggleSection("histories")}
+                        />
                         {expandedSections.histories && (
                             <SectionContent>
                                 {renderItemSection(
@@ -1771,16 +1715,11 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
                     {/* Seção 3: Hábitos de Vida */}
                     <SectionContainer>
-                        <SectionHeader>
-                            <SectionTitle>Hábitos de Vida</SectionTitle>
-                            <IconButton onClick={() => handleToggleSection("lifestyle")}>
-                                {expandedSections.lifestyle ? (
-                                    <KeyboardArrowUpIcon />
-                                ) : (
-                                    <KeyboardArrowDownIcon />
-                                )}
-                            </IconButton>
-                        </SectionHeader>
+                        <MemoizedSectionHeader
+                            title="Hábitos de Vida"
+                            expanded={expandedSections.lifestyle}
+                            onToggle={() => handleToggleSection("lifestyle")}
+                        />
                         {expandedSections.lifestyle && (
                             <SectionContent>
                                 <Grid container spacing={3}>
@@ -1849,16 +1788,11 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
                     {/* Seção 4: Medicamentos e Alergias */}
                     <SectionContainer>
-                        <SectionHeader>
-                            <SectionTitle>Medicamentos e Alergias</SectionTitle>
-                            <IconButton onClick={() => handleToggleSection("medicationsAllergies")}>
-                                {expandedSections.medicationsAllergies ? (
-                                    <KeyboardArrowUpIcon />
-                                ) : (
-                                    <KeyboardArrowDownIcon />
-                                )}
-                            </IconButton>
-                        </SectionHeader>
+                        <MemoizedSectionHeader
+                            title="Medicamentos e Alergias"
+                            expanded={expandedSections.medicationsAllergies}
+                            onToggle={() => handleToggleSection("medicationsAllergies")}
+                        />
                         {expandedSections.medicationsAllergies && (
                             <SectionContent>
                                 {renderItemSection(
@@ -1877,16 +1811,11 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
                     {/* Seção 5: Revisão de Sistemas */}
                     <SectionContainer>
-                        <SectionHeader>
-                            <SectionTitle>Revisão de Sistemas</SectionTitle>
-                            <IconButton onClick={() => handleToggleSection("systemsReview")}>
-                                {expandedSections.systemsReview ? (
-                                    <KeyboardArrowUpIcon />
-                                ) : (
-                                    <KeyboardArrowDownIcon />
-                                )}
-                            </IconButton>
-                        </SectionHeader>
+                        <MemoizedSectionHeader
+                            title="Revisão de Sistemas"
+                            expanded={expandedSections.systemsReview}
+                            onToggle={() => handleToggleSection("systemsReview")}
+                        />
                         {expandedSections.systemsReview && (
                             <SectionContent>
                                 <Grid container spacing={3}>
@@ -2017,16 +1946,11 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
                     {/* Seção 6: Exame Físico */}
                     <SectionContainer>
-                        <SectionHeader>
-                            <SectionTitle>Exame Físico</SectionTitle>
-                            <IconButton onClick={() => handleToggleSection("physicalExam")}>
-                                {expandedSections.physicalExam ? (
-                                    <KeyboardArrowUpIcon />
-                                ) : (
-                                    <KeyboardArrowDownIcon />
-                                )}
-                            </IconButton>
-                        </SectionHeader>
+                        <MemoizedSectionHeader
+                            title="Exame Físico"
+                            expanded={expandedSections.physicalExam}
+                            onToggle={() => handleToggleSection("physicalExam")}
+                        />
                         {expandedSections.physicalExam && (
                             <SectionContent>
                                 <Box sx={{ mb: 3 }}>
@@ -2046,84 +1970,59 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                                     <SectionSubtitle>Sinais Vitais</SectionSubtitle>
                                     <Grid container spacing={2} sx={{ mt: 1 }}>
                                         <Grid item xs={6} sm={4} md={2.4}>
-                                            <VitalSignCard>
-                                                <MonitorHeartIcon sx={{ color: "#3366FF", fontSize: 32, mb: 1 }} />
-                                                <Typography sx={{ color: "#666", mb: 1, fontSize: 14 }}>Pressão Arterial</Typography>
-                                                <StyledTextField
-                                                    size="small"
-                                                    placeholder="120/80"
-                                                    name="bloodPressure"
-                                                    value={anamneseData.physicalExam.vitalSigns.bloodPressure}
-                                                    onChange={handleVitalSignChange}
-                                                    InputProps={{
-                                                        endAdornment: <InputAdornment position="end">mmHg</InputAdornment>,
-                                                    }}
-                                                />
-                                            </VitalSignCard>
+                                            <MemoizedVitalSignCard
+                                                icon={<MonitorHeartIcon sx={{ color: "#3366FF", fontSize: 32, mb: 1 }} />}
+                                                title="Pressão Arterial"
+                                                name="bloodPressure"
+                                                value={anamneseData.physicalExam.vitalSigns.bloodPressure}
+                                                onChange={handleVitalSignChange}
+                                                unit="mmHg"
+                                                placeholder="120/80"
+                                            />
                                         </Grid>
                                         <Grid item xs={6} sm={4} md={2.4}>
-                                            <VitalSignCard>
-                                                <FavoriteIcon sx={{ color: "#F50057", fontSize: 32, mb: 1 }} />
-                                                <Typography sx={{ color: "#666", mb: 1, fontSize: 14 }}>Frequência Cardíaca</Typography>
-                                                <StyledTextField
-                                                    size="small"
-                                                    placeholder="75"
-                                                    name="heartRate"
-                                                    value={anamneseData.physicalExam.vitalSigns.heartRate}
-                                                    onChange={handleVitalSignChange}
-                                                    InputProps={{
-                                                        endAdornment: <InputAdornment position="end">bpm</InputAdornment>,
-                                                    }}
-                                                />
-                                            </VitalSignCard>
+                                            <MemoizedVitalSignCard
+                                                icon={<FavoriteIcon sx={{ color: "#F50057", fontSize: 32, mb: 1 }} />}
+                                                title="Frequência Cardíaca"
+                                                name="heartRate"
+                                                value={anamneseData.physicalExam.vitalSigns.heartRate}
+                                                onChange={handleVitalSignChange}
+                                                unit="bpm"
+                                                placeholder="75"
+                                            />
                                         </Grid>
                                         <Grid item xs={6} sm={4} md={2.4}>
-                                            <VitalSignCard>
-                                                <ThermostatIcon sx={{ color: "#FF6D00", fontSize: 32, mb: 1 }} />
-                                                <Typography sx={{ color: "#666", mb: 1, fontSize: 14 }}>Temperatura</Typography>
-                                                <StyledTextField
-                                                    size="small"
-                                                    placeholder="36.5"
-                                                    name="temperature"
-                                                    value={anamneseData.physicalExam.vitalSigns.temperature}
-                                                    onChange={handleVitalSignChange}
-                                                    InputProps={{
-                                                        endAdornment: <InputAdornment position="end">°C</InputAdornment>,
-                                                    }}
-                                                />
-                                            </VitalSignCard>
+                                            <MemoizedVitalSignCard
+                                                icon={<ThermostatIcon sx={{ color: "#FF6D00", fontSize: 32, mb: 1 }} />}
+                                                title="Temperatura"
+                                                name="temperature"
+                                                value={anamneseData.physicalExam.vitalSigns.temperature}
+                                                onChange={handleVitalSignChange}
+                                                unit="°C"
+                                                placeholder="36.5"
+                                            />
                                         </Grid>
                                         <Grid item xs={6} sm={4} md={2.4}>
-                                            <VitalSignCard>
-                                                <SpeedIcon sx={{ color: "#00BFA5", fontSize: 32, mb: 1 }} />
-                                                <Typography sx={{ color: "#666", mb: 1, fontSize: 14 }}>Freq. Respiratória</Typography>
-                                                <StyledTextField
-                                                    size="small"
-                                                    placeholder="16"
-                                                    name="respiratoryRate"
-                                                    value={anamneseData.physicalExam.vitalSigns.respiratoryRate}
-                                                    onChange={handleVitalSignChange}
-                                                    InputProps={{
-                                                        endAdornment: <InputAdornment position="end">irpm</InputAdornment>,
-                                                    }}
-                                                />
-                                            </VitalSignCard>
+                                            <MemoizedVitalSignCard
+                                                icon={<SpeedIcon sx={{ color: "#00BFA5", fontSize: 32, mb: 1 }} />}
+                                                title="Freq. Respiratória"
+                                                name="respiratoryRate"
+                                                value={anamneseData.physicalExam.vitalSigns.respiratoryRate}
+                                                onChange={handleVitalSignChange}
+                                                unit="irpm"
+                                                placeholder="16"
+                                            />
                                         </Grid>
                                         <Grid item xs={6} sm={4} md={2.4}>
-                                            <VitalSignCard>
-                                                <BubbleChartIcon sx={{ color: "#651FFF", fontSize: 32, mb: 1 }} />
-                                                <Typography sx={{ color: "#666", mb: 1, fontSize: 14 }}>Saturação O₂</Typography>
-                                                <StyledTextField
-                                                    size="small"
-                                                    placeholder="98"
-                                                    name="oxygenSaturation"
-                                                    value={anamneseData.physicalExam.vitalSigns.oxygenSaturation}
-                                                    onChange={handleVitalSignChange}
-                                                    InputProps={{
-                                                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                                                    }}
-                                                />
-                                            </VitalSignCard>
+                                            <MemoizedVitalSignCard
+                                                icon={<BubbleChartIcon sx={{ color: "#651FFF", fontSize: 32, mb: 1 }} />}
+                                                title="Saturação O₂"
+                                                name="oxygenSaturation"
+                                                value={anamneseData.physicalExam.vitalSigns.oxygenSaturation}
+                                                onChange={handleVitalSignChange}
+                                                unit="%"
+                                                placeholder="98"
+                                            />
                                         </Grid>
                                     </Grid>
                                 </Box>
@@ -2215,16 +2114,11 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
                     {/* Seção 7: Conclusões */}
                     <SectionContainer>
-                        <SectionHeader>
-                            <SectionTitle>Conclusões</SectionTitle>
-                            <IconButton onClick={() => handleToggleSection("conclusions")}>
-                                {expandedSections.conclusions ? (
-                                    <KeyboardArrowUpIcon />
-                                ) : (
-                                    <KeyboardArrowDownIcon />
-                                )}
-                            </IconButton>
-                        </SectionHeader>
+                        <MemoizedSectionHeader
+                            title="Conclusões"
+                            expanded={expandedSections.conclusions}
+                            onToggle={() => handleToggleSection("conclusions")}
+                        />
                         {expandedSections.conclusions && (
                             <SectionContent>
                                 <Grid container spacing={3}>
@@ -2317,7 +2211,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                         <TextDecreaseIcon />
                     </FontSizeButton>
 
-                    {/* Botão de restaurar - corrigido */}
+                    {/* Botão de restaurar */}
                     <FontSizeButton
                         size="small"
                         onClick={resetFontSize}
@@ -2352,7 +2246,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     onSelectNote={handleSelectNote}
                 />
 
-                {/* Se você quiser mostrar uma indicação de que uma nota foi selecionada */}
+                {/* Indicação de nota selecionada */}
                 {selectedNote && (
                     <Box
                         sx={{
@@ -2386,7 +2280,6 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                         </IconButton>
                     </Box>
                 )}
-
 
                 {/* Snackbar de feedback */}
                 <Snackbar

@@ -119,7 +119,7 @@ function AcompanhamentoCard({ tipo, icone, onClick }) {
 }
 
 // Seção que agrupa os 3 cards
-export default function AcompanhamentoSection({ pacienteId, doctorId, patientData }) {
+export default function AcompanhamentoSection({ pacienteId, doctorId, patientData, onNotaUpdated, forceUpdateNotas }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("md"));
     const router = useRouter();
@@ -139,10 +139,38 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
         setOpenReceitaDialog(true);
     };
 
-    const handleSaveReceita = (receitaId) => {
+    // Atualiza a função para notificar sobre atualizações
+    const handleSaveAnamnese = async (anamneseId) => {
+        console.log(`Anamnese ${anamneseId} salva com sucesso!`);
+        setOpenAnamneseDialog(false);
+
+        // Usa a função de atualização forçada se disponível
+        if (forceUpdateNotas) {
+            console.log("Forçando atualização de notas após salvar anamnese");
+            await forceUpdateNotas();
+        }
+
+        // Notifica o componente pai sobre a atualização (fallback)
+        if (onNotaUpdated) {
+            onNotaUpdated();
+        }
+    };
+
+    // Atualiza a função para notificar sobre atualizações
+    const handleSaveReceita = async (receitaId) => {
         console.log(`Receita ${receitaId} salva com sucesso!`);
         setOpenReceitaDialog(false);
-        // Aqui você poderia atualizar o estado da aplicação ou fazer outras operações necessárias
+
+        // Usa a função de atualização forçada se disponível
+        if (forceUpdateNotas) {
+            console.log("Forçando atualização de notas após salvar receita");
+            await forceUpdateNotas();
+        }
+
+        // Notifica o componente pai sobre a atualização (fallback)
+        if (onNotaUpdated) {
+            onNotaUpdated();
+        }
     };
 
     const handleExamesClick = (isAdd) => {
@@ -191,15 +219,16 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                     />
                 </Grid>
             </Grid>
-            {/* Renderiza o diálogo de anamnese */}
+            {/* Renderiza o diálogo de anamnese com a função onSave */}
             <AnamneseDialog
                 open={openAnamneseDialog}
                 onClose={() => setOpenAnamneseDialog(false)}
                 patientId={pacienteId}
                 doctorId={doctorId}
+                onSave={handleSaveAnamnese}
             />
 
-            {/* Renderiza o diálogo de receita */}
+            {/* Renderiza o diálogo de receita com a função onSave */}
             <ReceitaDialog
                 open={openReceitaDialog}
                 onClose={() => setOpenReceitaDialog(false)}
