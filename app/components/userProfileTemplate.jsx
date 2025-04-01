@@ -18,7 +18,7 @@ import {
     Paper,
     InputAdornment,
     alpha,
-    useTheme
+    useTheme, Tooltip
 } from "@mui/material";
 import {
     Edit as EditIcon,
@@ -98,23 +98,23 @@ const applyCepMask = (value) => {
     return `${numbers.substring(0, 5)}-${numbers.substring(5, 8)}`;
 };
 
-// Campo editável com UI melhorada
+// Campo editável com UI elegante e minimalista
 const EditableField = ({
-                          label,
-                          value,
-                          isEditing,
-                          onChange,
-                          error,
-                          helperText,
-                          type = "text",
-                          required = false,
-                          startIcon,
-                          disabled = false,
-                          multiline = false,
-                          rows = 1,
-                          mask = null,
-                          ...props
-                      }) => {
+                           label,
+                           value,
+                           isEditing,
+                           onChange,
+                           error,
+                           helperText,
+                           type = "text",
+                           required = false,
+                           startIcon,
+                           disabled = false,
+                           multiline = false,
+                           rows = 1,
+                           mask = null,
+                           ...props
+                       }) => {
     return (
         <Box sx={{ mb: 2.5, position: 'relative' }}>
             {isEditing ? (
@@ -139,43 +139,34 @@ const EditableField = ({
                             fontSize: '14px',
                             '&.Mui-focused': {
                                 color: error ? themeColors.error : themeColors.primary,
-                                fontWeight: 600,
                             }
                         },
                         '& .MuiOutlinedInput-root': {
-                            borderRadius: '12px',
-                            backgroundColor: alpha(themeColors.backgroundSecondary, 0.5),
-                            transition: 'all 0.2s ease-in-out',
+                            borderRadius: '8px',
+                            backgroundColor: '#FFFFFF',
                             '& fieldset': {
                                 borderColor: error ? themeColors.error : themeColors.borderColor,
-                                borderWidth: '1.5px',
                             },
                             '&:hover fieldset': {
                                 borderColor: error ? themeColors.error : themeColors.primary,
                             },
                             '&.Mui-focused': {
-                                backgroundColor: 'white',
-                                boxShadow: error
-                                    ? `0 0 0 3px ${alpha(themeColors.error, 0.1)}`
-                                    : `0 0 0 3px ${alpha(themeColors.primary, 0.1)}`,
                                 '& fieldset': {
                                     borderColor: error ? themeColors.error : themeColors.primary,
-                                    borderWidth: '1.5px',
+                                    borderWidth: '1px',
                                 },
                             }
                         },
                         '& .MuiInputBase-input': {
                             fontFamily: 'Gellix, sans-serif',
-                            fontSize: '15px',
+                            fontSize: '14px',
                             color: themeColors.textPrimary,
-                            fontWeight: 500,
-                            padding: '14px 14px',
+                            padding: '12px 14px',
                         },
                         '& .MuiFormHelperText-root': {
                             fontFamily: 'Gellix, sans-serif',
                             marginLeft: '4px',
                             fontSize: '12px',
-                            fontWeight: 500,
                         }
                     }}
                     InputProps={{
@@ -185,7 +176,6 @@ const EditableField = ({
                                     color: error ? themeColors.error : themeColors.primary,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
                                     mr: 0.5
                                 }}>
                                     {startIcon}
@@ -196,19 +186,13 @@ const EditableField = ({
                     {...props}
                 />
             ) : (
-                <Paper
-                    elevation={0}
+                <Box
                     sx={{
                         p: 2,
-                        borderRadius: '12px',
-                        backgroundColor: alpha(themeColors.backgroundSecondary, 0.5),
-                        border: '1.5px solid',
-                        borderColor: 'transparent',
-                        transition: 'all 0.2s ease-in-out',
-                        '&:hover': {
-                            backgroundColor: alpha(themeColors.backgroundSecondary, 0.8),
-                            borderColor: alpha(themeColors.primary, 0.1),
-                        },
+                        borderRadius: '8px',
+                        border: '1px solid',
+                        borderColor: themeColors.borderColor,
+                        backgroundColor: '#FFFFFF',
                         display: 'flex',
                         alignItems: 'flex-start',
                     }}
@@ -234,11 +218,9 @@ const EditableField = ({
                                 color: themeColors.textTertiary,
                                 fontFamily: "Gellix, sans-serif",
                                 fontSize: '12px',
-                                fontWeight: 600,
+                                fontWeight: 500,
                                 display: 'block',
                                 mb: 0.5,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
                             }}
                         >
                             {label} {required && <span style={{ color: themeColors.error }}>*</span>}
@@ -248,7 +230,7 @@ const EditableField = ({
                             sx={{
                                 color: value ? (disabled ? themeColors.textTertiary : themeColors.textPrimary) : alpha(themeColors.textTertiary, 0.7),
                                 fontFamily: "Gellix, sans-serif",
-                                fontSize: '15px',
+                                fontSize: '14px',
                                 fontWeight: 500,
                                 wordBreak: multiline ? "break-word" : "normal",
                                 whiteSpace: multiline ? "pre-wrap" : "normal",
@@ -258,7 +240,7 @@ const EditableField = ({
                             {value || "Não informado"}
                         </Typography>
                     </Box>
-                </Paper>
+                </Box>
             )}
         </Box>
     );
@@ -821,81 +803,58 @@ const UserProfileTemplate = ({onLogout}) => {
 
                 {/* Coluna da Direita - Detalhes Profissionais */}
                 <Grid item xs={12} md={8}>
-                    {/* Improved Personal Information Card */}
+                    {/* Cartão de Informações Pessoais Refinado */}
                     <Card
                         elevation={0}
                         sx={{
-                            borderRadius: '20px',
-                            boxShadow: '0px 8px 25px rgba(17, 30, 90, 0.08)',
+                            borderRadius: '12px',
+                            boxShadow: '0px 2px 10px rgba(17, 30, 90, 0.08)',
                             overflow: 'hidden',
                             position: 'relative',
-                            minHeight: '300px',
-                            transition: 'all 0.3s ease',
                             border: '1px solid',
-                            borderColor: alpha(themeColors.borderColor, 0.5),
-                            '&:hover': {
-                                boxShadow: '0px 12px 30px rgba(17, 30, 90, 0.12)',
-                            }
+                            borderColor: themeColors.borderColor,
+                            bgcolor: '#FFFFFF'
                         }}
                     >
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                height: '8px',
-                                background: `linear-gradient(90deg, ${themeColors.primary} 0%, ${alpha(themeColors.primary, 0.7)} 100%)`,
-                            }}
-                        />
-
-                        <CardContent sx={{ p: { xs: 2, md: 3 }, pt: { xs: 3, md: 4 } }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography
+                                    variant="h6"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: themeColors.textPrimary,
+                                        fontFamily: "Gellix, sans-serif",
+                                        fontSize: '18px',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                >
                                     <PersonIcon
                                         sx={{
                                             color: themeColors.primary,
                                             mr: 1.5,
-                                            fontSize: 28,
-                                            padding: '6px',
-                                            borderRadius: '50%',
-                                            backgroundColor: alpha(themeColors.primary, 0.1),
+                                            fontSize: 20
                                         }}
                                     />
-                                    <Typography
-                                        variant="h6"
-                                        sx={{
-                                            fontWeight: 700,
-                                            color: themeColors.textPrimary,
-                                            fontFamily: "Gellix, sans-serif",
-                                            fontSize: '20px',
-                                        }}
-                                    >
-                                        Dados Pessoais
-                                    </Typography>
-                                </Box>
+                                    Dados Pessoais
+                                </Typography>
 
                                 {!isEditing ? (
-                                    <Tooltip title="Editar Informações">
-                                        <IconButton
-                                            onClick={() => setIsEditing(true)}
-                                            sx={{
-                                                backgroundColor: alpha(themeColors.primary, 0.1),
-                                                color: themeColors.primary,
-                                                '&:hover': {
-                                                    backgroundColor: alpha(themeColors.primary, 0.2),
-                                                }
-                                            }}
-                                        >
-                                            <EditIcon />
-                                        </IconButton>
-                                    </Tooltip>
+                                    <IconButton
+                                        onClick={() => setIsEditing(true)}
+                                        size="small"
+                                        sx={{
+                                            color: themeColors.primary,
+                                        }}
+                                    >
+                                        <EditIcon fontSize="small" />
+                                    </IconButton>
                                 ) : null}
                             </Box>
 
-                            <Divider sx={{ mb: 3, borderColor: alpha(themeColors.borderColor, 0.7) }}/>
+                            <Divider sx={{ mb: 3 }}/>
 
-                            <Grid container spacing={3}>
+                            <Grid container spacing={2.5}>
                                 <Grid item xs={12} md={6}>
                                     <EditableField
                                         label="Nome Completo"
@@ -952,136 +911,123 @@ const UserProfileTemplate = ({onLogout}) => {
                         </CardContent>
                     </Card>
 
-                    {/* Improved Address Card */}
+                    {/* Cartão de Endereço Refinado */}
                     <Card
                         elevation={0}
                         sx={{
-                            borderRadius: '20px',
-                            boxShadow: '0px 8px 25px rgba(17, 30, 90, 0.08)',
+                            borderRadius: '12px',
+                            boxShadow: '0px 2px 10px rgba(17, 30, 90, 0.08)',
                             overflow: 'hidden',
                             position: 'relative',
                             mt: 3,
-                            transition: 'all 0.3s ease',
                             border: '1px solid',
-                            borderColor: alpha(themeColors.borderColor, 0.5),
-                            '&:hover': {
-                                boxShadow: '0px 12px 30px rgba(17, 30, 90, 0.12)',
-                            }
+                            borderColor: themeColors.borderColor,
+                            bgcolor: '#FFFFFF'
                         }}
                     >
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                height: '8px',
-                                background: `linear-gradient(90deg, ${themeColors.primary} 0%, ${alpha(themeColors.primary, 0.7)} 100%)`,
-                            }}
-                        />
-
-                        <CardContent sx={{ p: { xs: 2, md: 3 }, pt: { xs: 3, md: 4 } }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography
+                                    variant="h6"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: themeColors.textPrimary,
+                                        fontFamily: "Gellix, sans-serif",
+                                        fontSize: '18px',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                >
                                     <LocationOnIcon
                                         sx={{
                                             color: themeColors.primary,
                                             mr: 1.5,
-                                            fontSize: 28,
-                                            padding: '6px',
-                                            borderRadius: '50%',
-                                            backgroundColor: alpha(themeColors.primary, 0.1),
+                                            fontSize: 20
                                         }}
                                     />
-                                    <Typography
-                                        variant="h6"
-                                        sx={{
-                                            fontWeight: 700,
-                                            color: themeColors.textPrimary,
-                                            fontFamily: "Gellix, sans-serif",
-                                            fontSize: '20px',
-                                        }}
-                                    >
-                                        Endereço
-                                    </Typography>
-                                </Box>
+                                    Endereço
+                                </Typography>
 
                                 {!isEditing ? (
-                                    <Tooltip title="Editar Endereço">
-                                        <IconButton
-                                            onClick={() => setIsEditing(true)}
-                                            sx={{
-                                                backgroundColor: alpha(themeColors.primary, 0.1),
-                                                color: themeColors.primary,
-                                                '&:hover': {
-                                                    backgroundColor: alpha(themeColors.primary, 0.2),
-                                                }
-                                            }}
-                                        >
-                                            <EditIcon />
-                                        </IconButton>
-                                    </Tooltip>
+                                    <IconButton
+                                        onClick={() => setIsEditing(true)}
+                                        size="small"
+                                        sx={{
+                                            color: themeColors.primary,
+                                        }}
+                                    >
+                                        <EditIcon fontSize="small" />
+                                    </IconButton>
                                 ) : null}
                             </Box>
 
-                            <Divider sx={{ mb: 3, borderColor: alpha(themeColors.borderColor, 0.7) }}/>
+                            <Divider sx={{ mb: 3 }}/>
 
                             {!isEditing && (
                                 <Box
                                     sx={{
                                         mb: 3,
                                         p: 2,
-                                        borderRadius: '12px',
-                                        backgroundColor: alpha(themeColors.backgroundSecondary, 0.7),
-                                        border: '1px dashed',
-                                        borderColor: alpha(themeColors.borderColor, 0.7),
+                                        borderRadius: '8px',
+                                        border: '1px solid',
+                                        borderColor: themeColors.borderColor,
+                                        bgcolor: alpha(themeColors.backgroundSecondary, 0.3)
                                     }}
                                 >
-                                    <Typography
-                                        variant="body1"
-                                        sx={{
-                                            color: themeColors.textPrimary,
-                                            fontFamily: "Gellix, sans-serif",
-                                            fontWeight: 500,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                        }}
-                                    >
-                                        <HomeIcon sx={{ color: themeColors.primary, mr: 1.5, fontSize: 20 }} />
-                                        {formData.address?.street ? (
-                                            <>
+                                    {formData.address?.street ? (
+                                        <>
+                                            <Typography
+                                                variant="body1"
+                                                sx={{
+                                                    color: themeColors.textPrimary,
+                                                    fontFamily: "Gellix, sans-serif",
+                                                    fontWeight: 500,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <HomeIcon sx={{ color: themeColors.primary, mr: 1.5, fontSize: 18 }} />
                                                 {formData.address?.street}, {formData.address?.number || 'S/N'}
                                                 {formData.address?.complement ? ` - ${formData.address.complement}` : ''}
                                                 {formData.address?.neighborhood ? `, ${formData.address.neighborhood}` : ''}
-                                            </>
-                                        ) : (
-                                            <span style={{ fontStyle: 'italic', color: alpha(themeColors.textTertiary, 0.7) }}>
-                            Endereço não informado
-                        </span>
-                                        )}
-                                    </Typography>
+                                            </Typography>
 
-                                    {formData.address?.city && (
+                                            {formData.address?.city && (
+                                                <Typography
+                                                    variant="body1"
+                                                    sx={{
+                                                        color: themeColors.textPrimary,
+                                                        fontFamily: "Gellix, sans-serif",
+                                                        fontWeight: 500,
+                                                        mt: 1.5,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        fontSize: '14px'
+                                                    }}
+                                                >
+                                                    <LocationCityIcon sx={{ color: themeColors.primary, mr: 1.5, fontSize: 18 }} />
+                                                    {formData.address?.city} - {formData.address?.state}
+                                                    {formData.address?.cep ? `, CEP ${formData.address.cep}` : ''}
+                                                </Typography>
+                                            )}
+                                        </>
+                                    ) : (
                                         <Typography
-                                            variant="body1"
                                             sx={{
-                                                color: themeColors.textPrimary,
+                                                fontStyle: 'italic',
+                                                color: alpha(themeColors.textTertiary, 0.7),
                                                 fontFamily: "Gellix, sans-serif",
-                                                fontWeight: 500,
-                                                mt: 1.5,
-                                                display: 'flex',
-                                                alignItems: 'center',
+                                                fontSize: '14px'
                                             }}
                                         >
-                                            <LocationCityIcon sx={{ color: themeColors.primary, mr: 1.5, fontSize: 20 }} />
-                                            {formData.address?.city} - {formData.address?.state}
-                                            {formData.address?.cep ? `, CEP ${formData.address.cep}` : ''}
+                                            Endereço não informado
                                         </Typography>
                                     )}
                                 </Box>
                             )}
 
-                            <Grid container spacing={3}>
+                            <Grid container spacing={2.5}>
                                 <Grid item xs={12} md={8}>
                                     <EditableField
                                         label="Rua"
