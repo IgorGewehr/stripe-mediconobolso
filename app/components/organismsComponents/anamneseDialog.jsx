@@ -1365,8 +1365,9 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
             // Close dialog after a short delay
             setTimeout(() => {
-                onClose(anamneseId);
+                onSave(anamneseId);
             }, 1500);
+
         } catch (error) {
             console.error("Erro ao salvar anamnese:", error);
             setSnackbar({

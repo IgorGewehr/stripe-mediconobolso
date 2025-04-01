@@ -68,16 +68,76 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import BottomNavigation from "@mui/material/BottomNavigation";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import AirIcon from "@mui/icons-material/Air";
 
 // Formatação de data
 import { format, formatDistance } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+// Serviço Firebase (para buscar dados da anamnese se necessário)
+import FirebaseService from "../../../lib/firebaseService";
 
 const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
     const theme = useTheme();
     const [currentTab, setCurrentTab] = useState(0);
     const [loading, setLoading] = useState(false);
     const [mobileView, setMobileView] = useState(window.innerWidth < 768);
+
+    // Estado para armazenar os dados normalizados da anamnese
+    const [normalizedData, setNormalizedData] = useState(null);
+
+    // Efeito para normalizar os dados da anamnese, independente de sua estrutura
+    useEffect(() => {
+        const normalizeData = async () => {
+            if (!anamneseData) return;
+
+            setLoading(true);
+
+            try {
+                // Se os dados estiverem em um formato diferente, vamos normalizar
+                let normalized = { ...anamneseData };
+
+                // Verificar se temos anamneseId e precisamos buscar mais dados
+                if (anamneseData.anamneseId && !anamneseData.chiefComplaint) {
+                    try {
+                        // Tentar buscar dados completos da anamnese
+                        const fullData = await FirebaseService.getAnamnese(
+                            anamneseData.doctorId,
+                            anamneseData.patientId,
+                            anamneseData.anamneseId
+                        );
+
+                        if (fullData) {
+                            // Mesclar os dados completos com os dados da nota
+                            normalized = { ...normalized, ...fullData };
+                        }
+                    } catch (error) {
+                        console.error("Erro ao buscar dados completos da anamnese:", error);
+                    }
+                }
+
+                // Inicializar objetos aninhados caso não existam
+                normalized.physicalExam = normalized.physicalExam || {};
+                normalized.physicalExam.vitalSigns = normalized.physicalExam.vitalSigns || {};
+                normalized.systemsReview = normalized.systemsReview || {};
+                normalized.socialHistory = normalized.socialHistory || {};
+
+                // Garantir que listas sejam arrays
+                normalized.medicalHistory = Array.isArray(normalized.medicalHistory) ? normalized.medicalHistory : [];
+                normalized.surgicalHistory = Array.isArray(normalized.surgicalHistory) ? normalized.surgicalHistory : [];
+                normalized.currentMedications = Array.isArray(normalized.currentMedications) ? normalized.currentMedications : [];
+                normalized.allergies = Array.isArray(normalized.allergies) ? normalized.allergies : [];
+
+                setNormalizedData(normalized);
+            } catch (error) {
+                console.error("Erro ao normalizar dados da anamnese:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        normalizeData();
+    }, [anamneseData]);
 
     // Efeito para detectar tamanho da tela e ajustar visualização
     useEffect(() => {
@@ -103,7 +163,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
     };
 
     // Verifica se há dados para exibir
-    if (!anamneseData) {
+    if (loading || !normalizedData) {
         return (
             <Paper sx={{ p: 3, textAlign: 'center', mt: 2 }}>
                 <CircularProgress size={40} sx={{ mb: 2 }} />
@@ -357,7 +417,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
         return (
             <>
                 {/* Botão para visualizar PDF em desktop */}
-                {anamneseData.pdfUrl && (
+                {normalizedData.pdfUrl && (
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
                         <Button
                             variant="contained"
@@ -455,13 +515,13 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                             Anamnese Clínica
                         </Typography>
                         <Typography variant="body2" color="textSecondary">
-                            {anamneseData.createdAt ? `Realizada em ${formatDate(anamneseData.createdAt)}` : "Data não disponível"}
+                            {normalizedData.createdAt ? `Realizada em ${formatDate(normalizedData.createdAt)}` : "Data não disponível"}
                         </Typography>
                     </Box>
                 </Box>
 
                 {/* Queixa principal resumida */}
-                {anamneseData.chiefComplaint && (
+                {normalizedData.chiefComplaint && (
                     <Box sx={{ mt: 2, pl: { xs: 0, sm: 7 } }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                             <FormatQuoteIcon sx={{ color: typeColor.main, fontSize: 20, mr: 0.5, transform: 'rotate(180deg)' }} />
@@ -481,9 +541,9 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                 ml: 0.5
                             }}
                         >
-                            {anamneseData.chiefComplaint.length > 120
-                                ? `${anamneseData.chiefComplaint.substring(0, 120)}...`
-                                : anamneseData.chiefComplaint
+                            {normalizedData.chiefComplaint.length > 120
+                                ? `${normalizedData.chiefComplaint.substring(0, 120)}...`
+                                : normalizedData.chiefComplaint
                             }
                         </Typography>
                     </Box>
@@ -504,20 +564,20 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                         }}
                     />
 
-                    {anamneseData.lastModified && (
+                    {normalizedData.lastModified && (
                         <Chip
                             icon={<EventIcon />}
-                            label={`Atualizado ${formatTimeAgo(anamneseData.lastModified)}`}
+                            label={`Atualizado ${formatTimeAgo(normalizedData.lastModified)}`}
                             size="small"
                             variant="outlined"
                             sx={{ mr: 1, mb: 1, fontWeight: 500 }}
                         />
                     )}
 
-                    {anamneseData.consultationDate && (
+                    {normalizedData.consultationDate && (
                         <Chip
                             icon={<CalendarTodayIcon />}
-                            label={`Consulta: ${formatDate(anamneseData.consultationDate)}`}
+                            label={`Consulta: ${formatDate(normalizedData.consultationDate)}`}
                             size="small"
                             variant="outlined"
                             sx={{ mr: 1, mb: 1, fontWeight: 500 }}
@@ -545,19 +605,19 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                 <Fade in={currentTab === 0}>
                     <Box>
                         {/* Queixa principal */}
-                        {renderTextSection("Queixa Principal", anamneseData.chiefComplaint, <MedicalServicesIcon fontSize="small" />)}
+                        {renderTextSection("Queixa Principal", normalizedData.chiefComplaint, <MedicalServicesIcon fontSize="small" />)}
 
                         {/* História da doença atual */}
-                        {renderTextSection("História da Doença Atual", anamneseData.illnessHistory, <HealingIcon fontSize="small" />)}
+                        {renderTextSection("História da Doença Atual", normalizedData.illnessHistory, <HealingIcon fontSize="small" />)}
 
                         {/* Diagnóstico */}
-                        {renderTextSection("Diagnóstico", anamneseData.diagnosis, <LocalHospitalIcon fontSize="small" />, "#EF4444")}
+                        {renderTextSection("Diagnóstico", normalizedData.diagnosis, <LocalHospitalIcon fontSize="small" />, "#EF4444")}
 
                         {/* Plano de tratamento */}
-                        {renderTextSection("Plano de Tratamento", anamneseData.treatmentPlan, <NoteAltIcon fontSize="small" />, "#22C55E")}
+                        {renderTextSection("Plano de Tratamento", normalizedData.treatmentPlan, <NoteAltIcon fontSize="small" />, "#22C55E")}
 
                         {/* Observações adicionais */}
-                        {anamneseData.additionalNotes && renderTextSection("Observações Adicionais", anamneseData.additionalNotes, <MoreHorizIcon fontSize="small" />)}
+                        {normalizedData.additionalNotes && renderTextSection("Observações Adicionais", normalizedData.additionalNotes, <MoreHorizIcon fontSize="small" />)}
                     </Box>
                 </Fade>
             )}
@@ -567,10 +627,10 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                 <Fade in={currentTab === 1}>
                     <Box>
                         {/* Aparência geral */}
-                        {renderTextSection("Aparência Geral", anamneseData.physicalExam?.generalAppearance, <AccessibilityNewIcon fontSize="small" />)}
+                        {renderTextSection("Aparência Geral", normalizedData.physicalExam?.generalAppearance, <AccessibilityNewIcon fontSize="small" />)}
 
                         {/* Sinais vitais */}
-                        {anamneseData.physicalExam?.vitalSigns && (
+                        {normalizedData.physicalExam?.vitalSigns && Object.values(normalizedData.physicalExam.vitalSigns).some(value => value) && (
                             <Box sx={{ mt: 3 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                                     <Avatar
@@ -593,7 +653,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     {renderVitalSign(
                                         <MonitorHeartIcon />,
                                         "Pressão Arterial",
-                                        anamneseData.physicalExam.vitalSigns.bloodPressure,
+                                        normalizedData.physicalExam.vitalSigns.bloodPressure,
                                         "mmHg",
                                         "#3366FF"
                                     )}
@@ -601,7 +661,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     {renderVitalSign(
                                         <FavoriteIcon />,
                                         "Freq. Cardíaca",
-                                        anamneseData.physicalExam.vitalSigns.heartRate,
+                                        normalizedData.physicalExam.vitalSigns.heartRate,
                                         "bpm",
                                         "#F50057"
                                     )}
@@ -609,7 +669,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     {renderVitalSign(
                                         <ThermostatIcon />,
                                         "Temperatura",
-                                        anamneseData.physicalExam.vitalSigns.temperature,
+                                        normalizedData.physicalExam.vitalSigns.temperature,
                                         "°C",
                                         "#FF6D00"
                                     )}
@@ -617,7 +677,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     {renderVitalSign(
                                         <SpeedIcon />,
                                         "Freq. Respiratória",
-                                        anamneseData.physicalExam.vitalSigns.respiratoryRate,
+                                        normalizedData.physicalExam.vitalSigns.respiratoryRate,
                                         "irpm",
                                         "#00BFA5"
                                     )}
@@ -625,7 +685,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     {renderVitalSign(
                                         <BubbleChartIcon />,
                                         "Saturação O₂",
-                                        anamneseData.physicalExam.vitalSigns.oxygenSaturation,
+                                        normalizedData.physicalExam.vitalSigns.oxygenSaturation,
                                         "%",
                                         "#651FFF"
                                     )}
@@ -634,14 +694,14 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                         )}
 
                         {/* Sistemas do exame físico */}
-                        {anamneseData.physicalExam && (
+                        {normalizedData.physicalExam && (
                             <Box sx={{ mt: 3 }}>
                                 <Grid container spacing={3}>
-                                    {anamneseData.physicalExam.headAndNeck && (
+                                    {normalizedData.physicalExam.headAndNeck && (
                                         <Grid item xs={12} md={6}>
                                             {renderAccordionSection(
                                                 "Cabeça e Pescoço",
-                                                anamneseData.physicalExam.headAndNeck,
+                                                normalizedData.physicalExam.headAndNeck,
                                                 <WcIcon fontSize="small" />,
                                                 false,
                                                 "#F59E0B"
@@ -649,11 +709,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         </Grid>
                                     )}
 
-                                    {anamneseData.physicalExam.cardiovascular && (
+                                    {normalizedData.physicalExam.cardiovascular && (
                                         <Grid item xs={12} md={6}>
                                             {renderAccordionSection(
                                                 "Cardiovascular",
-                                                anamneseData.physicalExam.cardiovascular,
+                                                normalizedData.physicalExam.cardiovascular,
                                                 <FavoriteIcon fontSize="small" />,
                                                 false,
                                                 "#F50057"
@@ -661,23 +721,23 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         </Grid>
                                     )}
 
-                                    {anamneseData.physicalExam.respiratory && (
+                                    {normalizedData.physicalExam.respiratory && (
                                         <Grid item xs={12} md={6}>
                                             {renderAccordionSection(
                                                 "Respiratório",
-                                                anamneseData.physicalExam.respiratory,
-                                                <LungsTwoToneIcon fontSize="small" />,
+                                                normalizedData.physicalExam.respiratory,
+                                                <AirIcon fontSize="small" />,
                                                 false,
                                                 "#00BFA5"
                                             )}
                                         </Grid>
                                     )}
 
-                                    {anamneseData.physicalExam.abdomen && (
+                                    {normalizedData.physicalExam.abdomen && (
                                         <Grid item xs={12} md={6}>
                                             {renderAccordionSection(
                                                 "Abdômen",
-                                                anamneseData.physicalExam.abdomen,
+                                                normalizedData.physicalExam.abdomen,
                                                 <RestaurantIcon fontSize="small" />,
                                                 false,
                                                 "#F59E0B"
@@ -685,11 +745,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         </Grid>
                                     )}
 
-                                    {anamneseData.physicalExam.extremities && (
+                                    {normalizedData.physicalExam.extremities && (
                                         <Grid item xs={12} md={6}>
                                             {renderAccordionSection(
                                                 "Extremidades",
-                                                anamneseData.physicalExam.extremities,
+                                                normalizedData.physicalExam.extremities,
                                                 <AccessibilityNewIcon fontSize="small" />,
                                                 false,
                                                 "#3B82F6"
@@ -697,11 +757,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         </Grid>
                                     )}
 
-                                    {anamneseData.physicalExam.neurological && (
+                                    {normalizedData.physicalExam.neurological && (
                                         <Grid item xs={12} md={6}>
                                             {renderAccordionSection(
                                                 "Neurológico",
-                                                anamneseData.physicalExam.neurological,
+                                                normalizedData.physicalExam.neurological,
                                                 <BrainIcon fontSize="small" />,
                                                 false,
                                                 "#8B5CF6"
@@ -709,11 +769,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         </Grid>
                                     )}
 
-                                    {anamneseData.physicalExam.other && (
+                                    {normalizedData.physicalExam.other && (
                                         <Grid item xs={12}>
                                             {renderAccordionSection(
                                                 "Outras Observações",
-                                                anamneseData.physicalExam.other,
+                                                normalizedData.physicalExam.other,
                                                 <NoteAltIcon fontSize="small" />
                                             )}
                                         </Grid>
@@ -723,7 +783,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                         )}
 
                         {/* Revisão de sistemas */}
-                        {anamneseData.systemsReview && Object.values(anamneseData.systemsReview).some(value => value) && (
+                        {normalizedData.systemsReview && Object.values(normalizedData.systemsReview).some(value => value) && (
                             <Box sx={{ mt: 4 }}>
                                 <Paper sx={{
                                     p: 3,
@@ -742,11 +802,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     <Divider sx={{ mb: 3 }} />
 
                                     <Grid container spacing={3}>
-                                        {anamneseData.systemsReview.cardiovascular && (
+                                        {normalizedData.systemsReview.cardiovascular && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Cardiovascular",
-                                                    anamneseData.systemsReview.cardiovascular,
+                                                    normalizedData.systemsReview.cardiovascular,
                                                     <FavoriteIcon fontSize="small" />,
                                                     false,
                                                     "#F50057"
@@ -754,23 +814,23 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.respiratory && (
+                                        {normalizedData.systemsReview.respiratory && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Respiratório",
-                                                    anamneseData.systemsReview.respiratory,
-                                                    <LungsTwoToneIcon fontSize="small" />,
+                                                    normalizedData.systemsReview.respiratory,
+                                                    <AirIcon fontSize="small" />,
                                                     false,
                                                     "#00BFA5"
                                                 )}
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.gastrointestinal && (
+                                        {normalizedData.systemsReview.gastrointestinal && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Gastrointestinal",
-                                                    anamneseData.systemsReview.gastrointestinal,
+                                                    normalizedData.systemsReview.gastrointestinal,
                                                     <RestaurantIcon fontSize="small" />,
                                                     false,
                                                     "#F59E0B"
@@ -778,11 +838,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.genitourinary && (
+                                        {normalizedData.systemsReview.genitourinary && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Geniturinário",
-                                                    anamneseData.systemsReview.genitourinary,
+                                                    normalizedData.systemsReview.genitourinary,
                                                     <WcIcon fontSize="small" />,
                                                     false,
                                                     "#3B82F6"
@@ -790,11 +850,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.neurological && (
+                                        {normalizedData.systemsReview.neurological && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Neurológico",
-                                                    anamneseData.systemsReview.neurological,
+                                                    normalizedData.systemsReview.neurological,
                                                     <BrainIcon fontSize="small" />,
                                                     false,
                                                     "#8B5CF6"
@@ -802,11 +862,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.musculoskeletal && (
+                                        {normalizedData.systemsReview.musculoskeletal && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Musculoesquelético",
-                                                    anamneseData.systemsReview.musculoskeletal,
+                                                    normalizedData.systemsReview.musculoskeletal,
                                                     <AccessibilityNewIcon fontSize="small" />,
                                                     false,
                                                     "#3B82F6"
@@ -814,11 +874,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.endocrine && (
+                                        {normalizedData.systemsReview.endocrine && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Endócrino",
-                                                    anamneseData.systemsReview.endocrine,
+                                                    normalizedData.systemsReview.endocrine,
                                                     <CoronavirusIcon fontSize="small" />,
                                                     false,
                                                     "#10B981"
@@ -826,11 +886,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.hematologic && (
+                                        {normalizedData.systemsReview.hematologic && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Hematológico",
-                                                    anamneseData.systemsReview.hematologic,
+                                                    normalizedData.systemsReview.hematologic,
                                                     <LocalHospitalIcon fontSize="small" />,
                                                     false,
                                                     "#EF4444"
@@ -838,11 +898,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.psychiatric && (
+                                        {normalizedData.systemsReview.psychiatric && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Psiquiátrico",
-                                                    anamneseData.systemsReview.psychiatric,
+                                                    normalizedData.systemsReview.psychiatric,
                                                     <PsychologyIcon fontSize="small" />,
                                                     false,
                                                     "#8B5CF6"
@@ -850,11 +910,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                             </Grid>
                                         )}
 
-                                        {anamneseData.systemsReview.dermatological && (
+                                        {normalizedData.systemsReview.dermatological && (
                                             <Grid item xs={12} md={6}>
                                                 {renderAccordionSection(
                                                     "Dermatológico",
-                                                    anamneseData.systemsReview.dermatological,
+                                                    normalizedData.systemsReview.dermatological,
                                                     <AccessibilityNewIcon fontSize="small" />,
                                                     false,
                                                     "#F59E0B"
@@ -902,10 +962,10 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     </Box>
                                     <Box sx={{ flex: 1 }}>
                                         <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 600, mb: 1 }}>
-                                            {anamneseData.medicalHistory ? anamneseData.medicalHistory.length : 0}
+                                            {normalizedData.medicalHistory ? normalizedData.medicalHistory.length : 0}
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary">
-                                            {anamneseData.medicalHistory && anamneseData.medicalHistory.length > 0
+                                            {normalizedData.medicalHistory && normalizedData.medicalHistory.length > 0
                                                 ? 'Condições registradas'
                                                 : 'Nenhuma condição registrada'}
                                         </Typography>
@@ -940,10 +1000,10 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     </Box>
                                     <Box sx={{ flex: 1 }}>
                                         <Typography variant="h6" sx={{ color: '#8B5CF6', fontWeight: 600, mb: 1 }}>
-                                            {anamneseData.surgicalHistory ? anamneseData.surgicalHistory.length : 0}
+                                            {normalizedData.surgicalHistory ? normalizedData.surgicalHistory.length : 0}
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary">
-                                            {anamneseData.surgicalHistory && anamneseData.surgicalHistory.length > 0
+                                            {normalizedData.surgicalHistory && normalizedData.surgicalHistory.length > 0
                                                 ? 'Cirurgias registradas'
                                                 : 'Nenhuma cirurgia registrada'}
                                         </Typography>
@@ -978,10 +1038,10 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     </Box>
                                     <Box sx={{ flex: 1 }}>
                                         <Typography variant="h6" sx={{ color: '#22C55E', fontWeight: 600, mb: 1 }}>
-                                            {anamneseData.currentMedications ? anamneseData.currentMedications.length : 0}
+                                            {normalizedData.currentMedications ? normalizedData.currentMedications.length : 0}
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary">
-                                            {anamneseData.currentMedications && anamneseData.currentMedications.length > 0
+                                            {normalizedData.currentMedications && normalizedData.currentMedications.length > 0
                                                 ? 'Medicamentos em uso'
                                                 : 'Nenhum medicamento em uso'}
                                         </Typography>
@@ -1016,10 +1076,10 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                     </Box>
                                     <Box sx={{ flex: 1 }}>
                                         <Typography variant="h6" sx={{ color: '#F59E0B', fontWeight: 600, mb: 1 }}>
-                                            {anamneseData.allergies ? anamneseData.allergies.length : 0}
+                                            {normalizedData.allergies ? normalizedData.allergies.length : 0}
                                         </Typography>
                                         <Typography variant="body2" color="textSecondary">
-                                            {anamneseData.allergies && anamneseData.allergies.length > 0
+                                            {normalizedData.allergies && normalizedData.allergies.length > 0
                                                 ? 'Alergias registradas'
                                                 : 'Nenhuma alergia registrada'}
                                         </Typography>
@@ -1033,7 +1093,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                             {renderAccordionSection(
                                 "Histórico Médico",
                                 <Box>
-                                    {renderItemList(anamneseData.medicalHistory, "Nenhuma condição médica prévia registrada", "#EF4444")}
+                                    {renderItemList(normalizedData.medicalHistory, "Nenhuma condição médica prévia registrada", "#EF4444")}
                                 </Box>,
                                 <MedicalInformationIcon fontSize="small" />,
                                 true,
@@ -1046,7 +1106,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                             {renderAccordionSection(
                                 "Histórico Cirúrgico",
                                 <Box>
-                                    {renderItemList(anamneseData.surgicalHistory, "Nenhuma cirurgia prévia registrada", "#8B5CF6")}
+                                    {renderItemList(normalizedData.surgicalHistory, "Nenhuma cirurgia prévia registrada", "#8B5CF6")}
                                 </Box>,
                                 <AirlineSeatFlatIcon fontSize="small" />,
                                 true,
@@ -1059,7 +1119,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                             {renderAccordionSection(
                                 "Medicamentos em Uso",
                                 <Box>
-                                    {renderItemList(anamneseData.currentMedications, "Nenhum medicamento em uso registrado", "#22C55E")}
+                                    {renderItemList(normalizedData.currentMedications, "Nenhum medicamento em uso registrado", "#22C55E")}
                                 </Box>,
                                 <MedicationIcon fontSize="small" />,
                                 true,
@@ -1072,7 +1132,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                             {renderAccordionSection(
                                 "Alergias",
                                 <Box>
-                                    {renderItemList(anamneseData.allergies, "Nenhuma alergia registrada", "#F59E0B")}
+                                    {renderItemList(normalizedData.allergies, "Nenhuma alergia registrada", "#F59E0B")}
                                 </Box>,
                                 <NightlifeIcon fontSize="small" />,
                                 true,
@@ -1081,10 +1141,10 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                         </Box>
 
                         {/* Histórico familiar */}
-                        {anamneseData.familyHistory &&
+                        {normalizedData.familyHistory &&
                             renderAccordionSection(
                                 "Histórico Familiar",
-                                anamneseData.familyHistory,
+                                normalizedData.familyHistory,
                                 <FamilyRestroomIcon fontSize="small" />,
                                 true,
                                 "#3B82F6"
@@ -1098,7 +1158,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
             {currentTab === 3 && (
                 <Fade in={currentTab === 3}>
                     <Box>
-                        {anamneseData.socialHistory && (
+                        {normalizedData.socialHistory && (
                             <>
                                 {/* Tabagismo */}
                                 <Paper sx={{
@@ -1123,11 +1183,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         <Typography variant="h6" sx={{ fontWeight: 600, mr: 2 }}>
                                             Tabagismo
                                         </Typography>
-                                        {anamneseData.socialHistory.isSmoker !== undefined && (
+                                        {normalizedData.socialHistory.isSmoker !== undefined && (
                                             <Chip
-                                                icon={anamneseData.socialHistory.isSmoker ? <CheckCircleIcon /> : <CancelIcon />}
-                                                label={anamneseData.socialHistory.isSmoker ? "Sim" : "Não"}
-                                                color={anamneseData.socialHistory.isSmoker ? "error" : "success"}
+                                                icon={normalizedData.socialHistory.isSmoker ? <CheckCircleIcon /> : <CancelIcon />}
+                                                label={normalizedData.socialHistory.isSmoker ? "Sim" : "Não"}
+                                                color={normalizedData.socialHistory.isSmoker ? "error" : "success"}
                                                 size="small"
                                                 variant="outlined"
                                                 sx={{ fontWeight: 600 }}
@@ -1135,7 +1195,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         )}
                                     </Box>
 
-                                    {anamneseData.socialHistory.isSmoker && anamneseData.socialHistory.cigarettesPerDay > 0 && (
+                                    {normalizedData.socialHistory.isSmoker && normalizedData.socialHistory.cigarettesPerDay > 0 && (
                                         <Box sx={{
                                             pl: 6,
                                             mt: 2,
@@ -1149,7 +1209,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                                     Quantidade diária:
                                                 </Typography>
                                                 <Typography variant="body1" sx={{ fontWeight: 600, color: '#F59E0B' }}>
-                                                    {anamneseData.socialHistory.cigarettesPerDay} cigarros
+                                                    {normalizedData.socialHistory.cigarettesPerDay} cigarros
                                                 </Typography>
                                             </Box>
 
@@ -1160,7 +1220,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                                         height: '100%',
                                                         backgroundColor: '#F59E0B',
                                                         borderRadius: '5px',
-                                                        width: `${Math.min(100, (anamneseData.socialHistory.cigarettesPerDay / 40) * 100)}%`
+                                                        width: `${Math.min(100, (normalizedData.socialHistory.cigarettesPerDay / 40) * 100)}%`
                                                     }}
                                                 />
                                             </Box>
@@ -1194,11 +1254,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         <Typography variant="h6" sx={{ fontWeight: 600, mr: 2 }}>
                                             Consumo de Álcool
                                         </Typography>
-                                        {anamneseData.socialHistory.isAlcoholConsumer !== undefined && (
+                                        {normalizedData.socialHistory.isAlcoholConsumer !== undefined && (
                                             <Chip
-                                                icon={anamneseData.socialHistory.isAlcoholConsumer ? <CheckCircleIcon /> : <CancelIcon />}
-                                                label={anamneseData.socialHistory.isAlcoholConsumer ? "Sim" : "Não"}
-                                                color={anamneseData.socialHistory.isAlcoholConsumer ? "warning" : "success"}
+                                                icon={normalizedData.socialHistory.isAlcoholConsumer ? <CheckCircleIcon /> : <CancelIcon />}
+                                                label={normalizedData.socialHistory.isAlcoholConsumer ? "Sim" : "Não"}
+                                                color={normalizedData.socialHistory.isAlcoholConsumer ? "warning" : "success"}
                                                 size="small"
                                                 variant="outlined"
                                                 sx={{ fontWeight: 600 }}
@@ -1206,7 +1266,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         )}
                                     </Box>
 
-                                    {anamneseData.socialHistory.isAlcoholConsumer && anamneseData.socialHistory.alcoholFrequency && (
+                                    {normalizedData.socialHistory.isAlcoholConsumer && normalizedData.socialHistory.alcoholFrequency && (
                                         <Box sx={{
                                             pl: 6,
                                             mt: 2,
@@ -1220,7 +1280,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                                     Frequência:
                                                 </Typography>
                                                 <Typography variant="body1" sx={{ fontWeight: 600, color: '#7C3AED' }}>
-                                                    {anamneseData.socialHistory.alcoholFrequency}
+                                                    {normalizedData.socialHistory.alcoholFrequency}
                                                 </Typography>
                                             </Box>
                                         </Box>
@@ -1250,11 +1310,11 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         <Typography variant="h6" sx={{ fontWeight: 600, mr: 2 }}>
                                             Uso de Outras Substâncias
                                         </Typography>
-                                        {anamneseData.socialHistory.isDrugUser !== undefined && (
+                                        {normalizedData.socialHistory.isDrugUser !== undefined && (
                                             <Chip
-                                                icon={anamneseData.socialHistory.isDrugUser ? <CheckCircleIcon /> : <CancelIcon />}
-                                                label={anamneseData.socialHistory.isDrugUser ? "Sim" : "Não"}
-                                                color={anamneseData.socialHistory.isDrugUser ? "error" : "success"}
+                                                icon={normalizedData.socialHistory.isDrugUser ? <CheckCircleIcon /> : <CancelIcon />}
+                                                label={normalizedData.socialHistory.isDrugUser ? "Sim" : "Não"}
+                                                color={normalizedData.socialHistory.isDrugUser ? "error" : "success"}
                                                 size="small"
                                                 variant="outlined"
                                                 sx={{ fontWeight: 600 }}
@@ -1262,7 +1322,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                         )}
                                     </Box>
 
-                                    {anamneseData.socialHistory.isDrugUser && anamneseData.socialHistory.drugDetails && (
+                                    {normalizedData.socialHistory.isDrugUser && normalizedData.socialHistory.drugDetails && (
                                         <Box sx={{
                                             pl: 6,
                                             mt: 2,
@@ -1276,7 +1336,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                                     Detalhes:
                                                 </Typography>
                                                 <Typography variant="body1" sx={{ fontWeight: 600, color: '#EF4444', textAlign: 'right', ml: 2 }}>
-                                                    {anamneseData.socialHistory.drugDetails}
+                                                    {normalizedData.socialHistory.drugDetails}
                                                 </Typography>
                                             </Box>
                                         </Box>
@@ -1285,7 +1345,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
 
                                 {/* Grid com Atividade Física, Hábitos Alimentares e Ocupação */}
                                 <Grid container spacing={3}>
-                                    {anamneseData.socialHistory.physicalActivity && (
+                                    {normalizedData.socialHistory.physicalActivity && (
                                         <Grid item xs={12} md={4}>
                                             <Paper sx={{
                                                 p: 2.5,
@@ -1319,13 +1379,13 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                                         border: `1px solid ${alpha('#10B981', 0.1)}`
                                                     }}
                                                 >
-                                                    {anamneseData.socialHistory.physicalActivity}
+                                                    {normalizedData.socialHistory.physicalActivity}
                                                 </Typography>
                                             </Paper>
                                         </Grid>
                                     )}
 
-                                    {anamneseData.socialHistory.dietHabits && (
+                                    {normalizedData.socialHistory.dietHabits && (
                                         <Grid item xs={12} md={4}>
                                             <Paper sx={{
                                                 p: 2.5,
@@ -1359,13 +1419,13 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                                         border: `1px solid ${alpha('#F59E0B', 0.1)}`
                                                     }}
                                                 >
-                                                    {anamneseData.socialHistory.dietHabits}
+                                                    {normalizedData.socialHistory.dietHabits}
                                                 </Typography>
                                             </Paper>
                                         </Grid>
                                     )}
 
-                                    {anamneseData.socialHistory.occupation && (
+                                    {normalizedData.socialHistory.occupation && (
                                         <Grid item xs={12} md={4}>
                                             <Paper sx={{
                                                 p: 2.5,
@@ -1399,7 +1459,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                                                         border: `1px solid ${alpha('#3B82F6', 0.1)}`
                                                     }}
                                                 >
-                                                    {anamneseData.socialHistory.occupation}
+                                                    {normalizedData.socialHistory.occupation}
                                                 </Typography>
                                             </Paper>
                                         </Grid>

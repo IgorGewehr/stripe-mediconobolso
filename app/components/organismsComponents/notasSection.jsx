@@ -802,21 +802,16 @@ export default function NotasSection({ pacienteId }) {
     // Handler to save anamnese
     const handleSaveAnamnese = async (anamneseId) => {
         try {
-            // Update notes list with latest data from Firebase
-            await fetchNotas();
-
-            // Show success message
+            await fetchNotas(); // Recarrega a lista de notas
             setSuccessAction("criada");
             setShowSuccessMessage(true);
             setTimeout(() => setShowSuccessMessage(false), 3000);
-
-            // Close anamnese dialog
             setOpenAnamneseDialog(false);
         } catch (error) {
             console.error("Erro ao salvar anamnese:", error);
-            // Optional: show error feedback
         }
     };
+
 
     // Handler to delete note
     const handleDeleteNote = (noteId) => {
