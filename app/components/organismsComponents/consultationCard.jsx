@@ -480,7 +480,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                             variant="contained"
                             size="small"
                             endIcon={<ArrowForwardIcon fontSize="small" />}
-                            onClick={() => handleSelectPatient(nextConsultation?.patientId)}
+                            onClick={() => onViewAgenda && onViewAgenda(nextConsultation)}
                             sx={{
                                 borderRadius: '50px',
                                 bgcolor: 'white',
@@ -497,7 +497,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                                 }
                             }}
                         >
-                            Ver Perfil
+                            Ver Consulta
                         </Button>
                     </Box>
                 </Box>

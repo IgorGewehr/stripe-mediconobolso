@@ -124,6 +124,11 @@ const AgendaMedica = () => {
         return new Date();
     };
 
+    const handleViewAgendaFromConsultation = (consultation) => {
+        setSelectedConsultation(consultation);
+        setShowConsultationDialog(true);
+    };
+
     // Função para criar objeto de evento padronizado
     const createEventObject = (consultation, patientName) => {
         // Obter a data da consulta como objeto Date
