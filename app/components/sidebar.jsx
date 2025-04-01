@@ -225,96 +225,145 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     </Box>
                 </Box>
 
-                {/* Perfil do usuário - Botão clicável */}
+                {/* Profile section - Improved version */}
                 <Box
-                    onClick={handleProfileClick}
                     sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        py: 1.8,
-                        px: 1.5,
-                        mt: 2,
-                        mb: 0,
-                        borderRadius: "12px",
-                        border: "1px solid rgba(66, 133, 244, 0.15)",
-                        backgroundColor: "rgba(248, 250, 255, 0.8)",
-                        flexShrink: 0,
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        "&:hover": {
-                            backgroundColor: "rgba(66, 133, 244, 0.08)",
-                            borderColor: "rgba(66, 133, 244, 0.3)"
-                        }
+                        mt: 'auto', // Push to bottom with flexbox
+                        mb: 3,      // Add margin at bottom for spacing
+                        position: 'relative',
+                        width: '100%'
                     }}
                 >
-                    {/* Avatar do usuário - Agora usa photoURL quando disponível */}
-                    {user?.photoURL ? (
-                        <Avatar
-                            src={user.photoURL}
-                            alt={userName || "Doctor"}
-                            sx={{
-                                width: "32px",
-                                height: "32px",
-                                borderRadius: "50%",
-                                border: "2px solid #4285F4",
-                                flexShrink: 0,
-                            }}
-                        />
-                    ) : (
-                        <Box
-                            component="img"
-                            src="/doctorimage.png"
-                            alt="Doctor"
-                            sx={{
-                                width: "32px",
-                                height: "32px",
-                                borderRadius: "50%",
-                                border: "2px solid #4285F4",
-                                flexShrink: 0,
-                            }}
-                        />
-                    )}
+                    {/* Label for clarity */}
+                    <Typography sx={{
+                        color: "#8A94A6",
+                        fontFamily: "Gellix, sans-serif",
+                        fontSize: "12px",
+                        fontWeight: 500,
+                        mb: 1,
+                        ml: 1.5,
+                    }}>
+                        Meu Perfil
+                    </Typography>
 
-                    <Box sx={{ ml: 1.2, flex: 1, minWidth: 0 }}>
-                        <Typography
-                            sx={{
-                                color: "#111E5A",
-                                fontFamily: "Gellix, sans-serif",
-                                fontSize: "13px",
-                                fontWeight: 600,
-                                lineHeight: 1.2,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                            }}
-                        >
-                            Dr. {user ? user.fullName?.split(' ')[0] : userName}
-                        </Typography>
-                        <Typography
-                            sx={{
-                                color: "#8A94A6",
-                                fontFamily: "Gellix, sans-serif",
-                                fontSize: "11px",
-                                fontWeight: 400,
-                                lineHeight: 1.2,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                            }}
-                        >
-                            {user?.especialidade || userRole}
-                        </Typography>
-                    </Box>
+                    {/* Profile card */}
                     <Box
-                        component="img"
-                        src="/chevron-down.svg"
-                        alt="Expand"
+                        onClick={handleProfileClick}
                         sx={{
-                            width: "14px",
-                            height: "14px",
-                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            py: 2,
+                            px: 2,
+                            borderRadius: "12px",
+                            border: "1px solid rgba(66, 133, 244, 0.2)",
+                            backgroundColor: "#FFFFFF",
+                            boxShadow: "0 2px 8px rgba(17, 30, 90, 0.05)",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            "&:hover": {
+                                backgroundColor: "rgba(66, 133, 244, 0.04)",
+                                borderColor: "rgba(66, 133, 244, 0.5)",
+                                boxShadow: "0 4px 12px rgba(17, 30, 90, 0.08)",
+                                transform: "translateY(-2px)"
+                            },
+                            "&:active": {
+                                transform: "translateY(0px)"
+                            }
                         }}
-                    />
+                    >
+                        <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
+                            {/* Avatar with improved styling */}
+                            {user?.photoURL ? (
+                                <Avatar
+                                    src={user.photoURL}
+                                    alt={userName || "Doctor"}
+                                    sx={{
+                                        width: "40px",
+                                        height: "40px",
+                                        borderRadius: "50%",
+                                        border: "2px solid #4285F4",
+                                        boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8)",
+                                        flexShrink: 0,
+                                    }}
+                                />
+                            ) : (
+                                <Box
+                                    component="img"
+                                    src="/doctorimage.png"
+                                    alt="Doctor"
+                                    sx={{
+                                        width: "40px",
+                                        height: "40px",
+                                        borderRadius: "50%",
+                                        border: "2px solid #4285F4",
+                                        boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8)",
+                                        flexShrink: 0,
+                                        objectFit: "cover",
+                                    }}
+                                />
+                            )}
+
+                            {/* User info with improved text styles */}
+                            <Box sx={{ ml: 2, flex: 1, minWidth: 0 }}>
+                                <Typography
+                                    sx={{
+                                        color: "#111E5A",
+                                        fontFamily: "Gellix, sans-serif",
+                                        fontSize: "14px",
+                                        fontWeight: 600,
+                                        lineHeight: 1.3,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    Dr. {user ? user.fullName?.split(' ')[0] : userName}
+                                </Typography>
+                                <Typography
+                                    sx={{
+                                        color: "#4285F4",
+                                        fontFamily: "Gellix, sans-serif",
+                                        fontSize: "12px",
+                                        fontWeight: 500,
+                                        lineHeight: 1.3,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {user?.especialidade || userRole}
+                                </Typography>
+                            </Box>
+                        </Box>
+
+                        {/* Button with clearer affordance */}
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                minWidth: 0,
+                                p: 0.5,
+                                borderRadius: '8px',
+                                borderColor: 'rgba(66, 133, 244, 0.3)',
+                                color: '#4285F4',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(66, 133, 244, 0.08)',
+                                    borderColor: '#4285F4'
+                                }
+                            }}
+                        >
+                            <Box
+                                component="img"
+                                src="/chevron-down.svg"
+                                alt="Configurações de perfil"
+                                sx={{
+                                    width: "16px",
+                                    height: "16px",
+                                }}
+                            />
+                        </Button>
+                    </Box>
                 </Box>
             </Box>
             {/* Não adicione nada aqui depois do Box com escala */}

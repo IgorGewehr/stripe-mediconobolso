@@ -744,33 +744,6 @@ const UserProfileTemplate = ({onLogout}) => {
                                     </Typography>
                                 </Box>
                             </Box>
-
-                            <Box sx={{mb: 1}}>
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        display: 'block',
-                                        color: themeColors.textTertiary,
-                                        fontFamily: "Gellix, sans-serif",
-                                        mb: 0.5
-                                    }}
-                                >
-                                    Último Acesso
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        color: themeColors.textPrimary,
-                                        fontFamily: "Gellix, sans-serif",
-                                        fontWeight: 500
-                                    }}
-                                >
-                                    {user?.metadata?.lastSignInTime
-                                        ? new Date(user.metadata.lastSignInTime).toLocaleString('pt-BR')
-                                        : "Não disponível"}
-                                </Typography>
-                            </Box>
-
                             <Divider sx={{ my: 2 }} />
 
                             <Button
