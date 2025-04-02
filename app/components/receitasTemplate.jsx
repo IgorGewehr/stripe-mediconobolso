@@ -88,6 +88,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { formatDistance } from 'date-fns';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { styled } from '@mui/material/styles';
+import ReceitaDialog from "./organismsComponents/receitasDialog";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // Adicione após os imports
 const StyledBadge = styled(Badge)(({ theme }) => ({
@@ -209,6 +212,8 @@ const PrescriptionsPage = () => {
         totalMedications: 0
     });
 
+
+    const [receitaDialogOpen, setReceitaDialogOpen] = useState(false);
     // Load prescriptions and medications
     useEffect(() => {
         const fetchData = async () => {
@@ -343,6 +348,240 @@ const PrescriptionsPage = () => {
         return filteredPrescriptions.slice(startIndex, startIndex + rowsPerPage);
     }, [filteredPrescriptions, page, rowsPerPage]);
 
+
+    // Adicione esta função no componente PrescriptionsPage antes do return principal
+    const generatePrescriptionPDF = (prescription) => {
+        if (!prescription) return null;
+
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        let yPos = 20;
+
+        // Helper para adicionar texto com quebra automática
+        const addWrappedText = (text, x, y, maxWidth, lineHeight = 7) => {
+            if (!text) return y;
+            const lines = doc.splitTextToSize(text, maxWidth);
+            doc.text(lines, x, y);
+            return y + (lines.length * lineHeight);
+        };
+
+        // Cabeçalho
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+
+        // Adiciona a palavra "RECEITA" centralizada e em negrito
+        const tipoText = prescription.tipo === "comum" ? "RECEITA MÉDICA" :
+            prescription.tipo === "controlada" ? "RECEITA CONTROLADA" :
+                prescription.tipo === "especial" ? "RECEITA ESPECIAL" :
+                    "RECEITA DE ANTIMICROBIANO";
+
+        doc.text(tipoText, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 15;
+
+        // Dados do médico
+        const doctorName = user?.displayName || "Dr(a).";
+        const doctorCRM = user?.crm || "CRM:";
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${doctorName}`, margin, yPos);
+        yPos += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${doctorCRM}`, margin, yPos);
+        yPos += 10;
+
+        // Linha separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 15;
+
+        // Dados do paciente e da receita
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Paciente: ${prescription.patientData?.name || 'Paciente'}`, margin, yPos);
+        yPos += 7;
+        doc.setFont('helvetica', 'normal');
+
+        // Data de emissão e validade
+        const emissaoDate = convertToDate(prescription.dataEmissao || prescription.createdAt);
+        const validadeDate = convertToDate(prescription.dataValidade || prescription.updatedAt);
+
+        const formatDateForPDF = (date) => {
+            return format(date instanceof Date ? date : new Date(date), "dd/MM/yyyy");
+        };
+
+        doc.text(`Data: ${formatDateForPDF(emissaoDate)}`, margin, yPos);
+        const validadeText = `Válida até: ${formatDateForPDF(validadeDate)}`;
+        doc.text(validadeText, pageWidth - margin - doc.getTextWidth(validadeText), yPos);
+        yPos += 15;
+
+        // Medicamentos
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text("PRESCRIÇÃO:", margin, yPos);
+        yPos += 10;
+
+        // Lista de medicamentos
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+
+        // Normalizar medicamentos (podem estar em formatos diferentes)
+        const medications = prescription.medications || prescription.medicamentos || [];
+
+        medications.forEach((med, index) => {
+            if (yPos > pageHeight - 40) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            const nome = med.medicationName || med.nome;
+            const concentracao = med.dosage || med.concentracao;
+            const posologia = med.frequency || med.posologia;
+            const duracao = med.duration || med.duracao;
+            const quantidade = med.quantity || med.quantidade;
+            const observacao = med.observation || med.observacao;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${index + 1}. ${nome}${concentracao ? ` ${concentracao}` : ''}`, margin, yPos);
+            yPos += 7;
+
+            doc.setFont('helvetica', 'normal');
+            if (posologia) {
+                yPos = addWrappedText(`Posologia: ${posologia}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
+            }
+
+            if (quantidade) {
+                yPos = addWrappedText(`Quantidade: ${quantidade}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
+            }
+
+            if (duracao) {
+                yPos = addWrappedText(`Duração: ${duracao}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
+            }
+
+            if (observacao) {
+                yPos = addWrappedText(`Observação: ${observacao}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
+            }
+
+            yPos += 5;
+        });
+
+        // Orientação geral
+        if (prescription.orientacaoGeral) {
+            if (yPos > pageHeight - 60) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, yPos, pageWidth - margin, yPos);
+            yPos += 10;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text("Orientações Gerais:", margin, yPos);
+            yPos += 7;
+            doc.setFont('helvetica', 'normal');
+            yPos = addWrappedText(prescription.orientacaoGeral, margin, yPos, pageWidth - (2 * margin)) + 10;
+        }
+
+        // Assinatura
+        if (yPos > pageHeight - 50) {
+            doc.addPage();
+            yPos = 40;
+        } else {
+            yPos = pageHeight - 50;
+        }
+
+        // Linha para assinatura
+        doc.setDrawColor(100, 100, 100);
+        const signatureWidth = 100;
+        const signatureX = (pageWidth - signatureWidth) / 2;
+        doc.line(signatureX, yPos, signatureX + signatureWidth, yPos);
+        yPos += 10;
+
+        // Texto da assinatura
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${doctorName}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 5;
+        doc.text(`${doctorCRM}`, pageWidth / 2, yPos, { align: 'center' });
+
+        // Rodapé com numeração de páginas
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'italic');
+            doc.text(
+                `Página ${i} de ${totalPages}`,
+                pageWidth - margin,
+                pageHeight - 10,
+                { align: 'right' }
+            );
+        }
+
+        return doc;
+    };
+
+// Função para abrir ou baixar o PDF
+    const openPrescriptionPDF = () => {
+        if (!selectedPrescription) return;
+
+        const doc = generatePrescriptionPDF(selectedPrescription);
+        if (doc) {
+            // Gerar um blob a partir do PDF
+            const pdfBlob = doc.output('blob');
+
+            // Criar um URL para o blob
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+
+            // Abrir o URL em uma nova aba
+            window.open(pdfUrl, '_blank');
+
+            // Limpar o URL após um tempo para liberar memória
+            setTimeout(() => URL.revokeObjectURL(pdfUrl), 100);
+        } else {
+            setSnackbar({
+                open: true,
+                message: "Não foi possível gerar o PDF. Verifique os dados da receita.",
+                severity: "error"
+            });
+        }
+    };
+
+    const handleOpenReceitaDialog = () => {
+        setReceitaDialogOpen(true);
+    };
+
+    const handleCloseReceitaDialog = () => {
+        setReceitaDialogOpen(false);
+    };
+
+    const handleSaveReceita = (receitaId) => {
+        // Recarregar os dados após criar uma nova receita
+        FirebaseService.listPrescriptionsWithDetails(doctorId)
+            .then(data => {
+                const processedPrescriptions = data.map(p => ({
+                    ...p,
+                    status: p.status || 'Ativa',
+                    createdAt: convertToDate(p.createdAt),
+                    updatedAt: convertToDate(p.updatedAt),
+                }));
+                setPrescriptions(processedPrescriptions);
+                setFilteredPrescriptions(processedPrescriptions);
+
+                setSnackbar({
+                    open: true,
+                    message: "Receita criada com sucesso!",
+                    severity: "success"
+                });
+            })
+            .catch(err => {
+                console.error("Erro ao atualizar lista de receitas:", err);
+            });
+
+        handleCloseReceitaDialog();
+    };
 
 // Função auxiliar para determinar a cor por categoria
     const getMedicationCategoryColor = (category) => {
@@ -1215,6 +1454,22 @@ const PrescriptionsPage = () => {
                         )}
 
                         <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                color="success"
+                                startIcon={<AddOutlined />}
+                                onClick={handleOpenReceitaDialog}
+                                sx={{
+                                    borderRadius: '50px',
+                                    fontWeight: 600,
+                                    mr: 1,
+                                    boxShadow: '0 2px 8px rgba(34, 197, 94, 0.2)',
+                                }}
+                            >
+                                Criar Receita
+                            </Button>
+
                             <Button
                                 size="small"
                                 variant="outlined"
@@ -2338,9 +2593,9 @@ const PrescriptionsPage = () => {
                                                                 }}
                                                             />
                                                             <span>
-                                                                <strong>Frequência:</strong><br />
+                                                    <strong>Frequência:</strong><br />
                                                                 {med.frequency}
-                                                            </span>
+                                                </span>
                                                         </Typography>
                                                     </Grid>
                                                 )}
@@ -2365,9 +2620,9 @@ const PrescriptionsPage = () => {
                                                                 }}
                                                             />
                                                             <span>
-                                                                <strong>Duração:</strong><br />
+                                                    <strong>Duração:</strong><br />
                                                                 {med.duration}
-                                                            </span>
+                                                </span>
                                                         </Typography>
                                                     </Grid>
                                                 )}
@@ -2392,9 +2647,9 @@ const PrescriptionsPage = () => {
                                                                 }}
                                                             />
                                                             <span>
-                                                                <strong>Forma:</strong><br />
+                                                    <strong>Forma:</strong><br />
                                                                 {med.form}
-                                                            </span>
+                                                </span>
                                                         </Typography>
                                                     </Grid>
                                                 )}
@@ -2419,9 +2674,9 @@ const PrescriptionsPage = () => {
                                                                 }}
                                                             />
                                                             <span>
-                                                                <strong>Quantidade:</strong><br />
+                                                    <strong>Quantidade:</strong><br />
                                                                 {med.quantidade}
-                                                            </span>
+                                                </span>
                                                         </Typography>
                                                     </Grid>
                                                 )}
@@ -2555,20 +2810,18 @@ const PrescriptionsPage = () => {
                             >
                                 Voltar
                             </Button>
-                            {selectedPrescription.pdfUrl && (
-                                <Button
-                                    variant="contained"
-                                    startIcon={<PictureAsPdfOutlined />}
-                                    onClick={() => window.open(selectedPrescription.pdfUrl, '_blank')}
-                                    sx={{
-                                        borderRadius: 10,
-                                        textTransform: 'none',
-                                        boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`
-                                    }}
-                                >
-                                    Visualizar PDF
-                                </Button>
-                            )}
+                            <Button
+                                variant="contained"
+                                startIcon={<PictureAsPdfOutlined />}
+                                onClick={openPrescriptionPDF}
+                                sx={{
+                                    borderRadius: 10,
+                                    textTransform: 'none',
+                                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
+                            >
+                                Visualizar PDF
+                            </Button>
                         </DialogActions>
                     </>
                 )}
@@ -3020,6 +3273,13 @@ const PrescriptionsPage = () => {
                     </Button>
                 </Box>
             </Drawer>
+
+            <ReceitaDialog
+                open={receitaDialogOpen}
+                onClose={handleCloseReceitaDialog}
+                doctorId={doctorId}
+                onSave={handleSaveReceita}
+            />
 
             {/* Snackbar for messages */}
             <Snackbar

@@ -281,7 +281,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         titulo: "",
         dataEmissao: new Date(),
         dataValidade: addMonths(new Date(), 6), // Padrão: validade de 6 meses
-        uso: "interno", // interno, externo
         orientacaoGeral: "",
         medicamentos: [],
     });
@@ -368,7 +367,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                         titulo: "",
                         dataEmissao: new Date(),
                         dataValidade: addMonths(new Date(), 6),
-                        uso: "interno",
                         orientacaoGeral: "",
                         medicamentos: []
                     }));
@@ -654,12 +652,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         doc.text(validadeText, pageWidth - margin - doc.getTextWidth(validadeText), yPos);
         yPos += 7;
 
-        // Uso
-        const usoText = `Uso ${receitaData.uso.toUpperCase()}`;
-        doc.setFont('helvetica', 'bold');
-        doc.text(usoText, margin, yPos);
-        yPos += 15;
-
         // Medicamentos
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
@@ -761,22 +753,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
         setIsSubmitting(true);
         try {
-            // 1. Gera o PDF
-            const pdfDoc = generateReceitaPDF();
-            const pdfBlob = pdfDoc.output('blob');
-
-            // 2. Cria o nome do arquivo PDF
-            const patientNameForFile = getPatientName().replace(/\s+/g, '_');
-            const pdfFileName = `receita_${patientNameForFile}_${format(new Date(), 'dd-MM-yyyy')}.pdf`;
-
-            // 3. Cria o objeto File a partir do Blob
-            const pdfFile = new File(
-                [pdfBlob],
-                pdfFileName,
-                { type: 'application/pdf' }
-            );
-
-            // 4. Normaliza os dados da receita
+            // Normaliza os dados da receita
             let receitaId;
             const currentPatientId = patientId || selectedPatient?.id;
 
@@ -803,11 +780,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 receitaId = await FirebaseService.createPrescription(doctorId, currentPatientId, normalizedData);
             }
 
-            // 5. Faz upload do PDF para o Firebase Storage
-            const pdfPath = `users/${doctorId}/patients/${currentPatientId}/prescriptions/${receitaId}/${pdfFileName}`;
-            const pdfUrl = await FirebaseService.uploadFile(pdfFile, pdfPath);
-
-            // 6. Cria uma nota associada à receita
+            // Cria uma nota associada à receita
             const medicamentosText = receitaData.medicamentos.map(med =>
                 `- ${med.nome}${med.concentracao ? ` ${med.concentracao}` : ''}: ${med.posologia}`
             ).join('\n');
@@ -821,13 +794,9 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 noteType: "Receita", // Tipo especial para receitas
                 consultationDate: receitaData.dataEmissao,
                 prescriptionId: receitaId, // Referência para a receita
-                pdfUrl // URL do PDF
             };
 
-            const noteId = await FirebaseService.createNote(doctorId, currentPatientId, noteData);
-
-            // 7. Anexa o PDF à nota
-            await FirebaseService.uploadNoteAttachment(pdfFile, doctorId, currentPatientId, noteId);
+            await FirebaseService.createNote(doctorId, currentPatientId, noteData);
 
             setSnackbar({
                 open: true,
@@ -1278,23 +1247,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                         <MenuItem value="controlada">Controlada</MenuItem>
                                                         <MenuItem value="especial">Especial</MenuItem>
                                                         <MenuItem value="antimicrobiano">Antimicrobiano</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={12} sm={6} md={4}>
-                                                <FormControl fullWidth>
-                                                    <InputLabel id="uso-label">Uso</InputLabel>
-                                                    <Select
-                                                        labelId="uso-label"
-                                                        id="uso"
-                                                        value={receitaData.uso}
-                                                        label="Uso"
-                                                        onChange={handleChange}
-                                                        name="uso"
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        <MenuItem value="interno">Interno</MenuItem>
-                                                        <MenuItem value="externo">Externo</MenuItem>
                                                     </Select>
                                                 </FormControl>
                                             </Grid>

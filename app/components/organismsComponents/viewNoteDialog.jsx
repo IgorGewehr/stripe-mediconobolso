@@ -955,7 +955,7 @@ const ViewNoteDialog = ({
                         {renderCategoryBanner()}
 
                         {/* Conteúdo principal */}
-                        {noteType !== 'Anamnese' && (
+                        {noteType !== 'Anamnese' && noteType !== 'Receita' &&(
                             <Paper
                                 elevation={0}
                                 sx={{
