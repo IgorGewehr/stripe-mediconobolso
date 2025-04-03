@@ -83,38 +83,51 @@ import {
     EventNote as EventNoteIcon
 } from '@mui/icons-material';
 
-import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, subDays, addDays, isAfter, isBefore, formatDistance } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import {
+    format,
+    isToday,
+    isPast,
+    parseISO,
+    isValid,
+    parse,
+    differenceInYears,
+    subDays,
+    addDays,
+    isAfter,
+    isBefore,
+    formatDistance
+} from 'date-fns';
+import {ptBR} from 'date-fns/locale';
 import FirebaseService from "../../lib/firebaseService";
-import { useAuth } from "./authProvider";
+import {useAuth} from "./authProvider";
 import SearchBar from "./basicComponents/searchBar";
 
 // Constantes para o componente
 const PATIENT_CONDITIONS = [
-    { label: 'Diabetes', value: 'diabetes', color: 'diabetes' },
-    { label: 'Hipertensão', value: 'hipertensao', color: 'hipertensao' },
-    { label: 'Fumante', value: 'fumante', color: 'fumante' },
-    { label: 'Internado', value: 'internado', color: 'internado' },
-    { label: 'Idoso', value: 'idoso', color: 'idoso' },
-    { label: 'Obeso', value: 'obeso', color: 'obeso' },
-    { label: 'Alergia', value: 'alergia', color: 'alergia' },
-    { label: 'Cardiopatia', value: 'cardiopatia', color: 'cardiopatia' },
-    { label: 'Asma', value: 'asma', color: 'asma' },
+    {label: 'Diabetes', value: 'diabetes', color: 'diabetes'},
+    {label: 'Hipertensão', value: 'hipertensao', color: 'hipertensao'},
+    {label: 'Fumante', value: 'fumante', color: 'fumante'},
+    {label: 'Internado', value: 'internado', color: 'internado'},
+    {label: 'Idoso', value: 'idoso', color: 'idoso'},
+    {label: 'Obeso', value: 'obeso', color: 'obeso'},
+    {label: 'Alergia', value: 'alergia', color: 'alergia'},
+    {label: 'Cardiopatia', value: 'cardiopatia', color: 'cardiopatia'},
+    {label: 'Asma', value: 'asma', color: 'asma'},
 ];
 
 const APPOINTMENT_TYPES = [
-    { label: 'Consulta', value: 'consulta', icon: <EventAvailableIcon fontSize="small" /> },
-    { label: 'Retorno', value: 'retorno', icon: <HistoryIcon fontSize="small" /> },
-    { label: 'Teleconsulta', value: 'teleconsulta', icon: <VideocamIcon fontSize="small" /> },
-    { label: 'Emergência', value: 'emergencia', icon: <PhoneIcon fontSize="small" /> },
+    {label: 'Consulta', value: 'consulta', icon: <EventAvailableIcon fontSize="small"/>},
+    {label: 'Retorno', value: 'retorno', icon: <HistoryIcon fontSize="small"/>},
+    {label: 'Teleconsulta', value: 'teleconsulta', icon: <VideocamIcon fontSize="small"/>},
+    {label: 'Emergência', value: 'emergencia', icon: <PhoneIcon fontSize="small"/>},
 ];
 
 const STATUS_OPTIONS = [
-    { label: 'Todos os status', value: '' },
-    { label: 'Pendente', value: 'pendente' },
-    { label: 'Reagendado', value: 'reagendado' },
-    { label: 'Primeira Consulta', value: 'primeira consulta' },
-    { label: 'Reag. Pendente', value: 'reag. pendente' },
+    {label: 'Todos os status', value: ''},
+    {label: 'Pendente', value: 'pendente'},
+    {label: 'Reagendado', value: 'reagendado'},
+    {label: 'Primeira Consulta', value: 'primeira consulta'},
+    {label: 'Reag. Pendente', value: 'reag. pendente'},
 ];
 
 const VIEWS = {
@@ -133,7 +146,7 @@ const TABS = {
 // Componentes Auxiliares
 
 // Componente para o cabeçalho de coluna ordenável
-const SortableHeaderCell = ({ label, field, sortConfig, onSortChange }) => {
+const SortableHeaderCell = ({label, field, sortConfig, onSortChange}) => {
     const theme = useTheme();
     const isActive = sortConfig.field === field;
 
@@ -151,7 +164,7 @@ const SortableHeaderCell = ({ label, field, sortConfig, onSortChange }) => {
                 }
             }}
         >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                 <Typography variant="caption" fontWeight={600}>{label}</Typography>
                 <Box
                     sx={{
@@ -175,24 +188,37 @@ const SortableHeaderCell = ({ label, field, sortConfig, onSortChange }) => {
 };
 
 // Componente para chips de filtro no cabeçalho
-const FilterChip = ({ label, colorscheme, onDelete }) => {
+const FilterChip = ({label, colorscheme, onDelete}) => {
     const theme = useTheme();
 
     const getBackgroundColor = () => {
         switch (colorscheme) {
-            case 'diabetes': return '#FFF9C4';
-            case 'fumante': return '#E0F7FA';
-            case 'internado': return '#E8EAF6';
-            case 'idoso': return '#F3E5F5';
-            case 'obeso': return '#FCE4EC';
-            case 'hipertensao': return '#E8F5E9';
-            case 'alergia': return '#FFECB3';
-            case 'cardiopatia': return '#FFCDD2';
-            case 'asma': return '#E1F5FE';
-            case 'genero': return '#E3F2FD';
-            case 'consultas': return '#E1F5FE';
-            case 'primeira-consulta': return '#E8F5E9';
-            default: return '#F5F5F5';
+            case 'diabetes':
+                return '#FFF9C4';
+            case 'fumante':
+                return '#E0F7FA';
+            case 'internado':
+                return '#E8EAF6';
+            case 'idoso':
+                return '#F3E5F5';
+            case 'obeso':
+                return '#FCE4EC';
+            case 'hipertensao':
+                return '#E8F5E9';
+            case 'alergia':
+                return '#FFECB3';
+            case 'cardiopatia':
+                return '#FFCDD2';
+            case 'asma':
+                return '#E1F5FE';
+            case 'genero':
+                return '#E3F2FD';
+            case 'consultas':
+                return '#E1F5FE';
+            case 'primeira-consulta':
+                return '#E8F5E9';
+            default:
+                return '#F5F5F5';
         }
     };
 
@@ -200,7 +226,7 @@ const FilterChip = ({ label, colorscheme, onDelete }) => {
         <Chip
             label={label}
             onDelete={onDelete}
-            deleteIcon={<CloseIcon fontSize="small" />}
+            deleteIcon={<CloseIcon fontSize="small"/>}
             sx={{
                 margin: '0 4px',
                 backgroundColor: getBackgroundColor(),
@@ -220,21 +246,31 @@ const FilterChip = ({ label, colorscheme, onDelete }) => {
 };
 
 // Componente para chips de condição do paciente no seletor de filtros
-const ConditionChip = ({ label, colorscheme, onClick, selected }) => {
+const ConditionChip = ({label, colorscheme, onClick, selected}) => {
     const theme = useTheme();
 
     const getBackgroundColor = () => {
         switch (colorscheme) {
-            case 'diabetes': return '#FFF9C4';
-            case 'fumante': return '#E0F7FA';
-            case 'internado': return '#E8EAF6';
-            case 'idoso': return '#F3E5F5';
-            case 'obeso': return '#FCE4EC';
-            case 'hipertensao': return '#E8F5E9';
-            case 'alergia': return '#FFECB3';
-            case 'cardiopatia': return '#FFCDD2';
-            case 'asma': return '#E1F5FE';
-            default: return '#F5F5F5';
+            case 'diabetes':
+                return '#FFF9C4';
+            case 'fumante':
+                return '#E0F7FA';
+            case 'internado':
+                return '#E8EAF6';
+            case 'idoso':
+                return '#F3E5F5';
+            case 'obeso':
+                return '#FCE4EC';
+            case 'hipertensao':
+                return '#E8F5E9';
+            case 'alergia':
+                return '#FFECB3';
+            case 'cardiopatia':
+                return '#FFCDD2';
+            case 'asma':
+                return '#E1F5FE';
+            default:
+                return '#F5F5F5';
         }
     };
 
@@ -243,7 +279,7 @@ const ConditionChip = ({ label, colorscheme, onClick, selected }) => {
             label={label}
             onClick={onClick}
             onDelete={selected ? onClick : undefined}
-            deleteIcon={selected ? <CloseIcon fontSize="small" /> : undefined}
+            deleteIcon={selected ? <CloseIcon fontSize="small"/> : undefined}
             sx={{
                 margin: '4px',
                 backgroundColor: getBackgroundColor(),
@@ -267,10 +303,10 @@ const ConditionChip = ({ label, colorscheme, onClick, selected }) => {
 };
 
 // Componente para cada seção de filtros
-const FilterSection = ({ title, children, actionElement }) => {
+const FilterSection = ({title, children, actionElement}) => {
     return (
-        <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+        <Box sx={{mb: 3}}>
+            <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5}}>
                 <Typography variant="subtitle1" fontWeight={600} color="#424242">{title}</Typography>
                 {actionElement}
             </Box>
@@ -280,7 +316,7 @@ const FilterSection = ({ title, children, actionElement }) => {
 };
 
 // Botão para limpar filtros
-const ClearButton = ({ onClick }) => {
+const ClearButton = ({onClick}) => {
     const theme = useTheme();
 
     return (
@@ -304,7 +340,7 @@ const ClearButton = ({ onClick }) => {
 };
 
 // Componente para o menu de filtros
-const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilters }) => {
+const FilterMenu = ({activeFilters, onFilterChange, onClearFilters, onApplyFilters}) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -368,17 +404,17 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                 title="Gênero"
                 actionElement={
                     activeFilters.gender &&
-                    <ClearButton onClick={() => onFilterChange('gender', null)} />
+                    <ClearButton onClick={() => onFilterChange('gender', null)}/>
                 }
             >
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
                     <Button
                         variant={activeFilters.gender === 'Ambos' ? 'contained' : 'outlined'}
                         sx={{
                             borderRadius: '50px',
                             color: activeFilters.gender === 'Ambos' ? 'white' : 'inherit',
                             backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.dark' : alpha('#000', 0.04) }
+                            '&:hover': {backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.dark' : alpha('#000', 0.04)}
                         }}
                         onClick={() => handleGenderChange('Ambos')}
                     >
@@ -386,12 +422,12 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                     </Button>
                     <Button
                         variant={activeFilters.gender === 'Masculino' ? 'contained' : 'outlined'}
-                        startIcon={<MaleIcon />}
+                        startIcon={<MaleIcon/>}
                         sx={{
                             borderRadius: '50px',
                             color: activeFilters.gender === 'Masculino' ? 'white' : 'inherit',
                             backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.dark' : alpha('#000', 0.04) }
+                            '&:hover': {backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.dark' : alpha('#000', 0.04)}
                         }}
                         onClick={() => handleGenderChange('Masculino')}
                     >
@@ -399,12 +435,12 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                     </Button>
                     <Button
                         variant={activeFilters.gender === 'Feminino' ? 'contained' : 'outlined'}
-                        startIcon={<FemaleIcon />}
+                        startIcon={<FemaleIcon/>}
                         sx={{
                             borderRadius: '50px',
                             color: activeFilters.gender === 'Feminino' ? 'white' : 'inherit',
                             backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.dark' : alpha('#000', 0.04) }
+                            '&:hover': {backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.dark' : alpha('#000', 0.04)}
                         }}
                         onClick={() => handleGenderChange('Feminino')}
                     >
@@ -417,17 +453,17 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
             <FilterSection
                 title="Condição do Paciente"
                 actionElement={
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                    <Box sx={{display: 'flex', alignItems: 'center'}}>
+                        <Typography variant="body2" color="text.secondary" sx={{mr: 1}}>
                             {activeFilters.conditions.length} Selecionadas
                         </Typography>
                         {activeFilters.conditions.length > 0 && (
-                            <ClearButton onClick={() => onFilterChange('conditions', [])} />
+                            <ClearButton onClick={() => onFilterChange('conditions', [])}/>
                         )}
                     </Box>
                 }
             >
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5}}>
                     {PATIENT_CONDITIONS.map(condition => (
                         <ConditionChip
                             key={condition.value}
@@ -445,7 +481,7 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                 title="Status"
                 actionElement={
                     activeFilters.status &&
-                    <ClearButton onClick={() => onFilterChange('status', null)} />
+                    <ClearButton onClick={() => onFilterChange('status', null)}/>
                 }
             >
                 <FormControl fullWidth variant="outlined" size="small">
@@ -455,7 +491,7 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                         displayEmpty
                         sx={{
                             borderRadius: '50px',
-                            '.MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                            '.MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.divider},
                         }}
                         MenuProps={{
                             PaperProps: {
@@ -480,7 +516,7 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                 title="Tipo de Consulta"
                 actionElement={
                     activeFilters.appointmentType &&
-                    <ClearButton onClick={() => onFilterChange('appointmentType', null)} />
+                    <ClearButton onClick={() => onFilterChange('appointmentType', null)}/>
                 }
             >
                 <FormControl fullWidth variant="outlined" size="small">
@@ -490,7 +526,7 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                         displayEmpty
                         sx={{
                             borderRadius: '50px',
-                            '.MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
+                            '.MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.divider},
                         }}
                         MenuProps={{
                             PaperProps: {
@@ -503,8 +539,9 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                     >
                         <MenuItem value="">Todos os tipos</MenuItem>
                         {APPOINTMENT_TYPES.map(option => (
-                            <MenuItem key={option.value} value={option.value} sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Box component="span" sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                            <MenuItem key={option.value} value={option.value}
+                                      sx={{display: 'flex', alignItems: 'center'}}>
+                                <Box component="span" sx={{mr: 1, display: 'flex', alignItems: 'center'}}>
                                     {option.icon}
                                 </Box>
                                 {option.label}
@@ -523,7 +560,7 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                         setStartDate('');
                         setEndDate('');
                         onFilterChange('dateRange', null);
-                    }} />
+                    }}/>
                 }
             >
                 <Grid container spacing={2}>
@@ -534,7 +571,7 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
+                            InputLabelProps={{shrink: true}}
                             size="small"
                             sx={{
                                 '& .MuiOutlinedInput-root': {
@@ -550,7 +587,7 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
+                            InputLabelProps={{shrink: true}}
                             size="small"
                             sx={{
                                 '& .MuiOutlinedInput-root': {
@@ -563,7 +600,7 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
             </FilterSection>
 
             {/* Botões de Ação */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+            <Box sx={{display: 'flex', justifyContent: 'space-between', mt: 4}}>
                 <Button
                     variant="outlined"
                     color="inherit"
@@ -597,11 +634,11 @@ const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilt
 };
 
 // Componente principal da página
-const PatientsListPage = ({ onPatientClick }) => {
+const PatientsListPage = ({onPatientClick}) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-    const { user } = useAuth();
+    const {user} = useAuth();
 
     // Estados principais
     const [patients, setPatients] = useState([]);
@@ -613,6 +650,25 @@ const PatientsListPage = ({ onPatientClick }) => {
     const [page, setPage] = useState(1);
     const [favoritePatients, setFavoritePatients] = useState([]);
     const [consultations, setConsultations] = useState([]);
+
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [selectedPatient, setSelectedPatient] = useState(null);
+    const [newStatus, setNewStatus] = useState("pendente");
+
+
+
+    const handleStatusSave = async () => {
+        if (!selectedPatient) return;
+        try {
+            // Supondo que você queira armazenar o status como um array (statusList) conforme sua função FirebaseService
+            await FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus]);
+            // Se desejar, atualize o estado local para refletir a mudança na interface
+            // (por exemplo, atualizando a lista de pacientes ou a propriedade de status do paciente)
+        } catch (error) {
+            console.error("Erro ao atualizar status do paciente:", error);
+        }
+        setStatusDialogOpen(false);
+    };
 
     // Estados para paginação
     const rowsPerPage = 10;
@@ -626,6 +682,13 @@ const PatientsListPage = ({ onPatientClick }) => {
         field: 'patientName',
         direction: 'asc'
     });
+
+    const handleStatusClick = (patient, currentStatus) => {
+        // Evita que o clique no status dispare outras ações de linha
+        setSelectedPatient(patient);
+        setNewStatus(currentStatus || "pendente"); // inicia com o status atual ou padrão "pendente"
+        setStatusDialogOpen(true);
+    };
 
     // Estados para filtros
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -873,7 +936,7 @@ const PatientsListPage = ({ onPatientClick }) => {
 
         // Filtro de período de consulta
         if (activeFilters.dateRange) {
-            const { start, end } = activeFilters.dateRange;
+            const {start, end} = activeFilters.dateRange;
 
             if (start || end) {
                 filtered = filtered.filter(patient => {
@@ -941,7 +1004,7 @@ const PatientsListPage = ({ onPatientClick }) => {
         if (!date) return '-';
 
         try {
-            return format(date, 'dd/MM/yyyy', { locale: ptBR });
+            return format(date, 'dd/MM/yyyy', {locale: ptBR});
         } catch (error) {
             return '-';
         }
@@ -1071,23 +1134,23 @@ const PatientsListPage = ({ onPatientClick }) => {
         return Array(5).fill().map((_, index) => (
             <TableRow key={`skeleton-${index}`}>
                 <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Skeleton variant="circular" width={40} height={40} sx={{ mr: 2 }} />
+                    <Box sx={{display: 'flex', alignItems: 'center'}}>
+                        <Skeleton variant="circular" width={40} height={40} sx={{mr: 2}}/>
                         <Box>
-                            <Skeleton variant="text" width={120} />
-                            <Skeleton variant="text" width={80} height={12} />
+                            <Skeleton variant="text" width={120}/>
+                            <Skeleton variant="text" width={80} height={12}/>
                         </Box>
                     </Box>
                 </TableCell>
-                <TableCell><Skeleton variant="circular" width={24} height={24} /></TableCell>
-                <TableCell><Skeleton variant="text" width={30} /></TableCell>
-                <TableCell><Skeleton variant="text" width={80} /></TableCell>
-                <TableCell><Skeleton variant="text" width={80} /></TableCell>
-                <TableCell><Skeleton variant="rectangular" width={90} height={24} sx={{ borderRadius: 12 }} /></TableCell>
+                <TableCell><Skeleton variant="circular" width={24} height={24}/></TableCell>
+                <TableCell><Skeleton variant="text" width={30}/></TableCell>
+                <TableCell><Skeleton variant="text" width={80}/></TableCell>
+                <TableCell><Skeleton variant="text" width={80}/></TableCell>
+                <TableCell><Skeleton variant="rectangular" width={90} height={24} sx={{borderRadius: 12}}/></TableCell>
                 <TableCell align="right">
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Skeleton variant="circular" width={32} height={32} sx={{ ml: 1 }} />
-                        <Skeleton variant="circular" width={32} height={32} sx={{ ml: 1 }} />
+                    <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
+                        <Skeleton variant="circular" width={32} height={32} sx={{ml: 1}}/>
+                        <Skeleton variant="circular" width={32} height={32} sx={{ml: 1}}/>
                     </Box>
                 </TableCell>
             </TableRow>
@@ -1105,22 +1168,22 @@ const PatientsListPage = ({ onPatientClick }) => {
                     boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)'
                 }}>
                     <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Skeleton variant="circular" width={50} height={50} sx={{ mr: 2 }} />
-                            <Box sx={{ flex: 1 }}>
-                                <Skeleton variant="text" width="80%" />
-                                <Skeleton variant="text" width="40%" />
+                        <Box sx={{display: 'flex', alignItems: 'center', mb: 2}}>
+                            <Skeleton variant="circular" width={50} height={50} sx={{mr: 2}}/>
+                            <Box sx={{flex: 1}}>
+                                <Skeleton variant="text" width="80%"/>
+                                <Skeleton variant="text" width="40%"/>
                             </Box>
-                            <Skeleton variant="circular" width={32} height={32} />
+                            <Skeleton variant="circular" width={32} height={32}/>
                         </Box>
-                        <Divider sx={{ my: 1.5 }} />
-                        <Box sx={{ mt: 2 }}>
-                            <Skeleton variant="text" width="60%" />
-                            <Skeleton variant="text" width="40%" />
-                            <Skeleton variant="text" width="70%" />
-                            <Box sx={{ display: 'flex', mt: 2, justifyContent: 'space-between' }}>
-                                <Skeleton variant="rectangular" width={80} height={32} sx={{ borderRadius: 16 }} />
-                                <Skeleton variant="rectangular" width={100} height={32} sx={{ borderRadius: 16 }} />
+                        <Divider sx={{my: 1.5}}/>
+                        <Box sx={{mt: 2}}>
+                            <Skeleton variant="text" width="60%"/>
+                            <Skeleton variant="text" width="40%"/>
+                            <Skeleton variant="text" width="70%"/>
+                            <Box sx={{display: 'flex', mt: 2, justifyContent: 'space-between'}}>
+                                <Skeleton variant="rectangular" width={80} height={32} sx={{borderRadius: 16}}/>
+                                <Skeleton variant="rectangular" width={100} height={32} sx={{borderRadius: 16}}/>
                             </Box>
                         </Box>
                     </CardContent>
@@ -1131,7 +1194,7 @@ const PatientsListPage = ({ onPatientClick }) => {
 
     // Cartão de métricas
     const MetricsCardsSection = () => (
-        <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid container spacing={3} sx={{mb: 3}}>
             <Grid item xs={12} sm={6} md={3}>
                 <Card sx={{
                     borderRadius: '24px',
@@ -1142,11 +1205,11 @@ const PatientsListPage = ({ onPatientClick }) => {
                         <Typography variant="subtitle2" color="text.secondary">
                             Total de Pacientes
                         </Typography>
-                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: theme.palette.primary.main }}>
-                            {loading ? <Skeleton width={60} /> : metrics.totalPatients}
+                        <Typography variant="h4" sx={{mt: 1, fontWeight: 600, color: theme.palette.primary.main}}>
+                            {loading ? <Skeleton width={60}/> : metrics.totalPatients}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            {loading ? <Skeleton width={120} /> : '+3 pacientes nesta semana'}
+                        <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
+                            {loading ? <Skeleton width={120}/> : '+3 pacientes nesta semana'}
                         </Typography>
                     </CardContent>
                 </Card>
@@ -1162,15 +1225,17 @@ const PatientsListPage = ({ onPatientClick }) => {
                         <Typography variant="subtitle2" color="text.secondary">
                             Pacientes Ativos
                         </Typography>
-                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#4CAF50' }}>
-                            {loading ? <Skeleton width={60} /> : metrics.activePatients}
+                        <Typography variant="h4" sx={{mt: 1, fontWeight: 600, color: '#4CAF50'}}>
+                            {loading ? <Skeleton width={60}/> : metrics.activePatients}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
                             {loading ? (
-                                <Skeleton width={120} />
+                                <Skeleton width={120}/>
                             ) : (
                                 <>
-                                    <span style={{ color: '#4CAF50' }}>{Math.round((metrics.activePatients / metrics.totalPatients) * 100) || 0}%</span> do total de pacientes
+                                    <span
+                                        style={{color: '#4CAF50'}}>{Math.round((metrics.activePatients / metrics.totalPatients) * 100) || 0}%</span> do
+                                    total de pacientes
                                 </>
                             )}
                         </Typography>
@@ -1188,11 +1253,11 @@ const PatientsListPage = ({ onPatientClick }) => {
                         <Typography variant="subtitle2" color="text.secondary">
                             Novos Pacientes (30 dias)
                         </Typography>
-                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#2196F3' }}>
-                            {loading ? <Skeleton width={60} /> : metrics.newPatients}
+                        <Typography variant="h4" sx={{mt: 1, fontWeight: 600, color: '#2196F3'}}>
+                            {loading ? <Skeleton width={60}/> : metrics.newPatients}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            {loading ? <Skeleton width={120} /> : 'Média de 3 por semana'}
+                        <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
+                            {loading ? <Skeleton width={120}/> : 'Média de 3 por semana'}
                         </Typography>
                     </CardContent>
                 </Card>
@@ -1208,11 +1273,12 @@ const PatientsListPage = ({ onPatientClick }) => {
                         <Typography variant="subtitle2" color="text.secondary">
                             Consultas Agendadas
                         </Typography>
-                        <Typography variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#FF9800' }}>
-                            {loading ? <Skeleton width={60} /> : metrics.upcomingAppointments}
+                        <Typography variant="h4" sx={{mt: 1, fontWeight: 600, color: '#FF9800'}}>
+                            {loading ? <Skeleton width={60}/> : metrics.upcomingAppointments}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            {loading ? <Skeleton width={120} /> : `Próxima: ${metrics.upcomingAppointments > 0 ? 'Hoje' : 'Nenhuma'}`}
+                        <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
+                            {loading ? <Skeleton
+                                width={120}/> : `Próxima: ${metrics.upcomingAppointments > 0 ? 'Hoje' : 'Nenhuma'}`}
                         </Typography>
                     </CardContent>
                 </Card>
@@ -1222,7 +1288,7 @@ const PatientsListPage = ({ onPatientClick }) => {
 
     // Cabeçalho com abas
     const HeaderSection = () => (
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{mb: 3}}>
             <Tabs
                 value={currentTab}
                 onChange={handleTabChange}
@@ -1250,12 +1316,12 @@ const PatientsListPage = ({ onPatientClick }) => {
             >
                 <Tab
                     label={
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{display: 'flex', alignItems: 'center'}}>
                             Todos os Pacientes
                             <Chip
                                 label={metrics.totalPatients}
                                 size="small"
-                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                                sx={{ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600}}
                             />
                         </Box>
                     }
@@ -1263,12 +1329,12 @@ const PatientsListPage = ({ onPatientClick }) => {
                 />
                 <Tab
                     label={
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{display: 'flex', alignItems: 'center'}}>
                             Ativos
                             <Chip
                                 label={metrics.activePatients}
                                 size="small"
-                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                                sx={{ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600}}
                             />
                         </Box>
                     }
@@ -1276,12 +1342,12 @@ const PatientsListPage = ({ onPatientClick }) => {
                 />
                 <Tab
                     label={
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{display: 'flex', alignItems: 'center'}}>
                             Próximas Consultas
                             <Chip
                                 label={metrics.upcomingAppointments}
                                 size="small"
-                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                                sx={{ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600}}
                             />
                         </Box>
                     }
@@ -1289,12 +1355,12 @@ const PatientsListPage = ({ onPatientClick }) => {
                 />
                 <Tab
                     label={
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{display: 'flex', alignItems: 'center'}}>
                             Favoritos
                             <Chip
                                 label={favoritePatients.length}
                                 size="small"
-                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                                sx={{ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600}}
                             />
                         </Box>
                     }
@@ -1302,12 +1368,12 @@ const PatientsListPage = ({ onPatientClick }) => {
                 />
                 <Tab
                     label={
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{display: 'flex', alignItems: 'center'}}>
                             Recentes
                             <Chip
                                 label={metrics.newPatients}
                                 size="small"
-                                sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                                sx={{ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600}}
                             />
                         </Box>
                     }
@@ -1353,7 +1419,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                         <Button
                             size="small"
                             variant="outlined"
-                            startIcon={<FilterAltIcon />}
+                            startIcon={<FilterAltIcon/>}
                             onClick={handleClearFilters}
                             sx={{
                                 borderRadius: '50px',
@@ -1363,11 +1429,11 @@ const PatientsListPage = ({ onPatientClick }) => {
                         </Button>
                     )}
 
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{display: 'flex', gap: 1}}>
                         <Button
                             size="small"
                             variant="outlined"
-                            startIcon={<FilterListIcon />}
+                            startIcon={<FilterListIcon/>}
                             onClick={handleFilterClick}
                             color={hasActiveFilters ? "primary" : "inherit"}
                             sx={{
@@ -1378,7 +1444,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                             Filtrar
                         </Button>
 
-                        <ButtonGroup variant="outlined" sx={{ borderRadius: '50px', overflow: 'hidden' }}>
+                        <ButtonGroup variant="outlined" sx={{borderRadius: '50px', overflow: 'hidden'}}>
                             <Button
                                 size="small"
                                 onClick={() => handleViewModeChange(VIEWS.TABLE)}
@@ -1391,7 +1457,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                                     minWidth: '40px'
                                 }}
                             >
-                                <ViewListIcon fontSize="small" />
+                                <ViewListIcon fontSize="small"/>
                             </Button>
                             <Button
                                 size="small"
@@ -1405,7 +1471,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                                     minWidth: '40px'
                                 }}
                             >
-                                <GridViewIcon fontSize="small" />
+                                <GridViewIcon fontSize="small"/>
                             </Button>
                         </ButtonGroup>
                     </Box>
@@ -1419,7 +1485,7 @@ const PatientsListPage = ({ onPatientClick }) => {
         if (!hasActiveFilters) return null;
 
         return (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2}}>
                 {activeFilters.gender && (
                     <FilterChip
                         label={`Gênero: ${activeFilters.gender}`}
@@ -1476,7 +1542,7 @@ const PatientsListPage = ({ onPatientClick }) => {
             boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
             overflow: 'hidden'
         }}>
-            <Table sx={{ minWidth: 650 }}>
+            <Table sx={{minWidth: 650}}>
                 <TableHead>
                     <TableRow>
                         <SortableHeaderCell
@@ -1530,8 +1596,8 @@ const PatientsListPage = ({ onPatientClick }) => {
                         renderSkeletonRows()
                     ) : paginatedPatients.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                                <Box sx={{ textAlign: 'center' }}>
+                            <TableCell colSpan={7} align="center" sx={{py: 6}}>
+                                <Box sx={{textAlign: 'center'}}>
                                     <Box
                                         component="img"
                                         src="/newpaciente.svg"
@@ -1545,8 +1611,9 @@ const PatientsListPage = ({ onPatientClick }) => {
                                     <Typography variant="h6" color="text.secondary" gutterBottom>
                                         Nenhum paciente encontrado
                                     </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
-                                        Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo paciente.
+                                    <Typography variant="body2" color="text.secondary" sx={{maxWidth: 400, mx: 'auto'}}>
+                                        Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou
+                                        adicione um novo paciente.
                                     </Typography>
                                 </Box>
                             </TableCell>
@@ -1611,7 +1678,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                                     }}
                                 >
                                     <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <Box sx={{display: 'flex', alignItems: 'center'}}>
                                             <Avatar
                                                 src={patient.patientPhotoUrl}
                                                 alt={patientName}
@@ -1628,7 +1695,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                 {patientName.charAt(0)}
                                             </Avatar>
                                             <Box>
-                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <Box sx={{display: 'flex', alignItems: 'center'}}>
                                                     <Typography variant="body1" fontWeight={500}>
                                                         {patientName}
                                                     </Typography>
@@ -1654,11 +1721,11 @@ const PatientsListPage = ({ onPatientClick }) => {
                                     <TableCell>
                                         {gender.toLowerCase() === 'masculino' ? (
                                             <Tooltip title="Masculino">
-                                                <MaleIcon sx={{ color: theme.palette.info.main }} />
+                                                <MaleIcon sx={{color: theme.palette.info.main}}/>
                                             </Tooltip>
                                         ) : gender.toLowerCase() === 'feminino' ? (
                                             <Tooltip title="Feminino">
-                                                <FemaleIcon sx={{ color: '#E91E63' }} />
+                                                <FemaleIcon sx={{color: '#E91E63'}}/>
                                             </Tooltip>
                                         ) : (
                                             '-'
@@ -1676,7 +1743,10 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                     {formatDate(lastConsultDate)}
                                                 </Typography>
                                                 <Typography variant="caption" color="text.secondary">
-                                                    {formatDistance(lastConsultDate, new Date(), { addSuffix: true, locale: ptBR })}
+                                                    {formatDistance(lastConsultDate, new Date(), {
+                                                        addSuffix: true,
+                                                        locale: ptBR
+                                                    })}
                                                 </Typography>
                                             </>
                                         ) : (
@@ -1706,7 +1776,8 @@ const PatientsListPage = ({ onPatientClick }) => {
 
                                             // Se não há datas futuras
                                             if (futureDates.length === 0) {
-                                                return <Typography variant="body2" color="text.secondary">-</Typography>;
+                                                return <Typography variant="body2"
+                                                                   color="text.secondary">-</Typography>;
                                             }
 
                                             // Pega a data mais próxima
@@ -1723,7 +1794,8 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                         {formatDate(nextDate)}
                                                     </Typography>
                                                     {isNextToday && (
-                                                        <Typography variant="caption" color="error.main" fontWeight={500}>
+                                                        <Typography variant="caption" color="error.main"
+                                                                    fontWeight={500}>
                                                             Hoje
                                                         </Typography>
                                                     )}
@@ -1758,12 +1830,18 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                                 : '#FF9800',
                                                 boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)'
                                             }}
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // para não disparar o clique da linha inteira
+                                                handleStatusClick(patient, status);
+                                            }}
                                         />
                                     </TableCell>
 
+
                                     <TableCell align="right">
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                            <Tooltip title={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}>
+                                        <Box sx={{display: 'flex', justifyContent: 'flex-end'}}>
+                                            <Tooltip
+                                                title={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}>
                                                 <IconButton
                                                     size="small"
                                                     onClick={(e) => {
@@ -1774,7 +1852,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                         color: isFavorite ? '#FFC107' : 'action.disabled',
                                                     }}
                                                 >
-                                                    {isFavorite ? <StarIcon /> : <StarBorderIcon />}
+                                                    {isFavorite ? <StarIcon/> : <StarBorderIcon/>}
                                                 </IconButton>
                                             </Tooltip>
                                             <Tooltip title="Ver perfil do paciente">
@@ -1789,7 +1867,7 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                         ml: 1
                                                     }}
                                                 >
-                                                    <KeyboardArrowRightIcon />
+                                                    <KeyboardArrowRightIcon/>
                                                 </IconButton>
                                             </Tooltip>
                                         </Box>
@@ -1823,6 +1901,31 @@ const PatientsListPage = ({ onPatientClick }) => {
                     />
                 </Box>
             )}
+
+            <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)}>
+                <DialogTitle>Alterar Status do Paciente</DialogTitle>
+                <DialogContent>
+                    <FormControl fullWidth>
+                        <InputLabel id="status-select-label">Status</InputLabel>
+                        <Select
+                            labelId="status-select-label"
+                            value={newStatus}
+                            label="Status"
+                            onChange={(e) => setNewStatus(e.target.value)}
+                        >
+                            {STATUS_OPTIONS.filter(option => option.value !== "").map(option => (
+                                <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setStatusDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleStatusSave} variant="contained">Salvar</Button>
+                </DialogActions>
+            </Dialog>
         </TableContainer>
     );
 
@@ -1853,8 +1956,9 @@ const PatientsListPage = ({ onPatientClick }) => {
                         <Typography variant="h6" color="text.secondary" gutterBottom>
                             Nenhum paciente encontrado
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
-                            Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo paciente.
+                        <Typography variant="body2" color="text.secondary" sx={{maxWidth: 400, mx: 'auto'}}>
+                            Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo
+                            paciente.
                         </Typography>
                     </Box>
                 </Grid>
@@ -1918,8 +2022,8 @@ const PatientsListPage = ({ onPatientClick }) => {
                             }}
                                   onClick={() => handlePatientClick(patient.id)}
                             >
-                                <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                <CardContent sx={{p: 3, flex: 1, display: 'flex', flexDirection: 'column'}}>
+                                    <Box sx={{display: 'flex', alignItems: 'center', mb: 2}}>
                                         <Avatar
                                             src={patient.patientPhotoUrl}
                                             alt={patientName}
@@ -1935,9 +2039,10 @@ const PatientsListPage = ({ onPatientClick }) => {
                                         >
                                             {patientName.charAt(0)}
                                         </Avatar>
-                                        <Box sx={{ flex: 1 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ maxWidth: '80%' }}>
+                                        <Box sx={{flex: 1}}>
+                                            <Box sx={{display: 'flex', alignItems: 'center'}}>
+                                                <Typography variant="subtitle1" fontWeight={600} noWrap
+                                                            sx={{maxWidth: '80%'}}>
                                                     {patientName}
                                                 </Typography>
                                                 {isTelemedicine && (
@@ -1966,22 +2071,26 @@ const PatientsListPage = ({ onPatientClick }) => {
                                                 color: isFavorite ? '#FFC107' : 'action.disabled',
                                             }}
                                         >
-                                            {isFavorite ? <StarIcon /> : <StarBorderIcon />}
+                                            {isFavorite ? <StarIcon/> : <StarBorderIcon/>}
                                         </IconButton>
                                     </Box>
 
-                                    <Divider sx={{ my: 1.5 }} />
+                                    <Divider sx={{my: 1.5}}/>
 
-                                    <Box sx={{ mb: 'auto' }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Box sx={{mb: 'auto'}}>
+                                        <Box sx={{display: 'flex', justifyContent: 'space-between', mb: 1}}>
+                                            <Box sx={{display: 'flex', alignItems: 'center'}}>
                                                 {gender.toLowerCase() === 'masculino' ? (
                                                     <Tooltip title="Masculino">
-                                                        <MaleIcon sx={{ color: theme.palette.info.main, mr: 0.5, fontSize: '1rem' }} />
+                                                        <MaleIcon sx={{
+                                                            color: theme.palette.info.main,
+                                                            mr: 0.5,
+                                                            fontSize: '1rem'
+                                                        }}/>
                                                     </Tooltip>
                                                 ) : gender.toLowerCase() === 'feminino' ? (
                                                     <Tooltip title="Feminino">
-                                                        <FemaleIcon sx={{ color: '#E91E63', mr: 0.5, fontSize: '1rem' }} />
+                                                        <FemaleIcon sx={{color: '#E91E63', mr: 0.5, fontSize: '1rem'}}/>
                                                     </Tooltip>
                                                 ) : (
                                                     '-'
@@ -2015,15 +2124,20 @@ const PatientsListPage = ({ onPatientClick }) => {
                                             />
                                         </Box>
 
-                                        <Box sx={{ mt: 2 }}>
+                                        <Box sx={{mt: 2}}>
                                             {/* Exibição da última consulta (no passado) */}
                                             {lastConsultDate && isPast(lastConsultDate) && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                                                    <EventNoteIcon fontSize="small" sx={{ color: 'text.secondary', mr: 1 }} />
+                                                <Box sx={{display: 'flex', alignItems: 'center', mb: 0.5}}>
+                                                    <EventNoteIcon fontSize="small"
+                                                                   sx={{color: 'text.secondary', mr: 1}}/>
                                                     <Typography variant="body2" color="text.secondary">
                                                         Última: {formatDate(lastConsultDate)}
-                                                        <Typography variant="caption" component="span" color="text.secondary" sx={{ ml: 0.5 }}>
-                                                            ({formatDistance(lastConsultDate, new Date(), { addSuffix: true, locale: ptBR })})
+                                                        <Typography variant="caption" component="span"
+                                                                    color="text.secondary" sx={{ml: 0.5}}>
+                                                            ({formatDistance(lastConsultDate, new Date(), {
+                                                            addSuffix: true,
+                                                            locale: ptBR
+                                                        })})
                                                         </Typography>
                                                     </Typography>
                                                 </Box>
@@ -2089,8 +2203,9 @@ const PatientsListPage = ({ onPatientClick }) => {
 
                                             {/* Mensagem quando não há consultas */}
                                             {!lastConsultDate && !nextConsultDate && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                    <CalendarTodayIcon fontSize="small" sx={{ color: 'text.secondary', mr: 1 }} />
+                                                <Box sx={{display: 'flex', alignItems: 'center'}}>
+                                                    <CalendarTodayIcon fontSize="small"
+                                                                       sx={{color: 'text.secondary', mr: 1}}/>
                                                     <Typography variant="body2" color="text.secondary">
                                                         Sem consultas agendadas
                                                     </Typography>
@@ -2099,12 +2214,18 @@ const PatientsListPage = ({ onPatientClick }) => {
                                         </Box>
                                     </Box>
 
-                                    <Box sx={{ display: 'flex', mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}`, justifyContent: 'space-between' }}>
+                                    <Box sx={{
+                                        display: 'flex',
+                                        mt: 2,
+                                        pt: 2,
+                                        borderTop: `1px solid ${theme.palette.divider}`,
+                                        justifyContent: 'space-between'
+                                    }}>
                                         <Button
                                             size="small"
-                                            startIcon={<EventAvailableIcon />}
+                                            startIcon={<EventAvailableIcon/>}
                                             variant="outlined"
-                                            sx={{ borderRadius: '50px', fontSize: '0.75rem' }}
+                                            sx={{borderRadius: '50px', fontSize: '0.75rem'}}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 // Função para agendamento
@@ -2115,7 +2236,7 @@ const PatientsListPage = ({ onPatientClick }) => {
 
                                         <Button
                                             size="small"
-                                            endIcon={<KeyboardArrowRightIcon />}
+                                            endIcon={<KeyboardArrowRightIcon/>}
                                             variant="contained"
                                             color="primary"
                                             sx={{
@@ -2163,21 +2284,21 @@ const PatientsListPage = ({ onPatientClick }) => {
     );
 
     return (
-        <Box sx={{ p: 0, backgroundColor: '#F4F9FF' }}>
+        <Box sx={{p: 0, backgroundColor: '#F4F9FF'}}>
             {/* Cabeçalho e estatísticas */}
-            <HeaderSection />
+            <HeaderSection/>
 
             {/* Cards de métricas */}
-            <MetricsCardsSection />
+            <MetricsCardsSection/>
 
             {/* Barra de ferramentas */}
-            <ToolbarSection />
+            <ToolbarSection/>
 
             {/* Chips de filtros ativos */}
-            <ActiveFiltersSection />
+            <ActiveFiltersSection/>
 
             {/* Conteúdo principal: alternância entre visualização de tabela e grid */}
-            {viewMode === VIEWS.TABLE ? <TableViewSection /> : <GridViewSection />}
+            {viewMode === VIEWS.TABLE ? <TableViewSection/> : <GridViewSection/>}
 
             {/* Popover dos filtros */}
             <Popover

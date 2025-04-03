@@ -30,7 +30,7 @@ import {
     Tooltip,
     ButtonGroup,
     Divider,
-    Badge
+    Badge, Dialog, InputLabel, DialogContent, DialogTitle, DialogActions
 } from '@mui/material';
 
 import {
@@ -501,6 +501,47 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         upcomingConsultations: 0
     });
 
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [selectedPatient, setSelectedPatient] = useState(null);
+    const [newStatus, setNewStatus] = useState("pendente");
+
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+
+
+    const handleStatusSave = async () => {
+        if (!selectedPatient) return;
+
+        // Inicia loading state se desejar
+        setIsUpdating(true);
+
+        try {
+            // Atualiza no Firebase
+            await FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus]);
+
+            // Atualiza o estado local otimisticamente
+            setPatients(prevPatients =>
+                prevPatients.map(patient =>
+                    patient.id === selectedPatient.id
+                        ? { ...patient, statusList: [newStatus] }
+                        : patient
+                )
+            );
+
+            // Mostra notificação de sucesso se desejar
+            setSuccessMessage('Status do paciente atualizado com sucesso!');
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            console.error("Erro ao atualizar status do paciente:", error);
+            // Mostra mensagem de erro se desejar
+            setErrorMessage('Erro ao atualizar status. Tente novamente.');
+            setTimeout(() => setErrorMessage(''), 3000);
+        } finally {
+            setIsUpdating(false);
+            setStatusDialogOpen(false);
+        }
+    };
 
     // Carregar consultas se não foram fornecidas como props
     useEffect(() => {
@@ -524,6 +565,13 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
 
         fetchConsultations();
     }, [user, consultations]);
+
+    const handleStatusClick = (patient, currentStatus) => {
+        // Evita que o clique no status dispare outras ações de linha
+        setSelectedPatient(patient);
+        setNewStatus(currentStatus || "pendente"); // inicia com o status atual ou padrão "pendente"
+        setStatusDialogOpen(true);
+    };
 
     // Função auxiliar para extrair valores de data
     const getDateValue = useCallback((obj, field) => {
@@ -1502,8 +1550,13 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                                                             : '#FF9800',
                                                             boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)'
                                                         }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); // para não disparar o clique da linha inteira
+                                                            handleStatusClick(patient, status);
+                                                        }}
                                                     />
                                                 </TableCell>
+
 
                                                 <TableCell align="right">
                                                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -1550,6 +1603,31 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 )}
                             </TableBody>
                         </Table>
+
+                        <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)}>
+                            <DialogTitle>Alterar Status do Paciente</DialogTitle>
+                            <DialogContent>
+                                <FormControl fullWidth>
+                                    <InputLabel id="status-select-label">Status</InputLabel>
+                                    <Select
+                                        labelId="status-select-label"
+                                        value={newStatus}
+                                        label="Status"
+                                        onChange={(e) => setNewStatus(e.target.value)}
+                                    >
+                                        {STATUS_OPTIONS.filter(option => option.value !== "").map(option => (
+                                            <MenuItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </DialogContent>
+                            <DialogActions>
+                                <Button onClick={() => setStatusDialogOpen(false)}>Cancelar</Button>
+                                <Button onClick={handleStatusSave} variant="contained">Salvar</Button>
+                            </DialogActions>
+                        </Dialog>
                     </TableContainer>
                 </Box>
 
