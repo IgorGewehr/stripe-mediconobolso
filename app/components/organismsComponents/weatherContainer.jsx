@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Skeleton, Box } from "@mui/material";
 import { useAuth } from "../authProvider";
 import WeatherCard from "../basicComponents/weatherCard";
@@ -11,12 +11,34 @@ const WeatherContainer = () => {
     const [weatherData, setWeatherData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isUpdating, setIsUpdating] = useState(false);
 
-    // Função para buscar dados da API de clima - envolva em useCallback
+    // Usar refs para controlar o estado de atualização e última requisição
+    const isUpdatingRef = useRef(false);
+    const lastRequestTimeRef = useRef({});  // Objeto para armazenar timestamp por usuário
+
+    // Função para buscar dados da API de clima
     const fetchWeatherFromAPI = useCallback(async (city) => {
+        // Verificar se outra requisição está em andamento
+        if (isUpdatingRef.current) {
+            console.log("Já existe uma requisição em andamento. Ignorando.");
+            return null;
+        }
+
+        // Verificar tempo desde a última requisição (no mínimo 30 minutos)
+        const now = Date.now();
+        const userId = user?.uid || 'guest';
+        const lastTime = lastRequestTimeRef.current[userId] || 0;
+        const THIRTY_MINUTES = 30 * 60 * 1000; // 30 minutos em milissegundos
+
+        if (now - lastTime < THIRTY_MINUTES) {
+            console.log(`Requisição para ${userId} muito recente (menos de 30 minutos). Ignorando.`);
+            return null;
+        }
+
         try {
-            setIsUpdating(true);
+            isUpdatingRef.current = true;
+            // Armazenar tempo da última requisição por usuário
+            lastRequestTimeRef.current[userId] = now;
             console.log(`Buscando clima para cidade: ${city}`);
 
             const res = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
@@ -27,36 +49,57 @@ const WeatherContainer = () => {
             }
 
             // Salvar os dados no Firestore
-            await firebaseService.updateUserWeatherData(user.uid, data, city);
+            if (user?.uid) {
+                await firebaseService.updateUserWeatherData(user.uid, data, city);
+            }
 
             setWeatherData(data);
             return data;
         } catch (err) {
             console.error("Erro ao buscar dados do clima:", err);
             setError(err.message);
-            throw err;
+            return null;
         } finally {
-            setIsUpdating(false);
+            isUpdatingRef.current = false;
         }
-    }, [user?.uid]); // Dependência estável
+    }, [user?.uid]);
 
-    // Carregar dados do clima - envolva em useCallback
-    const loadWeatherData = useCallback(async () => {
-        if (isUpdating || !user?.uid) return; // Evitar múltiplas chamadas ou quando não há usuário
+    // Carregar dados do clima
+    const loadWeatherData = useCallback(async (forceRefresh = false) => {
+        // Verificações para evitar requisições desnecessárias
+        if (!user?.uid || isUpdatingRef.current) {
+            return;
+        }
+
+        // Se não forçar atualização e já tivermos dados, evitar recarregar frequentemente
+        const userId = user?.uid || 'guest';
+        const lastTime = lastRequestTimeRef.current[userId] || 0;
+        const THIRTY_MINUTES = 30 * 60 * 1000; // 30 minutos em milissegundos
+
+        if (!forceRefresh && weatherData && Date.now() - lastTime < THIRTY_MINUTES) {
+            return;
+        }
 
         try {
             setLoading(true);
 
-            // Buscar dados do usuário para ter a cidade mais atual e os dados do clima
-            const { weatherData: storedWeatherData, currentCity } = await firebaseService.getUserWeatherData(user.uid);
+            // Buscar dados do usuário
+            const { weatherData: storedWeatherData, currentCity } =
+                await firebaseService.getUserWeatherData(user.uid);
 
             // Verificar se precisamos atualizar os dados
-            const shouldUpdate = await firebaseService.shouldUpdateWeatherData(storedWeatherData, currentCity);
+            const shouldUpdate = forceRefresh ||
+                await firebaseService.shouldUpdateWeatherData(storedWeatherData, currentCity);
 
             if (shouldUpdate) {
-                console.log("Dados do clima desatualizados ou cidade diferente, buscando novos dados...");
-                console.log(`Cidade atual do usuário: ${currentCity}`);
-                await fetchWeatherFromAPI(currentCity);
+                console.log("Buscando novos dados do clima...");
+                const newData = await fetchWeatherFromAPI(currentCity);
+                if (newData) {
+                    setWeatherData(newData);
+                } else if (storedWeatherData) {
+                    // Se a nova requisição falhou mas temos dados em cache, use-os
+                    setWeatherData(storedWeatherData);
+                }
             } else {
                 console.log("Usando dados do clima do Firestore");
                 setWeatherData(storedWeatherData);
@@ -67,20 +110,27 @@ const WeatherContainer = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.uid, fetchWeatherFromAPI, isUpdating]); // Dependências estáveis
+    }, [user?.uid, fetchWeatherFromAPI]);
 
-    // useEffect com dependências estáveis
+    // useEffect para carregar dados iniciais
     useEffect(() => {
-        // Carregar dados quando o componente for montado
-        loadWeatherData();
+        // Carregar dados apenas uma vez na montagem do componente
+        // ou quando o usuário mudar
+        if (user?.uid) {
+            loadWeatherData(true);
+        }
 
-        // Opcional: adicionar um intervalo para verificar mudanças a cada minuto
-        const interval = setInterval(() => {
-            loadWeatherData();
-        }, 60000); // 1 minuto
+        // Configurar intervalo apenas na montagem
+        const intervalId = setInterval(() => {
+            if (user?.uid && !isUpdatingRef.current) {
+                loadWeatherData();
+            }
+        }, 30 * 60 * 1000); // Verificar a cada 30 minutos
 
-        return () => clearInterval(interval);
-    }, [loadWeatherData]); // Única dependência estável
+        return () => {
+            clearInterval(intervalId);
+        };
+    }, [user?.uid, loadWeatherData]);
 
     // Processamento de previsão
     const processWeatherData = (data) => {
@@ -119,7 +169,7 @@ const WeatherContainer = () => {
     };
 
     // Renderização com base no estado
-    if (loading) {
+    if (loading && !weatherData) {
         return (
             <Box sx={{ p: 2 }}>
                 <Skeleton variant="text" width={120} height={24} />
@@ -129,8 +179,13 @@ const WeatherContainer = () => {
         );
     }
 
-    if (error || !weatherData) {
+    if (error && !weatherData) {
         return <Box sx={{ p: 2 }}>Não foi possível carregar o clima.</Box>;
+    }
+
+    // Mostrar dados mesmo durante recarregamento
+    if (!weatherData) {
+        return <Box sx={{ p: 2 }}>Carregando dados do clima...</Box>;
     }
 
     // Processar os dados antes de passar para o componente
