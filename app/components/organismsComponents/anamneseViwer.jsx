@@ -381,6 +381,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                 {systems.filter(s => s.value).map((system, index) => (
                     <Accordion
                         key={index}
+                        defaultExpanded
                         disableGutters
                         elevation={0}
                         sx={{
@@ -515,6 +516,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
             {/* Acordo em acordeões para melhor organização */}
             <Accordion
                 disableGutters
+                defaultExpanded
                 elevation={0}
                 sx={{
                     mb: 1,
@@ -579,6 +581,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
             {/* Exame Físico */}
             <Accordion
                 disableGutters
+                defaultExpanded
                 elevation={0}
                 sx={{
                     mb: 1,
@@ -602,6 +605,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
             {/* Histórico */}
             <Accordion
                 disableGutters
+                defaultExpanded
                 elevation={0}
                 sx={{
                     mb: 1,
@@ -670,6 +674,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
             {/* Hábitos de Vida */}
             <Accordion
                 disableGutters
+                defaultExpanded
                 elevation={0}
                 sx={{
                     mb: 1,
@@ -693,6 +698,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
             {/* Revisão de Sistemas */}
             <Accordion
                 disableGutters
+                defaultExpanded
                 elevation={0}
                 sx={{
                     mb: 1,
