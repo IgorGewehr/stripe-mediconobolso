@@ -227,6 +227,27 @@ const MedicationCard = styled(Card)(({ theme }) => ({
     }
 }));
 
+// Botão grande e destacado para adicionar medicamento
+const AddMedicationButton = styled(Button)(({ theme }) => ({
+    padding: '14px 20px',
+    borderRadius: '12px',
+    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+    color: theme.palette.primary.main,
+    fontWeight: 600,
+    fontSize: '16px',
+    width: '100%',
+    justifyContent: 'flex-start',
+    transition: 'all 0.2s ease',
+    border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+    '&:hover': {
+        backgroundColor: alpha(theme.palette.primary.main, 0.12),
+        boxShadow: '0 4px 12px rgba(24, 82, 254, 0.15)',
+    },
+    '& .MuiButton-startIcon': {
+        marginRight: '12px',
+    },
+}));
+
 // Formulário principal
 const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId = null }) => {
     const theme = useTheme();
@@ -483,17 +504,16 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         }));
     };
 
+    // Modificada para exigir apenas o nome do medicamento
     const validateMedicamento = () => {
-        return medicamentoTemp.nome.trim() !== "" &&
-            (medicamentoTemp.posologia.trim() !== "" ||
-                medicamentoTemp.observacao?.trim() !== "");
+        return medicamentoTemp.nome.trim() !== "";
     };
 
     const handleAddMedicamento = () => {
         if (!validateMedicamento()) {
             setSnackbar({
                 open: true,
-                message: "Nome do medicamento e posologia são obrigatórios.",
+                message: "Nome do medicamento é obrigatório.",
                 severity: "error"
             });
             return;
@@ -1388,8 +1408,31 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
                                         <Collapse in={expandedSection === "medicamentos"}>
                                             <Box sx={{ p: 3 }}>
+                                                {/* Botão grande de adicionar medicamento - visível apenas quando não está editando */}
+                                                {!addingMedicamento && (
+                                                    <AddMedicationButton
+                                                        startIcon={
+                                                            <AddIcon
+                                                                sx={{
+                                                                    width: 24,
+                                                                    height: 24,
+                                                                    bgcolor: theme.palette.primary.main,
+                                                                    color: 'white',
+                                                                    borderRadius: '50%',
+                                                                    p: 0.5,
+                                                                }}
+                                                            />
+                                                        }
+                                                        onClick={() => setAddingMedicamento(true)}
+                                                        disabled={isSubmitting}
+                                                        sx={{ mb: 3 }}
+                                                    >
+                                                        Adicionar Medicamento
+                                                    </AddMedicationButton>
+                                                )}
+
                                                 {/* Lista de medicamentos adicionados */}
-                                                {receitaData.medicamentos.length > 0 ? (
+                                                {receitaData.medicamentos.length > 0 && (
                                                     <Box sx={{ mb: 3 }}>
                                                         {receitaData.medicamentos.map((med, index) => (
                                                             <MedicationCard key={index}>
@@ -1468,7 +1511,10 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                             </MedicationCard>
                                                         ))}
                                                     </Box>
-                                                ) : (
+                                                )}
+
+                                                {/* Sem medicamentos e não está adicionando */}
+                                                {receitaData.medicamentos.length === 0 && !addingMedicamento && (
                                                     <Box
                                                         sx={{
                                                             textAlign: 'center',
@@ -1486,24 +1532,20 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                     </Box>
                                                 )}
 
-                                                {!addingMedicamento ? (
-                                                    <Button
-                                                        variant="outlined"
-                                                        startIcon={<AddCircleOutlineIcon />}
-                                                        onClick={() => setAddingMedicamento(true)}
-                                                        disabled={isSubmitting}
-                                                        fullWidth
-                                                        sx={{
-                                                            borderRadius: '10px',
-                                                            p: 1.5,
-                                                            borderStyle: 'dashed'
-                                                        }}
-                                                    >
-                                                        Adicionar Medicamento
-                                                    </Button>
-                                                ) : (
-                                                    <Paper sx={{ p: 2, border: '1px solid #EAECEF', borderRadius: '12px' }}>
-                                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                                                {/* Formulário para adicionar/editar medicamentos */}
+                                                {addingMedicamento && (
+                                                    <Paper sx={{
+                                                        p: 3,
+                                                        border: '1px solid #EAECEF',
+                                                        borderRadius: '12px',
+                                                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+                                                    }}>
+                                                        <Typography variant="subtitle1" sx={{
+                                                            fontWeight: 600,
+                                                            mb: 2,
+                                                            fontSize: '18px',
+                                                            color: theme.palette.primary.main
+                                                        }}>
                                                             {editingMedicamentoIndex !== null ? "Editar Medicamento" : "Novo Medicamento"}
                                                         </Typography>
 
@@ -1515,7 +1557,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                     loading={loadingMedications}
                                                                     options={medications.map(med => med.name)}
                                                                     value={medicamentoTemp.nome}
-                                                                    size="small"
                                                                     onChange={(event, newValue) => {
                                                                         // Preenche automaticamente outros campos quando um medicamento existente é selecionado
                                                                         if (newValue) {
@@ -1564,9 +1605,12 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                         />
                                                                     )}
                                                                     renderOption={(props, option) => {
+                                                                        // Correção do erro de key em spread props
+                                                                        const { key, ...otherProps } = props;
                                                                         const medication = medications.find(med => med.name === option);
+
                                                                         return (
-                                                                            <li {...props}>
+                                                                            <li key={key} {...otherProps}>
                                                                                 <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                                                                                     <Typography variant="body1">{option}</Typography>
                                                                                     {medication?.form && (
@@ -1586,7 +1630,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                 {/* Campo de concentração - Se o medicamento existir, mostrar select de dosagens */}
                                                                 {medicamentoTemp.nome && medications.some(m => m.name === medicamentoTemp.nome) &&
                                                                 medications.find(m => m.name === medicamentoTemp.nome)?.dosages?.length > 0 ? (
-                                                                    <FormControl fullWidth size="small">
+                                                                    <FormControl fullWidth>
                                                                         <InputLabel id="dosage-select-label">Concentração</InputLabel>
                                                                         <Select
                                                                             labelId="dosage-select-label"
@@ -1614,7 +1658,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                         value={medicamentoTemp.concentracao || ''}
                                                                         name="concentracao"
                                                                         onChange={handleMedicamentoTempChange}
-                                                                        size="small"
                                                                     />
                                                                 )}
                                                             </Grid>
@@ -1628,8 +1671,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                     onChange={handleMedicamentoTempChange}
                                                                     multiline
                                                                     rows={2}
-                                                                    required
-                                                                    size="small"
                                                                 />
                                                             </Grid>
                                                             <Grid item xs={12} sm={6}>
@@ -1640,7 +1681,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                     value={medicamentoTemp.quantidade}
                                                                     name="quantidade"
                                                                     onChange={handleMedicamentoTempChange}
-                                                                    size="small"
                                                                 />
                                                             </Grid>
                                                             <Grid item xs={12} sm={6}>
@@ -1651,7 +1691,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                     value={medicamentoTemp.duracao}
                                                                     name="duracao"
                                                                     onChange={handleMedicamentoTempChange}
-                                                                    size="small"
                                                                 />
                                                             </Grid>
                                                             <Grid item xs={12}>
@@ -1664,7 +1703,6 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                     onChange={handleMedicamentoTempChange}
                                                                     multiline
                                                                     rows={2}
-                                                                    size="small"
                                                                 />
                                                             </Grid>
                                                             {medicamentoTemp.nome && !medications.some(m => m.name === medicamentoTemp.nome) && (
@@ -1731,23 +1769,48 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                             )}
                                                         </Grid>
 
-                                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>
                                                             <Button
-                                                                variant="text"
+                                                                variant="outlined"
                                                                 onClick={handleCancelMedicamento}
-                                                                sx={{ color: theme.palette.grey[600] }}
+                                                                sx={{
+                                                                    color: theme.palette.grey[600],
+                                                                    fontWeight: 500,
+                                                                    borderColor: theme.palette.grey[300],
+                                                                    px: 3
+                                                                }}
                                                             >
                                                                 Cancelar
                                                             </Button>
                                                             <Button
                                                                 variant="contained"
                                                                 onClick={handleAddMedicamento}
-                                                                disabled={!medicamentoTemp.nome || !medicamentoTemp.posologia}
+                                                                disabled={!medicamentoTemp.nome}
+                                                                sx={{ px: 3, fontWeight: 600 }}
+                                                                color="primary"
                                                             >
                                                                 {editingMedicamentoIndex !== null ? "Atualizar" : "Adicionar"}
                                                             </Button>
                                                         </Box>
                                                     </Paper>
+                                                )}
+
+                                                {/* Botão para adicionar mais medicamentos */}
+                                                {!addingMedicamento && receitaData.medicamentos.length > 0 && (
+                                                    <Button
+                                                        variant="outlined"
+                                                        startIcon={<AddCircleOutlineIcon />}
+                                                        onClick={() => setAddingMedicamento(true)}
+                                                        disabled={isSubmitting}
+                                                        sx={{
+                                                            mt: 2,
+                                                            borderRadius: '10px',
+                                                            p: 1.5,
+                                                            borderStyle: 'dashed'
+                                                        }}
+                                                    >
+                                                        Adicionar outro medicamento
+                                                    </Button>
                                                 )}
                                             </Box>
                                         </Collapse>

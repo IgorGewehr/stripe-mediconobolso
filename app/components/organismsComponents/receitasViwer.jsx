@@ -2,26 +2,18 @@ import React, { useState, useEffect } from "react";
 import {
     Box,
     Typography,
-    Divider,
     Chip,
-    Accordion,
-    AccordionSummary,
-    AccordionDetails,
     Button,
     CircularProgress,
     useTheme,
     alpha,
     Paper,
-    Grid
+    Grid,
+    Divider
 } from "@mui/material";
 
 // Icons
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import MedicationIcon from "@mui/icons-material/Medication";
-import EventIcon from "@mui/icons-material/Event";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import LocalPharmacyIcon from "@mui/icons-material/LocalPharmacy";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
@@ -37,7 +29,7 @@ const ReceitaViewer = ({ receitaData, typeColor, onOpenPdf }) => {
     const [loading, setLoading] = useState(false);
     const [normalizedData, setNormalizedData] = useState(null);
 
-    // Efeito para normalizar os dados da receita, independente de sua estrutura
+    // Efeito para normalizar os dados da receita
     useEffect(() => {
         const normalizeData = async () => {
             if (!receitaData) return;
@@ -112,284 +104,202 @@ const ReceitaViewer = ({ receitaData, typeColor, onOpenPdf }) => {
         );
     }
 
-    // Função para obter o rótulo do tipo de receita
-    const getReceitaTypeLabel = () => {
-        const tipo = normalizedData.tipo || "";
-
-        switch(tipo.toLowerCase()) {
-            case "controlada":
-                return "Receita Controlada";
-            case "especial":
-                return "Receita Especial";
-            case "antimicrobiano":
-                return "Receita de Antimicrobiano";
-            default:
-                return "Receita Médica";
-        }
-    };
-
-    // Função para obter o tipo de uso
-    const getUsoLabel = () => {
-        const uso = normalizedData.uso || "";
-        return uso.charAt(0).toUpperCase() + uso.slice(1) || "Interno";
-    };
-
-    // Função para renderizar medicamentos
-    const renderMedicamentos = () => {
-        const medicamentos = normalizedData.medicamentos || [];
-
-        if (medicamentos.length === 0) {
-            return (
-                <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', mt: 0.5 }}>
-                    Nenhum medicamento registrado
-                </Typography>
-            );
-        }
-
-        return (
-            <Box sx={{ mt: 2 }}>
-                {medicamentos.map((med, index) => (
-                    <Paper
-                        key={index}
-                        elevation={0}
+    return (
+        <Box sx={{ pt: 1, pb: 2, maxWidth: '900px', mx: 'auto' }}>
+            {/* 1. ORIENTAÇÕES GERAIS - Primeiro e centralizado */}
+            {normalizedData.orientacaoGeral && (
+                <Paper
+                    elevation={1}
+                    sx={{
+                        p: 3,
+                        mb: 4,
+                        borderRadius: '10px',
+                        border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                        backgroundColor: alpha(theme.palette.background.paper, 0.9),
+                        textAlign: 'center',
+                        maxWidth: '800px',
+                        mx: 'auto'
+                    }}
+                >
+                    <Typography
+                        variant="body1"
                         sx={{
-                            mb: 2,
-                            p: 2,
-                            border: '1px solid #EAECEF',
-                            borderRadius: '8px',
-                            backgroundColor: alpha(typeColor.main, 0.05)
+                            whiteSpace: 'pre-line',
+                            lineHeight: 1.7,
+                            fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+                            fontWeight: 400,
+                            fontSize: '1.05rem',
+                            color: theme.palette.text.primary,
+                            letterSpacing: '0.01em'
                         }}
                     >
-                        <Typography variant="h6" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                            <LocalPharmacyIcon sx={{ mr: 1, fontSize: '1.2rem', color: typeColor.main }} />
-                            {med.nome}
-                            {med.concentracao && (
-                                <Typography component="span" sx={{ ml: 1, fontWeight: 400 }}>
-                                    {med.concentracao}
-                                </Typography>
-                            )}
-                        </Typography>
-
-                        {med.posologia && (
-                            <Typography variant="body1" sx={{ mt: 1, pl: 3 }}>
-                                <strong>Posologia:</strong> {med.posologia}
-                            </Typography>
-                        )}
-
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, pl: 3 }}>
-                            {med.quantidade && (
-                                <Chip
-                                    label={`Quantidade: ${med.quantidade}`}
-                                    size="small"
-                                    sx={{
-                                        bgcolor: alpha(typeColor.main, 0.1),
-                                        color: theme.palette.text.primary,
-                                    }}
-                                />
-                            )}
-
-                            {med.duracao && (
-                                <Chip
-                                    label={`Duração: ${med.duracao}`}
-                                    size="small"
-                                    sx={{
-                                        bgcolor: alpha(typeColor.main, 0.1),
-                                        color: theme.palette.text.primary,
-                                    }}
-                                />
-                            )}
-                        </Box>
-
-                        {med.observacao && (
-                            <Typography variant="body2" sx={{ mt: 1, pl: 3, fontStyle: 'italic', color: theme.palette.text.secondary }}>
-                                <strong>Observação:</strong> {med.observacao}
-                            </Typography>
-                        )}
-                    </Paper>
-                ))}
-            </Box>
-        );
-    };
-
-    // Função para renderizar botão de PDF se disponível
-    const renderPdfButton = () => {
-        if (!normalizedData.pdfUrl) return null;
-
-        return (
-            <Box sx={{ mt: 3, textAlign: 'center' }}>
-                <Button
-                    variant="outlined"
-                    startIcon={<PictureAsPdfIcon />}
-                    onClick={onOpenPdf}
-                    sx={{
-                        borderColor: typeColor.main,
-                        color: typeColor.main,
-                        '&:hover': {
-                            backgroundColor: alpha(typeColor.main, 0.1),
-                            borderColor: typeColor.main
-                        }
-                    }}
-                >
-                    Visualizar Receita Completa (PDF)
-                </Button>
-                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.5 }}>
-                    Clique para abrir a receita em formato PDF
-                </Typography>
-            </Box>
-        );
-    };
-
-    return (
-        <Box sx={{ pt: 1, pb: 2 }}>
-            {/* Tipo de Receita - Em destaque */}
-            <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" sx={{
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: typeColor.main
-                }}>
-                    <MedicationIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
-                    {getReceitaTypeLabel()}
-                </Typography>
-
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 2,
-                                backgroundColor: alpha(typeColor.light, 0.5),
-                                borderRadius: 2,
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <Typography variant="body2" color="textSecondary">Tipo de Receita</Typography>
-                            <Typography variant="h6" sx={{ fontWeight: 600, color: typeColor.main, mt: 0.5 }}>
-                                {normalizedData.tipo ? normalizedData.tipo.charAt(0).toUpperCase() + normalizedData.tipo.slice(1) : "Comum"}
-                            </Typography>
-                        </Paper>
-                    </Grid>
-
-                    <Grid item xs={12} sm={6} md={3}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 2,
-                                backgroundColor: alpha(typeColor.light, 0.5),
-                                borderRadius: 2,
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <Typography variant="body2" color="textSecondary">Uso</Typography>
-                            <Typography variant="h6" sx={{ fontWeight: 600, color: typeColor.main, mt: 0.5 }}>
-                                {getUsoLabel()}
-                            </Typography>
-                        </Paper>
-                    </Grid>
-
-                    <Grid item xs={12} sm={6} md={3}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 2,
-                                backgroundColor: alpha(typeColor.light, 0.5),
-                                borderRadius: 2,
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <Typography variant="body2" color="textSecondary">Data de Emissão</Typography>
-                            <Typography variant="h6" sx={{ fontWeight: 600, color: typeColor.main, mt: 0.5 }}>
-                                {formatDate(normalizedData.dataEmissao)}
-                            </Typography>
-                        </Paper>
-                    </Grid>
-
-                    <Grid item xs={12} sm={6} md={3}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: 2,
-                                backgroundColor: alpha(typeColor.light, 0.5),
-                                borderRadius: 2,
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <Typography variant="body2" color="textSecondary">Validade</Typography>
-                            <Typography variant="h6" sx={{ fontWeight: 600, color: typeColor.main, mt: 0.5 }}>
-                                {formatDate(normalizedData.dataValidade)}
-                            </Typography>
-                        </Paper>
-                    </Grid>
-                </Grid>
-            </Box>
-
-            {/* Orientações Gerais (se houver) */}
-            {normalizedData.orientacaoGeral && (
-                <Accordion
-                    disableGutters
-                    defaultExpanded
-                    elevation={0}
-                    sx={{
-                        mb: 2,
-                        '&:before': { display: 'none' },
-                        border: `1px solid ${alpha(typeColor.main, 0.2)}`,
-                        borderRadius: '4px',
-                        overflow: 'hidden'
-                    }}
-                >
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: alpha(typeColor.main, 0.05) }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <InfoOutlinedIcon sx={{ mr: 1, color: typeColor.main, fontSize: '1.2rem' }} />
-                            <Typography sx={{ fontWeight: 600 }}>Orientações Gerais</Typography>
-                        </Box>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                            {normalizedData.orientacaoGeral}
-                        </Typography>
-                    </AccordionDetails>
-                </Accordion>
+                        {normalizedData.orientacaoGeral}
+                    </Typography>
+                </Paper>
             )}
 
-            {/* Medicamentos */}
-            <Accordion
-                disableGutters
-                defaultExpanded
+            {/* 2. MEDICAMENTOS - Visualização prática */}
+            <Box sx={{ mb: 4 }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        borderBottom: `2px solid ${typeColor.main}`,
+                        pb: 1,
+                        mb: 3,
+                        display: 'inline-block',
+                        fontWeight: 500
+                    }}
+                >
+                    Medicamentos
+                </Typography>
+
+                {normalizedData.medicamentos.length === 0 ? (
+                    <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                        Nenhum medicamento registrado
+                    </Typography>
+                ) : (
+                    <Grid container spacing={2}>
+                        {normalizedData.medicamentos.map((med, index) => (
+                            <Grid item xs={12} md={6} key={index}>
+                                <Paper
+                                    elevation={1}
+                                    sx={{
+                                        p: 2,
+                                        height: '100%',
+                                        borderRadius: '8px',
+                                        borderLeft: `4px solid ${typeColor.main}`,
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                        <LocalPharmacyIcon sx={{ color: typeColor.main, mr: 1 }} />
+                                        <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                                            {med.nome}
+                                            {med.concentracao && (
+                                                <Typography component="span" sx={{ ml: 1, fontWeight: 400, fontSize: '0.9rem' }}>
+                                                    {med.concentracao}
+                                                </Typography>
+                                            )}
+                                        </Typography>
+                                    </Box>
+
+                                    {med.posologia && (
+                                        <Typography variant="body1" sx={{ mb: 1.5, fontWeight: 400 }}>
+                                            {med.posologia}
+                                        </Typography>
+                                    )}
+
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                                        {med.quantidade && (
+                                            <Chip
+                                                label={`${med.quantidade}`}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: alpha(typeColor.main, 0.1),
+                                                    color: theme.palette.text.primary,
+                                                }}
+                                            />
+                                        )}
+
+                                        {med.duracao && (
+                                            <Chip
+                                                label={`${med.duracao}`}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: alpha(typeColor.main, 0.1),
+                                                    color: theme.palette.text.primary,
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+
+                                    {med.observacao && (
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                mt: 'auto',
+                                                pt: 1,
+                                                fontStyle: 'italic',
+                                                color: theme.palette.text.secondary,
+                                                borderTop: `1px dashed ${theme.palette.divider}`
+                                            }}
+                                        >
+                                            {med.observacao}
+                                        </Typography>
+                                    )}
+                                </Paper>
+                            </Grid>
+                        ))}
+                    </Grid>
+                )}
+            </Box>
+
+            {/* 3. INFORMAÇÕES ADICIONAIS - No final */}
+            <Paper
                 elevation={0}
                 sx={{
-                    mb: 2,
-                    '&:before': { display: 'none' },
-                    border: `1px solid ${alpha(typeColor.main, 0.2)}`,
-                    borderRadius: '4px',
-                    overflow: 'hidden'
+                    p: 2,
+                    borderRadius: '8px',
+                    backgroundColor: alpha(typeColor.light, 0.2),
+                    mb: 3
                 }}
             >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: alpha(typeColor.main, 0.05) }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <MedicationIcon sx={{ mr: 1, color: typeColor.main, fontSize: '1.2rem' }} />
-                        <Typography sx={{ fontWeight: 600 }}>Medicamentos</Typography>
-                    </Box>
-                </AccordionSummary>
-                <AccordionDetails>
-                    {renderMedicamentos()}
-                </AccordionDetails>
-            </Accordion>
+                <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3}>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{ display: 'block', color: "#22C55E", fontWeight: 600, fontSize: '0.9rem' }}
+                        >
+                            TIPO
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {normalizedData.tipo
+                                ? normalizedData.tipo.charAt(0).toUpperCase() + normalizedData.tipo.slice(1)
+                                : "Comum"}
+                        </Typography>
+                    </Grid>
 
-            {/* Botão de PDF */}
-            {renderPdfButton()}
+                    <Grid item xs={6} sm={3}>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{ display: 'block', color: "#22C55E", fontWeight: 600, fontSize: '0.9rem' }}
+                        >
+                            USO
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {normalizedData.uso
+                                ? normalizedData.uso.charAt(0).toUpperCase() + normalizedData.uso.slice(1)
+                                : "Interno"}
+                        </Typography>
+                    </Grid>
+
+                    <Grid item xs={6} sm={3}>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{ display: 'block', color: "#22C55E", fontWeight: 600, fontSize: '0.9rem' }}
+                        >
+                            EMISSÃO
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {formatDate(normalizedData.dataEmissao)}
+                        </Typography>
+                    </Grid>
+
+                    <Grid item xs={6} sm={3}>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{ display: 'block', color: "#22C55E", fontWeight: 600, fontSize: '0.9rem' }}
+                        >
+                            VALIDADE
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {formatDate(normalizedData.dataValidade)}
+                        </Typography>
+                    </Grid>
+                </Grid>
+            </Paper>
+
         </Box>
     );
 };
