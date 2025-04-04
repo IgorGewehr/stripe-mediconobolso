@@ -101,7 +101,7 @@ import {
 import {ptBR} from 'date-fns/locale';
 import FirebaseService from "../../lib/firebaseService";
 import {useAuth} from "./authProvider";
-import SearchBar from "./basicComponents/searchBar";
+import SearchField from "./basicComponents/searchField";
 
 // Constantes para o componente
 const PATIENT_CONDITIONS = [
@@ -1075,6 +1075,27 @@ const PatientsListPage = ({onPatientClick}) => {
         }
     };
 
+    const safeFormatDate = (date, formatString, defaultValue = '-') => {
+        try {
+            if (!date) return defaultValue;
+
+            // Se a data já é um objeto Date
+            if (date instanceof Date) {
+                if (isNaN(date.getTime())) return defaultValue;
+                return format(date, formatString, { locale: ptBR });
+            }
+
+            // Se é um timestamp ou string, tente converter
+            const parsedDate = new Date(date);
+            if (isNaN(parsedDate.getTime())) return defaultValue;
+
+            return format(parsedDate, formatString, { locale: ptBR });
+        } catch (error) {
+            console.warn('Erro ao formatar data:', error, date);
+            return defaultValue;
+        }
+    };
+
     // Aplicar todos os filtros ativos
     const applyActiveFilters = (patients) => {
         let filtered = [...patients];
@@ -1082,8 +1103,8 @@ const PatientsListPage = ({onPatientClick}) => {
         // Filtro de gênero
         if (activeFilters.gender) {
             filtered = filtered.filter(patient =>
-                patient.gender === activeFilters.gender ||
-                activeFilters.gender === 'Ambos'
+                patient.gender.toLowerCase() === activeFilters.gender.toLowerCase() ||
+                activeFilters.gender.toLowerCase() === 'ambos'  // 'ambos' em minúscula
             );
         }
 
@@ -1196,13 +1217,7 @@ const PatientsListPage = ({onPatientClick}) => {
 
     // Formatação de datas
     const formatDate = (date) => {
-        if (!date) return '-';
-
-        try {
-            return format(date, 'dd/MM/yyyy', {locale: ptBR});
-        } catch (error) {
-            return '-';
-        }
+        return safeFormatDate(date, 'dd/MM/yyyy');
     };
 
     // Verificar se existem filtros ativos
@@ -1607,10 +1622,12 @@ const PatientsListPage = ({onPatientClick}) => {
                     gap: 2
                 }}
             >
-                {/* Substituir o TextField original pelo componente SearchBar */}
-                <SearchBar
-                    onSearch={handleSearch}
+                <SearchField
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    setPage={setPage}
                     isTablet={isTablet}
+                    theme={theme}
                 />
 
                 <Box
@@ -2226,10 +2243,10 @@ const PatientsListPage = ({onPatientClick}) => {
                                             <TimelineIcon sx={{ fontSize: '1rem', mr: 1, mt: 0.5, color: 'text.secondary' }} />
                                             <Box>
                                                 <Typography variant="body2">
-                                                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                                                    {item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : 'Desconhecido'}
                                                 </Typography>
                                                 <Typography variant="caption" color="text.secondary">
-                                                    {format(new Date(item.timestamp), 'dd/MM/yyyy HH:mm')} - {item.updatedBy || 'Sistema'}
+                                                    {safeFormatDate(item.timestamp, 'dd/MM/yyyy HH:mm')} - {item.updatedBy || 'Sistema'}
                                                 </Typography>
                                             </Box>
                                         </Box>
@@ -2497,7 +2514,8 @@ const PatientsListPage = ({onPatientClick}) => {
 
                                                 // Retorna as datas formatadas
                                                 return futureDates.map((dateObj, index) => {
-                                                    const isToday = isValid(dateObj.date) && format(dateObj.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                                                    const isToday = dateObj.date && isValid(dateObj.date) &&
+                                                        safeFormatDate(dateObj.date, 'yyyy-MM-dd') === safeFormatDate(new Date(), 'yyyy-MM-dd');
 
                                                     return (
                                                         <Box
