@@ -80,7 +80,8 @@ import {
     FilterAlt as FilterAltIcon,
     VideoCall as VideoCallIcon,
     ArrowDropDown as ArrowDropDownIcon,
-    EventNote as EventNoteIcon
+    EventNote as EventNoteIcon,
+    Timeline as TimelineIcon
 } from '@mui/icons-material';
 
 import {
@@ -123,12 +124,13 @@ const APPOINTMENT_TYPES = [
 ];
 
 const STATUS_OPTIONS = [
-    {label: 'Todos os status', value: ''},
-    {label: 'Pendente', value: 'pendente'},
-    {label: 'Reagendado', value: 'reagendado'},
-    {label: 'Primeira Consulta', value: 'primeira consulta'},
-    {label: 'Reag. Pendente', value: 'reag. pendente'},
+    {label: 'Todos os status', value: '', icon: null, color: '#757575'},
+    {label: 'Pendente', value: 'pendente', icon: <EventNoteIcon fontSize="small" />, color: '#757575'},
+    {label: 'Reagendado', value: 'reagendado', icon: <ScheduleSendIcon fontSize="small" />, color: '#9C27B0'},
+    {label: 'Primeira Consulta', value: 'primeira consulta', icon: <AddCircleOutlineIcon fontSize="small" />, color: '#2196F3'},
+    {label: 'Reag. Pendente', value: 'reag. pendente', icon: <ScheduleSendIcon fontSize="small" />, color: '#FF9800'},
 ];
+
 
 const VIEWS = {
     TABLE: 'table',
@@ -312,6 +314,80 @@ const FilterSection = ({title, children, actionElement}) => {
             </Box>
             {children}
         </Box>
+    );
+};
+
+// Componente StatusChip para exibição consistente em todo o app
+const StatusChip = ({ status, onClick, size = 'medium' }) => {
+    // Obter configurações de cor e estilo com base no status
+    const getStatusConfig = (status) => {
+        switch (status.toLowerCase()) {
+            case 'pendente':
+                return {
+                    bgColor: '#F5F5F5',
+                    color: '#757575',
+                    icon: <EventNoteIcon fontSize="inherit" />
+                };
+            case 'reagendado':
+                return {
+                    bgColor: '#F3E5F5',
+                    color: '#9C27B0',
+                    icon: <ScheduleSendIcon fontSize="inherit" />
+                };
+            case 'primeira consulta':
+                return {
+                    bgColor: '#E3F2FD',
+                    color: '#2196F3',
+                    icon: <AddCircleOutlineIcon fontSize="inherit" />
+                };
+            case 'reag. pendente':
+                return {
+                    bgColor: '#FFF8E1',
+                    color: '#FF9800',
+                    icon: <ScheduleSendIcon fontSize="inherit" />
+                };
+            default:
+                return {
+                    bgColor: '#F5F5F5',
+                    color: '#757575',
+                    icon: <EventNoteIcon fontSize="inherit" />
+                };
+        }
+    };
+
+    const config = getStatusConfig(status);
+
+    return (
+        <Chip
+            label={status.charAt(0).toUpperCase() + status.slice(1)}
+            size={size}
+            icon={size === 'small' ? null :
+                <Box component="span" sx={{ ml: 0.5, display: 'flex', alignItems: 'center' }}>
+                    {config.icon}
+                </Box>
+            }
+            onClick={onClick}
+            sx={{
+                borderRadius: size === 'small' ? '12px' : '16px',
+                fontSize: size === 'small' ? '0.75rem' : '0.8rem',
+                fontWeight: 500,
+                backgroundColor: config.bgColor,
+                color: config.color,
+                cursor: onClick ? 'pointer' : 'default',
+                '&:hover': onClick ? {
+                    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+                    backgroundColor: alpha(config.bgColor, 0.8)
+                } : {},
+                transition: 'all 0.2s ease',
+                height: size === 'small' ? 24 : 32,
+                px: size === 'small' ? 1 : 1.5,
+                '& .MuiChip-icon': {
+                    color: 'inherit',
+                    marginLeft: size === 'small' ? 0.3 : 0.5,
+                    fontSize: size === 'small' ? '0.7rem' : '0.9rem'
+                }
+            }}
+        />
     );
 };
 
@@ -655,20 +731,8 @@ const PatientsListPage = ({onPatientClick}) => {
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [newStatus, setNewStatus] = useState("pendente");
 
+    const [statusHistory, setStatusHistory] = useState([]);
 
-
-    const handleStatusSave = async () => {
-        if (!selectedPatient) return;
-        try {
-            // Supondo que você queira armazenar o status como um array (statusList) conforme sua função FirebaseService
-            await FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus]);
-            // Se desejar, atualize o estado local para refletir a mudança na interface
-            // (por exemplo, atualizando a lista de pacientes ou a propriedade de status do paciente)
-        } catch (error) {
-            console.error("Erro ao atualizar status do paciente:", error);
-        }
-        setStatusDialogOpen(false);
-    };
 
     // Estados para paginação
     const rowsPerPage = 10;
@@ -683,12 +747,104 @@ const PatientsListPage = ({onPatientClick}) => {
         direction: 'asc'
     });
 
-    const handleStatusClick = (patient, currentStatus) => {
-        // Evita que o clique no status dispare outras ações de linha
-        setSelectedPatient(patient);
-        setNewStatus(currentStatus || "pendente"); // inicia com o status atual ou padrão "pendente"
-        setStatusDialogOpen(true);
+
+
+    const [statusHistoryLoading, setStatusHistoryLoading] = useState(false);
+
+    // Função auxiliar para extrair valores de dat
+    const getDateValue = (obj, field) => {
+        if (!obj || !obj[field]) return null;
+
+        if (obj[field] instanceof Date) {
+            return obj[field];
+        }
+
+        if (typeof obj[field].toDate === 'function') {
+            return obj[field].toDate();
+        }
+
+        if (typeof obj[field] === 'string') {
+            // Tentar diferentes formatos de data
+            try {
+                const parsedDate = parseISO(obj[field]);
+                if (isValid(parsedDate)) {
+                    return parsedDate;
+                }
+            } catch (e) {
+                // Tentar outro formato
+                try {
+                    const parsedDate = parse(obj[field], 'dd/MM/yyyy', new Date());
+                    if (isValid(parsedDate)) {
+                        return parsedDate;
+                    }
+                } catch (e2) {
+                    console.warn(`Não foi possível parsear a data: ${obj[field]}`);
+                }
+            }
+        }
+
+        return null;
     };
+
+    const loadStatusHistory = useCallback(async (patientId) => {
+        if (!patientId || !user?.uid) return;
+
+        setStatusHistoryLoading(true);
+        setStatusHistory([]); // Limpa histórico anterior
+
+        try {
+            // Chamada para a função real do FirebaseService
+            const history = await FirebaseService.getPatientStatusHistory(user.uid, patientId);
+
+            // Se chegamos aqui, temos dados reais ou um array vazio
+            setStatusHistory(history || []);
+            return history;
+        } catch (error) {
+            console.error("Erro ao carregar histórico de status:", error);
+            setStatusHistory([]);
+            return [];
+        } finally {
+            setStatusHistoryLoading(false);
+        }
+    }, [user]);
+
+    const handleStatusClick = useCallback((patient, currentStatus, event) => {
+        // Evitar que o clique na linha seja ativado
+        if (event) {
+            event.stopPropagation();
+        }
+
+        // Determinar o status atual a partir dos dados do paciente
+        let statusToUse = currentStatus;
+
+        // Se o paciente tiver um statusList, use o primeiro item
+        if (patient.statusList && patient.statusList.length > 0) {
+            statusToUse = patient.statusList[0];
+        }
+        // Caso contrário, determinar o status dinamicamente (lógica existente)
+        else if (!statusToUse) {
+            const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
+            const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
+
+            if (!lastConsultDate && nextConsultDate) {
+                statusToUse = 'primeira consulta';
+            } else if (patient.consultationRescheduled) {
+                statusToUse = patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
+            } else {
+                statusToUse = 'pendente';
+            }
+        }
+
+        // Definir estados em uma única sequência
+        setSelectedPatient(patient);
+        setNewStatus(statusToUse);
+
+        // Carregar histórico antes de abrir o dialog
+        loadStatusHistory(patient.id).then(() => {
+            // Só abre o dialog depois que o histórico estiver carregado
+            setStatusDialogOpen(true);
+        });
+    }, [loadStatusHistory, getDateValue]);
 
     // Estados para filtros
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -707,6 +863,57 @@ const PatientsListPage = ({onPatientClick}) => {
         newPatients: 0,
         upcomingAppointments: 0
     });
+
+    const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+    const [statusUpdateSuccess, setStatusUpdateSuccess] = useState(false);
+    const [statusUpdateError, setStatusUpdateError] = useState(null);
+
+    const handleStatusSave = useCallback(async () => {
+        if (!selectedPatient || !user?.uid) return;
+
+        setStatusUpdateLoading(true);
+        setStatusUpdateError(null);
+        setStatusUpdateSuccess(false);
+
+        try {
+            await FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus]);
+
+            // Atualizar o estado local para refletir a mudança na UI de forma eficiente
+            setPatients(prevPatients => {
+                return prevPatients.map(patient =>
+                    patient.id === selectedPatient.id
+                        ? { ...patient, statusList: [newStatus] }
+                        : patient
+                );
+            });
+
+            await FirebaseService.addPatientStatusHistory(
+                user.uid,
+                selectedPatient.id,
+                newStatus,
+                '' // Notas opcionais sobre a mudança
+            );
+
+            // Registrar sucesso sem piscar a tela
+            setStatusUpdateSuccess(true);
+
+            // Usar um único timeout
+            setTimeout(() => {
+                setStatusDialogOpen(false);
+
+                // Limpar estados após o dialog fechar
+                setTimeout(() => {
+                    setStatusUpdateSuccess(false);
+                    setSelectedPatient(null); // Limpar seleção após fechar
+                }, 300); // Pequeno delay para animação de fechamento
+            }, 1500);
+        } catch (error) {
+            console.error("Erro ao atualizar status do paciente:", error);
+            setStatusUpdateError("Não foi possível atualizar o status. Tente novamente.");
+        } finally {
+            setStatusUpdateLoading(false);
+        }
+    }, [selectedPatient, newStatus, user]);
 
     // Carregar dados iniciais
     useEffect(() => {
@@ -806,40 +1013,28 @@ const PatientsListPage = ({onPatientClick}) => {
         setPage(1); // Resetar para primeira página quando os filtros mudam
     }, [patients, searchTerm, sortConfig, activeFilters, currentTab, favoritePatients]);
 
-    // Função auxiliar para extrair valores de data
-    const getDateValue = (obj, field) => {
-        if (!obj || !obj[field]) return null;
 
-        if (obj[field] instanceof Date) {
-            return obj[field];
+    const determinePatientStatus = (patient) => {
+        // Primeiro, verificar se o paciente tem um statusList definido
+        if (patient.statusList && patient.statusList.length > 0) {
+            return patient.statusList[0];
         }
 
-        if (typeof obj[field].toDate === 'function') {
-            return obj[field].toDate();
+        // Caso contrário, determinar com base em outros campos
+        const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
+        const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
+
+        if (!lastConsultDate && nextConsultDate) {
+            return 'primeira consulta';
+        } else if (patient.consultationRescheduled) {
+            return patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
         }
 
-        if (typeof obj[field] === 'string') {
-            // Tentar diferentes formatos de data
-            try {
-                const parsedDate = parseISO(obj[field]);
-                if (isValid(parsedDate)) {
-                    return parsedDate;
-                }
-            } catch (e) {
-                // Tentar outro formato
-                try {
-                    const parsedDate = parse(obj[field], 'dd/MM/yyyy', new Date());
-                    if (isValid(parsedDate)) {
-                        return parsedDate;
-                    }
-                } catch (e2) {
-                    console.warn(`Não foi possível parsear a data: ${obj[field]}`);
-                }
-            }
-        }
-
-        return null;
+        return 'pendente';
     };
+
+
+
 
     // Aplicar filtro baseado na aba selecionada
     const applyTabFilter = (patients) => {
@@ -1113,6 +1308,18 @@ const PatientsListPage = ({onPatientClick}) => {
             }));
         }
     };
+    const handleCloseDialog = useCallback(() => {
+        if (statusUpdateLoading) return; // Não feche durante o salvamento
+
+        setStatusDialogOpen(false);
+
+        // Limpar estados após a animação de fechamento
+        setTimeout(() => {
+            setStatusUpdateError(null);
+            setStatusUpdateSuccess(false);
+            setSelectedPatient(null);
+        }, 300);
+    }, [statusUpdateLoading]);
 
     const handleClearFilters = () => {
         setActiveFilters({
@@ -1805,35 +2012,10 @@ const PatientsListPage = ({onPatientClick}) => {
                                     </TableCell>
 
                                     <TableCell>
-                                        <Chip
-                                            label={status.charAt(0).toUpperCase() + status.slice(1)}
-                                            size="small"
-                                            sx={{
-                                                borderRadius: '12px',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 500,
-                                                backgroundColor:
-                                                    status === 'pendente'
-                                                        ? '#F5F5F5'
-                                                        : status === 'reagendado'
-                                                            ? '#F3E5F5'
-                                                            : status === 'primeira consulta'
-                                                                ? '#E3F2FD'
-                                                                : '#FFF8E1',
-                                                color:
-                                                    status === 'pendente'
-                                                        ? '#757575'
-                                                        : status === 'reagendado'
-                                                            ? '#9C27B0'
-                                                            : status === 'primeira consulta'
-                                                                ? '#2196F3'
-                                                                : '#FF9800',
-                                                boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)'
-                                            }}
-                                            onClick={(e) => {
-                                                e.stopPropagation(); // para não disparar o clique da linha inteira
-                                                handleStatusClick(patient, status);
-                                            }}
+                                        <StatusChip
+                                            status={determinePatientStatus(patient)}
+                                            onClick={(e) => handleStatusClick(patient, null, e)}
+                                            size="medium"
                                         />
                                     </TableCell>
 
@@ -1902,28 +2084,198 @@ const PatientsListPage = ({onPatientClick}) => {
                 </Box>
             )}
 
-            <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)}>
-                <DialogTitle>Alterar Status do Paciente</DialogTitle>
-                <DialogContent>
-                    <FormControl fullWidth>
-                        <InputLabel id="status-select-label">Status</InputLabel>
-                        <Select
-                            labelId="status-select-label"
-                            value={newStatus}
-                            label="Status"
-                            onChange={(e) => setNewStatus(e.target.value)}
-                        >
-                            {STATUS_OPTIONS.filter(option => option.value !== "").map(option => (
-                                <MenuItem key={option.value} value={option.value}>
+            <Dialog
+                open={statusDialogOpen}
+                onClose={handleCloseDialog}
+                PaperProps={{
+                    sx: {
+                        borderRadius: '20px',
+                        minWidth: '400px',
+                        maxWidth: '90vw'
+                    }
+                }}
+                // Impedir fechamento ao clicar fora quando estiver processando
+                disableEscapeKeyDown={statusUpdateLoading}
+                // Impedir fechamento ao clicar fora quando estiver processando
+                onBackdropClick={(e) => {
+                    if (statusUpdateLoading) {
+                        e.stopPropagation();
+                    }
+                }}
+            >
+                <DialogTitle sx={{
+                    borderBottom: `1px solid ${theme.palette.divider}`,
+                    pb: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <FilterAltIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                        <Typography variant="h6">Alterar Status do Paciente</Typography>
+                    </Box>
+                    <IconButton
+                        edge="end"
+                        onClick={handleCloseDialog}
+                        disabled={statusUpdateLoading}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+
+                <DialogContent sx={{ pt: 3, pb: 1 }}>
+                    {selectedPatient && (
+                        <Box sx={{ mb: 3 }}>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                Paciente
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Avatar
+                                    src={selectedPatient.patientPhotoUrl}
+                                    alt={selectedPatient.patientName || "Paciente"}
+                                    sx={{
+                                        width: 40,
+                                        height: 40,
+                                        mr: 2,
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: theme.palette.primary.main
+                                    }}
+                                >
+                                    {selectedPatient.patientName ? selectedPatient.patientName.charAt(0) : "P"}
+                                </Avatar>
+                                <Box>
+                                    <Typography variant="subtitle1" fontWeight={500}>
+                                        {selectedPatient.patientName || "Paciente sem nome"}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {selectedPatient.patientEmail || "Sem e-mail"}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </Box>
+                    )}
+
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
+                        Selecione o novo status
+                    </Typography>
+
+                    {/* Botões de status */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                        {STATUS_OPTIONS.filter(option => option.value !== "").map(option => (
+                            <Button
+                                key={option.value}
+                                variant={newStatus === option.value ? "contained" : "outlined"}
+                                onClick={() => !statusUpdateLoading && setNewStatus(option.value)}
+                                disabled={statusUpdateLoading}
+                                sx={{
+                                    justifyContent: 'flex-start',
+                                    py: 1.5,
+                                    px: 2,
+                                    borderRadius: '12px',
+                                    borderColor: newStatus === option.value
+                                        ? 'transparent'
+                                        : theme.palette.divider,
+                                    backgroundColor: newStatus === option.value
+                                        ? theme.palette.primary.main
+                                        : 'transparent',
+                                    color: newStatus === option.value
+                                        ? 'white'
+                                        : 'text.primary',
+                                    '&:hover': {
+                                        backgroundColor: newStatus === option.value
+                                            ? theme.palette.primary.dark
+                                            : alpha(theme.palette.primary.main, 0.04),
+                                    }
+                                }}
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                    <Box
+                                        sx={{
+                                            width: 12,
+                                            height: 12,
+                                            borderRadius: '50%',
+                                            mr: 2,
+                                            backgroundColor: option.color
+                                        }}
+                                    />
                                     {option.label}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                                    {option.icon && (
+                                        <Box sx={{ ml: 'auto', opacity: 0.7 }}>
+                                            {option.icon}
+                                        </Box>
+                                    )}
+                                </Box>
+                            </Button>
+                        ))}
+                    </Box>
+
+                    {/* Histórico de status com estado de carregamento */}
+                    {(statusHistory.length > 0 || statusHistoryLoading) && (
+                        <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                Histórico de Status
+                            </Typography>
+                            {statusHistoryLoading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                    <CircularProgress size={24} />
+                                </Box>
+                            ) : (
+                                <Box sx={{ maxHeight: '150px', overflow: 'auto' }}>
+                                    {statusHistory.map((item, index) => (
+                                        <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                                            <TimelineIcon sx={{ fontSize: '1rem', mr: 1, mt: 0.5, color: 'text.secondary' }} />
+                                            <Box>
+                                                <Typography variant="body2">
+                                                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {format(new Date(item.timestamp), 'dd/MM/yyyy HH:mm')} - {item.updatedBy || 'Sistema'}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+                        </Box>
+                    )}
+
+                    {/* Alertas de feedback */}
+                    {statusUpdateError && (
+                        <Alert severity="error" sx={{ mt: 2 }}>
+                            {statusUpdateError}
+                        </Alert>
+                    )}
+
+                    {statusUpdateSuccess && (
+                        <Alert severity="success" sx={{ mt: 2 }}>
+                            Status atualizado com sucesso!
+                        </Alert>
+                    )}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setStatusDialogOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleStatusSave} variant="contained">Salvar</Button>
+
+                <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                    <Button
+                        onClick={handleCloseDialog}
+                        variant="outlined"
+                        disabled={statusUpdateLoading}
+                        sx={{ borderRadius: '50px' }}
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={handleStatusSave}
+                        variant="contained"
+                        disabled={statusUpdateLoading}
+                        sx={{
+                            borderRadius: '50px',
+                            position: 'relative',
+                            minWidth: '100px'
+                        }}
+                    >
+                        {statusUpdateLoading ? (
+                            <CircularProgress size={24} sx={{ color: 'white' }} />
+                        ) : "Salvar"}
+                    </Button>
                 </DialogActions>
             </Dialog>
         </TableContainer>
@@ -2078,49 +2430,25 @@ const PatientsListPage = ({onPatientClick}) => {
                                     <Divider sx={{my: 1.5}}/>
 
                                     <Box sx={{mb: 'auto'}}>
-                                        <Box sx={{display: 'flex', justifyContent: 'space-between', mb: 1}}>
-                                            <Box sx={{display: 'flex', alignItems: 'center'}}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                 {gender.toLowerCase() === 'masculino' ? (
                                                     <Tooltip title="Masculino">
-                                                        <MaleIcon sx={{
-                                                            color: theme.palette.info.main,
-                                                            mr: 0.5,
-                                                            fontSize: '1rem'
-                                                        }}/>
+                                                        <MaleIcon sx={{ color: theme.palette.info.main, mr: 0.5, fontSize: '1rem' }}/>
                                                     </Tooltip>
                                                 ) : gender.toLowerCase() === 'feminino' ? (
                                                     <Tooltip title="Feminino">
-                                                        <FemaleIcon sx={{color: '#E91E63', mr: 0.5, fontSize: '1rem'}}/>
+                                                        <FemaleIcon sx={{ color: '#E91E63', mr: 0.5, fontSize: '1rem' }}/>
                                                     </Tooltip>
                                                 ) : (
                                                     '-'
                                                 )}
                                                 <Typography variant="body2">{age} anos</Typography>
                                             </Box>
-                                            <Chip
-                                                label={status.charAt(0).toUpperCase() + status.slice(1)}
+                                            <StatusChip
+                                                status={determinePatientStatus(patient)}
+                                                onClick={(e) => handleStatusClick(patient, null, e)}
                                                 size="small"
-                                                sx={{
-                                                    height: 20,
-                                                    fontSize: '0.65rem',
-                                                    fontWeight: 600,
-                                                    backgroundColor:
-                                                        status === 'pendente'
-                                                            ? '#F5F5F5'
-                                                            : status === 'reagendado'
-                                                                ? '#F3E5F5'
-                                                                : status === 'primeira consulta'
-                                                                    ? '#E3F2FD'
-                                                                    : '#FFF8E1',
-                                                    color:
-                                                        status === 'pendente'
-                                                            ? '#757575'
-                                                            : status === 'reagendado'
-                                                                ? '#9C27B0'
-                                                                : status === 'primeira consulta'
-                                                                    ? '#2196F3'
-                                                                    : '#FF9800',
-                                                }}
                                             />
                                         </Box>
 
