@@ -50,13 +50,8 @@ import LinkIcon from "@mui/icons-material/Link";
 import ImageIcon from "@mui/icons-material/Image";
 import ArticleIcon from "@mui/icons-material/Article";
 import WarningIcon from "@mui/icons-material/Warning";
-import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
-import ThermostatIcon from "@mui/icons-material/Thermostat";
-import SpeedIcon from "@mui/icons-material/Speed";
-import BubbleChartIcon from "@mui/icons-material/BubbleChart";
-import FavoriteIcon from "@mui/icons-material/Favorite";
-import LabelIcon from "@mui/icons-material/Label";
-import CategoryIcon from "@mui/icons-material/Category";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -64,6 +59,8 @@ import { ptBR } from 'date-fns/locale';
 // Serviço Firebase
 import FirebaseService from "../../../lib/firebaseService";
 import AnamneseViewer from "./anamneseViwer";
+import ReceitaViewer from "./receitasViwer";
+import jsPDF from "jspdf";
 
 // Tema com cores para cada tipo de nota
 const theme = createTheme({
@@ -354,11 +351,318 @@ const ViewNoteDialog = ({
         }));
     };
 
+
     const handleOpenPdf = () => {
+        // Se já existe um PDF salvo, abre normalmente
         if (noteData.pdfUrl) {
             window.open(noteData.pdfUrl, '_blank');
+            return;
+        }
+
+        // Se não há PDF pré-gerado e a nota é uma receita, gera dinamicamente
+        if (noteType === 'Receita') {
+            generateAndOpenPdf();
         }
     };
+
+
+
+// Versão corrigida do generateAndOpenPdf sem referências a toast
+    const generateAndOpenPdf = () => {
+        try {
+            // Gerar PDF baseado nos dados da receita
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 20;
+            let yPos = 20;
+
+            // Helper para adicionar texto com quebra automática
+            const addWrappedText = (text, x, y, maxWidth, lineHeight = 7) => {
+                if (!text) return y;
+                const lines = doc.splitTextToSize(text, maxWidth);
+                doc.text(lines, x, y);
+                return y + (lines.length * lineHeight);
+            };
+
+            // Cabeçalho
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+
+            // Adiciona a palavra "RECEITA" centralizada e em negrito
+            const tipoText = noteData.tipo === "controlada" ? "RECEITA CONTROLADA" :
+                noteData.tipo === "especial" ? "RECEITA ESPECIAL" :
+                    noteData.tipo === "antimicrobiano" ? "RECEITA DE ANTIMICROBIANO" :
+                        "RECEITA MÉDICA";
+
+            doc.text(tipoText, pageWidth / 2, yPos, { align: 'center' });
+            yPos += 15;
+
+            // Dados do médico
+            const doctorName = noteData.doctorName || "Dr(a).";
+            const doctorCRM = noteData.doctorCRM || "CRM:";
+            const doctorSpecialty = noteData.doctorSpecialty || "";
+
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${doctorName}`, margin, yPos);
+            yPos += 7;
+
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${doctorCRM}`, margin, yPos);
+
+            if (doctorSpecialty) {
+                yPos += 7;
+                doc.text(`${doctorSpecialty}`, margin, yPos);
+            }
+
+            yPos += 10;
+
+            // Linha separadora
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, yPos, pageWidth - margin, yPos);
+            yPos += 15;
+
+            // Título da receita se disponível
+            if (noteData.titulo || noteData.noteTitle) {
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                const titulo = noteData.titulo || noteData.noteTitle;
+                doc.text(titulo, margin, yPos);
+                yPos += 10;
+            }
+
+            // Dados do paciente e da receita
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Paciente: ${getPatientName()}`, margin, yPos);
+            yPos += 7;
+
+            if (patientData && patientData.dataNascimento) {
+                const dataNasc = patientData.dataNascimento instanceof Date ?
+                    patientData.dataNascimento :
+                    patientData.dataNascimento.toDate ?
+                        patientData.dataNascimento.toDate() :
+                        new Date(patientData.dataNascimento);
+
+                const idade = Math.floor((new Date() - dataNasc) / (365.25 * 24 * 60 * 60 * 1000));
+                doc.text(`Idade: ${idade} anos`, margin, yPos);
+                yPos += 7;
+            }
+
+            doc.setFont('helvetica', 'normal');
+
+            // Data de emissão e validade
+            doc.text(`Data de emissão: ${formatDate(noteData.dataEmissao || noteData.createdAt)}`, margin, yPos);
+            yPos += 7;
+
+            if (noteData.dataValidade) {
+                doc.text(`Válida até: ${formatDate(noteData.dataValidade)}`, margin, yPos);
+                yPos += 7;
+            }
+
+            // Linha separadora
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, yPos, pageWidth - margin, yPos);
+            yPos += 15;
+
+            // Medicamentos
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text("PRESCRIÇÃO:", margin, yPos);
+            yPos += 10;
+
+            // Lista de medicamentos
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+
+            const medicamentos = noteData.medicamentos || noteData.medications || [];
+
+            if (medicamentos.length === 0) {
+                doc.text("Nenhum medicamento prescrito", margin, yPos);
+                yPos += 10;
+            } else {
+                medicamentos.forEach((med, index) => {
+                    if (yPos > pageHeight - 40) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+
+                    // Normaliza nomes de campos para compatibilidade
+                    const nome = med.nome || med.medicationName || med.name || '';
+                    const concentracao = med.concentracao || med.dosage || '';
+                    const posologia = med.posologia || med.frequency || '';
+                    const duracao = med.duracao || med.duration || '';
+                    const quantidade = med.quantidade || med.quantity || '';
+                    const observacao = med.observacao || med.observation || '';
+
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(`${index + 1}. ${nome}${concentracao ? ` ${concentracao}` : ''}`, margin, yPos);
+                    yPos += 7;
+
+                    doc.setFont('helvetica', 'normal');
+                    if (posologia) {
+                        yPos = addWrappedText(`Posologia: ${posologia}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
+                    }
+
+                    if (quantidade) {
+                        yPos = addWrappedText(`Quantidade: ${quantidade}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
+                    }
+
+                    if (duracao) {
+                        yPos = addWrappedText(`Duração: ${duracao}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
+                    }
+
+                    if (observacao) {
+                        yPos = addWrappedText(`Observação: ${observacao}`, margin + 5, yPos, pageWidth - (2 * margin) - 5) + 5;
+                    }
+
+                    yPos += 5;
+                });
+            }
+
+            // Orientação geral e observações
+            if (noteData.orientacaoGeral) {
+                if (yPos > pageHeight - 60) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                doc.setDrawColor(200, 200, 200);
+                doc.line(margin, yPos, pageWidth - margin, yPos);
+                yPos += 10;
+
+                doc.setFont('helvetica', 'bold');
+                doc.text("Orientações Gerais:", margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(noteData.orientacaoGeral, margin, yPos, pageWidth - (2 * margin)) + 10;
+            }
+
+            // Incluir texto da nota se disponível e não for duplicação das orientações
+            if (noteData.noteText &&
+                noteData.noteText !== noteData.orientacaoGeral &&
+                !medicamentos.some(med => noteData.noteText.includes(med.nome || med.medicationName || med.name || ''))) {
+
+                if (yPos > pageHeight - 60) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                if (!noteData.orientacaoGeral) {
+                    doc.setDrawColor(200, 200, 200);
+                    doc.line(margin, yPos, pageWidth - margin, yPos);
+                    yPos += 10;
+                }
+
+                doc.setFont('helvetica', 'bold');
+                doc.text("Observações Adicionais:", margin, yPos);
+                yPos += 7;
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(noteData.noteText, margin, yPos, pageWidth - (2 * margin)) + 10;
+            }
+
+            // Assinatura
+            if (yPos > pageHeight - 50) {
+                doc.addPage();
+                yPos = 40;
+            } else {
+                yPos = pageHeight - 50;
+            }
+
+            // Local e data
+            doc.setFont('helvetica', 'normal');
+            const dataEmissao = noteData.dataEmissao || noteData.createdAt;
+            const dataFormatada = dataEmissao ? formatDate(dataEmissao) : format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+            const localData = `Local, ${dataFormatada}`;
+            doc.text(localData, pageWidth / 2, yPos - 10, { align: 'center' });
+
+            // Linha para assinatura
+            doc.setDrawColor(100, 100, 100);
+            const signatureWidth = 100;
+            const signatureX = (pageWidth - signatureWidth) / 2;
+            doc.line(signatureX, yPos, signatureX + signatureWidth, yPos);
+            yPos += 10;
+
+            // Texto da assinatura
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${doctorName}`, pageWidth / 2, yPos, { align: 'center' });
+            yPos += 5;
+            doc.text(`${doctorCRM}`, pageWidth / 2, yPos, { align: 'center' });
+
+            if (doctorSpecialty) {
+                yPos += 5;
+                doc.text(`${doctorSpecialty}`, pageWidth / 2, yPos, { align: 'center' });
+            }
+
+            // Rodapé com numeração de páginas
+            const totalPages = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'italic');
+                doc.text(
+                    `Página ${i} de ${totalPages}`,
+                    pageWidth - margin,
+                    pageHeight - 10,
+                    { align: 'right' }
+                );
+
+                // Adicionar aviso de uso nas páginas (se for controlada ou especial)
+                if (noteData.tipo === "controlada" || noteData.tipo === "especial" || noteData.tipo === "antimicrobiano") {
+                    const avisoText = noteData.tipo === "controlada" ?
+                        "RECEITA SUJEITA A CONTROLE ESPECIAL" :
+                        noteData.tipo === "especial" ?
+                            "RECEITA DE MEDICAMENTO SUJEITO A CONTROLE ESPECIAL" :
+                            "RECEITA DE ANTIMICROBIANO";
+
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(
+                        avisoText,
+                        margin,
+                        pageHeight - 10,
+                        { align: 'left' }
+                    );
+                }
+            }
+
+            // Tentativa de salvar o PDF no Firestore se necessário
+            const savePdfToStorage = async () => {
+                try {
+                    if (doctorId && patientId && noteData.id) {
+                        const pdfBlob = doc.output('blob');
+                        const pdfFileName = `receitas/${doctorId}/${patientId}/${noteData.id}.pdf`;
+                        const pdfUrl = await FirebaseService.uploadFile(pdfBlob, pdfFileName);
+
+                        // Atualiza o registro da receita com o URL do PDF
+                        await FirebaseService.updatePrescription(doctorId, patientId, noteData.id, {
+                            pdfUrl: pdfUrl
+                        });
+
+                        console.log("PDF salvo no Storage com sucesso:", pdfUrl);
+                    }
+                } catch (error) {
+                    console.error("Erro ao salvar PDF no Storage:", error);
+                    // Não impede a exibição do PDF mesmo se falhar o salvamento
+                }
+            };
+
+            // Tenta salvar o PDF no Storage em background, mas não espera para exibir
+            savePdfToStorage();
+
+            // Abrir PDF em uma nova janela
+            window.open(URL.createObjectURL(doc.output('blob')), '_blank');
+
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            // Notificação simples de erro
+            alert("Erro ao gerar PDF. Tente novamente.");
+        }
+    };
+
+
 
     // Função corrigida para abrir anexos
     const handleOpenAttachment = (attachment) => {
@@ -731,6 +1035,18 @@ const ViewNoteDialog = ({
         );
     };
 
+    const renderReceitaContent = () => {
+        if (noteType !== 'Receita') return null;
+
+        return (
+            <ReceitaViewer
+                receitaData={noteData}
+                typeColor={typeColor}
+                onOpenPdf={handleOpenPdf}
+            />
+        );
+    };
+
     // Rendering para anexos
     const renderAttachments = () => {
         if (!noteData.attachments || noteData.attachments.length === 0) return null;
@@ -955,7 +1271,7 @@ const ViewNoteDialog = ({
                         {renderCategoryBanner()}
 
                         {/* Conteúdo principal */}
-                        {noteType !== 'Anamnese' &&(
+                        {noteType !== 'Anamnese' && noteType !== 'Receita' && (
                             <Paper
                                 elevation={0}
                                 sx={{
@@ -967,56 +1283,20 @@ const ViewNoteDialog = ({
                                 }}
                             >
                                 {/* Texto principal da nota */}
-                                {noteData.noteText &&(
+                                {noteData.noteText && (
                                     <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
                                         {noteData.noteText}
                                     </Typography>
                                 )}
-
-                                {/* Se for uma receita, mostra uma mensagem para ver o PDF */}
-                                {noteType === 'Receita' && noteData.pdfUrl && (
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            flexDirection: 'column',
-                                            mt: 2,
-                                            p: 2,
-                                            borderRadius: 2,
-                                            backgroundColor: themeToUse.light,
-                                            border: `1px dashed ${themeToUse.main}`
-                                        }}
-                                    >
-                                        <Button
-                                            variant="contained"
-                                            startIcon={<PictureAsPdfIcon />}
-                                            onClick={handleOpenPdf}
-                                            sx={{
-                                                backgroundColor: themeToUse.main,
-                                                color: 'white',
-                                                '&:hover': {
-                                                    backgroundColor: themeToUse.dark
-                                                },
-                                                mb: 1
-                                            }}
-                                        >
-                                            Visualizar Receita Completa (PDF)
-                                        </Button>
-                                        <Typography variant="caption" color="textSecondary">
-                                            Clique para abrir a receita em formato PDF
-                                        </Typography>
-                                    </Box>
-                                )}
                             </Paper>
                         )}
 
+                        {/* Renderiza o ReceitaViewer para notas do tipo Receita */}
+                        {noteType === 'Receita' && renderReceitaContent()}
 
-                        {/* Detalhes específicos do tipo de nota */}
-                        {noteType === 'Receita' && renderReceitaDetails()}
+                        {/* Mantém os detalhes específicos da anamnese */}
                         {noteType === 'Anamnese' && renderAnamneseDetails()}
                         {renderMedicamentos()}
-                        {renderAttachments()}
                     </Box>
                 </DialogContent>
 
@@ -1071,7 +1351,7 @@ const ViewNoteDialog = ({
                             </Button>
 
                             <Box>
-                                {noteData.pdfUrl && (
+                                {(noteData.pdfUrl || noteType === 'Receita') && (
                                     <Button
                                         variant="outlined"
                                         startIcon={<PictureAsPdfIcon />}

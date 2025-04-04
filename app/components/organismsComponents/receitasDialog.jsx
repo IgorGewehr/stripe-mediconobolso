@@ -753,6 +753,10 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
         setIsSubmitting(true);
         try {
+            // Gere o PDF
+            const pdfDoc = generateReceitaPDF();
+            const pdfBlob = pdfDoc.output('blob');
+
             // Normaliza os dados da receita
             let receitaId;
             const currentPatientId = patientId || selectedPatient?.id;
@@ -780,6 +784,15 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 receitaId = await FirebaseService.createPrescription(doctorId, currentPatientId, normalizedData);
             }
 
+            // Salvar o PDF no Firebase Storage
+            const pdfFileName = `receitas/${doctorId}/${currentPatientId}/${receitaId}.pdf`;
+            const pdfUrl = await FirebaseService.uploadFile(pdfBlob, pdfFileName);
+
+            // Atualize a receita com o URL do PDF
+            await FirebaseService.updatePrescription(doctorId, currentPatientId, receitaId, {
+                pdfUrl: pdfUrl
+            });
+
             // Cria uma nota associada à receita
             const medicamentosText = receitaData.medicamentos.map(med =>
                 `- ${med.nome}${med.concentracao ? ` ${med.concentracao}` : ''}: ${med.posologia}`
@@ -794,6 +807,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 noteType: "Receita", // Tipo especial para receitas
                 consultationDate: receitaData.dataEmissao,
                 prescriptionId: receitaId, // Referência para a receita
+                pdfUrl: pdfUrl // Adicione a URL do PDF à nota
             };
 
             await FirebaseService.createNote(doctorId, currentPatientId, noteData);
