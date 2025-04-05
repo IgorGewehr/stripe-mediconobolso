@@ -16,6 +16,7 @@ import PrescriptionsPage from "../components/receitasTemplate";
 import {useResponsiveScale} from "../components/useScale";
 import CentralAjudaTemplate from "../components/centralAjudaTemplate";
 import UserProfileTemplate from "../components/userProfileTemplate";
+import {HelpCenter} from "@mui/icons-material";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -141,7 +142,7 @@ export default function AppLayout({ children }) {
             case "central de ajuda":
                 return <CentralAjudaTemplate />;
             case "reportar":
-                return <CentralAjudaTemplate isReporte={true} />;
+                return <CentralAjudaTemplate isReporte={true}/>;
             case "meu perfil": // Adicione este novo case para a tela de perfil
                 return <UserProfileTemplate onLogout={logout}/>;
             default:
