@@ -4,17 +4,15 @@ import {
     Typography,
     Divider,
     Chip,
-    Accordion,
-    AccordionSummary,
-    AccordionDetails,
     Button,
     CircularProgress,
     useTheme,
-    alpha
+    alpha,
+    Paper,
+    Grid
 } from "@mui/material";
 
 // Ícones
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import ThermostatIcon from "@mui/icons-material/Thermostat";
@@ -34,29 +32,26 @@ import RestaurantIcon from "@mui/icons-material/Restaurant";
 import AirlineSeatFlatIcon from "@mui/icons-material/AirlineSeatFlat";
 import AirIcon from "@mui/icons-material/Air";
 import WcIcon from "@mui/icons-material/Wc";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import HealingIcon from "@mui/icons-material/Healing";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CancelIcon from "@mui/icons-material/Cancel";
 import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
 import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import WorkIcon from "@mui/icons-material/Work";
+import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 
 // Formatação de data
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Serviço Firebase (para buscar dados da anamnese se necessário)
+// Serviço Firebase
 import FirebaseService from "../../../lib/firebaseService";
-import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 
 const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
     const theme = useTheme();
     const [loading, setLoading] = useState(false);
     const [normalizedData, setNormalizedData] = useState(null);
 
-    // Efeito para normalizar os dados da anamnese, independente de sua estrutura
+    // Efeito para normalizar os dados da anamnese
     useEffect(() => {
         const normalizeData = async () => {
             if (!anamneseData) return;
@@ -128,52 +123,13 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
         );
     }
 
-    // Função para renderizar lista de itens
-    const renderItemList = (items, emptyMessage = "Nenhum item registrado") => {
-        if (!items || items.length === 0) {
-            return (
-                <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', mt: 0.5 }}>
-                    {emptyMessage}
-                </Typography>
-            );
-        }
-
-        return (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                {items.map((item, index) => (
-                    <Chip
-                        key={index}
-                        label={item}
-                        size="small"
-                        sx={{
-                            bgcolor: alpha(typeColor.main, 0.1),
-                            color: theme.palette.text.primary,
-                            fontWeight: 400,
-                        }}
-                    />
-                ))}
-            </Box>
-        );
-    };
-
-    // Função para renderizar seção de texto
-    const renderTextSection = (text) => {
-        if (!text) return null;
-
-        return (
-            <Typography variant="body1" sx={{ mt: 1, whiteSpace: 'pre-line' }}>
-                {text}
-            </Typography>
-        );
-    };
-
     // Função para renderizar sinais vitais de forma compacta
     const renderVitalSigns = () => {
         const vitalSigns = normalizedData.physicalExam?.vitalSigns;
         if (!vitalSigns || Object.values(vitalSigns).every(v => !v)) return null;
 
         return (
-            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {vitalSigns.bloodPressure && (
                     <Chip
                         icon={<MonitorHeartIcon sx={{ fontSize: '1rem' }} />}
@@ -222,139 +178,197 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
         );
     };
 
+    // Função para renderizar lista de itens com chips
+    const renderItemList = (items, emptyMessage = "Nenhum item registrado") => {
+        if (!items || items.length === 0) {
+            return (
+                <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                    {emptyMessage}
+                </Typography>
+            );
+        }
+
+        return (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                {items.map((item, index) => (
+                    <Chip
+                        key={index}
+                        label={item}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(typeColor.main, 0.1),
+                            color: theme.palette.text.primary,
+                            fontWeight: 400,
+                        }}
+                    />
+                ))}
+            </Box>
+        );
+    };
+
     // Função para renderizar seção de hábitos de vida
     const renderSocialHistory = () => {
         const socialHistory = normalizedData.socialHistory;
         if (!socialHistory) return null;
 
         return (
-            <Box sx={{ mt: 2 }}>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
                 {/* Tabagismo */}
                 {socialHistory.isSmoker !== undefined && (
-                    <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            <SmokingRoomsIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#F59E0B' }} />
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                Tabagismo:
-                                <Typography component="span"
-                                            sx={{
-                                                ml: 1,
-                                                color: socialHistory.isSmoker ? '#EF4444' : '#10B981',
-                                                fontWeight: 600
-                                            }}
-                                >
-                                    {socialHistory.isSmoker ? 'Sim' : 'Não'}
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #F59E0B`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <SmokingRoomsIcon sx={{ color: '#F59E0B', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Tabagismo
                                 </Typography>
+                            </Box>
+                            <Typography variant="body1" sx={{
+                                fontWeight: 500,
+                                color: socialHistory.isSmoker ? '#EF4444' : '#10B981'
+                            }}>
+                                {socialHistory.isSmoker ? 'Sim' : 'Não'}
                             </Typography>
-                        </Box>
-
-                        {socialHistory.isSmoker && socialHistory.cigarettesPerDay > 0 && (
-                            <Typography variant="body2" sx={{ ml: 4 }}>
-                                {socialHistory.cigarettesPerDay} cigarros por dia
-                            </Typography>
-                        )}
-                    </Box>
+                            {socialHistory.isSmoker && socialHistory.cigarettesPerDay > 0 && (
+                                <Typography variant="body2" sx={{ mt: 1 }}>
+                                    {socialHistory.cigarettesPerDay} cigarros por dia
+                                </Typography>
+                            )}
+                        </Paper>
+                    </Grid>
                 )}
 
                 {/* Consumo de álcool */}
                 {socialHistory.isAlcoholConsumer !== undefined && (
-                    <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            <LocalBarIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#7C3AED' }} />
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                Consumo de álcool:
-                                <Typography component="span"
-                                            sx={{
-                                                ml: 1,
-                                                color: socialHistory.isAlcoholConsumer ? '#F59E0B' : '#10B981',
-                                                fontWeight: 600
-                                            }}
-                                >
-                                    {socialHistory.isAlcoholConsumer ? 'Sim' : 'Não'}
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #7C3AED`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <LocalBarIcon sx={{ color: '#7C3AED', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Consumo de álcool
                                 </Typography>
+                            </Box>
+                            <Typography variant="body1" sx={{
+                                fontWeight: 500,
+                                color: socialHistory.isAlcoholConsumer ? '#F59E0B' : '#10B981'
+                            }}>
+                                {socialHistory.isAlcoholConsumer ? 'Sim' : 'Não'}
                             </Typography>
-                        </Box>
-
-                        {socialHistory.isAlcoholConsumer && socialHistory.alcoholFrequency && (
-                            <Typography variant="body2" sx={{ ml: 4 }}>
-                                Frequência: {socialHistory.alcoholFrequency}
-                            </Typography>
-                        )}
-                    </Box>
+                            {socialHistory.isAlcoholConsumer && socialHistory.alcoholFrequency && (
+                                <Typography variant="body2" sx={{ mt: 1 }}>
+                                    Frequência: {socialHistory.alcoholFrequency}
+                                </Typography>
+                            )}
+                        </Paper>
+                    </Grid>
                 )}
 
                 {/* Uso de outras substâncias */}
                 {socialHistory.isDrugUser !== undefined && (
-                    <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            <NightlifeIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#EF4444' }} />
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                Uso de outras substâncias:
-                                <Typography component="span"
-                                            sx={{
-                                                ml: 1,
-                                                color: socialHistory.isDrugUser ? '#EF4444' : '#10B981',
-                                                fontWeight: 600
-                                            }}
-                                >
-                                    {socialHistory.isDrugUser ? 'Sim' : 'Não'}
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #EF4444`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <NightlifeIcon sx={{ color: '#EF4444', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Uso de outras substâncias
                                 </Typography>
+                            </Box>
+                            <Typography variant="body1" sx={{
+                                fontWeight: 500,
+                                color: socialHistory.isDrugUser ? '#EF4444' : '#10B981'
+                            }}>
+                                {socialHistory.isDrugUser ? 'Sim' : 'Não'}
                             </Typography>
-                        </Box>
-
-                        {socialHistory.isDrugUser && socialHistory.drugDetails && (
-                            <Typography variant="body2" sx={{ ml: 4 }}>
-                                Detalhes: {socialHistory.drugDetails}
-                            </Typography>
-                        )}
-                    </Box>
+                            {socialHistory.isDrugUser && socialHistory.drugDetails && (
+                                <Typography variant="body2" sx={{ mt: 1 }}>
+                                    Detalhes: {socialHistory.drugDetails}
+                                </Typography>
+                            )}
+                        </Paper>
+                    </Grid>
                 )}
 
                 {/* Atividade Física */}
                 {socialHistory.physicalActivity && (
-                    <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            <SportsBasketballIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#10B981' }} />
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                Atividade Física
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #10B981`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <SportsBasketballIcon sx={{ color: '#10B981', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Atividade Física
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2">
+                                {socialHistory.physicalActivity}
                             </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ ml: 4 }}>
-                            {socialHistory.physicalActivity}
-                        </Typography>
-                    </Box>
+                        </Paper>
+                    </Grid>
                 )}
 
                 {/* Hábitos Alimentares */}
                 {socialHistory.dietHabits && (
-                    <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            <RestaurantIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#F59E0B' }} />
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                Hábitos Alimentares
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #F59E0B`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <RestaurantIcon sx={{ color: '#F59E0B', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Hábitos Alimentares
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2">
+                                {socialHistory.dietHabits}
                             </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ ml: 4 }}>
-                            {socialHistory.dietHabits}
-                        </Typography>
-                    </Box>
+                        </Paper>
+                    </Grid>
                 )}
 
                 {/* Ocupação */}
                 {socialHistory.occupation && (
-                    <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            <WorkIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#3B82F6' }} />
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                Ocupação
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #3B82F6`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <WorkIcon sx={{ color: '#3B82F6', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Ocupação
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2">
+                                {socialHistory.occupation}
                             </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ ml: 4 }}>
-                            {socialHistory.occupation}
-                        </Typography>
-                    </Box>
+                        </Paper>
+                    </Grid>
                 )}
-            </Box>
+            </Grid>
         );
     };
 
@@ -364,51 +378,43 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
         if (!systemsReview || !Object.values(systemsReview).some(value => value)) return null;
 
         const systems = [
-            { name: 'Cardiovascular', value: systemsReview.cardiovascular, icon: <FavoriteIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#F50057' }} /> },
-            { name: 'Respiratório', value: systemsReview.respiratory, icon: <AirIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#00BFA5' }} /> },
-            { name: 'Gastrointestinal', value: systemsReview.gastrointestinal, icon: <RestaurantIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#F59E0B' }} /> },
-            { name: 'Geniturinário', value: systemsReview.genitourinary, icon: <WcIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#3B82F6' }} /> },
-            { name: 'Neurológico', value: systemsReview.neurological, icon: <PsychologyIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#8B5CF6' }} /> },
-            { name: 'Musculoesquelético', value: systemsReview.musculoskeletal, icon: <AccessibilityNewIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#3B82F6' }} /> },
-            { name: 'Endócrino', value: systemsReview.endocrine, icon: <CoronavirusIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#10B981' }} /> },
-            { name: 'Hematológico', value: systemsReview.hematologic, icon: <LocalHospitalIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#EF4444' }} /> },
-            { name: 'Psiquiátrico', value: systemsReview.psychiatric, icon: <PsychologyIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#8B5CF6' }} /> },
-            { name: 'Dermatológico', value: systemsReview.dermatological, icon: <AccessibilityNewIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#F59E0B' }} /> }
+            { name: 'Cardiovascular', value: systemsReview.cardiovascular, icon: <FavoriteIcon sx={{ color: '#F50057', mr: 1 }} />, color: '#F50057' },
+            { name: 'Respiratório', value: systemsReview.respiratory, icon: <AirIcon sx={{ color: '#00BFA5', mr: 1 }} />, color: '#00BFA5' },
+            { name: 'Gastrointestinal', value: systemsReview.gastrointestinal, icon: <RestaurantIcon sx={{ color: '#F59E0B', mr: 1 }} />, color: '#F59E0B' },
+            { name: 'Geniturinário', value: systemsReview.genitourinary, icon: <WcIcon sx={{ color: '#3B82F6', mr: 1 }} />, color: '#3B82F6' },
+            { name: 'Neurológico', value: systemsReview.neurological, icon: <PsychologyIcon sx={{ color: '#8B5CF6', mr: 1 }} />, color: '#8B5CF6' },
+            { name: 'Musculoesquelético', value: systemsReview.musculoskeletal, icon: <AccessibilityNewIcon sx={{ color: '#3B82F6', mr: 1 }} />, color: '#3B82F6' },
+            { name: 'Endócrino', value: systemsReview.endocrine, icon: <CoronavirusIcon sx={{ color: '#10B981', mr: 1 }} />, color: '#10B981' },
+            { name: 'Hematológico', value: systemsReview.hematologic, icon: <LocalHospitalIcon sx={{ color: '#EF4444', mr: 1 }} />, color: '#EF4444' },
+            { name: 'Psiquiátrico', value: systemsReview.psychiatric, icon: <PsychologyIcon sx={{ color: '#8B5CF6', mr: 1 }} />, color: '#8B5CF6' },
+            { name: 'Dermatológico', value: systemsReview.dermatological, icon: <AccessibilityNewIcon sx={{ color: '#F59E0B', mr: 1 }} />, color: '#F59E0B' }
         ];
 
+        const filteredSystems = systems.filter(s => s.value);
+
         return (
-            <Box sx={{ mt: 1 }}>
-                {systems.filter(s => s.value).map((system, index) => (
-                    <Accordion
-                        key={index}
-                        defaultExpanded
-                        disableGutters
-                        elevation={0}
-                        sx={{
-                            mb: 1,
-                            border: '1px solid #EAECEF',
-                            '&:before': { display: 'none' },
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <AccordionSummary
-                            expandIcon={<ExpandMoreIcon />}
-                            sx={{ bgcolor: alpha(typeColor.main, 0.03) }}
-                        >
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+                {filteredSystems.map((system, index) => (
+                    <Grid item xs={12} md={6} key={index}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid ${system.color}`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 {system.icon}
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
                                     {system.name}
                                 </Typography>
                             </Box>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Typography variant="body2">{system.value}</Typography>
-                        </AccordionDetails>
-                    </Accordion>
+                            <Typography variant="body2">
+                                {system.value}
+                            </Typography>
+                        </Paper>
+                    </Grid>
                 ))}
-            </Box>
+            </Grid>
         );
     };
 
@@ -418,306 +424,362 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
         if (!physicalExam) return null;
 
         const examParts = [
-            { name: 'Cabeça e Pescoço', value: physicalExam.headAndNeck, icon: <WcIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#F59E0B' }} /> },
-            { name: 'Cardiovascular', value: physicalExam.cardiovascular, icon: <FavoriteIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#F50057' }} /> },
-            { name: 'Respiratório', value: physicalExam.respiratory, icon: <AirIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#00BFA5' }} /> },
-            { name: 'Abdômen', value: physicalExam.abdomen, icon: <RestaurantIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#F59E0B' }} /> },
-            { name: 'Extremidades', value: physicalExam.extremities, icon: <AccessibilityNewIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#3B82F6' }} /> },
-            { name: 'Neurológico', value: physicalExam.neurological, icon: <PsychologyIcon sx={{ fontSize: '1.2rem', mr: 1, color: '#8B5CF6' }} /> },
-            { name: 'Outros', value: physicalExam.other, icon: <NoteAltIcon sx={{ fontSize: '1.2rem', mr: 1, color: typeColor.main }} /> }
+            { name: 'Cabeça e Pescoço', value: physicalExam.headAndNeck, icon: <WcIcon sx={{ color: '#F59E0B', mr: 1 }} />, color: '#F59E0B' },
+            { name: 'Cardiovascular', value: physicalExam.cardiovascular, icon: <FavoriteIcon sx={{ color: '#F50057', mr: 1 }} />, color: '#F50057' },
+            { name: 'Respiratório', value: physicalExam.respiratory, icon: <AirIcon sx={{ color: '#00BFA5', mr: 1 }} />, color: '#00BFA5' },
+            { name: 'Abdômen', value: physicalExam.abdomen, icon: <RestaurantIcon sx={{ color: '#F59E0B', mr: 1 }} />, color: '#F59E0B' },
+            { name: 'Extremidades', value: physicalExam.extremities, icon: <AccessibilityNewIcon sx={{ color: '#3B82F6', mr: 1 }} />, color: '#3B82F6' },
+            { name: 'Neurológico', value: physicalExam.neurological, icon: <PsychologyIcon sx={{ color: '#8B5CF6', mr: 1 }} />, color: '#8B5CF6' },
+            { name: 'Aparência Geral', value: physicalExam.generalAppearance, icon: <AccessibilityNewIcon sx={{ color: typeColor.main, mr: 1 }} />, color: typeColor.main },
+            { name: 'Outros', value: physicalExam.other, icon: <NoteAltIcon sx={{ color: typeColor.main, mr: 1 }} />, color: typeColor.main }
         ];
 
-        const hasExamParts = examParts.some(part => part.value);
-        if (!hasExamParts && !Object.values(physicalExam.vitalSigns || {}).some(v => v)) return null;
+        const filteredExamParts = examParts.filter(part => part.value);
+        const hasExamParts = filteredExamParts.length > 0;
+        const hasVitalSigns = Object.values(physicalExam.vitalSigns || {}).some(v => v);
+
+        if (!hasExamParts && !hasVitalSigns) return null;
 
         return (
-            <>
+            <Box sx={{ mt: 2 }}>
                 {/* Sinais vitais */}
-                {renderVitalSigns()}
-
-                {/* Aparência geral */}
-                {physicalExam.generalAppearance && (
-                    <Box sx={{ mt: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <AccessibilityNewIcon sx={{ fontSize: '1.2rem', mr: 1, color: typeColor.main }} />
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>Aparência Geral</Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ ml: 4 }}>
-                            {physicalExam.generalAppearance}
+                {hasVitalSigns && (
+                    <Paper elevation={1} sx={{ p: 2, mb: 2, borderRadius: '8px' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 500, mb: 1, fontSize: '1.1rem' }}>
+                            Sinais Vitais
                         </Typography>
-                    </Box>
+                        {renderVitalSigns()}
+                    </Paper>
                 )}
 
                 {/* Detalhes de partes específicas */}
                 {hasExamParts && (
-                    <Box sx={{ mt: 1 }}>
-                        {examParts.filter(part => part.value).map((part, index) => (
-                            <Accordion
-                                key={index}
-                                disableGutters
-                                elevation={0}
-                                sx={{
-                                    mb: 1,
-                                    border: '1px solid #EAECEF',
-                                    '&:before': { display: 'none' },
-                                    borderRadius: '4px',
-                                    overflow: 'hidden',
-                                }}
-                            >
-                                <AccordionSummary
-                                    expandIcon={<ExpandMoreIcon />}
-                                    sx={{ bgcolor: alpha(typeColor.main, 0.03) }}
-                                >
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Grid container spacing={2}>
+                        {filteredExamParts.map((part, index) => (
+                            <Grid item xs={12} md={6} key={index}>
+                                <Paper elevation={1} sx={{
+                                    p: 2,
+                                    height: '100%',
+                                    borderRadius: '8px',
+                                    borderLeft: `4px solid ${part.color}`,
+                                }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                         {part.icon}
-                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
                                             {part.name}
                                         </Typography>
                                     </Box>
-                                </AccordionSummary>
-                                <AccordionDetails>
-                                    <Typography variant="body2">{part.value}</Typography>
-                                </AccordionDetails>
-                            </Accordion>
+                                    <Typography variant="body2">
+                                        {part.value}
+                                    </Typography>
+                                </Paper>
+                            </Grid>
                         ))}
-                    </Box>
+                    </Grid>
                 )}
-            </>
+            </Box>
         );
     };
 
     return (
-        <Box sx={{ pt: 1, pb: 2 }}>
+        <Box sx={{ pt: 1, pb: 2, maxWidth: '900px', mx: 'auto' }}>
             {/* Queixa Principal - Em destaque */}
             {normalizedData.chiefComplaint && (
-                <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        color: typeColor.main
-                    }}>
-                        <MedicalServicesIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
-                        Queixa Principal
-                    </Typography>
-                    <Typography variant="body1" sx={{
-                        mt: 1,
-                        p: 2,
-                        borderLeft: `3px solid ${typeColor.main}`,
-                        bgcolor: alpha(typeColor.main, 0.05),
-                        borderRadius: '0 4px 4px 0',
-                        fontWeight: 500
-                    }}>
+                <Paper
+                    elevation={1}
+                    sx={{
+                        p: 3,
+                        mb: 4,
+                        borderRadius: '10px',
+                        border: `1px solid ${alpha(typeColor.main, 0.2)}`,
+                        backgroundColor: alpha(theme.palette.background.paper, 0.9),
+                        textAlign: 'center',
+                        maxWidth: '800px',
+                        mx: 'auto'
+                    }}
+                >
+                    <Typography
+                        variant="body1"
+                        sx={{
+                            whiteSpace: 'pre-line',
+                            lineHeight: 1.7,
+                            fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+                            fontWeight: 500,
+                            fontSize: '1.05rem',
+                            color: theme.palette.text.primary,
+                            letterSpacing: '0.01em'
+                        }}
+                    >
                         {normalizedData.chiefComplaint}
                     </Typography>
-                </Box>
+                </Paper>
             )}
 
-            {/* Acordo em acordeões para melhor organização */}
-            <Accordion
-                disableGutters
-                defaultExpanded
-                elevation={0}
-                sx={{
-                    mb: 1,
-                    '&:before': { display: 'none' },
-                    border: `1px solid ${alpha(typeColor.main, 0.2)}`,
-                    borderRadius: '4px',
-                    overflow: 'hidden'
-                }}
-            >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: alpha(typeColor.main, 0.05) }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <MedicalInformationIcon sx={{ mr: 1, color: typeColor.main, fontSize: '1.2rem' }} />
-                        <Typography sx={{ fontWeight: 600 }}>Motivo da Consulta e Diagnóstico</Typography>
-                    </Box>
-                </AccordionSummary>
-                <AccordionDetails>
+            {/* Motivo da Consulta e Diagnóstico */}
+            <Box sx={{ mb: 4 }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        borderBottom: `2px solid ${typeColor.main}`,
+                        pb: 1,
+                        mb: 3,
+                        display: 'inline-block',
+                        fontWeight: 500
+                    }}
+                >
+                    Motivo da Consulta e Diagnóstico
+                </Typography>
+
+                <Grid container spacing={2}>
                     {/* História da doença atual */}
                     {normalizedData.illnessHistory && (
-                        <Box sx={{ mb: 2 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: typeColor.main, display: 'flex', alignItems: 'center' }}>
-                                <HealingIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-                                História da Doença Atual
-                            </Typography>
-                            {renderTextSection(normalizedData.illnessHistory)}
-                        </Box>
+                        <Grid item xs={12} md={6}>
+                            <Paper elevation={1} sx={{
+                                p: 2,
+                                height: '100%',
+                                borderRadius: '8px',
+                                borderLeft: `4px solid ${typeColor.main}`,
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <HealingIcon sx={{ color: typeColor.main, mr: 1 }} />
+                                    <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                        História da Doença Atual
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                    {normalizedData.illnessHistory}
+                                </Typography>
+                            </Paper>
+                        </Grid>
                     )}
 
                     {/* Diagnóstico */}
                     {normalizedData.diagnosis && (
-                        <Box sx={{ mb: 2 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#EF4444', display: 'flex', alignItems: 'center' }}>
-                                <LocalHospitalIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-                                Diagnóstico
-                            </Typography>
-                            {renderTextSection(normalizedData.diagnosis)}
-                        </Box>
+                        <Grid item xs={12} md={6}>
+                            <Paper elevation={1} sx={{
+                                p: 2,
+                                height: '100%',
+                                borderRadius: '8px',
+                                borderLeft: `4px solid #EF4444`,
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <LocalHospitalIcon sx={{ color: '#EF4444', mr: 1 }} />
+                                    <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                        Diagnóstico
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                    {normalizedData.diagnosis}
+                                </Typography>
+                            </Paper>
+                        </Grid>
                     )}
 
                     {/* Plano de tratamento */}
                     {normalizedData.treatmentPlan && (
-                        <Box sx={{ mb: 2 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#22C55E', display: 'flex', alignItems: 'center' }}>
-                                <NoteAltIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-                                Plano de Tratamento
-                            </Typography>
-                            {renderTextSection(normalizedData.treatmentPlan)}
-                        </Box>
+                        <Grid item xs={12}>
+                            <Paper elevation={1} sx={{
+                                p: 2,
+                                borderRadius: '8px',
+                                borderLeft: `4px solid #22C55E`,
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <NoteAltIcon sx={{ color: '#22C55E', mr: 1 }} />
+                                    <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                        Plano de Tratamento
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                    {normalizedData.treatmentPlan}
+                                </Typography>
+                            </Paper>
+                        </Grid>
                     )}
 
                     {/* Observações adicionais */}
                     {normalizedData.additionalNotes && (
-                        <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                                Observações Adicionais
-                            </Typography>
-                            {renderTextSection(normalizedData.additionalNotes)}
-                        </Box>
+                        <Grid item xs={12}>
+                            <Paper elevation={1} sx={{
+                                p: 2,
+                                borderRadius: '8px',
+                                borderLeft: `4px solid ${theme.palette.grey[500]}`,
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <NoteAltIcon sx={{ color: theme.palette.grey[500], mr: 1 }} />
+                                    <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                        Observações Adicionais
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                    {normalizedData.additionalNotes}
+                                </Typography>
+                            </Paper>
+                        </Grid>
                     )}
-                </AccordionDetails>
-            </Accordion>
+                </Grid>
+            </Box>
 
             {/* Exame Físico */}
-            <Accordion
-                disableGutters
-                defaultExpanded
-                elevation={0}
-                sx={{
-                    mb: 1,
-                    '&:before': { display: 'none' },
-                    border: `1px solid ${alpha(typeColor.main, 0.2)}`,
-                    borderRadius: '4px',
-                    overflow: 'hidden'
-                }}
-            >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: alpha(typeColor.main, 0.05) }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <AccessibilityNewIcon sx={{ mr: 1, color: typeColor.main, fontSize: '1.2rem' }} />
-                        <Typography sx={{ fontWeight: 600 }}>Exame Físico</Typography>
-                    </Box>
-                </AccordionSummary>
-                <AccordionDetails>
-                    {renderPhysicalExam()}
-                </AccordionDetails>
-            </Accordion>
+            <Box sx={{ mb: 4 }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        borderBottom: `2px solid ${typeColor.main}`,
+                        pb: 1,
+                        mb: 3,
+                        display: 'inline-block',
+                        fontWeight: 500
+                    }}
+                >
+                    Exame Físico
+                </Typography>
+                {renderPhysicalExam()}
+            </Box>
 
             {/* Histórico */}
-            <Accordion
-                disableGutters
-                defaultExpanded
-                elevation={0}
-                sx={{
-                    mb: 1,
-                    '&:before': { display: 'none' },
-                    border: `1px solid ${alpha(typeColor.main, 0.2)}`,
-                    borderRadius: '4px',
-                    overflow: 'hidden'
-                }}
-            >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: alpha(typeColor.main, 0.05) }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <HistoryEduIcon sx={{ mr: 1, color: typeColor.main, fontSize: '1.2rem' }} />
-                        <Typography sx={{ fontWeight: 600 }}>Histórico</Typography>
-                    </Box>
-                </AccordionSummary>
-                <AccordionDetails>
+            <Box sx={{ mb: 4 }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        borderBottom: `2px solid ${typeColor.main}`,
+                        pb: 1,
+                        mb: 3,
+                        display: 'inline-block',
+                        fontWeight: 500
+                    }}
+                >
+                    Histórico
+                </Typography>
+
+                <Grid container spacing={2}>
                     {/* Histórico médico */}
-                    <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                            <MedicalInformationIcon sx={{ mr: 0.5, fontSize: '1rem', color: '#EF4444' }} />
-                            Histórico Médico
-                        </Typography>
-                        {renderItemList(normalizedData.medicalHistory)}
-                    </Box>
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #EF4444`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <MedicalInformationIcon sx={{ color: '#EF4444', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Histórico Médico
+                                </Typography>
+                            </Box>
+                            {renderItemList(normalizedData.medicalHistory)}
+                        </Paper>
+                    </Grid>
 
                     {/* Histórico cirúrgico */}
-                    <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                            <AirlineSeatFlatIcon sx={{ mr: 0.5, fontSize: '1rem', color: '#8B5CF6' }} />
-                            Histórico Cirúrgico
-                        </Typography>
-                        {renderItemList(normalizedData.surgicalHistory)}
-                    </Box>
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #8B5CF6`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <AirlineSeatFlatIcon sx={{ color: '#8B5CF6', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Histórico Cirúrgico
+                                </Typography>
+                            </Box>
+                            {renderItemList(normalizedData.surgicalHistory)}
+                        </Paper>
+                    </Grid>
 
                     {/* Medicamentos em uso */}
-                    <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                            <MedicationIcon sx={{ mr: 0.5, fontSize: '1rem', color: '#22C55E' }} />
-                            Medicamentos em Uso
-                        </Typography>
-                        {renderItemList(normalizedData.currentMedications)}
-                    </Box>
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #22C55E`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <MedicationIcon sx={{ color: '#22C55E', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Medicamentos em Uso
+                                </Typography>
+                            </Box>
+                            {renderItemList(normalizedData.currentMedications)}
+                        </Paper>
+                    </Grid>
 
                     {/* Alergias */}
-                    <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                            <NightlifeIcon sx={{ mr: 0.5, fontSize: '1rem', color: '#F59E0B' }} />
-                            Alergias
-                        </Typography>
-                        {renderItemList(normalizedData.allergies)}
-                    </Box>
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={1} sx={{
+                            p: 2,
+                            height: '100%',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid #F59E0B`,
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <NightlifeIcon sx={{ color: '#F59E0B', mr: 1 }} />
+                                <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                    Alergias
+                                </Typography>
+                            </Box>
+                            {renderItemList(normalizedData.allergies)}
+                        </Paper>
+                    </Grid>
 
                     {/* Histórico familiar */}
                     {normalizedData.familyHistory && (
-                        <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                                <FamilyRestroomIcon sx={{ mr: 0.5, fontSize: '1rem', color: '#3B82F6' }} />
-                                Histórico Familiar
-                            </Typography>
-                            {renderTextSection(normalizedData.familyHistory)}
-                        </Box>
+                        <Grid item xs={12}>
+                            <Paper elevation={1} sx={{
+                                p: 2,
+                                borderRadius: '8px',
+                                borderLeft: `4px solid #3B82F6`,
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <FamilyRestroomIcon sx={{ color: '#3B82F6', mr: 1 }} />
+                                    <Typography variant="h6" sx={{ fontWeight: 500, fontSize: '1.1rem' }}>
+                                        Histórico Familiar
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                    {normalizedData.familyHistory}
+                                </Typography>
+                            </Paper>
+                        </Grid>
                     )}
-                </AccordionDetails>
-            </Accordion>
+                </Grid>
+            </Box>
 
             {/* Hábitos de Vida */}
-            <Accordion
-                disableGutters
-                defaultExpanded
-                elevation={0}
-                sx={{
-                    mb: 1,
-                    '&:before': { display: 'none' },
-                    border: `1px solid ${alpha(typeColor.main, 0.2)}`,
-                    borderRadius: '4px',
-                    overflow: 'hidden'
-                }}
-            >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: alpha(typeColor.main, 0.05) }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <RestaurantIcon sx={{ mr: 1, color: typeColor.main, fontSize: '1.2rem' }} />
-                        <Typography sx={{ fontWeight: 600 }}>Hábitos de Vida</Typography>
-                    </Box>
-                </AccordionSummary>
-                <AccordionDetails>
-                    {renderSocialHistory()}
-                </AccordionDetails>
-            </Accordion>
+            <Box sx={{ mb: 4 }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        borderBottom: `2px solid ${typeColor.main}`,
+                        pb: 1,
+                        mb: 3,
+                        display: 'inline-block',
+                        fontWeight: 500
+                    }}
+                >
+                    Hábitos de Vida
+                </Typography>
+                {renderSocialHistory()}
+            </Box>
 
             {/* Revisão de Sistemas */}
-            <Accordion
-                disableGutters
-                defaultExpanded
-                elevation={0}
-                sx={{
-                    mb: 1,
-                    '&:before': { display: 'none' },
-                    border: `1px solid ${alpha(typeColor.main, 0.2)}`,
-                    borderRadius: '4px',
-                    overflow: 'hidden'
-                }}
-            >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: alpha(typeColor.main, 0.05) }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <MonitorHeartIcon sx={{ mr: 1, color: typeColor.main, fontSize: '1.2rem' }} />
-                        <Typography sx={{ fontWeight: 600 }}>Revisão de Sistemas</Typography>
-                    </Box>
-                </AccordionSummary>
-                <AccordionDetails>
-                    {renderSystemsReview()}
-                </AccordionDetails>
-            </Accordion>
+            <Box sx={{ mb: 4 }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        borderBottom: `2px solid ${typeColor.main}`,
+                        pb: 1,
+                        mb: 3,
+                        display: 'inline-block',
+                        fontWeight: 500
+                    }}
+                >
+                    Revisão de Sistemas
+                </Typography>
+                {renderSystemsReview()}
+            </Box>
         </Box>
     );
 };
