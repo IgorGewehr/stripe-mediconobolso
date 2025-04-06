@@ -5,10 +5,10 @@ import {
     Box,
     Typography,
     TextField,
-    IconButton,
-    Chip,
     Button,
     InputAdornment,
+    Chip,
+    IconButton,
     styled,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -40,19 +40,23 @@ const StyledTextField = styled(TextField)(() => ({
     },
 }));
 
-const AddButton = styled(IconButton)(({ theme }) => ({
+// Alterado para um botão retangular com label "Adicionar"
+const AddButton = styled(Button)(({ theme }) => ({
     backgroundColor: "#3366FF",
     color: "white",
-    width: "32px",
-    height: "32px",
-    borderRadius: "50%",
+    padding: "6px 12px",
+    borderRadius: "4px", // formato retangular
+    textTransform: "none",
+    fontWeight: 500,
+    fontSize: "0.875rem",
+    minWidth: "100px",
     "&:hover": {
         backgroundColor: "#2952CC",
     },
 }));
 
 const StyledChip = styled(Chip, {
-    shouldForwardProp: (prop) => prop !== 'bgColor'
+    shouldForwardProp: (prop) => prop !== "bgColor",
 })(({ bgColor }) => ({
     borderRadius: "999px",
     backgroundColor: bgColor,
@@ -66,7 +70,6 @@ const StyledChip = styled(Chip, {
         },
     },
 }));
-
 
 const ToggleButton = styled(Button)(({ selected }) => ({
     borderRadius: "999px",
@@ -88,15 +91,15 @@ const ToggleButton = styled(Button)(({ selected }) => ({
 const ChipColors = {
     medicamentos: "#E3F2FD", // Azul claro
     doencas: {
-        "Diabetes": "#FFF9C4", // Amarelo
-        "Fumante": "#E0F7FA", // Ciano
-        "Internado": "#E8EAF6", // Lavanda
-        "default": "#FFF9C4"
+        Diabetes: "#FFF9C4", // Amarelo
+        Fumante: "#E0F7FA", // Ciano
+        Internado: "#E8EAF6", // Lavanda
+        default: "#FFF9C4",
     },
     alergias: {
-        "Poeira": "#F5F5F5", // Cinza
-        "Amoxilina": "#F5F5F5", // Cinza
-        "default": "#F5F5F5"
+        Poeira: "#F5F5F5", // Cinza
+        Amoxilina: "#F5F5F5", // Cinza
+        default: "#F5F5F5",
     },
     cirurgias: "#E8F5E9", // Verde claro
     atividades: "#E0F7FA", // Ciano claro
@@ -149,7 +152,7 @@ const CondicoesClinicasForm = ({ formData, updateFormData }) => {
 
     // Seleciona cor do chip baseado no tipo e no valor
     const getChipColor = (type, value) => {
-        if (typeof ChipColors[type] === 'object') {
+        if (typeof ChipColors[type] === "object") {
             return ChipColors[type][value] || ChipColors[type].default;
         }
         return ChipColors[type];
@@ -173,8 +176,12 @@ const CondicoesClinicasForm = ({ formData, updateFormData }) => {
                 InputProps={{
                     endAdornment: (
                         <InputAdornment position="end">
-                            <AddButton onClick={() => addItem(type)} size="small">
-                                <AddIcon fontSize="small" />
+                            <AddButton
+                                onClick={() => addItem(type)}
+                                startIcon={<AddIcon fontSize="small" />}
+                                variant="contained"
+                            >
+                                Adicionar
                             </AddButton>
                         </InputAdornment>
                     ),
@@ -187,7 +194,7 @@ const CondicoesClinicasForm = ({ formData, updateFormData }) => {
                         label={item}
                         bgColor={getChipColor(type, item)}
                         onDelete={() => removeItem(type, index)}
-                        deleteIcon={<CloseIcon style={{ fontSize: '16px' }} />}
+                        deleteIcon={<CloseIcon style={{ fontSize: "16px" }} />}
                     />
                 ))}
             </Box>
@@ -221,31 +228,11 @@ const CondicoesClinicasForm = ({ formData, updateFormData }) => {
 
     return (
         <Box component="form" autoComplete="off" sx={{ p: 2 }}>
-            {renderItemSection(
-                "Medicamentos",
-                "medicamentos",
-                "Digite o medicamento"
-            )}
-            {renderItemSection(
-                "Doenças",
-                "doencas",
-                "Digite a doença"
-            )}
-            {renderItemSection(
-                "Alergias",
-                "alergias",
-                "Digite a alergia"
-            )}
-            {renderItemSection(
-                "Cirurgias",
-                "cirurgias",
-                "Digite a cirurgia"
-            )}
-            {renderItemSection(
-                "Atividade Física",
-                "atividades",
-                "Digite a atividade"
-            )}
+            {renderItemSection("Medicamentos", "medicamentos", "Digite o medicamento")}
+            {renderItemSection("Doenças", "doencas", "Digite a doença")}
+            {renderItemSection("Alergias", "alergias", "Digite a alergia")}
+            {renderItemSection("Cirurgias", "cirurgias", "Digite a cirurgia")}
+            {renderItemSection("Atividade Física", "atividades", "Digite a atividade")}
 
             <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
                 {renderToggleSection("Consome Álcool?", "consumeAlcool")}

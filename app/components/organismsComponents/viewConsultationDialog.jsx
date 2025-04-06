@@ -1412,7 +1412,7 @@ const ViewConsultationDialog = ({
                                 }}
                             >
                                 <CalendarTodayIcon sx={{ fontSize: '0.875rem' }} />
-                                <Typography variant="body2">
+                                <Typography variant="body2" component="div">
                                     {formatDate(getLocalDate(consultationData.consultationDate))} às {consultationData.consultationTime || consultationData.horaInicio}
                                 </Typography>
                             </Typography>

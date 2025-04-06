@@ -109,17 +109,17 @@ const ActionButton = styled(Button)(({ theme, variant }) => ({
 }));
 
 const LoadingOverlay = styled(Box)(({ theme }) => ({
-    position: "fixed", // Muda de absolute para fixed
+    position: "fixed",
     top: 0,
     left: 0,
-    width: "100vw", // Usa viewport width para garantir cobertura total
-    height: "100vh", // Usa viewport height para garantir cobertura total
-    background: "rgba(255, 255, 255, 0.7)",
-    backdropFilter: "blur(4px)",
+    width: "100vw",
+    height: "100vh",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 1500, // Aumenta o z-index para garantir que fique acima de tudo
+    zIndex: 1500,
+    backdropFilter: "blur(8px)",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
 }));
 
 export default function PacienteCadastroTemplate() {
@@ -163,7 +163,8 @@ export default function PacienteCadastroTemplate() {
         historicoConduta: {
             doencasHereditarias: "",
             condutaInicial: "",
-            arquivoAnexo: null,
+            // Substituir arquivoAnexo por healthPlans
+            healthPlans: []
         },
     });
 
@@ -210,7 +211,7 @@ export default function PacienteCadastroTemplate() {
             historicoConduta: {
                 doencasHereditarias: "",
                 condutaInicial: "",
-                arquivoAnexo: null,
+                healthPlans: []
             },
         });
 
@@ -303,11 +304,11 @@ export default function PacienteCadastroTemplate() {
                 doctorId: doctorId,
                 createdAt: new Date(),
 
-                // Atividades e condições clínicas
+                // Condições clínicas e atividades - normalização
                 chronicDiseases: formData.condicoesClinicas.doencas || [],
                 allergies: formData.condicoesClinicas.alergias || [],
 
-                // Campos adicionais organizados
+                // Campos adicionais organizados - mantém compatibilidade
                 condicoesClinicas: {
                     medicamentos: formData.condicoesClinicas.medicamentos || [],
                     doencas: formData.condicoesClinicas.doencas || [],
@@ -324,14 +325,15 @@ export default function PacienteCadastroTemplate() {
                     condutaInicial: formData.historicoConduta.condutaInicial || "",
                 },
 
+                // CORREÇÃO: Salvar os planos de saúde corretamente
+                healthPlans: formData.historicoConduta.healthPlans || [],
+                // Garantir que o objeto healthPlan seja preenchido com o primeiro plano para compatibilidade
+                healthPlan: (formData.historicoConduta.healthPlans && formData.historicoConduta.healthPlans.length > 0)
+                    ? formData.historicoConduta.healthPlans[0]
+                    : {name: "", number: "", validUntil: "", type: ""},
+
                 // Informações para o Card3
                 statusList: [],  // Lista inicial vazia de status
-                healthPlan: {    // Objeto vazio para plano de saúde
-                    name: "",
-                    number: "",
-                    validUntil: "",
-                    type: ""
-                }
             };
 
             // Upload de foto do paciente
@@ -348,24 +350,8 @@ export default function PacienteCadastroTemplate() {
             // Salva o paciente com todos os dados básicos
             await setDoc(patientRef, newPatient);
 
-            // Agora, se tiver um arquivo anexo, use o novo método para documentos
-            if (formData.historicoConduta.arquivoAnexo) {
-                try {
-                    await firebaseService.uploadPatientDocument(
-                        formData.historicoConduta.arquivoAnexo,
-                        doctorId,
-                        patientId,
-                        {
-                            category: "Histórico",
-                            description: "Arquivo anexo ao histórico inicial"
-                        }
-                    );
-                    console.log("Documento do histórico salvo com sucesso");
-                } catch (docError) {
-                    console.error("Erro ao salvar documento do histórico:", docError);
-                    // Não falharemos todo o processo por causa do documento
-                }
-            }
+            // Já não precisamos mais do upload de arquivos, pois substituímos pela seção de planos de saúde
+
             const newPatientId = patientRef.id;
             setPatientId(newPatientId);
 

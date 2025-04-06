@@ -9,11 +9,21 @@ import {
     IconButton,
     Tooltip,
     styled,
-    CircularProgress,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Button,
+    Paper,
+    Chip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from "@mui/material";
-import AttachFileIcon from "@mui/icons-material/AttachFile";
-import CloseIcon from "@mui/icons-material/Close";
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
 
 // ------------------ ESTILOS ------------------
 const SectionTitle = styled(Typography)(() => ({
@@ -41,80 +51,279 @@ const StyledTextField = styled(TextField)(() => ({
     },
 }));
 
-const FileUploadBox = styled(Box, {
-    shouldForwardProp: (prop) => prop !== "$isdragover" && prop !== "$isUploading" && prop !== "$isUploaded",
-})(({ $isdragover, $isUploading, $isUploaded }) => ({
-    border: "1px dashed rgba(17, 30, 90, 0.30)",
-    borderRadius: "16px",
-    padding: "24px",
-    backgroundColor: $isdragover
-        ? "rgba(17, 30, 90, 0.08)"
-        : $isUploaded
-            ? "rgba(12, 175, 96, 0.05)"
-            : "rgba(17, 30, 90, 0.05)",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: $isUploading ? "default" : "pointer",
-    transition: "all 0.2s ease",
-    borderColor: $isUploaded ? "#0CAF60" : $isdragover ? "rgba(17, 30, 90, 0.5)" : "rgba(17, 30, 90, 0.30)",
-    "&:hover": {
-        backgroundColor: $isUploading
-            ? "rgba(17, 30, 90, 0.05)"
-            : $isUploaded
-                ? "rgba(12, 175, 96, 0.08)"
-                : "rgba(17, 30, 90, 0.08)",
-    },
-}));
+// Colors
+const themeColors = {
+    primary: "#1852FE",
+    primaryLight: "#E9EFFF",
+    primaryDark: "#0A3AA8",
+    success: "#0CAF60",
+    error: "#FF4B55",
+    warning: "#FFAB2B",
+    textPrimary: "#111E5A",
+    textSecondary: "#4B5574",
+    textTertiary: "#7E84A3",
+    lightBg: "#F1F3FA",
+    backgroundPrimary: "#FFFFFF",
+    backgroundSecondary: "#F4F7FF",
+    borderColor: "rgba(17, 30, 90, 0.1)",
+    shadowColor: "rgba(17, 30, 90, 0.05)",
+};
 
-const FilePreviewBox = styled(Box)(() => ({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    padding: "12px",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    border: "1px solid rgba(17, 30, 90, 0.20)",
-    marginBottom: "8px",
-}));
+// Tipos de planos de saúde
+const healthPlanTypes = [
+    "Básico",
+    "Intermediário",
+    "Premium",
+    "Corporativo",
+    "Familiar",
+    "Completo",
+    "Individual",
+    "Odontológico",
+    "Hospitalar",
+    "Ambulatorial",
+    "Outro"
+];
 
-const FileTypeIndicator = styled(Box)(({ fileType }) => {
-    const getColorByType = () => {
-        switch (fileType?.toLowerCase()) {
-            case "pdf":
-                return "#FA5C5C";
-            case "png":
-            case "jpg":
-            case "jpeg":
-                return "#4CAF50";
-            default:
-                return "#2196F3";
+// Health Plan Form Dialog
+const HealthPlanFormDialog = ({ open, onClose, onSave, plan }) => {
+    const [localPlan, setLocalPlan] = useState(plan || {
+        name: "",
+        number: "",
+        validUntil: "",
+        type: ""
+    });
+
+    const handleChange = (field) => (e) => {
+        const value = e.target.value;
+        setLocalPlan(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handleSave = () => {
+        onSave(localPlan);
+    };
+
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: '20px',
+                    padding: '10px'
+                }
+            }}
+        >
+            <DialogTitle sx={{
+                fontFamily: 'Gellix, sans-serif',
+                fontSize: '18px',
+                color: themeColors.textPrimary
+            }}>
+                {plan?.id ? "Editar Plano de Saúde" : "Adicionar Plano de Saúde"}
+            </DialogTitle>
+
+            <DialogContent>
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                    <Grid item xs={12} md={6}>
+                        <TextField
+                            label="Nome do Plano"
+                            value={localPlan.name || ""}
+                            onChange={handleChange('name')}
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                '& .MuiInputLabel-root': {
+                                    color: themeColors.textTertiary,
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontSize: '13px',
+                                },
+                                '& .MuiInputBase-input': {
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontSize: '14px',
+                                    color: themeColors.textPrimary,
+                                }
+                            }}
+                            InputProps={{
+                                sx: {
+                                    borderRadius: '10px',
+                                }
+                            }}
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <TextField
+                            label="Número do Plano"
+                            value={localPlan.number || ""}
+                            onChange={handleChange('number')}
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                '& .MuiInputLabel-root': {
+                                    color: themeColors.textTertiary,
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontSize: '13px',
+                                },
+                                '& .MuiInputBase-input': {
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontSize: '14px',
+                                    color: themeColors.textPrimary,
+                                }
+                            }}
+                            InputProps={{
+                                sx: {
+                                    borderRadius: '10px',
+                                }
+                            }}
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <TextField
+                            label="Data de Validade"
+                            type="date"
+                            value={localPlan.validUntil || ""}
+                            onChange={handleChange('validUntil')}
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            sx={{
+                                '& .MuiInputLabel-root': {
+                                    color: themeColors.textTertiary,
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontSize: '13px',
+                                },
+                                '& .MuiInputBase-input': {
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontSize: '14px',
+                                    color: themeColors.textPrimary,
+                                }
+                            }}
+                            InputProps={{
+                                sx: {
+                                    borderRadius: '10px',
+                                }
+                            }}
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <FormControl fullWidth size="small">
+                            <InputLabel id="plan-type-label">Tipo de Plano</InputLabel>
+                            <Select
+                                labelId="plan-type-label"
+                                value={localPlan.type || ""}
+                                onChange={handleChange('type')}
+                                label="Tipo de Plano"
+                                sx={{
+                                    borderRadius: '10px',
+                                    '& .MuiSelect-select': {
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontSize: '14px',
+                                        color: themeColors.textPrimary,
+                                    }
+                                }}
+                            >
+                                <MenuItem value="">
+                                    <em>Selecione um tipo</em>
+                                </MenuItem>
+                                {healthPlanTypes.map((type) => (
+                                    <MenuItem key={type} value={type}>{type}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                </Grid>
+            </DialogContent>
+
+            <DialogActions sx={{ padding: '0 24px 20px 24px' }}>
+                <Button
+                    onClick={onClose}
+                    sx={{
+                        fontFamily: 'Gellix, sans-serif',
+                        textTransform: 'none',
+                        color: themeColors.textSecondary,
+                        borderRadius: '8px',
+                        '&:hover': {
+                            backgroundColor: themeColors.lightBg,
+                        }
+                    }}
+                >
+                    Cancelar
+                </Button>
+                <Button
+                    onClick={handleSave}
+                    variant="contained"
+                    sx={{
+                        fontFamily: 'Gellix, sans-serif',
+                        textTransform: 'none',
+                        backgroundColor: themeColors.primary,
+                        color: 'white',
+                        borderRadius: '8px',
+                        '&:hover': {
+                            backgroundColor: themeColors.primaryDark,
+                        }
+                    }}
+                >
+                    Salvar
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
+// Generate a color for health plan based on plan name
+const getHealthPlanColor = (planName, index) => {
+    const planColors = [
+        {bg: "#E5F8FF", color: "#1C94E0", border: "#A8DCFF"},
+        {bg: "#E9EFFF", color: "#1852FE", border: "#B9C8FF"},
+        {bg: "#EFE6FF", color: "#7B4BC9", border: "#D3BDFF"},
+        {bg: "#FFF4E5", color: "#FFAB2B", border: "#FFD89E"},
+        {bg: "#E5FFF2", color: "#0CAF60", border: "#A8FFCF"}
+    ];
+
+    // Use index first for consistent colors across plans
+    if (index < planColors.length) {
+        return planColors[index];
+    }
+
+    // If more than available colors, generate from name
+    const hash = planName?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
+    return planColors[hash % planColors.length];
+};
+
+// Formatação segura para datas
+const formatDate = (dateValue) => {
+    if (!dateValue) return "-";
+
+    try {
+        // Checar se é um Timestamp do Firestore (com seconds e nanoseconds)
+        if (dateValue.seconds) {
+            return new Date(dateValue.seconds * 1000).toLocaleDateString();
         }
-    };
 
-    return {
-        backgroundColor: getColorByType(),
-        color: "white",
-        borderRadius: "4px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "4px 8px",
-        fontWeight: "bold",
-        fontSize: "12px",
-        marginRight: "12px",
-    };
-});
+        // Checar se é um objeto Date
+        if (dateValue instanceof Date) {
+            return dateValue.toLocaleDateString();
+        }
 
-// -------------------------------------------------
+        // Tentar converter para Date
+        return new Date(dateValue).toLocaleDateString();
+    } catch (error) {
+        console.error("Erro ao formatar data:", error);
+        return "-";
+    }
+};
 
 const HistoricoCondutaForm = ({ formData, updateFormData, doctorId, patientId, onFileUpload }) => {
-    const [isDragOver, setIsDragOver] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
-    const [isUploaded, setIsUploaded] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
+    const [showHealthPlanForm, setShowHealthPlanForm] = useState(false);
+    const [currentPlanIndex, setCurrentPlanIndex] = useState(-1);
 
     // Mudanças de texto
     const handleChange = (e) => {
@@ -122,93 +331,60 @@ const HistoricoCondutaForm = ({ formData, updateFormData, doctorId, patientId, o
         updateFormData({ [name]: value });
     };
 
-    // Upload de arquivo com feedback visual melhorado
-    const handleFileUpload = async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        try {
-            // Primeiro atualiza o estado local para mostrar o arquivo selecionado
-            updateFormData({ arquivoAnexo: file });
-
-            // Se estamos em modo de edição (tem doctorId e patientId)
-            // e onFileUpload foi fornecido, fazemos o upload imediatamente
-            if (doctorId && patientId && onFileUpload) {
-                setIsUploading(true);
-                setUploadProgress(0);
-
-                const fakeProgress = setInterval(() => {
-                    setUploadProgress(prev => {
-                        const newProgress = prev + (100 - prev) * 0.1;
-                        return newProgress > 95 ? 95 : newProgress;
-                    });
-                }, 200);
-
-                try {
-                    await onFileUpload(file);
-                    clearInterval(fakeProgress);
-                    setUploadProgress(100);
-                    setIsUploaded(true);
-                    setTimeout(() => {
-                        setIsUploading(false);
-                    }, 1000);
-                } catch (error) {
-                    clearInterval(fakeProgress);
-                    console.error("Erro no upload:", error);
-                    setIsUploading(false);
-                    setUploadProgress(0);
-                }
-            }
-        } catch (error) {
-            console.error("Erro ao processar o arquivo:", error);
-            setIsUploading(false);
-            setUploadProgress(0);
+    // Handlers para planos de saúde
+    const getHealthPlans = () => {
+        if (Array.isArray(formData.healthPlans) && formData.healthPlans.length > 0) {
+            return formData.healthPlans;
         }
+        return formData.healthPlans || [];
     };
 
-    // Drag and drop
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        if (!isUploading) {
-            setIsDragOver(true);
+    const handleAddHealthPlan = () => {
+        setCurrentPlanIndex(-1); // -1 means new plan
+        setShowHealthPlanForm(true);
+    };
+
+    const handleEditHealthPlan = (index) => {
+        setCurrentPlanIndex(index);
+        setShowHealthPlanForm(true);
+    };
+
+    const handleDeleteHealthPlan = (index) => {
+        const healthPlans = [...getHealthPlans()];
+        healthPlans.splice(index, 1);
+
+        updateFormData({
+            healthPlans: healthPlans,
+            // Keep backward compatibility
+            healthPlan: healthPlans[0] || {}
+        });
+    };
+
+    const handleSaveHealthPlan = (updatedPlan) => {
+        // Salvar o plano enviado pelo diálogo
+        const healthPlans = [...getHealthPlans()];
+
+        if (currentPlanIndex >= 0 && currentPlanIndex < healthPlans.length) {
+            // Update existing plan
+            healthPlans[currentPlanIndex] = updatedPlan;
+        } else {
+            // Add new plan
+            healthPlans.push(updatedPlan);
         }
+
+        updateFormData({
+            healthPlans: healthPlans,
+            healthPlan: healthPlans[0] || {}
+        });
+
+        setShowHealthPlanForm(false);
     };
 
-    const handleDragLeave = () => {
-        setIsDragOver(false);
+    const handleCancelHealthPlan = () => {
+        setShowHealthPlanForm(false);
     };
 
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragOver(false);
-
-        if (isUploading) return;
-
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const file = e.dataTransfer.files[0];
-            handleFileUpload({ target: { files: [file] } });
-        }
-    };
-
-    // Remover arquivo
-    const handleRemoveFile = () => {
-        updateFormData({ arquivoAnexo: null });
-        setIsUploaded(false);
-    };
-
-    // Extensão do arquivo
-    const getFileExtension = (filename) => {
-        if (!filename) return "";
-        return filename.split(".").pop().toUpperCase();
-    };
-
-    // Formata tamanho do arquivo
-    const formatFileSize = (bytes) => {
-        if (!bytes) return "";
-        if (bytes < 1024) return bytes + " B";
-        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
-        else return (bytes / 1048576).toFixed(1) + " MB";
-    };
+    const healthPlans = getHealthPlans();
 
     return (
         <Box component="form" autoComplete="off">
@@ -241,148 +417,223 @@ const HistoricoCondutaForm = ({ formData, updateFormData, doctorId, patientId, o
                     />
                 </Grid>
 
-                {/* Anexo */}
+                {/* Planos de Saúde (Substituindo a seção de Anexo) */}
                 <Grid item xs={12}>
-                    <SectionTitle>Anexo</SectionTitle>
-                    <FileUploadBox
-                        $isdragover={isDragOver}
-                        $isUploading={isUploading}
-                        $isUploaded={isUploaded}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={() => !isUploading && document.getElementById("fileInput").click()}
-                    >
-                        <input
-                            type="file"
-                            id="fileInput"
-                            style={{ display: "none" }}
-                            onChange={handleFileUpload}
-                            accept=".pdf,.png,.jpg,.jpeg"
-                        />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <SectionTitle>Planos de Saúde</SectionTitle>
+                        <Button
+                            variant="outlined"
+                            startIcon={<AddIcon />}
+                            onClick={handleAddHealthPlan}
+                            sx={{
+                                borderRadius: '8px',
+                                textTransform: 'none',
+                                fontFamily: 'Gellix, sans-serif',
+                                fontSize: '13px',
+                                borderColor: themeColors.primary,
+                                color: themeColors.primary,
+                                '&:hover': {
+                                    backgroundColor: themeColors.primaryLight,
+                                    borderColor: themeColors.primary,
+                                },
+                                height: '36px',
+                            }}
+                        >
+                            Adicionar Plano
+                        </Button>
+                    </Box>
 
-                        {!formData.arquivoAnexo ? (
-                            <>
-                                <AttachFileIcon
-                                    sx={{
-                                        fontSize: 36,
-                                        color: "#111E5A",
-                                        transform: "rotate(45deg)",
-                                        mb: 1,
-                                    }}
-                                />
-                                <Typography
-                                    sx={{
-                                        color: "#111E5A",
-                                        fontFamily: "Gellix, sans-serif",
-                                        fontSize: "16px",
-                                        textAlign: "center",
-                                        fontWeight: 500,
-                                    }}
-                                >
-                                    Arraste e solte arquivos aqui ou clique para anexar
-                                </Typography>
-                                <Typography
-                                    sx={{
-                                        color: "rgba(17, 30, 90, 0.60)",
-                                        fontFamily: "Gellix, sans-serif",
-                                        fontSize: "14px",
-                                        textAlign: "center",
-                                        mt: 1,
-                                    }}
-                                >
-                                    PDF, JPEG, PNG (máx. 10MB)
-                                </Typography>
-                            </>
-                        ) : (
-                            <Box sx={{ width: "100%" }}>
-                                <FilePreviewBox>
-                                    <Box
+                    {healthPlans.length > 0 ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {healthPlans.map((plan, index) => {
+                                const colorScheme = getHealthPlanColor(plan.name, index);
+
+                                return (
+                                    <Paper
+                                        key={plan.id || index}
+                                        elevation={0}
                                         sx={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            overflow: "hidden",
+                                            padding: '16px',
+                                            borderRadius: '12px',
+                                            backgroundColor: '#fff',
+                                            border: `1px solid ${colorScheme.border}`,
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                            '&::before': {
+                                                content: '""',
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                width: '6px',
+                                                height: '100%',
+                                                backgroundColor: colorScheme.color,
+                                            }
                                         }}
                                     >
-                                        <FileTypeIndicator
-                                            fileType={getFileExtension(formData.arquivoAnexo.name)}
-                                        >
-                                            {getFileExtension(formData.arquivoAnexo.name)}
-                                        </FileTypeIndicator>
-                                        <Box sx={{ minWidth: 0 }}>
-                                            <Typography
-                                                sx={{
-                                                    color: "#111E5A",
-                                                    fontFamily: "Gellix, sans-serif",
-                                                    fontSize: "14px",
-                                                    fontWeight: 500,
-                                                    textOverflow: "ellipsis",
-                                                    overflow: "hidden",
-                                                    whiteSpace: "nowrap",
-                                                }}
-                                            >
-                                                {formData.arquivoAnexo.name}
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    color: "rgba(17, 30, 90, 0.60)",
-                                                    fontFamily: "Gellix, sans-serif",
-                                                    fontSize: "12px",
-                                                }}
-                                            >
-                                                {formatFileSize(formData.arquivoAnexo.size)}
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-
-                                    {isUploading ? (
-                                        <CircularProgress
-                                            size={24}
-                                            variant="determinate"
-                                            value={uploadProgress}
-                                            sx={{ color: "#1852FE" }}
-                                        />
-                                    ) : isUploaded ? (
-                                        <CheckCircleIcon sx={{ color: "#0CAF60" }} />
-                                    ) : (
-                                        <Tooltip title="Remover arquivo">
+                                        <Box sx={{
+                                            position: 'absolute',
+                                            top: 8,
+                                            right: 8,
+                                            display: 'flex',
+                                            gap: 0.5
+                                        }}>
                                             <IconButton
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleRemoveFile();
-                                                }}
+                                                size="small"
+                                                onClick={() => handleEditHealthPlan(index)}
                                                 sx={{
-                                                    color: "rgba(17, 30, 90, 0.60)",
-                                                    "&:hover": {
-                                                        color: "#FA5C5C",
-                                                    },
+                                                    backgroundColor: themeColors.primaryLight,
+                                                    color: themeColors.primary,
+                                                    width: 28,
+                                                    height: 28,
+                                                    '&:hover': {
+                                                        backgroundColor: `${themeColors.primaryLight}dd`,
+                                                    }
                                                 }}
                                             >
-                                                <CloseIcon />
+                                                <EditIcon fontSize="small" sx={{ fontSize: 16 }} />
                                             </IconButton>
-                                        </Tooltip>
-                                    )}
-                                </FilePreviewBox>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => handleDeleteHealthPlan(index)}
+                                                sx={{
+                                                    backgroundColor: '#FFE8E5',
+                                                    color: themeColors.error,
+                                                    width: 28,
+                                                    height: 28,
+                                                    '&:hover': {
+                                                        backgroundColor: '#FFD6D6',
+                                                    }
+                                                }}
+                                            >
+                                                <DeleteIcon fontSize="small" sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                        </Box>
 
-                                {!isUploading && (
-                                    <Typography
-                                        sx={{
-                                            color: "rgba(17, 30, 90, 0.60)",
-                                            fontFamily: "Gellix, sans-serif",
-                                            fontSize: "14px",
-                                            textAlign: "center",
-                                        }}
-                                    >
-                                        {isUploaded
-                                            ? "Arquivo salvo com sucesso"
-                                            : "Clique para substituir o arquivo"}
-                                    </Typography>
-                                )}
-                            </Box>
-                        )}
-                    </FileUploadBox>
+                                        <Box sx={{ pl: 2 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontFamily: 'Gellix, sans-serif',
+                                                        fontSize: '16px',
+                                                        fontWeight: 600,
+                                                        color: colorScheme.color,
+                                                        mr: 1,
+                                                    }}
+                                                >
+                                                    {plan.name || "Plano sem nome"}
+                                                </Typography>
+                                                <Chip
+                                                    label={plan.type || "Tipo não especificado"}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 24,
+                                                        borderRadius: 12,
+                                                        backgroundColor: colorScheme.bg,
+                                                        color: colorScheme.color,
+                                                        fontSize: '11px',
+                                                        fontFamily: 'Gellix, sans-serif',
+                                                    }}
+                                                />
+                                            </Box>
+
+                                            <Grid container spacing={2}>
+                                                <Grid item xs={12} sm={6}>
+                                                    <Typography
+                                                        sx={{
+                                                            fontFamily: 'Gellix, sans-serif',
+                                                            fontSize: '12px',
+                                                            color: themeColors.textTertiary,
+                                                        }}
+                                                    >
+                                                        Número do plano
+                                                    </Typography>
+                                                    <Typography
+                                                        sx={{
+                                                            fontFamily: 'Gellix, sans-serif',
+                                                            fontSize: '14px',
+                                                            fontWeight: 500,
+                                                            color: themeColors.textPrimary,
+                                                        }}
+                                                    >
+                                                        {plan.number || "-"}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={12} sm={6}>
+                                                    <Typography
+                                                        sx={{
+                                                            fontFamily: 'Gellix, sans-serif',
+                                                            fontSize: '12px',
+                                                            color: themeColors.textTertiary,
+                                                        }}
+                                                    >
+                                                        Validade
+                                                    </Typography>
+                                                    <Typography
+                                                        sx={{
+                                                            fontFamily: 'Gellix, sans-serif',
+                                                            fontSize: '14px',
+                                                            fontWeight: 500,
+                                                            color: themeColors.textPrimary,
+                                                        }}
+                                                    >
+                                                        {plan.validUntil ? formatDate(plan.validUntil) : "-"}
+                                                    </Typography>
+                                                </Grid>
+                                            </Grid>
+                                        </Box>
+                                    </Paper>
+                                );
+                            })}
+                        </Box>
+                    ) : (
+                        <Box
+                            sx={{
+                                p: 3,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                backgroundColor: '#fff',
+                                borderRadius: '10px',
+                                border: `1px dashed ${themeColors.borderColor}`,
+                            }}
+                        >
+                            <Typography
+                                sx={{
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontSize: '14px',
+                                    color: themeColors.textSecondary,
+                                    textAlign: 'center',
+                                    mb: 2
+                                }}
+                            >
+                                Nenhum plano de saúde cadastrado
+                            </Typography>
+                            <Button
+                                variant="text"
+                                startIcon={<AddIcon />}
+                                onClick={handleAddHealthPlan}
+                                sx={{
+                                    textTransform: 'none',
+                                    fontFamily: 'Gellix, sans-serif',
+                                    color: themeColors.primary,
+                                }}
+                            >
+                                Adicionar plano de saúde
+                            </Button>
+                        </Box>
+                    )}
                 </Grid>
             </Grid>
+
+            {/* Diálogo de formulário de plano de saúde */}
+            {showHealthPlanForm && (
+                <HealthPlanFormDialog
+                    open={showHealthPlanForm}
+                    onClose={handleCancelHealthPlan}
+                    onSave={handleSaveHealthPlan}
+                    plan={currentPlanIndex >= 0 ? getHealthPlans()[currentPlanIndex] : {id: `plan-${Date.now()}`}}
+                />
+            )}
         </Box>
     );
 };
