@@ -60,28 +60,27 @@ import {
     MoreVert as MoreVertIcon,
     Add as AddIcon,
     Close as CloseIcon,
-    Female as FemaleIcon,
-    Male as MaleIcon,
-    ScheduleSend as ScheduleSendIcon,
-    EventAvailable as EventAvailableIcon,
     CalendarToday as CalendarTodayIcon,
     KeyboardArrowRight as KeyboardArrowRightIcon,
     KeyboardArrowDown as KeyboardArrowDownIcon,
     Download as DownloadIcon,
     Upload as UploadIcon,
-    CheckCircleOutline as CheckCircleOutlineIcon,
     StarBorder as StarBorderIcon,
     Star as StarIcon,
     History as HistoryIcon,
     Phone as PhoneIcon,
     Videocam as VideocamIcon,
-    ContactPhone as ContactPhoneIcon,
-    AddCircleOutline as AddCircleOutlineIcon,
     FilterAlt as FilterAltIcon,
     VideoCall as VideoCallIcon,
     ArrowDropDown as ArrowDropDownIcon,
+    Timeline as TimelineIcon,
+    LocalHospital as LocalHospitalIcon,
+    Healing as HealingIcon,
+    PregnantWoman as PregnantWomanIcon,
     EventNote as EventNoteIcon,
-    Timeline as TimelineIcon
+    ScheduleSend as ScheduleSendIcon,
+    AddCircleOutline as AddCircleOutlineIcon,
+    ContactPhone as ContactPhoneIcon,
 } from '@mui/icons-material';
 
 import {
@@ -102,25 +101,22 @@ import {ptBR} from 'date-fns/locale';
 import FirebaseService from "../../lib/firebaseService";
 import {useAuth} from "./authProvider";
 import SearchField from "./basicComponents/searchField";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
+import MaleIcon from "@mui/icons-material/Male";
+import FemaleIcon from "@mui/icons-material/Female";
 
-// Constantes para o componente
+// Constantes para opções de filtro - coloque estas no início do arquivo ou em um arquivo separado
 const PATIENT_CONDITIONS = [
     {label: 'Diabetes', value: 'diabetes', color: 'diabetes'},
     {label: 'Hipertensão', value: 'hipertensao', color: 'hipertensao'},
     {label: 'Fumante', value: 'fumante', color: 'fumante'},
-    {label: 'Internado', value: 'internado', color: 'internado'},
-    {label: 'Idoso', value: 'idoso', color: 'idoso'},
     {label: 'Obeso', value: 'obeso', color: 'obeso'},
     {label: 'Alergia', value: 'alergia', color: 'alergia'},
     {label: 'Cardiopatia', value: 'cardiopatia', color: 'cardiopatia'},
     {label: 'Asma', value: 'asma', color: 'asma'},
-];
-
-const APPOINTMENT_TYPES = [
-    {label: 'Consulta', value: 'consulta', icon: <EventAvailableIcon fontSize="small"/>},
-    {label: 'Retorno', value: 'retorno', icon: <HistoryIcon fontSize="small"/>},
-    {label: 'Teleconsulta', value: 'teleconsulta', icon: <VideocamIcon fontSize="small"/>},
-    {label: 'Emergência', value: 'emergencia', icon: <PhoneIcon fontSize="small"/>},
+    {label: 'Internado', value: 'internado', color: 'internado'},
+    {label: 'Idoso', value: 'idoso', color: 'idoso'},
 ];
 
 const STATUS_OPTIONS = [
@@ -129,8 +125,13 @@ const STATUS_OPTIONS = [
     {label: 'Reagendado', value: 'reagendado', icon: <ScheduleSendIcon fontSize="small" />, color: '#9C27B0'},
     {label: 'Primeira Consulta', value: 'primeira consulta', icon: <AddCircleOutlineIcon fontSize="small" />, color: '#2196F3'},
     {label: 'Reag. Pendente', value: 'reag. pendente', icon: <ScheduleSendIcon fontSize="small" />, color: '#FF9800'},
+    {label: 'Particular', value: 'Particular', icon: <ContactPhoneIcon fontSize="small" />, color: '#1C94E0'},
+    {label: 'Convênio', value: 'Convênio', icon: <ContactPhoneIcon fontSize="small" />, color: '#1852FE'},
+    {label: 'Internado', value: 'Internado', icon: <LocalHospitalIcon fontSize="small" />, color: '#FF4B55'},
+    {label: 'Pós-cirurgia', value: 'Pós-cirurgia', icon: <HealingIcon fontSize="small" />, color: '#7B4BC9'},
+    {label: 'Gestante', value: 'Gestante', icon: <PregnantWomanIcon fontSize="small" />, color: '#FFAB2B'},
+    {label: 'Alta', value: 'Alta', icon: <CheckCircleOutlineIcon fontSize="small" />, color: '#0CAF60'},
 ];
-
 
 const VIEWS = {
     TABLE: 'table',
@@ -145,7 +146,515 @@ const TABS = {
     RECENT: 'recentes',
 };
 
-// Componentes Auxiliares
+const APPOINTMENT_TYPES = [
+    {label: 'Consulta', value: 'consulta', icon: <EventAvailableIcon fontSize="small"/>},
+    {label: 'Retorno', value: 'retorno', icon: <HistoryIcon fontSize="small"/>},
+    {label: 'Teleconsulta', value: 'teleconsulta', icon: <VideocamIcon fontSize="small"/>},
+    {label: 'Emergência', value: 'emergencia', icon: <PhoneIcon fontSize="small"/>},
+];
+
+const HEALTH_PLAN_TYPES = [
+    {label: 'Todos os planos', value: ''},
+    {label: 'Unimed', value: 'Unimed'},
+    {label: 'Amil', value: 'Amil'},
+    {label: 'Bradesco', value: 'Bradesco'},
+    {label: 'SulAmérica', value: 'SulAmérica'},
+    {label: 'NotreDame', value: 'NotreDame'},
+    {label: 'Particular', value: 'Particular'},
+];
+
+const AGE_RANGES = [
+    { label: 'Todas as idades', value: '' },
+    { label: 'Crianças (0-12)', value: '0-12' },
+    { label: 'Adolescentes (13-17)', value: '13-17' },
+    { label: 'Jovens adultos (18-29)', value: '18-29' },
+    { label: 'Adultos (30-49)', value: '30-49' },
+    { label: 'Meia-idade (50-64)', value: '50-64' },
+    { label: 'Idosos (65+)', value: '65+' },
+];
+
+const STATES = [
+    { label: 'Todos os estados', value: '' },
+    { label: 'AC', value: 'AC' },
+    { label: 'AL', value: 'AL' },
+    { label: 'AP', value: 'AP' },
+    { label: 'AM', value: 'AM' },
+    { label: 'BA', value: 'BA' },
+    { label: 'CE', value: 'CE' },
+    { label: 'DF', value: 'DF' },
+    { label: 'ES', value: 'ES' },
+    { label: 'GO', value: 'GO' },
+    { label: 'MA', value: 'MA' },
+    { label: 'MT', value: 'MT' },
+    { label: 'MS', value: 'MS' },
+    { label: 'MG', value: 'MG' },
+    { label: 'PA', value: 'PA' },
+    { label: 'PB', value: 'PB' },
+    { label: 'PR', value: 'PR' },
+    { label: 'PE', value: 'PE' },
+    { label: 'PI', value: 'PI' },
+    { label: 'RJ', value: 'RJ' },
+    { label: 'RN', value: 'RN' },
+    { label: 'RS', value: 'RS' },
+    { label: 'RO', value: 'RO' },
+    { label: 'RR', value: 'RR' },
+    { label: 'SC', value: 'SC' },
+    { label: 'SP', value: 'SP' },
+    { label: 'SE', value: 'SE' },
+    { label: 'TO', value: 'TO' },
+];
+
+// O componente FilterMenu completo
+const FilterMenu = ({activeFilters, onFilterChange, onClearFilters, onApplyFilters}) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    // Estados para controlar o seletor de datas
+    const [startDate, setStartDate] = useState(activeFilters.dateRange?.start || '');
+    const [endDate, setEndDate] = useState(activeFilters.dateRange?.end || '');
+
+    const handleGenderChange = (gender) => {
+        onFilterChange('gender', gender === activeFilters.gender ? null : gender);
+    };
+
+    const handleConditionToggle = (condition) => {
+        const conditions = [...activeFilters.conditions];
+        const index = conditions.indexOf(condition);
+
+        if (index === -1) {
+            conditions.push(condition);
+        } else {
+            conditions.splice(index, 1);
+        }
+
+        onFilterChange('conditions', conditions);
+    };
+
+    const handleStatusChange = (event) => {
+        onFilterChange('status', event.target.value === '' ? null : event.target.value);
+    };
+
+    const handleAppointmentTypeChange = (event) => {
+        onFilterChange('appointmentType', event.target.value === '' ? null : event.target.value);
+    };
+
+    const handleHealthPlanChange = (event) => {
+        onFilterChange('healthPlan', event.target.value === '' ? null : event.target.value);
+    };
+
+    const handleAgeRangeChange = (event) => {
+        onFilterChange('ageRange', event.target.value === '' ? null : event.target.value);
+    };
+
+    const handleRegionChange = (field, value) => {
+        onFilterChange('region', {
+            ...activeFilters.region,
+            [field]: value === '' ? null : value
+        });
+    };
+
+    const handleDateRangeChange = () => {
+        if (startDate || endDate) {
+            onFilterChange('dateRange', {
+                start: startDate,
+                end: endDate
+            });
+        } else {
+            onFilterChange('dateRange', null);
+        }
+    };
+
+    const handleApply = () => {
+        handleDateRangeChange();
+        onApplyFilters();
+    };
+
+    return (
+        <Box sx={{
+            width: isMobile ? '100%' : '540px',
+            p: 3,
+            borderRadius: '30px',
+            border: `1px solid ${theme.palette.divider}`,
+            backgroundColor: 'white',
+            maxHeight: '80vh',
+            overflow: 'auto',
+        }}>
+            {/* Filtro de Gênero */}
+            <FilterSection
+                title="Gênero"
+                actionElement={
+                    activeFilters.gender &&
+                    <ClearButton onClick={() => onFilterChange('gender', null)}/>
+                }
+            >
+                <Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
+                    <Button
+                        variant={activeFilters.gender === 'Ambos' ? 'contained' : 'outlined'}
+                        sx={{
+                            borderRadius: '50px',
+                            color: activeFilters.gender === 'Ambos' ? 'white' : 'inherit',
+                            backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.main' : 'transparent',
+                            '&:hover': {backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.dark' : alpha('#000', 0.04)}
+                        }}
+                        onClick={() => handleGenderChange('Ambos')}
+                    >
+                        Ambos
+                    </Button>
+                    <Button
+                        variant={activeFilters.gender === 'Masculino' ? 'contained' : 'outlined'}
+                        startIcon={<MaleIcon/>}
+                        sx={{
+                            borderRadius: '50px',
+                            color: activeFilters.gender === 'Masculino' ? 'white' : 'inherit',
+                            backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.main' : 'transparent',
+                            '&:hover': {backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.dark' : alpha('#000', 0.04)}
+                        }}
+                        onClick={() => handleGenderChange('Masculino')}
+                    >
+                        Masculino
+                    </Button>
+                    <Button
+                        variant={activeFilters.gender === 'Feminino' ? 'contained' : 'outlined'}
+                        startIcon={<FemaleIcon/>}
+                        sx={{
+                            borderRadius: '50px',
+                            color: activeFilters.gender === 'Feminino' ? 'white' : 'inherit',
+                            backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.main' : 'transparent',
+                            '&:hover': {backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.dark' : alpha('#000', 0.04)}
+                        }}
+                        onClick={() => handleGenderChange('Feminino')}
+                    >
+                        Feminino
+                    </Button>
+                </Box>
+            </FilterSection>
+
+            {/* Filtro de Condição do Paciente */}
+            <FilterSection
+                title="Condição do Paciente"
+                actionElement={
+                    <Box sx={{display: 'flex', alignItems: 'center'}}>
+                        <Typography variant="body2" color="text.secondary" sx={{mr: 1}}>
+                            {activeFilters.conditions.length} Selecionadas
+                        </Typography>
+                        {activeFilters.conditions.length > 0 && (
+                            <ClearButton onClick={() => onFilterChange('conditions', [])}/>
+                        )}
+                    </Box>
+                }
+            >
+                <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5}}>
+                    {PATIENT_CONDITIONS.map(condition => (
+                        <ConditionChip
+                            key={condition.value}
+                            label={condition.label}
+                            colorscheme={condition.color}
+                            onClick={() => handleConditionToggle(condition.value)}
+                            selected={activeFilters.conditions.includes(condition.value)}
+                        />
+                    ))}
+                </Box>
+            </FilterSection>
+
+            {/* Filtro de Status */}
+            <FilterSection
+                title="Status"
+                actionElement={
+                    activeFilters.status &&
+                    <ClearButton onClick={() => onFilterChange('status', null)}/>
+                }
+            >
+                <FormControl fullWidth variant="outlined" size="small">
+                    <Select
+                        value={activeFilters.status || ''}
+                        onChange={handleStatusChange}
+                        displayEmpty
+                        sx={{
+                            borderRadius: '50px',
+                            '.MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.divider},
+                        }}
+                        MenuProps={{
+                            PaperProps: {
+                                sx: {
+                                    borderRadius: '16px',
+                                    mt: 1,
+                                },
+                            },
+                        }}
+                    >
+                        {STATUS_OPTIONS.map(option => (
+                            <MenuItem key={option.value} value={option.value} sx={{ display: 'flex', alignItems: 'center' }}>
+                                {option.icon && (
+                                    <Box component="span" sx={{ mr: 1, display: 'flex', alignItems: 'center', color: option.color }}>
+                                        {option.icon}
+                                    </Box>
+                                )}
+                                {option.label}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+            </FilterSection>
+
+            {/* Filtro de Tipo de Consulta */}
+            <FilterSection
+                title="Tipo de Consulta"
+                actionElement={
+                    activeFilters.appointmentType &&
+                    <ClearButton onClick={() => onFilterChange('appointmentType', null)}/>
+                }
+            >
+                <FormControl fullWidth variant="outlined" size="small">
+                    <Select
+                        value={activeFilters.appointmentType || ''}
+                        onChange={handleAppointmentTypeChange}
+                        displayEmpty
+                        sx={{
+                            borderRadius: '50px',
+                            '.MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.divider},
+                        }}
+                        MenuProps={{
+                            PaperProps: {
+                                sx: {
+                                    borderRadius: '16px',
+                                    mt: 1,
+                                },
+                            },
+                        }}
+                    >
+                        <MenuItem value="">Todos os tipos</MenuItem>
+                        {APPOINTMENT_TYPES.map(option => (
+                            <MenuItem key={option.value} value={option.value}
+                                      sx={{display: 'flex', alignItems: 'center'}}>
+                                <Box component="span" sx={{mr: 1, display: 'flex', alignItems: 'center'}}>
+                                    {option.icon}
+                                </Box>
+                                {option.label}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+            </FilterSection>
+
+            {/* Filtro de Plano de Saúde (NOVO) */}
+            <FilterSection
+                title="Plano de Saúde"
+                actionElement={
+                    activeFilters.healthPlan &&
+                    <ClearButton onClick={() => onFilterChange('healthPlan', null)}/>
+                }
+            >
+                <FormControl fullWidth variant="outlined" size="small">
+                    <Select
+                        value={activeFilters.healthPlan || ''}
+                        onChange={(e) => onFilterChange('healthPlan', e.target.value === '' ? null : e.target.value)}
+                        displayEmpty
+                        sx={{
+                            borderRadius: '50px',
+                            '.MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.divider},
+                        }}
+                        MenuProps={{
+                            PaperProps: {
+                                sx: {
+                                    borderRadius: '16px',
+                                    mt: 1,
+                                },
+                            },
+                        }}
+                    >
+                        {HEALTH_PLAN_TYPES.map(option => (
+                            <MenuItem key={option.value} value={option.value}>
+                                {option.label}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+            </FilterSection>
+
+            {/* Filtro de Faixa Etária (NOVO) */}
+            <FilterSection
+                title="Faixa Etária"
+                actionElement={
+                    activeFilters.ageRange &&
+                    <ClearButton onClick={() => onFilterChange('ageRange', null)}/>
+                }
+            >
+                <FormControl fullWidth variant="outlined" size="small">
+                    <Select
+                        value={activeFilters.ageRange || ''}
+                        onChange={(e) => onFilterChange('ageRange', e.target.value === '' ? null : e.target.value)}
+                        displayEmpty
+                        sx={{
+                            borderRadius: '50px',
+                            '.MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.divider},
+                        }}
+                        MenuProps={{
+                            PaperProps: {
+                                sx: {
+                                    borderRadius: '16px',
+                                    mt: 1,
+                                },
+                            },
+                        }}
+                    >
+                        {AGE_RANGES.map(option => (
+                            <MenuItem key={option.value} value={option.value}>
+                                {option.label}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+            </FilterSection>
+
+            {/* Filtro de Localização (NOVO) */}
+            <FilterSection
+                title="Localização"
+                actionElement={
+                    (activeFilters.region?.state || activeFilters.region?.city) &&
+                    <ClearButton onClick={() => onFilterChange('region', { state: null, city: null })}/>
+                }
+            >
+                <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                        <FormControl fullWidth variant="outlined" size="small">
+                            <InputLabel id="state-filter-label">Estado</InputLabel>
+                            <Select
+                                labelId="state-filter-label"
+                                label="Estado"
+                                value={activeFilters.region?.state || ''}
+                                onChange={(e) => {
+                                    const state = e.target.value === '' ? null : e.target.value;
+                                    onFilterChange('region', {
+                                        ...activeFilters.region,
+                                        state
+                                    });
+                                }}
+                                sx={{
+                                    borderRadius: '50px',
+                                }}
+                                MenuProps={{
+                                    PaperProps: {
+                                        sx: {
+                                            borderRadius: '16px',
+                                            mt: 1,
+                                            maxHeight: '300px',
+                                        },
+                                    },
+                                }}
+                            >
+                                {STATES.map(option => (
+                                    <MenuItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={6}>
+                        <TextField
+                            label="Cidade"
+                            value={activeFilters.region?.city || ''}
+                            onChange={(e) => {
+                                const city = e.target.value === '' ? null : e.target.value;
+                                onFilterChange('region', {
+                                    ...activeFilters.region,
+                                    city
+                                });
+                            }}
+                            variant="outlined"
+                            size="small"
+                            fullWidth
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '50px',
+                                },
+                            }}
+                        />
+                    </Grid>
+                </Grid>
+            </FilterSection>
+
+            {/* Filtro de Período de Consulta */}
+            <FilterSection
+                title="Período de Consulta"
+                actionElement={
+                    activeFilters.dateRange &&
+                    <ClearButton onClick={() => {
+                        setStartDate('');
+                        setEndDate('');
+                        onFilterChange('dateRange', null);
+                    }}/>
+                }
+            >
+                <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                        <TextField
+                            fullWidth
+                            label="De"
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            InputLabelProps={{shrink: true}}
+                            size="small"
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '50px',
+                                },
+                            }}
+                        />
+                    </Grid>
+                    <Grid item xs={6}>
+                        <TextField
+                            fullWidth
+                            label="Até"
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            InputLabelProps={{shrink: true}}
+                            size="small"
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '50px',
+                                },
+                            }}
+                        />
+                    </Grid>
+                </Grid>
+            </FilterSection>
+
+            {/* Botões de Ação */}
+            <Box sx={{display: 'flex', justifyContent: 'space-between', mt: 4}}>
+                <Button
+                    variant="outlined"
+                    color="inherit"
+                    sx={{
+                        borderRadius: '50px',
+                        px: 3,
+                    }}
+                    onClick={onClearFilters}
+                >
+                    Limpar Filtros
+                </Button>
+
+                <Button
+                    variant="contained"
+                    color="primary"
+                    sx={{
+                        borderRadius: '50px',
+                        px: 4,
+                        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+                        '&:hover': {
+                            boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.15)',
+                        }
+                    }}
+                    onClick={handleApply}
+                >
+                    Aplicar Filtros
+                </Button>
+            </Box>
+        </Box>
+    );
+};
 
 // Componente para o cabeçalho de coluna ordenável
 const SortableHeaderCell = ({label, field, sortConfig, onSortChange}) => {
@@ -415,299 +924,6 @@ const ClearButton = ({onClick}) => {
     );
 };
 
-// Componente para o menu de filtros
-const FilterMenu = ({activeFilters, onFilterChange, onClearFilters, onApplyFilters}) => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
-    // Estados para controlar o seletor de datas
-    const [startDate, setStartDate] = useState(activeFilters.dateRange?.start || '');
-    const [endDate, setEndDate] = useState(activeFilters.dateRange?.end || '');
-
-    const handleGenderChange = (gender) => {
-        onFilterChange('gender', gender === activeFilters.gender ? null : gender);
-    };
-
-    const handleConditionToggle = (condition) => {
-        const conditions = [...activeFilters.conditions];
-        const index = conditions.indexOf(condition);
-
-        if (index === -1) {
-            conditions.push(condition);
-        } else {
-            conditions.splice(index, 1);
-        }
-
-        onFilterChange('conditions', conditions);
-    };
-
-    const handleStatusChange = (event) => {
-        onFilterChange('status', event.target.value === '' ? null : event.target.value);
-    };
-
-    const handleAppointmentTypeChange = (event) => {
-        onFilterChange('appointmentType', event.target.value === '' ? null : event.target.value);
-    };
-
-    const handleDateRangeChange = () => {
-        if (startDate || endDate) {
-            onFilterChange('dateRange', {
-                start: startDate,
-                end: endDate
-            });
-        } else {
-            onFilterChange('dateRange', null);
-        }
-    };
-
-    const handleApply = () => {
-        handleDateRangeChange();
-        onApplyFilters();
-    };
-
-    return (
-        <Box sx={{
-            width: isMobile ? '100%' : '540px',
-            p: 3,
-            borderRadius: '30px',
-            border: `1px solid ${theme.palette.divider}`,
-            backgroundColor: 'white',
-            maxHeight: '80vh',
-            overflow: 'auto',
-        }}>
-            {/* Filtro de Gênero */}
-            <FilterSection
-                title="Gênero"
-                actionElement={
-                    activeFilters.gender &&
-                    <ClearButton onClick={() => onFilterChange('gender', null)}/>
-                }
-            >
-                <Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
-                    <Button
-                        variant={activeFilters.gender === 'Ambos' ? 'contained' : 'outlined'}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Ambos' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.main' : 'transparent',
-                            '&:hover': {backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.dark' : alpha('#000', 0.04)}
-                        }}
-                        onClick={() => handleGenderChange('Ambos')}
-                    >
-                        Ambos
-                    </Button>
-                    <Button
-                        variant={activeFilters.gender === 'Masculino' ? 'contained' : 'outlined'}
-                        startIcon={<MaleIcon/>}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Masculino' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.main' : 'transparent',
-                            '&:hover': {backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.dark' : alpha('#000', 0.04)}
-                        }}
-                        onClick={() => handleGenderChange('Masculino')}
-                    >
-                        Masculino
-                    </Button>
-                    <Button
-                        variant={activeFilters.gender === 'Feminino' ? 'contained' : 'outlined'}
-                        startIcon={<FemaleIcon/>}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Feminino' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.main' : 'transparent',
-                            '&:hover': {backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.dark' : alpha('#000', 0.04)}
-                        }}
-                        onClick={() => handleGenderChange('Feminino')}
-                    >
-                        Feminino
-                    </Button>
-                </Box>
-            </FilterSection>
-
-            {/* Filtro de Condição do Paciente */}
-            <FilterSection
-                title="Condição do Paciente"
-                actionElement={
-                    <Box sx={{display: 'flex', alignItems: 'center'}}>
-                        <Typography variant="body2" color="text.secondary" sx={{mr: 1}}>
-                            {activeFilters.conditions.length} Selecionadas
-                        </Typography>
-                        {activeFilters.conditions.length > 0 && (
-                            <ClearButton onClick={() => onFilterChange('conditions', [])}/>
-                        )}
-                    </Box>
-                }
-            >
-                <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5}}>
-                    {PATIENT_CONDITIONS.map(condition => (
-                        <ConditionChip
-                            key={condition.value}
-                            label={condition.label}
-                            colorscheme={condition.color}
-                            onClick={() => handleConditionToggle(condition.value)}
-                            selected={activeFilters.conditions.includes(condition.value)}
-                        />
-                    ))}
-                </Box>
-            </FilterSection>
-
-            {/* Filtro de Status */}
-            <FilterSection
-                title="Status"
-                actionElement={
-                    activeFilters.status &&
-                    <ClearButton onClick={() => onFilterChange('status', null)}/>
-                }
-            >
-                <FormControl fullWidth variant="outlined" size="small">
-                    <Select
-                        value={activeFilters.status || ''}
-                        onChange={handleStatusChange}
-                        displayEmpty
-                        sx={{
-                            borderRadius: '50px',
-                            '.MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.divider},
-                        }}
-                        MenuProps={{
-                            PaperProps: {
-                                sx: {
-                                    borderRadius: '16px',
-                                    mt: 1,
-                                },
-                            },
-                        }}
-                    >
-                        {STATUS_OPTIONS.map(option => (
-                            <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            </FilterSection>
-
-            {/* Filtro de Tipo de Consulta */}
-            <FilterSection
-                title="Tipo de Consulta"
-                actionElement={
-                    activeFilters.appointmentType &&
-                    <ClearButton onClick={() => onFilterChange('appointmentType', null)}/>
-                }
-            >
-                <FormControl fullWidth variant="outlined" size="small">
-                    <Select
-                        value={activeFilters.appointmentType || ''}
-                        onChange={handleAppointmentTypeChange}
-                        displayEmpty
-                        sx={{
-                            borderRadius: '50px',
-                            '.MuiOutlinedInput-notchedOutline': {borderColor: theme.palette.divider},
-                        }}
-                        MenuProps={{
-                            PaperProps: {
-                                sx: {
-                                    borderRadius: '16px',
-                                    mt: 1,
-                                },
-                            },
-                        }}
-                    >
-                        <MenuItem value="">Todos os tipos</MenuItem>
-                        {APPOINTMENT_TYPES.map(option => (
-                            <MenuItem key={option.value} value={option.value}
-                                      sx={{display: 'flex', alignItems: 'center'}}>
-                                <Box component="span" sx={{mr: 1, display: 'flex', alignItems: 'center'}}>
-                                    {option.icon}
-                                </Box>
-                                {option.label}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            </FilterSection>
-
-            {/* Filtro de Período de Consulta */}
-            <FilterSection
-                title="Período de Consulta"
-                actionElement={
-                    activeFilters.dateRange &&
-                    <ClearButton onClick={() => {
-                        setStartDate('');
-                        setEndDate('');
-                        onFilterChange('dateRange', null);
-                    }}/>
-                }
-            >
-                <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                        <TextField
-                            fullWidth
-                            label="De"
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            InputLabelProps={{shrink: true}}
-                            size="small"
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '50px',
-                                },
-                            }}
-                        />
-                    </Grid>
-                    <Grid item xs={6}>
-                        <TextField
-                            fullWidth
-                            label="Até"
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            InputLabelProps={{shrink: true}}
-                            size="small"
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '50px',
-                                },
-                            }}
-                        />
-                    </Grid>
-                </Grid>
-            </FilterSection>
-
-            {/* Botões de Ação */}
-            <Box sx={{display: 'flex', justifyContent: 'space-between', mt: 4}}>
-                <Button
-                    variant="outlined"
-                    color="inherit"
-                    sx={{
-                        borderRadius: '50px',
-                        px: 3,
-                    }}
-                    onClick={onClearFilters}
-                >
-                    Limpar Filtros
-                </Button>
-
-                <Button
-                    variant="contained"
-                    color="primary"
-                    sx={{
-                        borderRadius: '50px',
-                        px: 4,
-                        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
-                        '&:hover': {
-                            boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.15)',
-                        }
-                    }}
-                    onClick={handleApply}
-                >
-                    Aplicar Filtros
-                </Button>
-            </Box>
-        </Box>
-    );
-};
 
 // Componente principal da página
 const PatientsListPage = ({onPatientClick}) => {
@@ -853,8 +1069,41 @@ const PatientsListPage = ({onPatientClick}) => {
         conditions: [],
         status: null,
         appointmentType: null,
-        dateRange: null
+        dateRange: null,
+        healthPlan: null,
+        ageRange: null,
+        region: { state: null, city: null }
     });
+
+// Verificar se existem filtros ativos
+    const hasActiveFilters = useMemo(() => {
+        return activeFilters.gender !== null ||
+            activeFilters.conditions.length > 0 ||
+            activeFilters.status !== null ||
+            activeFilters.appointmentType !== null ||
+            activeFilters.dateRange !== null ||
+            activeFilters.healthPlan !== null ||
+            activeFilters.ageRange !== null ||
+            activeFilters.region?.state !== null ||
+            activeFilters.region?.city !== null;
+    }, [activeFilters]);
+
+// Função para limpar todos os filtros
+    const handleClearFilters = () => {
+        setActiveFilters({
+            gender: null,
+            conditions: [],
+            status: null,
+            appointmentType: null,
+            dateRange: null,
+            healthPlan: null,
+            ageRange: null,
+            region: { state: null, city: null }
+        });
+        handleFilterClose();
+    };
+
+
 
     // Metrics (Estatísticas)
     const [metrics, setMetrics] = useState({
@@ -922,19 +1171,28 @@ const PatientsListPage = ({onPatientClick}) => {
         const loadData = async () => {
             setLoading(true);
             try {
-                // Carrega a lista de pacientes
-                const patientsData = await FirebaseService.getPatientsByDoctor(user.uid);
-                setPatients(patientsData);
+                let patients = [];
+
+                // Se tem filtros ativos, usa a API de filtragem
+                if (hasActiveFilters) {
+                    patients = await FirebaseService.filterPatients(user.uid, activeFilters);
+                } else {
+                    // Carrega todos os pacientes normalmente
+                    patients = await FirebaseService.getPatientsByDoctor(user.uid);
+                }
+
+                // Atualiza o estado dos pacientes
+                setPatients(patients);
 
                 // Carrega as consultas para referência
                 const consultationsData = await FirebaseService.listAllConsultations(user.uid);
                 setConsultations(consultationsData);
 
                 // Calcula métricas
-                calculateMetrics(patientsData, consultationsData);
+                calculateMetrics(patients, consultationsData);
 
                 // Atualiza os favoritos com base no campo "favorite"
-                const favPatients = patientsData
+                const favPatients = patients
                     .filter(patient => patient.favorite === true)
                     .map(patient => patient.id);
                 setFavoritePatients(favPatients);
@@ -947,7 +1205,7 @@ const PatientsListPage = ({onPatientClick}) => {
         };
 
         loadData();
-    }, [user]);
+    }, [user, hasActiveFilters, activeFilters]);
 
     // Calcula métricas baseadas nos dados
     const calculateMetrics = (patientsData, consultationsData) => {
@@ -1015,8 +1273,10 @@ const PatientsListPage = ({onPatientClick}) => {
 
 
     const determinePatientStatus = (patient) => {
+        if (!patient) return 'pendente'; // Proteção adicional
+
         // Primeiro, verificar se o paciente tem um statusList definido
-        if (patient.statusList && patient.statusList.length > 0) {
+        if (patient.statusList && Array.isArray(patient.statusList) && patient.statusList.length > 0) {
             return patient.statusList[0];
         }
 
@@ -1102,21 +1362,75 @@ const PatientsListPage = ({onPatientClick}) => {
 
         // Filtro de gênero
         if (activeFilters.gender) {
-            filtered = filtered.filter(patient =>
-                patient.gender.toLowerCase() === activeFilters.gender.toLowerCase() ||
-                activeFilters.gender.toLowerCase() === 'ambos'  // 'ambos' em minúscula
-            );
+            filtered = filtered.filter(patient => {
+                // Garante que o gênero do paciente seja tratado como string e convertido para lowercase
+                const patientGender = typeof patient.gender === 'string' ? patient.gender.toLowerCase() : '';
+
+                // Converte activeFilters.gender para lowercase
+                const filterGender = activeFilters.gender.toLowerCase();
+
+                // Verifica se é "ambos" ou se corresponde exatamente
+                return filterGender === 'ambos' || patientGender === filterGender;
+            });
         }
 
         // Filtro de condições
         if (activeFilters.conditions.length > 0) {
             filtered = filtered.filter(patient => {
-                // Mapear condições para um array no formato do paciente
+                // Criar um array com todas as condições do paciente
                 const patientConditions = [];
-                if (patient.isSmoker) patientConditions.push('fumante');
-                if (patient.chronicDiseases?.includes('Diabetes')) patientConditions.push('diabetes');
-                if (patient.chronicDiseases?.includes('Hipertensão')) patientConditions.push('hipertensao');
-                // Adicionar mais mapeamentos conforme necessário
+
+                // Verificar fumante
+                if (patient.isSmoker === true ||
+                    patient.condicoesClinicas?.ehFumante === "Sim" ||
+                    (patient.chronicDiseases &&
+                        Array.isArray(patient.chronicDiseases) &&
+                        patient.chronicDiseases.some(d =>
+                                typeof d === 'string' && (
+                                    d.toLowerCase().includes("fumante") ||
+                                    d.toLowerCase().includes("tabag")
+                                )
+                        ))) {
+                    patientConditions.push('fumante');
+                }
+
+                // Verificar doenças crônicas em diferentes formatos
+                const chronicArray = Array.isArray(patient.chronicDiseases) ?
+                    patient.chronicDiseases :
+                    Array.isArray(patient.condicoesClinicas?.doencas) ?
+                        patient.condicoesClinicas.doencas : [];
+
+                // Mapeamento de condições com flexibilidade para variações de texto
+                chronicArray.forEach(disease => {
+                    if (!disease) return;
+                    const lowerDisease = disease.toLowerCase();
+                    if (lowerDisease.includes('diabet')) patientConditions.push('diabetes');
+                    if (lowerDisease.includes('hipertens') || lowerDisease.includes('pressão alta')) patientConditions.push('hipertensao');
+                    if (lowerDisease.includes('obes')) patientConditions.push('obeso');
+                    if (lowerDisease.includes('alergi')) patientConditions.push('alergia');
+                    if (lowerDisease.includes('cardio') || lowerDisease.includes('coração')) patientConditions.push('cardiopatia');
+                    if (lowerDisease.includes('asma') || lowerDisease.includes('respirat')) patientConditions.push('asma');
+                });
+
+                // Verificar status para "internado"
+                if (patient.statusList && patient.statusList.includes("Internado")) {
+                    patientConditions.push('internado');
+                }
+
+                // Verificar idoso (idade > 65)
+                if (patient.birthDate) {
+                    try {
+                        const birthDate = typeof patient.birthDate === 'string'
+                            ? parse(patient.birthDate, 'dd/MM/yyyy', new Date())
+                            : new Date(patient.birthDate);
+
+                        if (isValid(birthDate) && differenceInYears(new Date(), birthDate) >= 65) {
+                            patientConditions.push('idoso');
+                        }
+                    } catch (e) {
+                        console.warn(`Erro ao calcular idade:`, e);
+                    }
+                }
 
                 // Verificar se alguma das condições filtradas está presente
                 return activeFilters.conditions.some(condition =>
@@ -1128,16 +1442,16 @@ const PatientsListPage = ({onPatientClick}) => {
         // Filtro de status
         if (activeFilters.status) {
             filtered = filtered.filter(patient => {
-                let status = 'pendente';
-                const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
-                const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
-
-                if (!lastConsultDate && nextConsultDate) {
-                    status = 'primeira consulta';
-                } else if (patient.consultationRescheduled) {
-                    status = patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
+                // Primeiro verificar statusList
+                if (patient.statusList && patient.statusList.length > 0) {
+                    // Verificar se o status filtrado está na lista
+                    return patient.statusList.some(status =>
+                        status.toLowerCase() === activeFilters.status.toLowerCase()
+                    );
                 }
 
+                // Se não tiver statusList, usar a lógica anterior
+                let status = determinePatientStatus(patient);
                 return status.toLowerCase() === activeFilters.status.toLowerCase();
             });
         }
@@ -1145,8 +1459,92 @@ const PatientsListPage = ({onPatientClick}) => {
         // Filtro de tipo de consulta
         if (activeFilters.appointmentType) {
             filtered = filtered.filter(patient => {
-                // Verificar tipo no campo consultationType
-                return patient.consultationType?.toLowerCase() === activeFilters.appointmentType;
+                // Verificar consultationType em vários formatos possíveis
+                const consultType = (patient.consultationType || patient.appointmentType || '').toLowerCase();
+                return consultType === activeFilters.appointmentType.toLowerCase();
+            });
+        }
+
+        // Filtro de plano de saúde
+        if (activeFilters.healthPlan) {
+            filtered = filtered.filter(patient => {
+                // Verificar em healthPlans (array)
+                if (Array.isArray(patient.healthPlans) && patient.healthPlans.length > 0) {
+                    return patient.healthPlans.some(plan =>
+                        plan.name?.toLowerCase().includes(activeFilters.healthPlan.toLowerCase())
+                    );
+                }
+
+                // Verificar em healthPlan (objeto único)
+                if (patient.healthPlan && typeof patient.healthPlan === 'object') {
+                    return patient.healthPlan.name?.toLowerCase().includes(activeFilters.healthPlan.toLowerCase());
+                }
+
+                // Verificar status "Particular"
+                if (activeFilters.healthPlan.toLowerCase() === 'particular' &&
+                    patient.statusList &&
+                    patient.statusList.includes('Particular')) {
+                    return true;
+                }
+
+                return false;
+            });
+        }
+
+        // Filtro de faixa etária
+        if (activeFilters.ageRange) {
+            filtered = filtered.filter(patient => {
+                if (!patient.birthDate && !patient.dataNascimento) return false;
+
+                try {
+                    // Converter birthDate para objeto Date
+                    const birthDateStr = patient.birthDate || patient.dataNascimento;
+                    const birthDate = typeof birthDateStr === 'string'
+                        ? parse(birthDateStr, 'dd/MM/yyyy', new Date())
+                        : new Date(birthDateStr);
+
+                    if (!isValid(birthDate)) return false;
+
+                    const age = differenceInYears(new Date(), birthDate);
+
+                    // Verificar a faixa etária selecionada
+                    if (activeFilters.ageRange.includes('-')) {
+                        // Faixa com intervalo: "0-12", "13-17", etc.
+                        const [minAge, maxAge] = activeFilters.ageRange.split('-');
+                        return age >= parseInt(minAge) && age <= parseInt(maxAge);
+                    } else if (activeFilters.ageRange.includes('+')) {
+                        // Faixa "65+" (idosos)
+                        const minAge = parseInt(activeFilters.ageRange);
+                        return age >= minAge;
+                    }
+
+                    return false;
+                } catch (e) {
+                    console.warn(`Erro ao calcular idade para filtro:`, e);
+                    return false;
+                }
+            });
+        }
+
+        // Filtro de região (estado/cidade)
+        if (activeFilters.region?.state || activeFilters.region?.city) {
+            filtered = filtered.filter(patient => {
+                let match = true;
+
+                // Verificar estado
+                if (activeFilters.region.state) {
+                    const patientState = patient.endereco?.estado || patient.state;
+                    match = match && patientState && patientState.toUpperCase() === activeFilters.region.state;
+                }
+
+                // Verificar cidade
+                if (activeFilters.region.city) {
+                    const patientCity = patient.endereco?.cidade || patient.city;
+                    match = match && patientCity &&
+                        patientCity.toLowerCase().includes(activeFilters.region.city.toLowerCase());
+                }
+
+                return match;
             });
         }
 
@@ -1220,13 +1618,6 @@ const PatientsListPage = ({onPatientClick}) => {
         return safeFormatDate(date, 'dd/MM/yyyy');
     };
 
-    // Verificar se existem filtros ativos
-    const hasActiveFilters =
-        activeFilters.gender !== null ||
-        activeFilters.conditions.length > 0 ||
-        activeFilters.status !== null ||
-        activeFilters.appointmentType !== null ||
-        activeFilters.dateRange !== null;
 
     // Handlers
     const handleSearchChange = (event) => {
@@ -1321,8 +1712,37 @@ const PatientsListPage = ({onPatientClick}) => {
                 ...prev,
                 dateRange: null
             }));
+        } else if (type === 'healthPlan') {
+            setActiveFilters(prev => ({
+                ...prev,
+                healthPlan: null
+            }));
+        } else if (type === 'ageRange') {
+            setActiveFilters(prev => ({
+                ...prev,
+                ageRange: null
+            }));
+        } else if (type === 'region') {
+            if (value === 'state') {
+                setActiveFilters(prev => ({
+                    ...prev,
+                    region: { ...prev.region, state: null }
+                }));
+            } else if (value === 'city') {
+                setActiveFilters(prev => ({
+                    ...prev,
+                    region: { ...prev.region, city: null }
+                }));
+            } else {
+                setActiveFilters(prev => ({
+                    ...prev,
+                    region: { state: null, city: null }
+                }));
+            }
         }
     };
+
+
     const handleCloseDialog = useCallback(() => {
         if (statusUpdateLoading) return; // Não feche durante o salvamento
 
@@ -1336,16 +1756,6 @@ const PatientsListPage = ({onPatientClick}) => {
         }, 300);
     }, [statusUpdateLoading]);
 
-    const handleClearFilters = () => {
-        setActiveFilters({
-            gender: null,
-            conditions: [],
-            status: null,
-            appointmentType: null,
-            dateRange: null
-        });
-        handleFilterClose();
-    };
 
     const handleApplyFilters = () => {
         handleFilterClose();
@@ -1704,12 +2114,14 @@ const PatientsListPage = ({onPatientClick}) => {
         );
     };
 
+
     // Chips de filtros ativos
     const ActiveFiltersSection = () => {
         if (!hasActiveFilters) return null;
 
         return (
             <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2}}>
+                {/* Filtro de gênero */}
                 {activeFilters.gender && (
                     <FilterChip
                         label={`Gênero: ${activeFilters.gender}`}
@@ -1718,6 +2130,7 @@ const PatientsListPage = ({onPatientClick}) => {
                     />
                 )}
 
+                {/* Filtro de condições */}
                 {activeFilters.conditions.map((condition) => {
                     const conditionInfo = PATIENT_CONDITIONS.find(
                         (c) => c.value === condition
@@ -1732,22 +2145,61 @@ const PatientsListPage = ({onPatientClick}) => {
                     );
                 })}
 
+                {/* Filtro de status */}
                 {activeFilters.status && (
                     <FilterChip
-                        label={`Status: ${activeFilters.status.charAt(0).toUpperCase() + activeFilters.status.slice(1)}`}
+                        label={`Status: ${STATUS_OPTIONS.find(s => s.value === activeFilters.status)?.label || activeFilters.status}`}
                         colorscheme="default"
                         onDelete={() => handleRemoveFilter('status')}
                     />
                 )}
 
+                {/* Filtro de tipo de consulta */}
                 {activeFilters.appointmentType && (
                     <FilterChip
-                        label={`Tipo: ${activeFilters.appointmentType.charAt(0).toUpperCase() + activeFilters.appointmentType.slice(1)}`}
+                        label={`Tipo: ${APPOINTMENT_TYPES.find(t => t.value === activeFilters.appointmentType)?.label || activeFilters.appointmentType}`}
                         colorscheme="consultas"
                         onDelete={() => handleRemoveFilter('appointmentType')}
                     />
                 )}
 
+                {/* Filtro de plano de saúde */}
+                {activeFilters.healthPlan && (
+                    <FilterChip
+                        label={`Plano: ${HEALTH_PLAN_TYPES.find(p => p.value === activeFilters.healthPlan)?.label || activeFilters.healthPlan}`}
+                        colorscheme="consultas"
+                        onDelete={() => handleRemoveFilter('healthPlan')}
+                    />
+                )}
+
+                {/* Filtro de faixa etária */}
+                {activeFilters.ageRange && (
+                    <FilterChip
+                        label={`Idade: ${AGE_RANGES.find(r => r.value === activeFilters.ageRange)?.label || activeFilters.ageRange}`}
+                        colorscheme="genero"
+                        onDelete={() => handleRemoveFilter('ageRange')}
+                    />
+                )}
+
+                {/* Filtro de localização - estado */}
+                {activeFilters.region?.state && (
+                    <FilterChip
+                        label={`Estado: ${activeFilters.region.state}`}
+                        colorscheme="default"
+                        onDelete={() => handleRemoveFilter('region', 'state')}
+                    />
+                )}
+
+                {/* Filtro de localização - cidade */}
+                {activeFilters.region?.city && (
+                    <FilterChip
+                        label={`Cidade: ${activeFilters.region.city}`}
+                        colorscheme="default"
+                        onDelete={() => handleRemoveFilter('region', 'city')}
+                    />
+                )}
+
+                {/* Filtro de período de consulta */}
                 {activeFilters.dateRange && (
                     <FilterChip
                         label={`Período: ${activeFilters.dateRange.start || '...'} - ${activeFilters.dateRange.end || '...'}`}

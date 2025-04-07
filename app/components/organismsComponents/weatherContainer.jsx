@@ -56,6 +56,13 @@ const WeatherContainer = () => {
 
                         const freshData = await response.json();
 
+                        // CORREÇÃO: Garantir que o cityName seja consistente com a cidade solicitada
+                        const requestedCityName = currentCity.split(',')[0];
+                        if (freshData.cityName !== requestedCityName) {
+                            console.log(`[Weather] Corrigindo cityName de "${freshData.cityName}" para "${requestedCityName}"`);
+                            freshData.cityName = requestedCityName;
+                        }
+
                         // 5. Salvar no Firebase
                         await firebaseService.updateUserWeatherData(user.uid, freshData, currentCity);
 
@@ -140,6 +147,13 @@ const WeatherContainer = () => {
 
             const freshData = await response.json();
 
+            // CORREÇÃO: Garantir que o cityName seja consistente com a cidade solicitada
+            const requestedCityName = currentCity.split(',')[0];
+            if (freshData.cityName !== requestedCityName) {
+                console.log(`[Weather] Corrigindo cityName de "${freshData.cityName}" para "${requestedCityName}"`);
+                freshData.cityName = requestedCityName;
+            }
+
             // Salvar no Firebase
             await firebaseService.updateUserWeatherData(user.uid, freshData, currentCity);
 
@@ -159,9 +173,13 @@ const WeatherContainer = () => {
         const processedData = {...data};
 
         // Garantir que temos todos os campos necessários
-        if (!processedData.cityName) {
-            processedData.cityName = processedData.cityRequested?.split(',')[0] || "São Paulo";
+        // CORREÇÃO: Priorizar cityRequested sobre cityName
+        if (processedData.cityRequested) {
+            processedData.cityName = processedData.cityRequested.split(',')[0];
+        } else if (!processedData.cityName) {
+            processedData.cityName = "São Paulo";
         }
+
         if (processedData.currentTemp === undefined) processedData.currentTemp = 25;
         if (!processedData.currentWeather) processedData.currentWeather = "Clear";
         if (processedData.highTemp === undefined) processedData.highTemp = processedData.currentTemp + 3;

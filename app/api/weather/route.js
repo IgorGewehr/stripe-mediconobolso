@@ -157,7 +157,8 @@ export async function GET(request) {
 
         // Format final object
         const result = {
-            cityName: weatherData.name,
+            cityName: city.split(',')[0],
+            originalCityName: weatherData.name,
             currentTemp: Math.round(weatherData.main.temp),
             currentWeather: weatherData.weather[0].main,
             highTemp: Math.round(weatherData.main.temp_max),
