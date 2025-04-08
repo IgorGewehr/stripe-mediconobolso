@@ -830,7 +830,25 @@ const FilterSection = ({title, children, actionElement}) => {
 const StatusChip = ({ status, onClick, size = 'medium' }) => {
     // Obter configurações de cor e estilo com base no status
     const getStatusConfig = (status) => {
-        switch (status.toLowerCase()) {
+        // Normalizar o status para comparação case-insensitive
+        const normalizedStatus = status.toLowerCase();
+
+        // Procurar o status nas opções predefinidas
+        const statusOption = STATUS_OPTIONS.find(option =>
+            option.value.toLowerCase() === normalizedStatus
+        );
+
+        // Se encontrou uma configuração, use-a
+        if (statusOption) {
+            return {
+                bgColor: getBgColorFromStatusColor(statusOption.color),
+                color: statusOption.color,
+                icon: statusOption.icon
+            };
+        }
+
+        // Casos específicos que podem não estar em STATUS_OPTIONS
+        switch (normalizedStatus) {
             case 'pendente':
                 return {
                     bgColor: '#F5F5F5',
@@ -861,6 +879,23 @@ const StatusChip = ({ status, onClick, size = 'medium' }) => {
                     color: '#757575',
                     icon: <EventNoteIcon fontSize="inherit" />
                 };
+        }
+    };
+
+    // Função auxiliar para gerar cor de fundo com base na cor principal
+    const getBgColorFromStatusColor = (color) => {
+        switch (color) {
+            case '#757575': return '#F5F5F5'; // cinza
+            case '#9C27B0': return '#F3E5F5'; // roxo
+            case '#2196F3': return '#E3F2FD'; // azul
+            case '#FF9800': return '#FFF8E1'; // laranja
+            case '#1C94E0': return '#E1F5FE'; // azul claro
+            case '#1852FE': return '#E8F0FF'; // azul escuro
+            case '#FF4B55': return '#FFEBEE'; // vermelho
+            case '#7B4BC9': return '#EDE7F6'; // roxo claro
+            case '#FFAB2B': return '#FFF8E1'; // amarelo
+            case '#0CAF60': return '#E8F5E9'; // verde
+            default: return '#F5F5F5'; // cinza padrão
         }
     };
 
@@ -899,6 +934,7 @@ const StatusChip = ({ status, onClick, size = 'medium' }) => {
         />
     );
 };
+
 
 // Botão para limpar filtros
 const ClearButton = ({onClick}) => {
@@ -1051,15 +1087,26 @@ const PatientsListPage = ({onPatientClick}) => {
             }
         }
 
-        // Definir estados em uma única sequência
-        setSelectedPatient(patient);
-        setNewStatus(statusToUse);
+        // Primeiro, carregar o histórico antes de qualquer atualização de estado da UI
+        setStatusHistoryLoading(true);
 
-        // Carregar histórico antes de abrir o dialog
-        loadStatusHistory(patient.id).then(() => {
-            // Só abre o dialog depois que o histórico estiver carregado
-            setStatusDialogOpen(true);
-        });
+        // Definir estados de uma vez para evitar múltiplas renderizações
+        loadStatusHistory(patient.id)
+            .then(() => {
+                // Atualizar estados em lote após o carregamento do histórico
+                setSelectedPatient(patient);
+                setNewStatus(statusToUse);
+
+                // Finalmente, abrir o diálogo
+                setStatusDialogOpen(true);
+            })
+            .catch(error => {
+                console.error("Erro ao carregar histórico:", error);
+                // Ainda abrir o diálogo mesmo com erro no histórico
+                setSelectedPatient(patient);
+                setNewStatus(statusToUse);
+                setStatusDialogOpen(true);
+            });
     }, [loadStatusHistory, getDateValue]);
 
     // Estados para filtros
@@ -1288,6 +1335,11 @@ const PatientsListPage = ({onPatientClick}) => {
             return 'primeira consulta';
         } else if (patient.consultationRescheduled) {
             return patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
+        }
+
+        // Verificar se há um status explícito definido
+        if (patient.status) {
+            return patient.status;
         }
 
         return 'pendente';
@@ -2628,56 +2680,66 @@ const PatientsListPage = ({onPatientClick}) => {
                         Selecione o novo status
                     </Typography>
 
-                    {/* Botões de status */}
+                    {/* Botões de status - Corrigindo o problema do flickering */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
-                        {STATUS_OPTIONS.filter(option => option.value !== "").map(option => (
-                            <Button
-                                key={option.value}
-                                variant={newStatus === option.value ? "contained" : "outlined"}
-                                onClick={() => !statusUpdateLoading && setNewStatus(option.value)}
-                                disabled={statusUpdateLoading}
-                                sx={{
-                                    justifyContent: 'flex-start',
-                                    py: 1.5,
-                                    px: 2,
-                                    borderRadius: '12px',
-                                    borderColor: newStatus === option.value
-                                        ? 'transparent'
-                                        : theme.palette.divider,
-                                    backgroundColor: newStatus === option.value
-                                        ? theme.palette.primary.main
-                                        : 'transparent',
-                                    color: newStatus === option.value
-                                        ? 'white'
-                                        : 'text.primary',
-                                    '&:hover': {
+                        {STATUS_OPTIONS.filter(option => option.value !== "").map(option => {
+                            // Memorizar a função de clique para evitar recriação a cada renderização
+                            const handleStatusButtonClick = React.useCallback(() => {
+                                if (!statusUpdateLoading) {
+                                    setNewStatus(option.value);
+                                }
+                            }, [option.value, statusUpdateLoading]);
+
+                            return (
+                                <Button
+                                    key={option.value}
+                                    variant={newStatus === option.value ? "contained" : "outlined"}
+                                    onClick={handleStatusButtonClick}
+                                    disabled={statusUpdateLoading}
+                                    sx={{
+                                        justifyContent: 'flex-start',
+                                        py: 1.5,
+                                        px: 2,
+                                        borderRadius: '12px',
+                                        borderColor: newStatus === option.value
+                                            ? 'transparent'
+                                            : theme.palette.divider,
                                         backgroundColor: newStatus === option.value
-                                            ? theme.palette.primary.dark
-                                            : alpha(theme.palette.primary.main, 0.04),
-                                    }
-                                }}
-                            >
-                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                    <Box
-                                        sx={{
-                                            width: 12,
-                                            height: 12,
-                                            borderRadius: '50%',
-                                            mr: 2,
-                                            backgroundColor: option.color
-                                        }}
-                                    />
-                                    {option.label}
-                                    {option.icon && (
-                                        <Box sx={{ ml: 'auto', opacity: 0.7 }}>
-                                            {option.icon}
-                                        </Box>
-                                    )}
-                                </Box>
-                            </Button>
-                        ))}
+                                            ? theme.palette.primary.main
+                                            : 'transparent',
+                                        color: newStatus === option.value
+                                            ? 'white'
+                                            : 'text.primary',
+                                        '&:hover': {
+                                            backgroundColor: newStatus === option.value
+                                                ? theme.palette.primary.dark
+                                                : alpha(theme.palette.primary.main, 0.04),
+                                        }
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                        <Box
+                                            sx={{
+                                                width: 12,
+                                                height: 12,
+                                                borderRadius: '50%',
+                                                mr: 2,
+                                                backgroundColor: option.color
+                                            }}
+                                        />
+                                        {option.label}
+                                        {option.icon && (
+                                            <Box sx={{ ml: 'auto', opacity: 0.7 }}>
+                                                {option.icon}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                </Button>
+                            );
+                        })}
                     </Box>
 
+                    {/* O restante do Dialog permanece igual */}
                     {/* Histórico de status com estado de carregamento */}
                     {(statusHistory.length > 0 || statusHistoryLoading) && (
                         <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
