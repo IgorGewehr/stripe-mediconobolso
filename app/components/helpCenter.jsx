@@ -182,7 +182,7 @@ const getVideoUrl = async (videoId) => {
 };
 
 // Main component
-const HelpCenter = ({ initialTab = 0 }) => {
+const HelpCenter = ({ initialTab }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { user } = useAuth();
