@@ -21,61 +21,160 @@ import {
     Skeleton,
     useTheme,
     alpha,
-    Popover,
     Grid,
+    ButtonGroup,
+    Badge,
+    Tooltip,
+    useMediaQuery,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
     FormControl,
     Select,
     MenuItem,
-    useMediaQuery,
-    Tooltip,
-    ButtonGroup,
-    Divider,
-    Badge, Dialog, InputLabel, DialogContent, DialogTitle, DialogActions
+    Alert,
+    CircularProgress
 } from '@mui/material';
 
 import {
     Search as SearchIcon,
     ChevronRight as ChevronRightIcon,
     FilterList as FilterListIcon,
-    Menu as MenuIcon,
     Female as FemaleIcon,
     Male as MaleIcon,
     VideoCall as VideoCallIcon,
     Close as CloseIcon,
     CalendarToday as CalendarTodayIcon,
-    Event as EventIcon,
+    EventNote as EventNoteIcon,
     EventAvailable as EventAvailableIcon,
-    FilterAlt as FilterAltIcon,
-    MoreVert as MoreVertIcon,
-    ArrowDropDown as ArrowDropDownIcon
+    Person as PersonIcon,
+    Event as EventIcon,
+    ScheduleSend as ScheduleSendIcon,
+    AddCircleOutline as AddCircleOutlineIcon,
+    Timeline as TimelineIcon
 } from '@mui/icons-material';
 
-import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, formatDistance, isAfter, isBefore, addDays, startOfDay } from 'date-fns';
+import { format, isToday, isPast, isValid, parse, differenceInYears, formatDistance, isAfter, isBefore, startOfDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from "../../../lib/firebaseService";
 import { useAuth } from "../authProvider";
-import PersonIcon from "@mui/icons-material/Person";
 
 // Constantes
-const PATIENT_CONDITIONS = [
-    { label: 'Diabetes', value: 'diabetes', color: 'diabetes' },
-    { label: 'Hipertensão', value: 'hipertensao', color: 'hipertensao' },
-    { label: 'Fumante', value: 'fumante', color: 'fumante' },
-    { label: 'Internado', value: 'internado', color: 'internado' },
-    { label: 'Idoso', value: 'idoso', color: 'idoso' },
-    { label: 'Obeso', value: 'obeso', color: 'obeso' },
-];
+const VIEW_OPTIONS = {
+    ALL: 'all',
+    TODAY: 'today',
+    UPCOMING: 'upcoming'
+};
 
 const STATUS_OPTIONS = [
-    { label: 'Todos os status', value: '' },
-    { label: 'Pendente', value: 'pendente' },
-    { label: 'Reagendado', value: 'reagendado' },
-    { label: 'Primeira Consulta', value: 'primeira consulta' },
-    { label: 'Reag. Pendente', value: 'reag. pendente' },
+    { label: 'Pendente', value: 'pendente', icon: <EventNoteIcon fontSize="small" />, color: '#757575' },
+    { label: 'Reagendado', value: 'reagendado', icon: <ScheduleSendIcon fontSize="small" />, color: '#9C27B0' },
+    { label: 'Primeira Consulta', value: 'primeira consulta', icon: <AddCircleOutlineIcon fontSize="small" />, color: '#2196F3' },
+    { label: 'Reag. Pendente', value: 'reag. pendente', icon: <ScheduleSendIcon fontSize="small" />, color: '#FF9800' },
 ];
 
-// Componente estilizado para cabeçalhos de coluna ordenáveis
-const SortableHeaderCell = ({ label, field, sortConfig, onSortChange }) => {
+// Componente StatusChip otimizado e memorizado
+const StatusChip = React.memo(({ status, onClick, size = 'small' }) => {
+    // Obter configurações de cor e estilo com base no status
+    const getStatusConfig = useCallback((status) => {
+        switch (status.toLowerCase()) {
+            case 'pendente':
+                return { bgColor: '#F5F5F5', color: '#757575', icon: <EventNoteIcon fontSize="inherit" /> };
+            case 'reagendado':
+                return { bgColor: '#F3E5F5', color: '#9C27B0', icon: <ScheduleSendIcon fontSize="inherit" /> };
+            case 'primeira consulta':
+                return { bgColor: '#E3F2FD', color: '#2196F3', icon: <AddCircleOutlineIcon fontSize="inherit" /> };
+            case 'reag. pendente':
+                return { bgColor: '#FFF8E1', color: '#FF9800', icon: <ScheduleSendIcon fontSize="inherit" /> };
+            default:
+                return { bgColor: '#F5F5F5', color: '#757575', icon: <EventNoteIcon fontSize="inherit" /> };
+        }
+    }, []);
+
+    const config = getStatusConfig(status);
+
+    return (
+        <Chip
+            label={status.charAt(0).toUpperCase() + status.slice(1)}
+            size={size}
+            icon={size === 'small' ? null :
+                <Box component="span" sx={{ ml: 0.5, display: 'flex', alignItems: 'center' }}>
+                    {config.icon}
+                </Box>
+            }
+            onClick={onClick}
+            sx={{
+                borderRadius: size === 'small' ? '12px' : '16px',
+                fontSize: size === 'small' ? '0.75rem' : '0.8rem',
+                fontWeight: 500,
+                backgroundColor: config.bgColor,
+                color: config.color,
+                cursor: onClick ? 'pointer' : 'default',
+                '&:hover': onClick ? {
+                    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+                    backgroundColor: alpha(config.bgColor, 0.8)
+                } : {},
+                transition: 'all 0.2s ease',
+                height: size === 'small' ? 24 : 32,
+                px: size === 'small' ? 1 : 1.5,
+                '& .MuiChip-icon': {
+                    color: 'inherit',
+                    marginLeft: size === 'small' ? 0.3 : 0.5,
+                    fontSize: size === 'small' ? '0.7rem' : '0.9rem'
+                }
+            }}
+        />
+    );
+});
+
+// Componente de Card Métrico
+const MetricCard = React.memo(({ icon, title, value, active, onClick, color, loading }) => {
+    const theme = useTheme();
+
+    return (
+        <Card
+            elevation={0}
+            onClick={onClick}
+            sx={{
+                p: 1.5,
+                borderRadius: '16px',
+                border: `1px solid ${active ? color.main : alpha(theme.palette.primary.main, 0.2)}`,
+                backgroundColor: active ? alpha(color.main, 0.05) : 'white',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                }
+            }}
+        >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Avatar sx={{
+                    bgcolor: active ? color.main : alpha(color.main, 0.1),
+                    color: active ? 'white' : color.main,
+                    width: 32,
+                    height: 32,
+                    mr: 1.5,
+                    transition: 'all 0.2s ease',
+                }}>
+                    {icon}
+                </Avatar>
+                <Box>
+                    <Typography variant="caption" color={active ? color.main : "text.secondary"} sx={{ fontWeight: active ? 600 : 400 }}>
+                        {title}
+                    </Typography>
+                    <Typography variant="h6" fontWeight={600} color={active ? color.main : "text.primary"}>
+                        {loading ? <Skeleton width={30} /> : value}
+                    </Typography>
+                </Box>
+            </Box>
+        </Card>
+    );
+});
+
+// Componente para cabeçalho de coluna ordenável
+const SortableHeaderCell = React.memo(({ label, field, sortConfig, onSortChange }) => {
     const theme = useTheme();
     const isActive = sortConfig.field === field;
 
@@ -95,400 +194,42 @@ const SortableHeaderCell = ({ label, field, sortConfig, onSortChange }) => {
         >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Typography variant="caption" fontWeight={600}>{label}</Typography>
-                <Box
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        opacity: isActive ? 1 : 0.4,
-                        transition: 'all 0.2s ease',
-                    }}
-                >
-                    <ArrowDropDownIcon
-                        fontSize="small"
-                        sx={{
-                            transform: isActive && sortConfig.direction === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.2s ease'
-                        }}
-                    />
-                </Box>
+                {isActive && (
+                    <Box sx={{ opacity: 0.7 }}>
+                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                    </Box>
+                )}
             </Box>
         </TableCell>
     );
-};
+});
 
-const MetricCard = ({ icon, title, value, active, onClick, color, loading }) => {
-    const theme = useTheme();
-
-    return (
-        <Card
-            elevation={0}
-            onClick={onClick}
-            sx={{
-                p: 1.5,
-                borderRadius: '16px',
-                border: `1px solid ${active
-                    ? color.main
-                    : alpha(theme.palette.primary.main, 0.2)
-                }`,
-                backgroundColor: active ? alpha(color.main, 0.05) : 'white',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                }
-            }}
-        >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar sx={{
-                    bgcolor: active
-                        ? color.main
-                        : alpha(color.main, 0.1),
-                    color: active
-                        ? 'white'
-                        : color.main,
-                    width: 32,
-                    height: 32,
-                    mr: 1.5,
-                    transition: 'all 0.2s ease',
-                }}>
-                    {icon}
-                </Avatar>
-                <Box>
-                    <Typography variant="caption" color={active ? color.main : "text.secondary"} sx={{ fontWeight: active ? 600 : 400 }}>
-                        {title}
-                    </Typography>
-                    <Typography variant="h6" fontWeight={600} color={active ? color.main : "text.primary"}>
-                        {loading ? <Skeleton width={30} /> : value}
-                    </Typography>
-                </Box>
-            </Box>
-        </Card>
-    );
-};
-
-// Estilos para filtros
-const FilterChip = ({ label, colorscheme, onDelete }) => {
-    const theme = useTheme();
-
-    const getBackgroundColor = () => {
-        switch (colorscheme) {
-            case 'diabetes': return '#FFF9C4';
-            case 'fumante': return '#E0F7FA';
-            case 'internado': return '#E8EAF6';
-            case 'idoso': return '#F3E5F5';
-            case 'obeso': return '#FCE4EC';
-            case 'hipertensao': return '#E8F5E9';
-            case 'genero': return '#E3F2FD';
-            case 'consultas': return '#E1F5FE';
-            case 'primeira-consulta': return '#E8F5E9';
-            default: return '#F5F5F5';
-        }
-    };
-
-    return (
-        <Chip
-            label={label}
-            onDelete={onDelete}
-            deleteIcon={<CloseIcon fontSize="small" />}
-            sx={{
-                margin: '0 4px',
-                backgroundColor: getBackgroundColor(),
-                color: '#111E5A',
-                borderRadius: '50px',
-                fontWeight: 500,
-                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
-                '& .MuiChip-deleteIcon': {
-                    color: '#111E5A',
-                    '&:hover': {
-                        color: alpha('#111E5A', 0.7),
-                    },
-                },
-            }}
-        />
-    );
-};
-
-const ConditionChip = ({ label, colorscheme, onClick, selected }) => {
-    const theme = useTheme();
-
-    const getBackgroundColor = () => {
-        switch (colorscheme) {
-            case 'diabetes': return '#FFF9C4';
-            case 'fumante': return '#E0F7FA';
-            case 'internado': return '#E8EAF6';
-            case 'idoso': return '#F3E5F5';
-            case 'obeso': return '#FCE4EC';
-            case 'hipertensao': return '#E8F5E9';
-            default: return '#F5F5F5';
-        }
-    };
-
-    return (
-        <Chip
-            label={label}
-            onClick={onClick}
-            onDelete={selected ? onClick : undefined}
-            deleteIcon={selected ? <CloseIcon fontSize="small" /> : undefined}
-            sx={{
-                margin: '4px',
-                backgroundColor: getBackgroundColor(),
-                color: '#111E5A',
-                borderRadius: '50px',
-                fontWeight: 500,
-                border: selected ? `1px solid ${theme.palette.primary.main}` : 'none',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                    boxShadow: selected ? 'none' : '0px 2px 4px rgba(0, 0, 0, 0.05)',
-                },
-                '& .MuiChip-deleteIcon': {
-                    color: '#111E5A',
-                    '&:hover': {
-                        color: alpha('#111E5A', 0.7),
-                    },
-                },
-            }}
-        />
-    );
-};
-
-const FilterSection = ({ title, children, actionElement }) => {
-    return (
-        <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                <Typography variant="subtitle1" fontWeight={600} color="#424242">{title}</Typography>
-                {actionElement}
-            </Box>
-            {children}
-        </Box>
-    );
-};
-
-const ClearButton = ({ onClick }) => {
-    const theme = useTheme();
-
-    return (
-        <Typography
-            onClick={onClick}
-            variant="caption"
-            sx={{
-                color: theme.palette.primary.main,
-                fontWeight: 600,
-                cursor: 'pointer',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                '&:hover': {
-                    textDecoration: 'underline',
-                },
-            }}
-        >
-            LIMPAR
-        </Typography>
-    );
-};
-
-const FilterMenu = ({ activeFilters, onFilterChange, onClearFilters, onApplyFilters }) => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
-    const handleGenderChange = (gender) => {
-        onFilterChange('gender', gender === activeFilters.gender ? null : gender);
-    };
-
-    const handleConditionToggle = (condition) => {
-        const conditions = [...activeFilters.conditions];
-        const index = conditions.indexOf(condition);
-
-        if (index === -1) {
-            conditions.push(condition);
-        } else {
-            conditions.splice(index, 1);
-        }
-
-        onFilterChange('conditions', conditions);
-    };
-
-    const handleStatusChange = (event) => {
-        onFilterChange('status', event.target.value === '' ? null : event.target.value);
-    };
-
-    return (
-        <Box sx={{
-            width: isMobile ? '100%' : '540px',
-            p: 3,
-            borderRadius: '30px',
-            border: `1px solid ${theme.palette.divider}`,
-            backgroundColor: 'white',
-            maxHeight: '80vh',
-            overflow: 'auto',
-        }}>
-            {/* Filtro de Gênero */}
-            <FilterSection
-                title="Gênero"
-                actionElement={
-                    activeFilters.gender &&
-                    <ClearButton onClick={() => onFilterChange('gender', null)} />
-                }
-            >
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <Button
-                        variant={activeFilters.gender === 'Ambos' ? 'contained' : 'outlined'}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Ambos' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Ambos' ? 'primary.dark' : alpha('#000', 0.04) }
-                        }}
-                        onClick={() => handleGenderChange('Ambos')}
-                    >
-                        Ambos
-                    </Button>
-                    <Button
-                        variant={activeFilters.gender === 'Masculino' ? 'contained' : 'outlined'}
-                        startIcon={<MaleIcon />}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Masculino' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Masculino' ? 'primary.dark' : alpha('#000', 0.04) }
-                        }}
-                        onClick={() => handleGenderChange('Masculino')}
-                    >
-                        Masculino
-                    </Button>
-                    <Button
-                        variant={activeFilters.gender === 'Feminino' ? 'contained' : 'outlined'}
-                        startIcon={<FemaleIcon />}
-                        sx={{
-                            borderRadius: '50px',
-                            color: activeFilters.gender === 'Feminino' ? 'white' : 'inherit',
-                            backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.main' : 'transparent',
-                            '&:hover': { backgroundColor: activeFilters.gender === 'Feminino' ? 'primary.dark' : alpha('#000', 0.04) }
-                        }}
-                        onClick={() => handleGenderChange('Feminino')}
-                    >
-                        Feminino
-                    </Button>
-                </Box>
-            </FilterSection>
-
-            {/* Filtro de Condição do Paciente */}
-            <FilterSection
-                title="Condição do Paciente"
-                actionElement={
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                            {activeFilters.conditions.length} Selecionadas
-                        </Typography>
-                        {activeFilters.conditions.length > 0 && (
-                            <ClearButton onClick={() => onFilterChange('conditions', [])} />
-                        )}
-                    </Box>
-                }
-            >
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {PATIENT_CONDITIONS.map(condition => (
-                        <ConditionChip
-                            key={condition.value}
-                            label={condition.label}
-                            colorscheme={condition.color}
-                            onClick={() => handleConditionToggle(condition.value)}
-                            selected={activeFilters.conditions.includes(condition.value)}
-                        />
-                    ))}
-                </Box>
-            </FilterSection>
-
-            {/* Filtro de Status */}
-            <FilterSection
-                title="Status"
-                actionElement={
-                    activeFilters.status &&
-                    <ClearButton onClick={() => onFilterChange('status', null)} />
-                }
-            >
-                <FormControl fullWidth variant="outlined" size="small">
-                    <Select
-                        value={activeFilters.status || ''}
-                        onChange={handleStatusChange}
-                        displayEmpty
-                        sx={{
-                            borderRadius: '50px',
-                            '.MuiOutlinedInput-notchedOutline': { borderColor: theme.palette.divider },
-                        }}
-                        MenuProps={{
-                            PaperProps: {
-                                sx: {
-                                    borderRadius: '16px',
-                                    mt: 1,
-                                },
-                            },
-                        }}
-                    >
-                        <MenuItem value="">Todos os status</MenuItem>
-                        {STATUS_OPTIONS.filter(option => option.value !== '').map(option => (
-                            <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-            </FilterSection>
-
-            {/* Botões de Ação */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-                <Button
-                    variant="outlined"
-                    color="inherit"
-                    sx={{
-                        borderRadius: '50px',
-                        px: 3,
-                    }}
-                    onClick={onClearFilters}
-                >
-                    Limpar Filtros
-                </Button>
-
-                <Button
-                    variant="contained"
-                    color="primary"
-                    sx={{
-                        borderRadius: '50px',
-                        px: 4,
-                        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
-                        '&:hover': {
-                            boxShadow: '0px 6px 15px rgba(0, 0, 0, 0.15)',
-                        }
-                    }}
-                    onClick={onApplyFilters}
-                >
-                    Aplicar Filtros
-                </Button>
-            </Box>
-        </Box>
-    );
-};
-
-const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) => {
+// Componente principal
+const PatientsListCard = ({ patients: initialPatients, consultations, loading, onPatientClick }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
     const { user } = useAuth();
+
+    // Estados básicos
     const [searchTerm, setSearchTerm] = useState('');
+    const [patients, setPatients] = useState([]);
     const [filteredPatients, setFilteredPatients] = useState([]);
-    const [viewOptions, setViewOptions] = useState('all'); // 'all', 'today', 'upcoming'
+    const [viewOption, setViewOption] = useState(VIEW_OPTIONS.ALL);
     const [sortConfig, setSortConfig] = useState({
         field: 'patientName',
         direction: 'asc'
     });
 
-    // Estados para filtros
-    const [filterAnchorEl, setFilterAnchorEl] = useState(null);
-    const [activeFilters, setActiveFilters] = useState({
-        gender: null,
-        conditions: [],
-        status: null
-    });
+    // Estados para dialog de status
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [selectedPatient, setSelectedPatient] = useState(null);
+    const [newStatus, setNewStatus] = useState('');
+    const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+    const [statusUpdateSuccess, setStatusUpdateSuccess] = useState(false);
+    const [statusUpdateError, setStatusUpdateError] = useState(null);
+    const [statusHistory, setStatusHistory] = useState([]);
+    const [statusHistoryLoading, setStatusHistoryLoading] = useState(false);
 
     // Estado para consultas (caso não sejam fornecidas como props)
     const [localConsultations, setLocalConsultations] = useState([]);
@@ -501,47 +242,76 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         upcomingConsultations: 0
     });
 
-    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-    const [selectedPatient, setSelectedPatient] = useState(null);
-    const [newStatus, setNewStatus] = useState("pendente");
+    // Função auxiliar para extrair valores de data
+    const getDateValue = useCallback((obj, field) => {
+        if (!obj || !obj[field]) return null;
 
-    const [isUpdating, setIsUpdating] = useState(false);
-    const [successMessage, setSuccessMessage] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
-
-
-    const handleStatusSave = async () => {
-        if (!selectedPatient) return;
-
-        // Inicia loading state se desejar
-        setIsUpdating(true);
-
-        try {
-            // Atualiza no Firebase
-            await FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus]);
-
-            // Atualiza o estado local otimisticamente
-            setPatients(prevPatients =>
-                prevPatients.map(patient =>
-                    patient.id === selectedPatient.id
-                        ? { ...patient, statusList: [newStatus] }
-                        : patient
-                )
-            );
-
-            // Mostra notificação de sucesso se desejar
-            setSuccessMessage('Status do paciente atualizado com sucesso!');
-            setTimeout(() => setSuccessMessage(''), 3000);
-        } catch (error) {
-            console.error("Erro ao atualizar status do paciente:", error);
-            // Mostra mensagem de erro se desejar
-            setErrorMessage('Erro ao atualizar status. Tente novamente.');
-            setTimeout(() => setErrorMessage(''), 3000);
-        } finally {
-            setIsUpdating(false);
-            setStatusDialogOpen(false);
+        if (obj[field] instanceof Date) {
+            return obj[field];
         }
-    };
+
+        if (typeof obj[field].toDate === 'function') {
+            return obj[field].toDate();
+        }
+
+        if (typeof obj[field] === 'string') {
+            try {
+                const parsedDate = new Date(obj[field]);
+                if (isValid(parsedDate)) {
+                    return parsedDate;
+                }
+
+                // Tentar formato específico
+                const parts = obj[field].split('/');
+                if (parts.length === 3) {
+                    return new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+            } catch (e) {
+                console.warn(`Erro ao converter data: ${obj[field]}`);
+            }
+        }
+
+        return null;
+    }, []);
+
+    // Formatação segura de datas
+    const safeFormatDate = useCallback((date, formatString, defaultValue = '-') => {
+        try {
+            if (!date) return defaultValue;
+            if (date instanceof Date) {
+                if (isNaN(date.getTime())) return defaultValue;
+                return format(date, formatString, { locale: ptBR });
+            }
+            const parsedDate = new Date(date);
+            if (isNaN(parsedDate.getTime())) return defaultValue;
+            return format(parsedDate, formatString, { locale: ptBR });
+        } catch (error) {
+            console.warn('Erro ao formatar data:', error, date);
+            return defaultValue;
+        }
+    }, []);
+
+    // Determinar o status do paciente
+    const determinePatientStatus = useCallback((patient) => {
+        if (!patient) return 'pendente';
+
+        // Verificar statusList primeiro
+        if (patient.statusList && Array.isArray(patient.statusList) && patient.statusList.length > 0) {
+            return patient.statusList[0];
+        }
+
+        // Verificar por campos de consulta
+        const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
+        const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
+
+        if (!lastConsultDate && nextConsultDate) {
+            return 'primeira consulta';
+        } else if (patient.consultationRescheduled) {
+            return patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
+        }
+
+        return 'pendente';
+    }, [getDateValue]);
 
     // Carregar consultas se não foram fornecidas como props
     useEffect(() => {
@@ -566,47 +336,6 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         fetchConsultations();
     }, [user, consultations]);
 
-    const handleStatusClick = (patient, currentStatus) => {
-        // Evita que o clique no status dispare outras ações de linha
-        setSelectedPatient(patient);
-        setNewStatus(currentStatus || "pendente"); // inicia com o status atual ou padrão "pendente"
-        setStatusDialogOpen(true);
-    };
-
-    // Função auxiliar para extrair valores de data
-    const getDateValue = useCallback((obj, field) => {
-        if (!obj || !obj[field]) return null;
-
-        if (obj[field] instanceof Date) {
-            return obj[field];
-        }
-
-        if (typeof obj[field].toDate === 'function') {
-            return obj[field].toDate();
-        }
-
-        if (typeof obj[field] === 'string') {
-            try {
-                const parsedDate = parseISO(obj[field]);
-                if (isValid(parsedDate)) {
-                    return parsedDate;
-                }
-            } catch (e) {
-                // Tenta outro formato
-                try {
-                    const parsedDate = parse(obj[field], 'dd/MM/yyyy', new Date());
-                    if (isValid(parsedDate)) {
-                        return parsedDate;
-                    }
-                } catch (e2) {
-                    console.warn(`Não foi possível parsear a data: ${obj[field]}`);
-                }
-            }
-        }
-
-        return null;
-    }, []);
-
     // Mapeamento de pacientes e suas consultas
     const patientConsultations = useMemo(() => {
         const consultationsMap = {};
@@ -626,7 +355,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         return consultationsMap;
     }, [patients, consultations, localConsultations]);
 
-    // Atualizar métricas quando os pacientes e consultas mudam
+    // Atualizar métricas
     useEffect(() => {
         if (!patients) return;
         const allConsultations = consultations || localConsultations;
@@ -699,19 +428,25 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         return pastConsults.length > 0 ? pastConsults[0] : null;
     }, [patientConsultations, getDateValue]);
 
+    // Sincronizar estado local de pacientes com props
+    useEffect(() => {
+        if (initialPatients) {
+            setPatients(initialPatients);
+        }
+    }, [initialPatients]);
+
     // Filtragem e ordenação dos pacientes
     useEffect(() => {
-        if (!patients) {
+        if (!patients || patients.length === 0) {
             setFilteredPatients([]);
             return;
         }
 
-        // Aplicar pesquisa e filtros
+        // Filtrar por consultas de hoje ou próximas
         let filtered = [...patients];
         const allConsultations = consultations || localConsultations;
 
-        // Filtrar por consultas de hoje ou próximas
-        if (viewOptions === 'today') {
+        if (viewOption === VIEW_OPTIONS.TODAY) {
             const today = startOfDay(new Date());
 
             filtered = filtered.filter(patient => {
@@ -725,7 +460,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                     return consultDay.getTime() === today.getTime();
                 });
             });
-        } else if (viewOptions === 'upcoming') {
+        } else if (viewOption === VIEW_OPTIONS.UPCOMING) {
             const tomorrow = addDays(startOfDay(new Date()), 1);
 
             filtered = filtered.filter(patient => {
@@ -746,48 +481,6 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                 (patient.patientEmail || '').toLowerCase().includes(searchLower) ||
                 (patient.patientCPF || '').includes(searchTerm)
             );
-        }
-
-        // Aplicar filtro de gênero
-        if (activeFilters.gender) {
-            filtered = filtered.filter(patient =>
-                patient.gender.toLowerCase() === activeFilters.gender.toLowerCase() ||
-                activeFilters.gender.toLowerCase() === 'ambos'
-            );
-        }
-
-        // Aplicar filtro de condições
-        if (activeFilters.conditions.length > 0) {
-            filtered = filtered.filter(patient => {
-                // Mapear condições para um array no formato do paciente
-                const patientConditions = [];
-                if (patient.isSmoker) patientConditions.push('fumante');
-                if (patient.chronicDiseases?.includes('Diabetes')) patientConditions.push('diabetes');
-                if (patient.chronicDiseases?.includes('Hipertensão')) patientConditions.push('hipertensao');
-                // Adicionar mais mapeamentos conforme necessário
-
-                // Verificar se alguma das condições filtradas está presente
-                return activeFilters.conditions.some(condition =>
-                    patientConditions.includes(condition)
-                );
-            });
-        }
-
-        // Aplicar filtro de status
-        if (activeFilters.status) {
-            filtered = filtered.filter(patient => {
-                let status = 'pendente';
-                const nextConsult = getPatientNextConsult(patient.id);
-                const lastConsult = getPatientLastConsult(patient.id);
-
-                if (!lastConsult && nextConsult) {
-                    status = 'primeira consulta';
-                } else if (patient.consultationRescheduled) {
-                    status = patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
-                }
-
-                return status.toLowerCase() === activeFilters.status.toLowerCase();
-            });
         }
 
         // Aplicar ordenação
@@ -819,8 +512,8 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                 if (!bValue) return -1;
 
                 return sortConfig.direction === 'asc'
-                    ? aValue.getTime() - bValue.getTime()
-                    : bValue.getTime() - aValue.getTime();
+                    ? aValue - bValue
+                    : bValue - aValue;
             }
 
             // Ordenação de texto
@@ -846,103 +539,139 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
         localConsultations,
         searchTerm,
         sortConfig,
-        activeFilters,
-        viewOptions,
+        viewOption,
         getDateValue,
         patientConsultations,
         getPatientNextConsult,
         getPatientLastConsult
     ]);
 
-    // Formatação de datas
-    const formatDate = (date) => {
-        if (!date) return '-';
+    // Carregar histórico de status
+    const loadStatusHistory = useCallback(async (patientId) => {
+        if (!patientId || !user?.uid) return [];
+
+        setStatusHistoryLoading(true);
 
         try {
-            return format(date, 'dd/MM/yyyy', { locale: ptBR });
+            const history = await FirebaseService.getPatientStatusHistory(user.uid, patientId);
+            setStatusHistory(history || []);
+            return history;
         } catch (error) {
-            return '-';
+            console.error("Erro ao carregar histórico de status:", error);
+            setStatusHistory([]);
+            return [];
+        } finally {
+            setStatusHistoryLoading(false);
         }
-    };
-
-    // Determinar se existem filtros ativos
-    const hasActiveFilters =
-        activeFilters.gender !== null ||
-        activeFilters.conditions.length > 0 ||
-        activeFilters.status !== null;
+    }, [user]);
 
     // Manipuladores de eventos
-    const handleSearchChange = (event) => {
+    const handleSearchChange = useCallback((event) => {
         setSearchTerm(event.target.value);
-    };
+    }, []);
 
-    const handleViewOptionsChange = (option) => {
-        setViewOptions(option);
-    };
+    const handleViewOptionChange = useCallback((option) => {
+        setViewOption(option);
+    }, []);
 
-    const handleSortChange = (field) => {
+    const handleSortChange = useCallback((field) => {
         setSortConfig(prev => ({
             field,
             direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
         }));
-    };
+    }, []);
 
-    const handlePatientClick = (patientId) => {
+    const handlePatientClick = useCallback((patientId) => {
         if (onPatientClick) {
             onPatientClick(patientId);
         }
-    };
+    }, [onPatientClick]);
 
-    // Filtros
-    const handleFilterClick = (event) => {
-        setFilterAnchorEl(event.currentTarget);
-    };
-
-    const handleFilterClose = () => {
-        setFilterAnchorEl(null);
-    };
-
-    const handleFilterChange = (type, value) => {
-        setActiveFilters(prev => ({
-            ...prev,
-            [type]: value
-        }));
-    };
-
-    const handleRemoveFilter = (type, value) => {
-        if (type === 'gender') {
-            setActiveFilters(prev => ({
-                ...prev,
-                gender: null
-            }));
-        } else if (type === 'condition') {
-            setActiveFilters(prev => ({
-                ...prev,
-                conditions: prev.conditions.filter(c => c !== value)
-            }));
-        } else if (type === 'status') {
-            setActiveFilters(prev => ({
-                ...prev,
-                status: null
-            }));
+    const handleStatusClick = useCallback((patient, currentStatus, event) => {
+        if (event) {
+            event.stopPropagation();
         }
-    };
 
-    const handleClearFilters = () => {
-        setActiveFilters({
-            gender: null,
-            conditions: [],
-            status: null
+        // Determinar o status atual
+        let statusToUse = currentStatus;
+
+        if (patient.statusList && patient.statusList.length > 0) {
+            statusToUse = patient.statusList[0];
+        } else if (!statusToUse) {
+            statusToUse = determinePatientStatus(patient);
+        }
+
+        setSelectedPatient(patient);
+        setNewStatus(statusToUse);
+
+        // Carregar histórico e abrir dialog
+        loadStatusHistory(patient.id).then(() => {
+            setStatusDialogOpen(true);
         });
-        handleFilterClose();
-    };
+    }, [determinePatientStatus, loadStatusHistory]);
 
-    const handleApplyFilters = () => {
-        handleFilterClose();
-    };
+    const handleStatusSave = useCallback(async () => {
+        if (!selectedPatient || !user?.uid) return;
+
+        setStatusUpdateLoading(true);
+        setStatusUpdateError(null);
+        setStatusUpdateSuccess(false);
+
+        try {
+            await FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus]);
+
+            // Atualizar o estado local dos pacientes para refletir a mudança
+            setPatients(prevPatients =>
+                prevPatients.map(patient =>
+                    patient.id === selectedPatient.id
+                        ? { ...patient, statusList: [newStatus] }
+                        : patient
+                )
+            );
+
+            // Adicionar ao histórico
+            await FirebaseService.addPatientStatusHistory(
+                user.uid,
+                selectedPatient.id,
+                newStatus,
+                ''
+            );
+
+            setStatusUpdateSuccess(true);
+
+            // Fechar dialog após um breve delay
+            setTimeout(() => {
+                setStatusDialogOpen(false);
+
+                // Limpar estados
+                setTimeout(() => {
+                    setStatusUpdateSuccess(false);
+                    setSelectedPatient(null);
+                }, 300);
+            }, 1500);
+        } catch (error) {
+            console.error("Erro ao atualizar status do paciente:", error);
+            setStatusUpdateError("Não foi possível atualizar o status. Tente novamente.");
+        } finally {
+            setStatusUpdateLoading(false);
+        }
+    }, [selectedPatient, newStatus, user]);
+
+    const handleCloseDialog = useCallback(() => {
+        if (statusUpdateLoading) return;
+
+        setStatusDialogOpen(false);
+
+        // Limpar estados
+        setTimeout(() => {
+            setStatusUpdateError(null);
+            setStatusUpdateSuccess(false);
+            setSelectedPatient(null);
+        }, 300);
+    }, [statusUpdateLoading]);
 
     // Renderização dos esqueletos durante carregamento
-    const renderSkeletonRows = () => {
+    const renderSkeletonRows = useCallback(() => {
         return Array(5).fill().map((_, index) => (
             <TableRow key={`skeleton-${index}`}>
                 <TableCell>
@@ -962,38 +691,34 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                 <TableCell align="right"><Skeleton variant="circular" width={32} height={32} /></TableCell>
             </TableRow>
         ));
-    };
-
-    const handleMetricCardClick = (option) => {
-        handleViewOptionsChange(option);
-    };
+    }, []);
 
     // Cores para os diferentes estados
-    const viewStateColors = {
-        all: {
+    const viewStateColors = useMemo(() => ({
+        [VIEW_OPTIONS.ALL]: {
             main: theme.palette.primary.main,
             light: alpha(theme.palette.primary.main, 0.1)
         },
-        today: {
+        [VIEW_OPTIONS.TODAY]: {
             main: theme.palette.error.main,
             light: alpha(theme.palette.error.main, 0.1)
         },
-        upcoming: {
+        [VIEW_OPTIONS.UPCOMING]: {
             main: theme.palette.success.main,
             light: alpha(theme.palette.success.main, 0.1)
         }
-    };
+    }), [theme]);
 
     // Determinar a cor do card de conteúdo baseado no estado atual
-    const getContentCardStyle = () => {
+    const getContentCardStyle = useCallback(() => {
         return {
-            backgroundColor: alpha(viewStateColors[viewOptions].main, 0.03),
+            backgroundColor: alpha(viewStateColors[viewOption].main, 0.03),
             borderLeftWidth: 3,
             borderLeftStyle: 'solid',
-            borderLeftColor: viewStateColors[viewOptions].main,
+            borderLeftColor: viewStateColors[viewOption].main,
             transition: 'all 0.3s ease'
         };
-    };
+    }, [viewOption, viewStateColors]);
 
     const isLoadingData = loading || loadingConsultations;
 
@@ -1022,7 +747,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                 }}
             >
                 {/* Cabeçalho com métricas e opções */}
-                <Box sx={{ p: 3, backgroundColor: alpha(viewStateColors[viewOptions].main, 0.05) }}>
+                <Box sx={{ p: 3, backgroundColor: alpha(viewStateColors[viewOption].main, 0.05) }}>
                     <Box
                         sx={{
                             display: 'flex',
@@ -1031,7 +756,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                             mb: 2
                         }}
                     >
-                        <Typography variant="h6" fontWeight={600} color={viewStateColors[viewOptions].main}>
+                        <Typography variant="h6" fontWeight={600} color={viewStateColors[viewOption].main}>
                             Pacientes
                         </Typography>
 
@@ -1042,7 +767,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 sx={{
                                     '& .MuiButton-root': {
                                         borderRadius: 0,
-                                        borderColor: viewStateColors[viewOptions].main,
+                                        borderColor: viewStateColors[viewOption].main,
                                         '&:first-of-type': {
                                             borderTopLeftRadius: '50px',
                                             borderBottomLeftRadius: '50px',
@@ -1052,24 +777,24 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                             borderBottomRightRadius: '50px',
                                         },
                                         '&.Mui-selected': {
-                                            backgroundColor: viewStateColors[viewOptions].main,
+                                            backgroundColor: viewStateColors[viewOption].main,
                                             color: 'white'
                                         }
                                     }
                                 }}
                             >
                                 <Button
-                                    onClick={() => handleViewOptionsChange('all')}
-                                    variant={viewOptions === 'all' ? 'contained' : 'outlined'}
-                                    color={viewOptions === 'all' ? 'primary' : 'inherit'}
+                                    onClick={() => handleViewOptionChange(VIEW_OPTIONS.ALL)}
+                                    variant={viewOption === VIEW_OPTIONS.ALL ? 'contained' : 'outlined'}
+                                    color={viewOption === VIEW_OPTIONS.ALL ? 'primary' : 'inherit'}
                                     size="small"
                                 >
                                     Todos
                                 </Button>
                                 <Button
-                                    onClick={() => handleViewOptionsChange('today')}
-                                    variant={viewOptions === 'today' ? 'contained' : 'outlined'}
-                                    color={viewOptions === 'today' ? 'error' : 'inherit'}
+                                    onClick={() => handleViewOptionChange(VIEW_OPTIONS.TODAY)}
+                                    variant={viewOption === VIEW_OPTIONS.TODAY ? 'contained' : 'outlined'}
+                                    color={viewOption === VIEW_OPTIONS.TODAY ? 'error' : 'inherit'}
                                     size="small"
                                 >
                                     <Badge
@@ -1081,9 +806,9 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                     </Badge>
                                 </Button>
                                 <Button
-                                    onClick={() => handleViewOptionsChange('upcoming')}
-                                    variant={viewOptions === 'upcoming' ? 'contained' : 'outlined'}
-                                    color={viewOptions === 'upcoming' ? 'success' : 'inherit'}
+                                    onClick={() => handleViewOptionChange(VIEW_OPTIONS.UPCOMING)}
+                                    variant={viewOption === VIEW_OPTIONS.UPCOMING ? 'contained' : 'outlined'}
+                                    color={viewOption === VIEW_OPTIONS.UPCOMING ? 'success' : 'inherit'}
                                     size="small"
                                 >
                                     Próximos
@@ -1099,8 +824,8 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 icon={<PersonIcon fontSize="small" />}
                                 title="Total de Pacientes"
                                 value={metrics.totalPatients}
-                                active={viewOptions === 'all'}
-                                onClick={() => handleMetricCardClick('all')}
+                                active={viewOption === VIEW_OPTIONS.ALL}
+                                onClick={() => handleViewOptionChange(VIEW_OPTIONS.ALL)}
                                 color={{
                                     main: theme.palette.primary.main,
                                     light: alpha(theme.palette.primary.main, 0.1)
@@ -1113,8 +838,8 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 icon={<EventIcon fontSize="small" />}
                                 title="Consultas Hoje"
                                 value={metrics.todayConsultations}
-                                active={viewOptions === 'today'}
-                                onClick={() => handleMetricCardClick('today')}
+                                active={viewOption === VIEW_OPTIONS.TODAY}
+                                onClick={() => handleViewOptionChange(VIEW_OPTIONS.TODAY)}
                                 color={{
                                     main: theme.palette.error.main,
                                     light: alpha(theme.palette.error.main, 0.1)
@@ -1127,8 +852,8 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 icon={<EventAvailableIcon fontSize="small" />}
                                 title="Próximas"
                                 value={metrics.upcomingConsultations}
-                                active={viewOptions === 'upcoming'}
-                                onClick={() => handleMetricCardClick('upcoming')}
+                                active={viewOption === VIEW_OPTIONS.UPCOMING}
+                                onClick={() => handleViewOptionChange(VIEW_OPTIONS.UPCOMING)}
                                 color={{
                                     main: theme.palette.success.main,
                                     light: alpha(theme.palette.success.main, 0.1)
@@ -1138,119 +863,32 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                         </Grid>
                     </Grid>
 
-                    {/* Barra de ferramentas com busca e filtros */}
-                    <Box
+                    {/* Campo de busca */}
+                    <TextField
+                        placeholder="Buscar pacientes por nome, e-mail ou CPF..."
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        variant="outlined"
+                        fullWidth
+                        size="small"
                         sx={{
-                            display: 'flex',
-                            flexDirection: isTablet ? 'column' : 'row',
-                            alignItems: isTablet ? 'stretch' : 'center',
-                            gap: 2
-                        }}
-                    >
-                        <TextField
-                            placeholder="Buscar pacientes por nome, e-mail ou CPF..."
-                            value={searchTerm}
-                            onChange={handleSearchChange}
-                            variant="outlined"
-                            fullWidth={isTablet}
-                            sx={{
-                                flex: isTablet ? '1' : '1 1 50%',
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '50px',
-                                    backgroundColor: '#fff',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: viewStateColors[viewOptions].main,
-                                    }
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: '50px',
+                                backgroundColor: '#fff',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: viewStateColors[viewOption].main,
                                 }
-                            }}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon color={searchTerm ? viewStateColors[viewOptions].main : 'inherit'} />
-                                    </InputAdornment>
-                                ),
-                            }}
-                            size="small"
-                        />
-
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                justifyContent: isTablet ? 'space-between' : 'flex-end',
-                                flex: isTablet ? '1' : '1 1 50%'
-                            }}
-                        >
-                            {hasActiveFilters && (
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    startIcon={<FilterAltIcon />}
-                                    onClick={handleClearFilters}
-                                    sx={{
-                                        borderRadius: '50px',
-                                        borderColor: viewStateColors[viewOptions].main,
-                                        color: viewStateColors[viewOptions].main,
-                                    }}
-                                >
-                                    Limpar Filtros
-                                </Button>
-                            )}
-
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<FilterListIcon />}
-                                onClick={handleFilterClick}
-                                color={hasActiveFilters ? viewOptions : "inherit"}
-                                sx={{
-                                    borderRadius: '50px',
-                                    fontWeight: hasActiveFilters ? 600 : 400,
-                                    borderColor: hasActiveFilters ? viewStateColors[viewOptions].main : theme.palette.divider,
-                                }}
-                            >
-                                Filtrar
-                            </Button>
-                        </Box>
-                    </Box>
-
-                    {/* Chips de filtro ativos */}
-                    {hasActiveFilters && (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-                            {activeFilters.gender && (
-                                <FilterChip
-                                    label={`Gênero: ${activeFilters.gender}`}
-                                    colorscheme="genero"
-                                    onDelete={() => handleRemoveFilter('gender')}
-                                />
-                            )}
-
-                            {activeFilters.conditions.map((condition) => {
-                                const conditionInfo = PATIENT_CONDITIONS.find(
-                                    (c) => c.value === condition
-                                );
-                                return (
-                                    <FilterChip
-                                        key={condition}
-                                        label={conditionInfo ? conditionInfo.label : condition}
-                                        colorscheme={condition}
-                                        onDelete={() => handleRemoveFilter('condition', condition)}
-                                    />
-                                );
-                            })}
-
-                            {activeFilters.status && (
-                                <FilterChip
-                                    label={`Status: ${activeFilters.status.charAt(0).toUpperCase() +
-                                    activeFilters.status.slice(1)}`}
-                                    colorscheme="default"
-                                    onDelete={() => handleRemoveFilter('status')}
-                                />
-                            )}
-                        </Box>
-                    )}
+                            }
+                        }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon color={searchTerm ? viewStateColors[viewOption].main : 'inherit'} />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
                 </Box>
 
                 {/* Container flexível para a tabela com borda colorida baseada no viewOptions */}
@@ -1273,11 +911,11 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 height: '8px',
                             },
                             '&::-webkit-scrollbar-thumb': {
-                                backgroundColor: alpha(viewStateColors[viewOptions].main, 0.2),
+                                backgroundColor: alpha(viewStateColors[viewOption].main, 0.2),
                                 borderRadius: '4px',
                             },
                             '&::-webkit-scrollbar-track': {
-                                backgroundColor: alpha(viewStateColors[viewOptions].main, 0.05),
+                                backgroundColor: alpha(viewStateColors[viewOption].main, 0.05),
                             }
                         }}
                     >
@@ -1351,19 +989,19 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                                     Nenhum paciente encontrado
                                                 </Typography>
                                                 <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
-                                                    {viewOptions === 'all' ? (
-                                                        'Tente ajustar seus filtros ou termos de busca para encontrar pacientes, ou adicione um novo paciente.'
-                                                    ) : viewOptions === 'today' ? (
-                                                        'Não há consultas agendadas para hoje. Verifique outros dias ou adicione uma nova consulta.'
+                                                    {viewOption === VIEW_OPTIONS.ALL ? (
+                                                        'Tente ajustar seus filtros ou termos de busca para encontrar pacientes.'
+                                                    ) : viewOption === VIEW_OPTIONS.TODAY ? (
+                                                        'Não há consultas agendadas para hoje.'
                                                     ) : (
-                                                        'Não há consultas futuras agendadas. Agende novas consultas com seus pacientes.'
+                                                        'Não há consultas futuras agendadas.'
                                                     )}
                                                 </Typography>
                                             </Box>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredPatients.map((patient) => {
+                                    filteredPatients.slice(0, 6).map((patient) => {
                                         const patientName = patient.patientName || 'Sem nome';
                                         const gender = patient.gender || 'Não informado';
                                         let age = '-';
@@ -1390,18 +1028,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                             getDateValue(nextConsult, 'consultationDate') :
                                             null;
 
-                                        const nextConsultDateFormatted = nextConsultDate ? formatDate(nextConsultDate) : '-';
-                                        const nextConsultIsToday = nextConsultDate ? isToday(nextConsultDate) : false;
-
-                                        let status = 'pendente';
-                                        if (!lastConsultDate && nextConsultDate) {
-                                            status = 'primeira consulta';
-                                        } else if (patient.consultationRescheduled) {
-                                            status = patient.consultationConfirmed
-                                                ? 'reagendado'
-                                                : 'reag. pendente';
-                                        }
-
+                                        const status = determinePatientStatus(patient);
                                         const isTelemedicine = patient.consultationType === 'Telemedicina' ||
                                             (nextConsult && nextConsult.consultationType === 'Telemedicina');
 
@@ -1485,7 +1112,7 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                                     {lastConsultDate && isPast(lastConsultDate) ? (
                                                         <>
                                                             <Typography variant="body2">
-                                                                {formatDate(lastConsultDate)}
+                                                                {safeFormatDate(lastConsultDate, 'dd/MM/yyyy')}
                                                             </Typography>
                                                             <Typography variant="caption" color="text.secondary">
                                                                 {formatDistance(lastConsultDate, new Date(), { addSuffix: true, locale: ptBR })}
@@ -1497,86 +1124,35 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                                 </TableCell>
 
                                                 <TableCell>
-                                                    {(() => {
-                                                        // Lógica para próxima consulta
-                                                        if (!nextConsultDate) {
-                                                            return <Typography variant="body2" color="text.secondary">-</Typography>;
-                                                        }
-
-                                                        const isNextToday = isToday(nextConsultDate);
-
-                                                        return (
-                                                            <Box>
-                                                                <Typography
-                                                                    variant="body2"
-                                                                    color={isNextToday ? 'error.main' : 'text.primary'}
-                                                                    fontWeight={isNextToday ? 600 : 400}
-                                                                >
-                                                                    {nextConsultDateFormatted}
+                                                    {nextConsultDate ? (
+                                                        <Box>
+                                                            <Typography
+                                                                variant="body2"
+                                                                color={isToday(nextConsultDate) ? 'error.main' : 'text.primary'}
+                                                                fontWeight={isToday(nextConsultDate) ? 600 : 400}
+                                                            >
+                                                                {safeFormatDate(nextConsultDate, 'dd/MM/yyyy')}
+                                                            </Typography>
+                                                            {isToday(nextConsultDate) && (
+                                                                <Typography variant="caption" color="error.main" fontWeight={500}>
+                                                                    Hoje
                                                                 </Typography>
-                                                                {isNextToday && (
-                                                                    <Typography variant="caption" color="error.main" fontWeight={500}>
-                                                                        Hoje
-                                                                    </Typography>
-                                                                )}
-                                                            </Box>
-                                                        );
-                                                    })()}
+                                                            )}
+                                                        </Box>
+                                                    ) : (
+                                                        <Typography variant="body2" color="text.secondary">-</Typography>
+                                                    )}
                                                 </TableCell>
 
                                                 <TableCell>
-                                                    <Chip
-                                                        label={status.charAt(0).toUpperCase() + status.slice(1)}
-                                                        size="small"
-                                                        sx={{
-                                                            borderRadius: '12px',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 500,
-                                                            backgroundColor:
-                                                                status === 'pendente'
-                                                                    ? '#F5F5F5'
-                                                                    : status === 'reagendado'
-                                                                        ? '#F3E5F5'
-                                                                        : status === 'primeira consulta'
-                                                                            ? '#E3F2FD'
-                                                                            : '#FFF8E1',
-                                                            color:
-                                                                status === 'pendente'
-                                                                    ? '#757575'
-                                                                    : status === 'reagendado'
-                                                                        ? '#9C27B0'
-                                                                        : status === 'primeira consulta'
-                                                                            ? '#2196F3'
-                                                                            : '#FF9800',
-                                                            boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)'
-                                                        }}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation(); // para não disparar o clique da linha inteira
-                                                            handleStatusClick(patient, status);
-                                                        }}
+                                                    <StatusChip
+                                                        status={status}
+                                                        onClick={(e) => handleStatusClick(patient, status, e)}
                                                     />
                                                 </TableCell>
 
-
                                                 <TableCell align="right">
                                                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                        <Tooltip title="Ações">
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    // Implementar menu de ações, se necessário
-                                                                }}
-                                                                sx={{
-                                                                    color: theme.palette.action.active,
-                                                                    '&:hover': {
-                                                                        backgroundColor: alpha(theme.palette.primary.main, 0.1)
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <MoreVertIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
                                                         <Tooltip title="Ver perfil do paciente">
                                                             <IconButton
                                                                 size="small"
@@ -1586,7 +1162,6 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                                                 }}
                                                                 sx={{
                                                                     color: theme.palette.primary.main,
-                                                                    ml: 1,
                                                                     '&:hover': {
                                                                         backgroundColor: alpha(theme.palette.primary.main, 0.1)
                                                                     }
@@ -1603,65 +1178,200 @@ const PatientsListCard = ({ patients, consultations, loading, onPatientClick }) 
                                 )}
                             </TableBody>
                         </Table>
-
-                        <Dialog open={statusDialogOpen} onClose={() => setStatusDialogOpen(false)}>
-                            <DialogTitle>Alterar Status do Paciente</DialogTitle>
-                            <DialogContent>
-                                <FormControl fullWidth>
-                                    <InputLabel id="status-select-label">Status</InputLabel>
-                                    <Select
-                                        labelId="status-select-label"
-                                        value={newStatus}
-                                        label="Status"
-                                        onChange={(e) => setNewStatus(e.target.value)}
-                                    >
-                                        {STATUS_OPTIONS.filter(option => option.value !== "").map(option => (
-                                            <MenuItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </DialogContent>
-                            <DialogActions>
-                                <Button onClick={() => setStatusDialogOpen(false)}>Cancelar</Button>
-                                <Button onClick={handleStatusSave} variant="contained">Salvar</Button>
-                            </DialogActions>
-                        </Dialog>
                     </TableContainer>
                 </Box>
 
-                {/* Popover dos filtros */}
-                <Popover
-                    open={Boolean(filterAnchorEl)}
-                    anchorEl={filterAnchorEl}
-                    onClose={handleFilterClose}
-                    anchorOrigin={{
-                        vertical: 'bottom',
-                        horizontal: 'left'
-                    }}
-                    transformOrigin={{
-                        vertical: 'top',
-                        horizontal: 'left'
-                    }}
+                {/* Dialog para mudança de status */}
+                <Dialog
+                    open={statusDialogOpen}
+                    onClose={handleCloseDialog}
                     PaperProps={{
                         sx: {
-                            borderRadius: '30px',
-                            overflow: 'hidden',
-                            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)'
+                            borderRadius: '20px',
+                            minWidth: '400px',
+                            maxWidth: '90vw'
                         }
                     }}
+                    disableEscapeKeyDown={statusUpdateLoading}
                 >
-                    <FilterMenu
-                        activeFilters={activeFilters}
-                        onFilterChange={handleFilterChange}
-                        onClearFilters={handleClearFilters}
-                        onApplyFilters={handleApplyFilters}
-                    />
-                </Popover>
+                    <DialogTitle sx={{
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                        pb: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <FilterListIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                            <Typography variant="h6">Alterar Status do Paciente</Typography>
+                        </Box>
+                        <IconButton
+                            edge="end"
+                            onClick={handleCloseDialog}
+                            disabled={statusUpdateLoading}
+                        >
+                            <CloseIcon />
+                        </IconButton>
+                    </DialogTitle>
+
+                    <DialogContent sx={{ pt: 3, pb: 1 }}>
+                        {selectedPatient && (
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Paciente
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Avatar
+                                        src={selectedPatient.patientPhotoUrl}
+                                        alt={selectedPatient.patientName || "Paciente"}
+                                        sx={{
+                                            width: 40,
+                                            height: 40,
+                                            mr: 2,
+                                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                            color: theme.palette.primary.main
+                                        }}
+                                    >
+                                        {selectedPatient.patientName ? selectedPatient.patientName.charAt(0) : "P"}
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={500}>
+                                            {selectedPatient.patientName || "Paciente sem nome"}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {selectedPatient.patientEmail || "Sem e-mail"}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        )}
+
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
+                            Selecione o novo status
+                        </Typography>
+
+                        {/* Botões de status */}
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                            {STATUS_OPTIONS.map(option => (
+                                <Button
+                                    key={option.value}
+                                    variant={newStatus === option.value ? "contained" : "outlined"}
+                                    onClick={() => !statusUpdateLoading && setNewStatus(option.value)}
+                                    disabled={statusUpdateLoading}
+                                    sx={{
+                                        justifyContent: 'flex-start',
+                                        py: 1.5,
+                                        px: 2,
+                                        borderRadius: '12px',
+                                        borderColor: newStatus === option.value
+                                            ? 'transparent'
+                                            : theme.palette.divider,
+                                        backgroundColor: newStatus === option.value
+                                            ? theme.palette.primary.main
+                                            : 'transparent',
+                                        color: newStatus === option.value
+                                            ? 'white'
+                                            : 'text.primary',
+                                        '&:hover': {
+                                            backgroundColor: newStatus === option.value
+                                                ? theme.palette.primary.dark
+                                                : alpha(theme.palette.primary.main, 0.04),
+                                        }
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                        <Box
+                                            sx={{
+                                                width: 12,
+                                                height: 12,
+                                                borderRadius: '50%',
+                                                mr: 2,
+                                                backgroundColor: option.color
+                                            }}
+                                        />
+                                        {option.label}
+                                        {option.icon && (
+                                            <Box sx={{ ml: 'auto', opacity: 0.7 }}>
+                                                {option.icon}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                </Button>
+                            ))}
+                        </Box>
+
+                        {/* Histórico de status com estado de carregamento */}
+                        {(statusHistory.length > 0 || statusHistoryLoading) && (
+                            <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Histórico de Status
+                                </Typography>
+                                {statusHistoryLoading ? (
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                        <CircularProgress size={24} />
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ maxHeight: '150px', overflow: 'auto' }}>
+                                        {statusHistory.map((item, index) => (
+                                            <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                                                <TimelineIcon sx={{ fontSize: '1rem', mr: 1, mt: 0.5, color: 'text.secondary' }} />
+                                                <Box>
+                                                    <Typography variant="body2">
+                                                        {item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : 'Desconhecido'}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {safeFormatDate(item.timestamp, 'dd/MM/yyyy HH:mm')} - {item.updatedBy || 'Sistema'}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                )}
+                            </Box>
+                        )}
+
+                        {/* Alertas de feedback */}
+                        {statusUpdateError && (
+                            <Alert severity="error" sx={{ mt: 2 }}>
+                                {statusUpdateError}
+                            </Alert>
+                        )}
+
+                        {statusUpdateSuccess && (
+                            <Alert severity="success" sx={{ mt: 2 }}>
+                                Status atualizado com sucesso!
+                            </Alert>
+                        )}
+                    </DialogContent>
+
+                    <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                        <Button
+                            onClick={handleCloseDialog}
+                            variant="outlined"
+                            disabled={statusUpdateLoading}
+                            sx={{ borderRadius: '50px' }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleStatusSave}
+                            variant="contained"
+                            disabled={statusUpdateLoading}
+                            sx={{
+                                borderRadius: '50px',
+                                position: 'relative',
+                                minWidth: '100px'
+                            }}
+                        >
+                            {statusUpdateLoading ? (
+                                <CircularProgress size={24} sx={{ color: 'white' }} />
+                            ) : "Salvar"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </CardContent>
         </Card>
     );
 };
 
-export default PatientsListCard;
+export default React.memo(PatientsListCard);
