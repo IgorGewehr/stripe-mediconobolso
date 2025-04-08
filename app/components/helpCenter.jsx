@@ -10,7 +10,6 @@ import {
     CardContent,
     Alert,
     Snackbar,
-    Divider,
     Paper,
     Grid,
     IconButton,
@@ -26,6 +25,9 @@ import {
     Tooltip,
     CardMedia,
     CardActionArea,
+    Skeleton,
+    Chip,
+    Fade,
 } from "@mui/material";
 import {
     PlayCircleOutline as PlayIcon,
@@ -37,167 +39,267 @@ import {
     BugReport as BugReportIcon,
     Search as SearchIcon,
     QuestionAnswer as QuestionAnswerIcon,
+    Send as SendIcon,
+    CheckCircleOutline as CheckCircleIcon,
 } from "@mui/icons-material";
 import FirebaseService from "../../lib/firebaseService";
 import { useAuth } from "./authProvider";
 
-// Estrutura dos tutoriais em vídeo
-const TUTORIAL_VIDEOS = [
-    {
-        id: "dashboard",
-        title: "Dashboard",
-        description: "Visão geral do painel principal e recursos disponíveis",
-        // Quando tiver a thumbnail real: thumbnail: "/tutoriais/thumbnails/dashboard.jpg"
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir pelo nome real: "Dashboard.mp4" quando disponível
-    },
-    {
-        id: "criacao-paciente",
-        title: "Criação de Paciente",
-        description: "Como cadastrar novos pacientes no sistema",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Criação de Paciente.mp4"
-    },
-    {
-        id: "dashboard-pacientes",
-        title: "Dashboard Pacientes",
-        description: "Gerenciamento da sua lista de pacientes",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "dashboard Pacientes.mp4"
-    },
-    {
-        id: "perfil-paciente",
-        title: "Perfil do Paciente",
-        description: "Como navegar e editar os dados do perfil do paciente",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Perfil do Paciente.mp4"
-    },
-    {
-        id: "anamnese",
-        title: "Anamnese",
-        description: "Preenchendo e consultando anamneses de pacientes",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Anamnese.mp4"
-    },
-    {
-        id: "notas",
-        title: "Notas",
-        description: "Como adicionar e gerenciar notas sobre pacientes",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Notas.mp4"
-    },
-    {
-        id: "criacao-receitas",
-        title: "Criação de Receitas",
-        description: "Processo de criação e emissão de receitas médicas",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Criação de Receitas.mp4"
-    },
-    {
-        id: "dashboard-receitas",
-        title: "Dashboard de Receitas",
-        description: "Visualização e gerenciamento de receitas emitidas",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Dashboard de Receitas.mp4"
-    },
-    {
-        id: "agenda-dashboard",
-        title: "Agenda Dashboard",
-        description: "Gerenciamento da sua agenda de consultas",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Agenda Dashboard.mp4"
-    },
-    {
-        id: "dashboard-consultas-hoje",
-        title: "Dashboard Consultas Hoje",
-        description: "Visualização de todas as consultas do dia",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Dashboard Consultas Hoje.mp4"
-    },
-    {
-        id: "reportar-problema",
-        title: "Reportar Problema",
-        description: "Como reportar problemas ou sugerir melhorias",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4"
-    },
-    {
-        id: "perfil-medico",
-        title: "Perfil do Médico",
-        description: "Configuração e atualização do seu perfil profissional",
-        thumbnail: "/tutoriais/thumbnails/default.jpg",
-        videoName: "Reportar Problema.mp4" // Substituir por: "Perfil do Médico.mp4"
-    },
+// Updated Video tutorial categories
+const TUTORIAL_CATEGORIES = [
+    { id: 'all', label: 'Todos' },
+    { id: 'pacientes', label: 'Pacientes' },
+    { id: 'agenda', label: 'Agenda' },
+    { id: 'anamnese', label: 'Anamnese' },
+    { id: 'receitas', label: 'Receitas' },
 ];
 
-// Função assíncrona para buscar a URL do vídeo no Firebase Storage
-const getVideoUrl = async (videoName) => {
-    try {
-        // Aqui assumimos que os vídeos estão armazenados na raiz do storage
-        // Implementação real quando disponível
-        const path = `tutoriais/${videoName}`;
+// Updated tutorial videos with corrected categories
+const TUTORIAL_VIDEOS = [
+    {
+        id: "video1",
+        title: "Dashboard - Visão Geral",
+        description: "Introdução ao painel principal e seus recursos",
+        category: "basics",
+        duration: "3:45"
+    },
+    {
+        id: "video2",
+        title: "Criação de Paciente",
+        description: "Como adicionar um novo paciente ao sistema",
+        category: "pacientes",
+        duration: "4:20"
+    },
+    {
+        id: "video3",
+        title: "Gerenciamento de Pacientes",
+        description: "Visão geral da tela de pacientes",
+        category: "pacientes",
+        duration: "3:10"
+    },
+    {
+        id: "video4",
+        title: "Perfil do Paciente",
+        description: "Como visualizar e editar dados do paciente",
+        category: "pacientes",
+        duration: "5:30"
+    },
+    {
+        id: "video5",
+        title: "Preenchendo Anamnese",
+        description: "Guia completo sobre preenchimento de anamnese",
+        category: "pacientes",
+        duration: "6:15"
+    },
+    {
+        id: "video6",
+        title: "Notas de Paciente",
+        description: "Como adicionar e gerenciar notas",
+        category: "anamnese",
+        duration: "2:45"
+    },
+    {
+        id: "video7",
+        title: "Criação de Receitas",
+        description: "Processo de criação e emissão de receitas",
+        category: "anamnese",
+        duration: "7:20"
+    },
+    {
+        id: "video8",
+        title: "Gerenciamento de Receitas",
+        description: "Visualização e edição de receitas emitidas",
+        category: "receitas",
+        duration: "4:50"
+    },
+    {
+        id: "video9",
+        title: "Navegando na Agenda",
+        description: "Como usar a agenda de consultas",
+        category: "receitas",
+        duration: "3:35"
+    },
+    {
+        id: "video10",
+        title: "Consultas do Dia",
+        description: "Visualização das consultas agendadas",
+        category: "receitas",
+        duration: "3:15"
+    },
+    {
+        id: "video11",
+        title: "Reportando Problemas",
+        description: "Como usar o sistema de reporte de problemas",
+        category: "agenda",
+        duration: "2:30"
+    },
+    {
+        id: "video12",
+        title: "Perfil do Médico",
+        description: "Como personalizar seu perfil profissional",
+        category: "agenda",
+        duration: "4:10"
+    },
+    {
+        id: "video13",
+        title: "Agenda Avançada",
+        description: "Recursos avançados da agenda médica",
+        category: "agenda",
+        duration: "5:45"
+    },
+    {
+        id: "video14",
+        title: "Relatórios e Análises",
+        description: "Como gerar e interpretar relatórios",
+        category: "basics",
+        duration: "6:20"
+    }
+];
 
-        // Esta função retorna uma Promise que resolverá para a URL do vídeo
+// Get thumbnail URL from Firebase Storage
+const getThumbnailUrl = async (videoId) => {
+    try {
+        const index = videoId.replace('video', '');
+        // Incluindo a extensão .png
+        const path = `tumb${index}.png`;
         return await FirebaseService.getStorageFileUrl(path);
     } catch (error) {
-        console.error("Erro ao buscar URL do vídeo:", error);
+        console.error("Erro ao buscar thumbnail:", error);
         return null;
     }
 };
 
-// Componente principal
-const HelpCenter = () => {
+// Get video URL from Firebase Storage
+const getVideoUrl = async (videoId) => {
+    try {
+        // Incluindo a extensão .mp4
+        const path = `${videoId}.mp4`;
+        return await FirebaseService.getStorageFileUrl(path);
+    } catch (error) {
+        console.error("Erro ao buscar vídeo:", error);
+        return null;
+    }
+};
+
+// Main component
+const HelpCenter = ({ initialTab = 0 }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { user } = useAuth();
 
-    // Estados
-    const [activeTab, setActiveTab] = useState(0);
+    // State for video tutorials
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [videoUrl, setVideoUrl] = useState(null);
     const [isVideoDialogOpen, setIsVideoDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [filteredVideos, setFilteredVideos] = useState(TUTORIAL_VIDEOS);
+    const [thumbnailUrls, setThumbnailUrls] = useState({});
+    const [thumbnailsLoading, setThumbnailsLoading] = useState(true);
+    const [activeCategory, setActiveCategory] = useState('all');
 
-    // Estados para o formulário de reportar problema
+    // State for problem reporting
     const [reportTitle, setReportTitle] = useState("");
     const [reportDetails, setReportDetails] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
-    // Filtra vídeos baseado no termo de busca
+    // Load thumbnails on component mount
     useEffect(() => {
-        if (searchTerm.trim() === "") {
-            setFilteredVideos(TUTORIAL_VIDEOS);
-        } else {
+        const loadThumbnails = async () => {
+            setThumbnailsLoading(true);
+            const urls = {};
+
+            // Process thumbnails in batches to avoid too many parallel requests
+            const batchSize = 4;
+            const batches = Math.ceil(TUTORIAL_VIDEOS.length / batchSize);
+
+            for (let i = 0; i < batches; i++) {
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, TUTORIAL_VIDEOS.length);
+                const batch = TUTORIAL_VIDEOS.slice(start, end);
+
+                await Promise.all(batch.map(async (video) => {
+                    try {
+                        const url = await getThumbnailUrl(video.id);
+                        if (url) {
+                            urls[video.id] = url;
+                        }
+                    } catch (e) {
+                        console.error(`Error loading thumbnail for ${video.id}:`, e);
+                    }
+                }));
+            }
+
+            setThumbnailUrls(urls);
+            setThumbnailsLoading(false);
+        };
+
+        loadThumbnails();
+    }, []);
+
+    // Filter videos based on search term and category
+    useEffect(() => {
+        let filtered = [...TUTORIAL_VIDEOS];
+
+        // Filter by category
+        if (activeCategory !== 'all') {
+            filtered = filtered.filter(video => video.category === activeCategory);
+        }
+
+        // Filter by search term
+        if (searchTerm.trim() !== "") {
             const lowercasedSearch = searchTerm.toLowerCase();
-            const filtered = TUTORIAL_VIDEOS.filter(
+            filtered = filtered.filter(
                 video =>
                     video.title.toLowerCase().includes(lowercasedSearch) ||
                     video.description.toLowerCase().includes(lowercasedSearch)
             );
-            setFilteredVideos(filtered);
         }
-    }, [searchTerm]);
 
-    // Handler para mudança de abas
+        setFilteredVideos(filtered);
+    }, [searchTerm, activeCategory]);
+
+    // Tab change handler
     const handleTabChange = (event, newValue) => {
         setActiveTab(newValue);
-        setSearchTerm(""); // Limpa a pesquisa ao trocar de aba
+        setSearchTerm(""); // Clear search when changing tabs
     };
 
-    // Abre o vídeo selecionado
+    // Category change handler
+    const handleCategoryChange = (category) => {
+        setActiveCategory(category);
+    };
+
+    // Open video dialog
     const handleOpenVideo = async (video) => {
         setSelectedVideo(video);
         setIsLoading(true);
 
         try {
-            // Busca URL do vídeo no Storage
-            const url = await getVideoUrl(video.videoName);
+            const url = await getVideoUrl(video.id);
             setVideoUrl(url);
             setIsVideoDialogOpen(true);
+
+            // Check if browser supports HEVC/H.265
+            const isHevcSupported = (() => {
+                if (typeof MediaSource !== 'undefined') {
+                    // Try to detect HEVC support using MediaSource
+                    return MediaSource.isTypeSupported('video/mp4; codecs="hvc1"') ||
+                        MediaSource.isTypeSupported('video/mp4; codecs="hev1"');
+                }
+                // Safari doesn't always report HEVC support via MediaSource
+                // Check if it's Safari which generally supports HEVC
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                return isSafari || isIOS;
+            })();
+
+            // Log codec support for debugging
+            console.log("H.265/HEVC support detected:", isHevcSupported);
+
         } catch (error) {
             console.error("Erro ao carregar vídeo:", error);
             setErrorMessage("Não foi possível carregar o vídeo. Tente novamente mais tarde.");
@@ -206,7 +308,7 @@ const HelpCenter = () => {
         }
     };
 
-    // Fecha o diálogo de vídeo
+    // Close video dialog
     const handleCloseVideo = () => {
         setIsVideoDialogOpen(false);
         setTimeout(() => {
@@ -215,7 +317,7 @@ const HelpCenter = () => {
         }, 300);
     };
 
-    // Envia um relatório de problema
+    // Submit problem report
     const handleSubmitReport = async (e) => {
         e.preventDefault();
 
@@ -233,21 +335,22 @@ const HelpCenter = () => {
         setErrorMessage("");
 
         try {
-            // Preparação dos dados do relatório
+            // Prepare report data
             const reportData = {
                 title: reportTitle,
                 details: reportDetails,
                 userId: user.uid,
-                userName: user.displayName || user.name || "Usuário",
+                userName: user.fullName || user.displayName || user.name || "Usuário",
                 userEmail: user.email || "",
                 createdAt: new Date(),
-                status: "novo", // Status inicial do relatório
+                status: "novo", // Initial status
+                resolved: false
             };
 
-            // Envio para o Firestore
-            await submitProblemReport(user.uid, reportData);
+            // Use the existing method in FirebaseService to create the report
+            await FirebaseService.createProblemReport(user.uid, reportData);
 
-            // Sucesso - limpa formulário e mostra mensagem
+            // Success - clear form and show message
             setReportTitle("");
             setReportDetails("");
             setShowSuccess(true);
@@ -259,47 +362,14 @@ const HelpCenter = () => {
         }
     };
 
-    // Função para submeter o relatório ao Firestore
-    const submitProblemReport = async (userId, reportData) => {
-        // Esta função deve ser implementada no FirebaseService
-        // Por enquanto, vamos simular uma chamada de API bem-sucedida
-
-        // Implementação a ser adicionada ao FirebaseService:
-        /*
-        async createProblemReport(userId, reportData) {
-          try {
-            const reportRef = doc(collection(this.firestore, "users", userId, "reports"));
-            const newReport = {
-              ...reportData,
-              id: reportRef.id,
-              createdAt: new Date(),
-            };
-            await setDoc(reportRef, newReport);
-            return reportRef.id;
-          } catch (error) {
-            console.error("Erro ao criar relatório de problema:", error);
-            throw error;
-          }
-        }
-        */
-
-        // Simular tempo de processamento
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                console.log("Relatório criado:", reportData);
-                resolve(true);
-            }, 1000);
-        });
-    };
-
-    // Fecha snackbar de sucesso
+    // Close success notification
     const handleCloseSnackbar = () => {
         setShowSuccess(false);
     };
 
     return (
         <Box sx={{ maxWidth: "1280px", mx: "auto", p: { xs: 2, md: 3 }, bgcolor: "#F4F9FF", minHeight: "90vh" }}>
-            {/* Cabeçalho */}
+            {/* Header */}
             <Paper
                 elevation={0}
                 sx={{
@@ -311,19 +381,6 @@ const HelpCenter = () => {
                 }}
             >
                 <Typography
-                    variant="h4"
-                    component="h1"
-                    sx={{
-                        color: "#1852FE",
-                        mb: 1,
-                        fontWeight: 600,
-                        fontSize: { xs: "24px", md: "28px" }
-                    }}
-                >
-                    Central de Ajuda
-                </Typography>
-
-                <Typography
                     variant="subtitle1"
                     sx={{
                         color: "#111E5A",
@@ -334,7 +391,7 @@ const HelpCenter = () => {
                 </Typography>
             </Paper>
 
-            {/* Abas de navegação */}
+            {/* Navigation tabs */}
             <Tabs
                 value={activeTab}
                 onChange={handleTabChange}
@@ -373,43 +430,65 @@ const HelpCenter = () => {
                 />
             </Tabs>
 
-            {/* Área de pesquisa (apenas para a aba de vídeos) */}
-            {activeTab === 0 && (
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        mb: 3,
-                        backgroundColor: "#fff",
-                        borderRadius: "100px",
-                        p: "4px 16px",
-                        boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.05)",
-                    }}
-                >
-                    <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />
-                    <TextField
-                        fullWidth
-                        variant="standard"
-                        placeholder="Pesquisar tutoriais..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        InputProps={{
-                            disableUnderline: true,
-                        }}
-                        sx={{
-                            "& .MuiInputBase-input": {
-                                py: 1.5,
-                            }
-                        }}
-                    />
-                </Box>
-            )}
-
-            {/* Conteúdo das abas */}
+            {/* Content */}
             <Box>
-                {/* Aba de tutoriais em vídeo */}
+                {/* Video tutorials tab */}
                 {activeTab === 0 && (
-                    <>
+                    <Box>
+                        {/* Search & Filters */}
+                        <Box sx={{ mb: 3 }}>
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    mb: 2,
+                                    backgroundColor: "#fff",
+                                    borderRadius: "100px",
+                                    p: "4px 16px",
+                                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.05)",
+                                }}
+                            >
+                                <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />
+                                <TextField
+                                    fullWidth
+                                    variant="standard"
+                                    placeholder="Pesquisar tutoriais..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    InputProps={{
+                                        disableUnderline: true,
+                                    }}
+                                    sx={{
+                                        "& .MuiInputBase-input": {
+                                            py: 1.5,
+                                        }
+                                    }}
+                                />
+                            </Box>
+
+                            {/* Category filters */}
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                {TUTORIAL_CATEGORIES.map((category) => (
+                                    <Chip
+                                        key={category.id}
+                                        label={category.label}
+                                        onClick={() => handleCategoryChange(category.id)}
+                                        color={activeCategory === category.id ? "primary" : "default"}
+                                        variant={activeCategory === category.id ? "filled" : "outlined"}
+                                        sx={{
+                                            borderRadius: "100px",
+                                            fontWeight: activeCategory === category.id ? 500 : 400,
+                                            transition: "all 0.2s ease",
+                                            '&:hover': {
+                                                boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+                                            }
+                                        }}
+                                    />
+                                ))}
+                            </Box>
+                        </Box>
+
+                        {/* Videos grid */}
                         {filteredVideos.length === 0 ? (
                             <Paper
                                 sx={{
@@ -429,7 +508,10 @@ const HelpCenter = () => {
                                 <Button
                                     variant="outlined"
                                     color="primary"
-                                    onClick={() => setSearchTerm("")}
+                                    onClick={() => {
+                                        setSearchTerm("");
+                                        setActiveCategory("all");
+                                    }}
                                     sx={{ mt: 2, borderRadius: "50px" }}
                                 >
                                     Ver todos os tutoriais
@@ -439,70 +521,110 @@ const HelpCenter = () => {
                             <Grid container spacing={3}>
                                 {filteredVideos.map((video) => (
                                     <Grid item xs={12} sm={6} md={4} key={video.id}>
-                                        <Card
-                                            sx={{
-                                                height: "100%",
-                                                borderRadius: "16px",
-                                                transition: "transform 0.2s, box-shadow 0.2s",
-                                                "&:hover": {
-                                                    transform: "translateY(-4px)",
-                                                    boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.1)",
-                                                },
-                                            }}
-                                        >
-                                            <CardActionArea onClick={() => handleOpenVideo(video)}>
-                                                <CardMedia
-                                                    component="img"
-                                                    height="140"
-                                                    image={video.thumbnail}
-                                                    alt={video.title}
-                                                    sx={{
-                                                        position: "relative",
-                                                        "&::after": {
-                                                            content: '""',
-                                                            position: "absolute",
-                                                            top: 0,
-                                                            left: 0,
-                                                            width: "100%",
-                                                            height: "100%",
-                                                            backgroundColor: "rgba(0,0,0,0.2)",
-                                                        }
-                                                    }}
-                                                />
-                                                <Box
-                                                    sx={{
-                                                        position: "absolute",
-                                                        top: "50%",
-                                                        left: "50%",
-                                                        transform: "translate(-50%, -50%)",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        width: "48px",
-                                                        height: "48px",
-                                                        backgroundColor: "rgba(255,255,255,0.8)",
-                                                        borderRadius: "50%",
-                                                        zIndex: 1,
-                                                    }}
+                                        <Fade in={true} timeout={500} style={{ transitionDelay: `${filteredVideos.indexOf(video) * 50}ms` }}>
+                                            <Card
+                                                sx={{
+                                                    height: "100%",
+                                                    borderRadius: "16px",
+                                                    transition: "transform 0.2s, box-shadow 0.2s",
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    "&:hover": {
+                                                        transform: "translateY(-4px)",
+                                                        boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.1)",
+                                                    },
+                                                }}
+                                            >
+                                                <CardActionArea
+                                                    onClick={() => handleOpenVideo(video)}
+                                                    sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
                                                 >
-                                                    <PlayIcon color="primary" fontSize="large" />
-                                                </Box>
-                                                <CardContent>
-                                                    <Typography variant="h6" component="h3" gutterBottom>
-                                                        {video.title}
-                                                    </Typography>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        {video.description}
-                                                    </Typography>
-                                                </CardContent>
-                                            </CardActionArea>
-                                        </Card>
+                                                    {thumbnailsLoading ? (
+                                                        <Skeleton
+                                                            variant="rectangular"
+                                                            height={140}
+                                                            animation="wave"
+                                                            sx={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px' }}
+                                                        />
+                                                    ) : (
+                                                        <Box sx={{ position: 'relative' }}>
+                                                            <CardMedia
+                                                                component="img"
+                                                                height="140"
+                                                                image={thumbnailUrls[video.id] || "/tutoriais/thumbnails/default.jpg"}
+                                                                alt={video.title}
+                                                                sx={{
+                                                                    position: "relative",
+                                                                    "&::after": {
+                                                                        content: '""',
+                                                                        position: "absolute",
+                                                                        top: 0,
+                                                                        left: 0,
+                                                                        width: "100%",
+                                                                        height: "100%",
+                                                                        backgroundColor: "rgba(0,0,0,0.2)",
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <Box
+                                                                sx={{
+                                                                    position: "absolute",
+                                                                    top: "50%",
+                                                                    left: "50%",
+                                                                    transform: "translate(-50%, -50%)",
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    justifyContent: "center",
+                                                                    width: "48px",
+                                                                    height: "48px",
+                                                                    backgroundColor: "rgba(255,255,255,0.8)",
+                                                                    borderRadius: "50%",
+                                                                    zIndex: 1,
+                                                                }}
+                                                            >
+                                                                <PlayIcon color="primary" fontSize="large" />
+                                                            </Box>
+                                                            <Chip
+                                                                label={video.duration}
+                                                                size="small"
+                                                                sx={{
+                                                                    position: 'absolute',
+                                                                    bottom: 8,
+                                                                    right: 8,
+                                                                    backgroundColor: 'rgba(0,0,0,0.6)',
+                                                                    color: 'white',
+                                                                    fontWeight: 500,
+                                                                    fontSize: '0.7rem'
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                    )}
+                                                    <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                                        <Typography variant="h6" component="h3" gutterBottom>
+                                                            {video.title}
+                                                        </Typography>
+                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                            {video.description}
+                                                        </Typography>
+                                                        <Box sx={{ mt: 'auto' }}>
+                                                            <Chip
+                                                                label={TUTORIAL_CATEGORIES.find(cat => cat.id === video.category)?.label || video.category}
+                                                                size="small"
+                                                                variant="outlined"
+                                                                color="primary"
+                                                                sx={{ borderRadius: 1 }}
+                                                            />
+                                                        </Box>
+                                                    </CardContent>
+                                                </CardActionArea>
+                                            </Card>
+                                        </Fade>
                                     </Grid>
                                 ))}
                             </Grid>
                         )}
 
-                        {/* Diálogo de reprodução de vídeo */}
+                        {/* Updated Video playback dialog with H.265/HEVC support */}
                         <Dialog
                             open={isVideoDialogOpen}
                             onClose={handleCloseVideo}
@@ -534,7 +656,7 @@ const HelpCenter = () => {
                                     <CloseIcon />
                                 </IconButton>
                             </DialogTitle>
-                            <DialogContent sx={{ p: 0, bgcolor: "#000" }}>
+                            <DialogContent sx={{ p: 0, bgcolor: "#000", minHeight: { xs: "300px", md: "500px" } }}>
                                 {isLoading ? (
                                     <Box
                                         sx={{
@@ -552,15 +674,25 @@ const HelpCenter = () => {
                                             component="video"
                                             controls
                                             autoPlay
+                                            playsInline
                                             sx={{
                                                 position: "absolute",
                                                 top: 0,
                                                 left: 0,
                                                 width: "100%",
                                                 height: "100%",
+                                                objectFit: "contain",
+                                                backgroundColor: "#000",
                                             }}
-                                            src={videoUrl}
-                                        />
+                                        >
+                                            {/* Specify H.265/HEVC codec for browsers that support it */}
+                                            <source src={videoUrl} type="video/mp4; codecs=hvc1" />
+                                            {/* Fallback for other browsers */}
+                                            <source src={videoUrl} type="video/mp4" />
+                                            <Typography color="white" sx={{ p: 3, textAlign: "center" }}>
+                                                Seu navegador não suporta vídeos H.265/HEVC. Por favor, tente usar Safari ou um navegador atualizado.
+                                            </Typography>
+                                        </Box>
                                     </Box>
                                 ) : (
                                     <Box
@@ -586,10 +718,10 @@ const HelpCenter = () => {
                                 )}
                             </DialogContent>
                         </Dialog>
-                    </>
+                    </Box>
                 )}
 
-                {/* Aba de reportar problema */}
+                {/* Problem reporting tab */}
                 {activeTab === 1 && (
                     <Paper
                         elevation={0}
@@ -682,13 +814,14 @@ const HelpCenter = () => {
                                 }}
                             />
 
-                            {/* Informações de contato */}
+                            {/* Contact info card */}
                             <Card
                                 variant="outlined"
                                 sx={{
                                     mb: 4,
                                     borderRadius: "12px",
                                     borderColor: "rgba(66, 133, 244, 0.2)",
+                                    bgcolor: "#F7FAFF"
                                 }}
                             >
                                 <CardContent>
@@ -734,6 +867,7 @@ const HelpCenter = () => {
                                     variant="contained"
                                     color="primary"
                                     disabled={isSubmitting}
+                                    startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
                                     sx={{
                                         borderRadius: "8px",
                                         py: 1.2,
@@ -746,11 +880,7 @@ const HelpCenter = () => {
                                         },
                                     }}
                                 >
-                                    {isSubmitting ? (
-                                        <CircularProgress size={24} color="inherit" />
-                                    ) : (
-                                        "Enviar Relatório"
-                                    )}
+                                    {isSubmitting ? "Enviando..." : "Enviar Relatório"}
                                 </Button>
                             </Box>
                         </Box>
@@ -758,7 +888,7 @@ const HelpCenter = () => {
                 )}
             </Box>
 
-            {/* Snackbar de sucesso */}
+            {/* Success notification */}
             <Snackbar
                 open={showSuccess}
                 autoHideDuration={6000}
@@ -769,6 +899,7 @@ const HelpCenter = () => {
                     onClose={handleCloseSnackbar}
                     severity="success"
                     variant="filled"
+                    icon={<CheckCircleIcon />}
                     sx={{
                         width: "100%",
                         borderRadius: "8px",
