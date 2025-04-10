@@ -59,7 +59,6 @@ export async function fetchClientSecret({ plan, uid, email }) {
       metadata: { uid }, // Também incluir no metadata da sessão
       return_url: `${origin}/`, // redireciona para a home
       subscription_data: {
-        trial_period_days: 7, // Adiciona período de teste de 7 dias
         metadata: { uid }, // E também nos metadados da subscription
       },
     });
