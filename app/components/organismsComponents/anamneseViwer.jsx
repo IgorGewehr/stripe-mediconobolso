@@ -484,36 +484,36 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
     return (
         <Box sx={{ pt: 1, pb: 2, maxWidth: '900px', mx: 'auto' }}>
             {/* Queixa Principal - Em destaque */}
-            {normalizedData.chiefComplaint && (
-                <Paper
-                    elevation={1}
+            <Box sx={{ mb: 4 }}>
+                <Typography
+                    variant="h6"
                     sx={{
-                        p: 3,
-                        mb: 4,
-                        borderRadius: '10px',
-                        border: `1px solid ${alpha(typeColor.main, 0.2)}`,
-                        backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                        textAlign: 'center',
-                        maxWidth: '800px',
-                        mx: 'auto'
+                        borderBottom: `2px solid ${typeColor.main}`,
+                        pb: 1,
+                        mb: 3,
+                        display: 'inline-block',
+                        fontWeight: 500
                     }}
                 >
-                    <Typography
-                        variant="body1"
-                        sx={{
-                            whiteSpace: 'pre-line',
-                            lineHeight: 1.7,
-                            fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-                            fontWeight: 500,
-                            fontSize: '1.05rem',
-                            color: theme.palette.text.primary,
-                            letterSpacing: '0.01em'
-                        }}
-                    >
-                        {normalizedData.chiefComplaint}
-                    </Typography>
-                </Paper>
-            )}
+                    Queixa Principal
+                </Typography>
+
+                <Grid container spacing={2}>
+                    {normalizedData.chiefComplaint && (
+                        <Grid item xs={12}>
+                            <Paper elevation={1} sx={{
+                                p: 2,
+                                borderRadius: '8px',
+                                borderLeft: `4px solid ${typeColor.main}`,
+                            }}>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                    {normalizedData.chiefComplaint}
+                                </Typography>
+                            </Paper>
+                        </Grid>
+                    )}
+                </Grid>
+            </Box>
 
             {/* Motivo da Consulta e Diagnóstico */}
             <Box sx={{ mb: 4 }}>

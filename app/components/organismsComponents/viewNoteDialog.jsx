@@ -664,59 +664,113 @@ const ViewNoteDialog = ({
 
 
 
-    // Função corrigida para abrir anexos
+    // Função corrigida para abrir anexos no ViewNoteDialog
+    // Função definitiva para abrir anexos no ViewNoteDialog
     const handleOpenAttachment = (attachment) => {
-        if (attachment) {
-            // Verificar se o anexo tem uma URL direta
-            if (attachment.fileUrl) {
-                window.open(attachment.fileUrl, '_blank');
-                return;
-            }
+        console.log("Visualizando anexo:", attachment);
 
-            // Para compatibilidade com diferentes formatos de dados
-            if (attachment.url) {
-                window.open(attachment.url, '_blank');
-                return;
-            }
-
-            // Verificar se o anexo tem um downloadURL (formato alternativo)
-            if (attachment.downloadURL) {
-                window.open(attachment.downloadURL, '_blank');
-                return;
-            }
-
-            // Se o anexo for salvo em outro formato
-            if (attachment.file && attachment.file.url) {
-                window.open(attachment.file.url, '_blank');
-                return;
-            }
-
-            // Caso seja um objeto com referência a storage mas sem URL direta
-            if (attachment.storagePath) {
-                // Neste caso, seria necessário obter a URL do Storage
-                // através do FirebaseService ou diretamente do firebase/storage
-                console.log("Anexo precisa ser obtido do Storage:", attachment.storagePath);
-                try {
-                    // Exemplo de como obter a URL dinamicamente (ajustar conforme seu FirebaseService)
-                    FirebaseService.getDownloadURLFromPath(attachment.storagePath)
-                        .then(url => window.open(url, '_blank'))
-                        .catch(error => {
-                            console.error("Erro ao obter URL do anexo:", error);
-                            alert("Não foi possível abrir este anexo. Tente novamente mais tarde.");
-                        });
-                } catch (error) {
-                    console.error("Erro ao processar o anexo:", error);
-                    alert("Não foi possível abrir este anexo. Tente novamente mais tarde.");
-                }
-                return;
-            }
-
-            console.error("Formato de anexo não reconhecido:", attachment);
-            alert("Não foi possível abrir este anexo. Formato desconhecido.");
-        } else {
-            console.error("Tentativa de abrir anexo nulo ou indefinido");
+        if (!attachment) {
+            console.error("Anexo nulo ou indefinido");
             alert("Não foi possível abrir este anexo.");
+            return;
         }
+
+        // Imprime todos os detalhes do anexo para facilitar a depuração
+        console.log("Detalhes do anexo:", JSON.stringify(attachment));
+
+        // Verifica URL direta - abordagem principal
+        if (attachment.fileUrl) {
+            console.log("Abrindo anexo pela URL direta:", attachment.fileUrl);
+            window.open(attachment.fileUrl, '_blank');
+            return;
+        }
+
+        // Verifica campos alternativos de URL
+        if (attachment.url) {
+            console.log("Abrindo anexo pela propriedade url:", attachment.url);
+            window.open(attachment.url, '_blank');
+            return;
+        }
+
+        if (attachment.downloadURL) {
+            console.log("Abrindo anexo pela propriedade downloadURL:", attachment.downloadURL);
+            window.open(attachment.downloadURL, '_blank');
+            return;
+        }
+
+        // Tenta acessar o armazenamento pelo caminho
+        if (attachment.storagePath) {
+            console.log("Tentando obter URL pelo storagePath:", attachment.storagePath);
+
+            try {
+                FirebaseService.getStorageFileUrl(attachment.storagePath)
+                    .then(url => {
+                        console.log("URL obtida com sucesso:", url);
+                        window.open(url, '_blank');
+                    })
+                    .catch(error => {
+                        console.error("Erro ao obter URL do Storage:", error);
+                        alert("Não foi possível acessar este anexo.");
+                    });
+                return;
+            } catch (error) {
+                console.error("Erro ao processar caminho do storage:", error);
+            }
+        }
+
+        // Tenta reconstruir o caminho do arquivo no Storage (melhorado)
+        if (attachment.fileName && doctorId && patientId && noteData && noteData.id) {
+            try {
+                // Construção do caminho mais robusta, seguindo o padrão usado no upload
+                const basePath = `users/${doctorId}/patients/${patientId}/notes/${noteData.id}`;
+                const filePath = `${basePath}/${attachment.fileName}`;
+
+                console.log("Tentando reconstruir caminho para:", filePath);
+
+                FirebaseService.getStorageFileUrl(filePath)
+                    .then(url => {
+                        console.log("URL obtida pelo caminho reconstruído:", url);
+                        window.open(url, '_blank');
+                    })
+                    .catch(err => {
+                        console.error("Erro com caminho reconstruído:", err);
+
+                        // Tenta com variações de caminho
+                        const alternativePath = `notes/${doctorId}/${patientId}/${noteData.id}/${attachment.fileName}`;
+                        console.log("Tentando caminho alternativo:", alternativePath);
+
+                        return FirebaseService.getStorageFileUrl(alternativePath);
+                    })
+                    .then(url => {
+                        if (url) {
+                            console.log("URL obtida pelo caminho alternativo:", url);
+                            window.open(url, '_blank');
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Todas as tentativas de caminhos falharam:", error);
+                        alert(`Não foi possível abrir o anexo: ${attachment.fileName}`);
+                    });
+                return;
+            } catch (error) {
+                console.error("Erro ao tentar acessar arquivo no storage:", error);
+            }
+        }
+
+        // Tenta usar o objeto File diretamente (improvável em visualização, mas possível)
+        if (attachment.file instanceof File) {
+            console.log("Criando URL temporária para o arquivo:", attachment.fileName);
+            const blobUrl = URL.createObjectURL(attachment.file);
+            window.open(blobUrl, '_blank');
+
+            // Libera a URL após uso
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+            return;
+        }
+
+        // Se todas as tentativas falharam
+        console.error("Não foi possível determinar como abrir este anexo:", attachment);
+        alert(`Não foi possível abrir este anexo: ${attachment.fileName || "Sem nome"}. Tente editar a nota e reenviar o arquivo.`);
     };
 
     const handleEdit = () => {
@@ -1297,6 +1351,8 @@ const ViewNoteDialog = ({
                         {/* Mantém os detalhes específicos da anamnese */}
                         {noteType === 'Anamnese' && renderAnamneseDetails()}
                         {renderMedicamentos()}
+
+                        {noteType !== 'Anamnese' && noteType !== 'Receita' && renderAttachments()}
                     </Box>
                 </DialogContent>
 
