@@ -2,15 +2,24 @@
 
 import React, { useState } from "react";
 import { Box, Button, Typography, Avatar } from "@mui/material";
-import {useResponsiveScale} from "./useScale";
-import {useAuth} from "./authProvider";
-import LockIcon from '@mui/icons-material/Lock';
+import { useResponsiveScale } from "./useScale";
+import { useAuth } from "./authProvider";
+import LockIcon from "@mui/icons-material/Lock";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
-const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRole = "Cirurgião", onMenuSelect, onLogout, onProfileClick }) => {
+const Sidebar = ({
+                     initialSelected = "Dashboard",
+                     userName = "Dolittle",
+                     userRole = "Cirurgião",
+                     onMenuSelect,
+                     onLogout,
+                     onProfileClick,
+                 }) => {
     const [selected, setSelected] = useState(initialSelected);
-
     const { user } = useAuth();
     const { scaleStyle } = useResponsiveScale();
+
+    const isAdmin = user && user.administrador === true;
 
     const principalItems = [
         { label: "Dashboard", icon: "/dashboardico.svg" },
@@ -19,6 +28,10 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         { label: "Agenda", icon: "/agenda.svg" },
         { label: "Métricas", icon: "/metricas.svg", disabled: true },
         { label: "Financeiro", icon: "/financeiro.svg", disabled: true },
+        // Só adiciona se for admin
+        ...(isAdmin
+            ? [{ label: "Dados", iconComponent: AdminPanelSettingsIcon }]
+            : []),
     ];
 
     const suporteItems = [
@@ -26,28 +39,19 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         { label: "Reportar", icon: "/reportar.svg" },
     ];
 
-    const handleMenuClick = (label, isLogout, disabled) => {
-        // Se o item estiver desabilitado, não fazemos nada
-        if (disabled) {
-            return;
-        }
-
+    const handleMenuClick = (label, isLogout = false, disabled = false) => {
+        if (disabled) return;
         if (isLogout && onLogout) {
             onLogout();
             return;
         }
-
         setSelected(label);
-        if (onMenuSelect) onMenuSelect(label);
+        onMenuSelect?.(label);
     };
 
     const handleProfileClick = () => {
-        if (onProfileClick) {
-            onProfileClick();
-        } else if (onMenuSelect) {
-            // Fallback: use o onMenuSelect com "Meu Perfil" se onProfileClick não for fornecido
-            onMenuSelect("Meu Perfil");
-        }
+        if (onProfileClick) onProfileClick();
+        else onMenuSelect?.("Meu Perfil");
     };
 
     const buttonStyles = (isSelected, label, isLogout, disabled) => ({
@@ -65,31 +69,29 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
         my: 0.5,
         borderRadius: "18px",
         transition: "background-color 0.2s ease, color 0.2s ease",
-        color: disabled ? "#8A94A6" : (isSelected ? "#FFF" : (isLogout ? "#DB4437" : "#111E5A")),
+        color: disabled
+            ? "#8A94A6"
+            : isSelected
+                ? "#FFF"
+                : isLogout
+                    ? "#DB4437"
+                    : "#111E5A",
         backgroundColor: isSelected ? "#4285F4" : "transparent",
-        opacity: disabled ? 0.6 : (isSelected ? 0.77 : 1),
+        opacity: disabled ? 0.6 : isSelected ? 0.77 : 1,
         cursor: disabled ? "default" : "pointer",
-        pointerEvents: disabled ? "auto" : "auto", // Mantém os eventos de ponteiro para visual consistente
         "&:hover": {
-            backgroundColor: disabled ? "transparent" : (isSelected
-                ? "#4285F4"
-                : (isLogout ? "rgba(219, 68, 55, 0.08)" : "rgba(66, 133, 244, 0.08)")),
+            backgroundColor: disabled
+                ? "transparent"
+                : isSelected
+                    ? "#4285F4"
+                    : isLogout
+                        ? "rgba(219, 68, 55, 0.08)"
+                        : "rgba(66, 133, 244, 0.08)",
         },
     });
 
-    const iconStyles = {
-        width: "18px",
-        height: "18px",
-        mr: 1.2,
-    };
-
-    const lockIconStyles = {
-        width: "14px",
-        height: "14px",
-        ml: 0.8,
-        color: "#8A94A6",
-    };
-
+    const iconStyles = { width: "18px", height: "18px", mr: 1.2 };
+    const lockIconStyles = { width: "14px", height: "14px", ml: 0.8, color: "#8A94A6" };
     const categoryLabelStyle = {
         color: "#8A94A6",
         fontFamily: "Gellix, sans-serif",
@@ -113,26 +115,21 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
-                overflowX: "hidden", // Importante: previne overflow horizontal
+                overflowX: "hidden",
             }}
         >
-            {/* Box com escala aplicada ao conteúdo interno */}
-            <Box sx={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                ...scaleStyle // Aplicar a escala dinâmica aqui
-            }}>
-                {/* Logo e título */}
+            <Box
+                sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
+                    ...scaleStyle,
+                }}
+            >
+                {/* Logo */}
                 <Box
                     onClick={() => handleMenuClick("Dashboard")}
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        mb: 4,
-                        ml: 0,
-                        flexShrink: 0, // Impede que esta seção encolha
-                    }}
+                    sx={{ display: "flex", alignItems: "center", mb: 4, flexShrink: 0 }}
                 >
                     <Box
                         component="img"
@@ -143,7 +140,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                             height: "44px",
                             flexShrink: 0,
                             ml: "4px",
-                            objectFit: "contain", // Garante que a imagem seja exibida completamente
+                            objectFit: "contain",
                         }}
                     />
                     <Box sx={{ ml: "10px" }}>
@@ -154,7 +151,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                 fontSize: "18px",
                                 fontWeight: 500,
                                 lineHeight: 1.2,
-                                whiteSpace: "nowrap", // Impede quebra de linha no título
+                                whiteSpace: "nowrap",
                             }}
                         >
                             Médico
@@ -168,7 +165,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                 fontWeight: 500,
                                 lineHeight: 1.2,
                                 opacity: 0.9,
-                                whiteSpace: "nowrap", // Impede quebra de linha no subtítulo
+                                whiteSpace: "nowrap",
                             }}
                         >
                             NO BOLSO
@@ -176,22 +173,31 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     </Box>
                 </Box>
 
-                {/* Menus - com overflow auto para permitir rolagem quando necessário */}
+                {/* Itens principais */}
                 <Box sx={{ flex: 1, overflowY: "auto" }}>
-                    <Typography sx={categoryLabelStyle}>
-                        Principal
-                    </Typography>
+                    <Typography sx={categoryLabelStyle}>Principal</Typography>
                     <Box>
                         {principalItems.map((item) => {
                             const isSelected = selected === item.label && !item.disabled;
                             return (
                                 <Button
                                     key={item.label}
-                                    onClick={() => handleMenuClick(item.label, false, item.disabled)}
+                                    onClick={() =>
+                                        handleMenuClick(item.label, false, item.disabled)
+                                    }
                                     variant="text"
                                     sx={buttonStyles(isSelected, item.label, false, item.disabled)}
                                     startIcon={
-                                        <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
+                                        item.iconComponent ? (
+                                            <item.iconComponent sx={iconStyles} />
+                                        ) : (
+                                            <Box
+                                                component="img"
+                                                src={item.icon}
+                                                alt={item.label}
+                                                sx={iconStyles}
+                                            />
+                                        )
                                     }
                                     disableRipple={item.disabled}
                                 >
@@ -202,9 +208,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                         })}
                     </Box>
 
-                    <Typography sx={categoryLabelStyle}>
-                        Suporte
-                    </Typography>
+                    <Typography sx={categoryLabelStyle}>Suporte</Typography>
                     <Box>
                         {suporteItems.map((item) => {
                             const isSelected = selected === item.label;
@@ -215,7 +219,12 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                     variant="text"
                                     sx={buttonStyles(isSelected, item.label)}
                                     startIcon={
-                                        <Box component="img" src={item.icon} alt={item.label} sx={iconStyles} />
+                                        <Box
+                                            component="img"
+                                            src={item.icon}
+                                            alt={item.label}
+                                            sx={iconStyles}
+                                        />
                                     }
                                 >
                                     {item.label}
@@ -225,28 +234,20 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                     </Box>
                 </Box>
 
-                {/* Profile section - Improved version */}
-                <Box
-                    sx={{
-                        mt: 'auto', // Push to bottom with flexbox
-                        mb: 3,      // Add margin at bottom for spacing
-                        position: 'relative',
-                        width: '100%'
-                    }}
-                >
-                    {/* Label for clarity */}
-                    <Typography sx={{
-                        color: "#8A94A6",
-                        fontFamily: "Gellix, sans-serif",
-                        fontSize: "12px",
-                        fontWeight: 500,
-                        mb: 1,
-                        ml: 1.5,
-                    }}>
+                {/* Meu Perfil */}
+                <Box sx={{ mt: "auto", mb: 3, position: "relative", width: "100%" }}>
+                    <Typography
+                        sx={{
+                            color: "#8A94A6",
+                            fontFamily: "Gellix, sans-serif",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            mb: 1,
+                            ml: 1.5,
+                        }}
+                    >
                         Meu Perfil
                     </Typography>
-
-                    {/* Profile card */}
                     <Box
                         onClick={handleProfileClick}
                         sx={{
@@ -265,19 +266,18 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                 backgroundColor: "rgba(66, 133, 244, 0.04)",
                                 borderColor: "rgba(66, 133, 244, 0.5)",
                                 boxShadow: "0 4px 12px rgba(17, 30, 90, 0.08)",
-                                transform: "translateY(-2px)"
+                                transform: "translateY(-2px)",
                             },
                             "&:active": {
-                                transform: "translateY(0px)"
-                            }
+                                transform: "translateY(0)",
+                            },
                         }}
                     >
                         <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
-                            {/* Avatar with improved styling */}
                             {user?.photoURL ? (
                                 <Avatar
                                     src={user.photoURL}
-                                    alt={userName || "Doctor"}
+                                    alt={userName}
                                     sx={{
                                         width: "40px",
                                         height: "40px",
@@ -303,8 +303,6 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                     }}
                                 />
                             )}
-
-                            {/* User info with improved text styles */}
                             <Box sx={{ ml: 2, flex: 1, minWidth: 0 }}>
                                 <Typography
                                     sx={{
@@ -318,7 +316,7 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                         whiteSpace: "nowrap",
                                     }}
                                 >
-                                    Dr. {user ? user.fullName?.split(' ')[0] : userName}
+                                    Dr. {user?.fullName?.split(" ")[0] || userName}
                                 </Typography>
                                 <Typography
                                     sx={{
@@ -336,37 +334,31 @@ const Sidebar = ({ initialSelected = "Dashboard", userName = "Dolittle", userRol
                                 </Typography>
                             </Box>
                         </Box>
-
-                        {/* Button with clearer affordance */}
                         <Button
                             variant="outlined"
                             size="small"
                             sx={{
                                 minWidth: 0,
                                 p: 0.5,
-                                borderRadius: '8px',
-                                borderColor: 'rgba(66, 133, 244, 0.3)',
-                                color: '#4285F4',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(66, 133, 244, 0.08)',
-                                    borderColor: '#4285F4'
-                                }
+                                borderRadius: "8px",
+                                borderColor: "rgba(66, 133, 244, 0.3)",
+                                color: "#4285F4",
+                                "&:hover": {
+                                    backgroundColor: "rgba(66, 133, 244, 0.08)",
+                                    borderColor: "#4285F4",
+                                },
                             }}
                         >
                             <Box
                                 component="img"
                                 src="/chevron-down.svg"
                                 alt="Configurações de perfil"
-                                sx={{
-                                    width: "16px",
-                                    height: "16px",
-                                }}
+                                sx={{ width: "16px", height: "16px" }}
                             />
                         </Button>
                     </Box>
                 </Box>
             </Box>
-            {/* Não adicione nada aqui depois do Box com escala */}
         </Box>
     );
 };

@@ -17,6 +17,7 @@ import {useResponsiveScale} from "../components/useScale";
 import CentralAjudaTemplate from "../components/centralAjudaTemplate";
 import UserProfileTemplate from "../components/userProfileTemplate";
 import HelpCenter from "../components/helpCenter";
+import UserDataTemplate from "../components/userDataTemplate"; // Importar o componente UserDataTemplate
 import {HelpCenter as HelpCenterIcon } from "@mui/icons-material";
 
 export default function AppLayout({ children }) {
@@ -27,6 +28,8 @@ export default function AppLayout({ children }) {
     const logout = auth?.logout;
     const router = useRouter();
 
+    // Verificar se o usuário é administrador
+    const isAdmin = user && user.administrador === true;
 
     const handleMenuSelect = (page, consultationId = null) => {
         setActivePage(page);
@@ -146,6 +149,9 @@ export default function AppLayout({ children }) {
                 return <HelpCenter initialTab={1}/>;
             case "meu perfil": // Adicione este novo case para a tela de perfil
                 return <UserProfileTemplate onLogout={logout}/>;
+            case "dados": // Nova opção para a página de dados - apenas para administradores
+                // Verificar se o usuário é administrador antes de renderizar
+                return isAdmin ? <UserDataTemplate /> : <Dashboard onClickPatients={handlePatientClick}/>;
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
@@ -183,53 +189,61 @@ export default function AppLayout({ children }) {
         return null;
     }
 
+    // Configurar título dinâmico com base na página ativa
+    const getPageTitle = () => {
+        switch (activePage.toLowerCase()) {
+            case "patientprofile":
+                return "Perfil do Paciente";
+            case "meu perfil":
+                return "Meu Perfil";
+            case "dados":
+                return "Administração de Dados"; // Título para a nova página
+            case "dashboard":
+                return (
+                    <>
+                        Bem vindo,{" "}
+                        <span style={{color: "#1852FE"}}>
+                        Dr. {user?.fullName}
+                    </span>
+                    </>
+                );
+            case "agenda":
+                return (
+                    <>
+                    <span style={{color: "#1852FE"}}>
+                        Dr. {user?.fullName}
+                    </span>
+                        {", confira sua agenda"}
+                    </>
+                );
+            case "pacientes":
+                return (
+                    <>
+                        <span style={{color: "#1852FE"}}>
+                            Dr. {user?.fullName}
+                        </span>
+                        {", gerencie seus pacientes"}
+                    </>
+                );
+            default:
+                return activePage;
+        }
+    };
+
     return (
         <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF", }}>
             <Sidebar
                 initialSelected={activePage}
                 onMenuSelect={handleMenuSelect}
                 onLogout={logout}
-                onProfileClick={handleProfileClick} // Adicione esta prop
+                onProfileClick={handleProfileClick}
                 userName={user?.fullName?.split(' ')[0] || "Médico"}
                 userRole={user?.especialidade || ""}
             />
             <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
                 <Box sx={{ flexShrink: 0 }}>
                     <TopAppBar
-                        title={
-                            activePage === "PatientProfile"
-                                ? "Perfil do Paciente"
-                                : activePage === "Meu Perfil"
-                                    ? "Meu Perfil"
-                                    : activePage === "Dashboard"
-                                        ? (
-                                            <>
-                                                Bem vindo,{" "}
-                                                <span style={{color: "#1852FE"}}>
-                                Dr. {user?.fullName}
-                            </span>
-                                            </>
-                                        )
-                                        : activePage === "Agenda"
-                                            ? (
-                                                <>
-                            <span style={{color: "#1852FE"}}>
-                                Dr. {user?.fullName}
-                            </span>
-                                                    {", confira sua agenda"}
-                                                </>
-                                            )
-                                            : activePage === "Pacientes"
-                                                ? (
-                                                    <>
-                                <span style={{color: "#1852FE"}}>
-                                    Dr. {user?.fullName}
-                                </span>
-                                                        {", gerencie seus pacientes"}
-                                                    </>
-                                                )
-                                                : activePage
-                        }
+                        title={getPageTitle()}
                         onPacienteClick={handlePacienteTopAppBarClick}
                         onAgendamentoClick={handleAgendamentoClick}
                         // Sempre usa handleBackToDashboard para o botão de voltar
