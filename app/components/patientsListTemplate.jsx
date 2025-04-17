@@ -1061,53 +1061,30 @@ const PatientsListPage = ({onPatientClick}) => {
     }, [user]);
 
     const handleStatusClick = useCallback((patient, currentStatus, event) => {
-        // Evitar que o clique na linha seja ativado
-        if (event) {
-            event.stopPropagation();
+        event.stopPropagation();
+
+        const statusToUse = patient.statusList?.[0] ??
+            (() => {
+                const last = getDateValue(patient, 'lastConsultationDate');
+                const next = getDateValue(patient, 'nextConsultationDate');
+                if (!last && next) return 'primeira consulta';
+                if (patient.consultationRescheduled) {
+                    return patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
+                }
+                return 'pendente';
+            })();
+
+        setSelectedPatient(patient);
+        setNewStatus(statusToUse);
+        setStatusDialogOpen(true);
+    }, [loadStatusHistory]);
+
+    useEffect(() => {
+        if (statusDialogOpen && selectedPatient && statusHistory.length === 0) {
+            loadStatusHistory(selectedPatient.id);
         }
+    }, [statusDialogOpen, selectedPatient, statusHistory.length, loadStatusHistory]);
 
-        // Determinar o status atual a partir dos dados do paciente
-        let statusToUse = currentStatus;
-
-        // Se o paciente tiver um statusList, use o primeiro item
-        if (patient.statusList && patient.statusList.length > 0) {
-            statusToUse = patient.statusList[0];
-        }
-        // Caso contrário, determinar o status dinamicamente (lógica existente)
-        else if (!statusToUse) {
-            const lastConsultDate = getDateValue(patient, 'lastConsultationDate');
-            const nextConsultDate = getDateValue(patient, 'nextConsultationDate');
-
-            if (!lastConsultDate && nextConsultDate) {
-                statusToUse = 'primeira consulta';
-            } else if (patient.consultationRescheduled) {
-                statusToUse = patient.consultationConfirmed ? 'reagendado' : 'reag. pendente';
-            } else {
-                statusToUse = 'pendente';
-            }
-        }
-
-        // Primeiro, carregar o histórico antes de qualquer atualização de estado da UI
-        setStatusHistoryLoading(true);
-
-        // Definir estados de uma vez para evitar múltiplas renderizações
-        loadStatusHistory(patient.id)
-            .then(() => {
-                // Atualizar estados em lote após o carregamento do histórico
-                setSelectedPatient(patient);
-                setNewStatus(statusToUse);
-
-                // Finalmente, abrir o diálogo
-                setStatusDialogOpen(true);
-            })
-            .catch(error => {
-                console.error("Erro ao carregar histórico:", error);
-                // Ainda abrir o diálogo mesmo com erro no histórico
-                setSelectedPatient(patient);
-                setNewStatus(statusToUse);
-                setStatusDialogOpen(true);
-            });
-    }, [loadStatusHistory, getDateValue]);
 
     // Estados para filtros
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -1164,52 +1141,45 @@ const PatientsListPage = ({onPatientClick}) => {
     const [statusUpdateSuccess, setStatusUpdateSuccess] = useState(false);
     const [statusUpdateError, setStatusUpdateError] = useState(null);
 
-    const handleStatusSave = useCallback(async () => {
+    const handleStatusSave = useCallback(() => {
         if (!selectedPatient || !user?.uid) return;
-
         setStatusUpdateLoading(true);
         setStatusUpdateError(null);
         setStatusUpdateSuccess(false);
 
-        try {
-            await FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus]);
+        // atualização otimista na UI
+        setPatients(prev =>
+            prev.map(p =>
+                p.id === selectedPatient.id ? { ...p, statusList: [newStatus] } : p
+            )
+        );
 
-            // Atualizar o estado local para refletir a mudança na UI de forma eficiente
-            setPatients(prevPatients => {
-                return prevPatients.map(patient =>
-                    patient.id === selectedPatient.id
-                        ? { ...patient, statusList: [newStatus] }
-                        : patient
-                );
-            });
-
-            await FirebaseService.addPatientStatusHistory(
-                user.uid,
-                selectedPatient.id,
-                newStatus,
-                '' // Notas opcionais sobre a mudança
-            );
-
-            // Registrar sucesso sem piscar a tela
-            setStatusUpdateSuccess(true);
-
-            // Usar um único timeout
-            setTimeout(() => {
-                setStatusDialogOpen(false);
-
-                // Limpar estados após o dialog fechar
+        // dispara atualização no Firebase
+        FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus])
+            .then(() =>
+                FirebaseService.addPatientStatusHistory(
+                    user.uid,
+                    selectedPatient.id,
+                    newStatus,
+                    ''
+                )
+            )
+            .then(() => {
+                setStatusUpdateSuccess(true);
+                // Use apenas um timeout em vez de dois aninhados
                 setTimeout(() => {
-                    setStatusUpdateSuccess(false);
-                    setSelectedPatient(null); // Limpar seleção após fechar
-                }, 300); // Pequeno delay para animação de fechamento
-            }, 1500);
-        } catch (error) {
-            console.error("Erro ao atualizar status do paciente:", error);
-            setStatusUpdateError("Não foi possível atualizar o status. Tente novamente.");
-        } finally {
-            setStatusUpdateLoading(false);
-        }
+                    setStatusDialogOpen(false);
+                }, 1000);
+            })
+            .catch(error => {
+                console.error(error);
+                setStatusUpdateError("Não foi possível atualizar o status.");
+            })
+            .finally(() => {
+                setStatusUpdateLoading(false);
+            });
     }, [selectedPatient, newStatus, user]);
+
 
     // Carregar dados iniciais
     useEffect(() => {
@@ -2067,6 +2037,212 @@ const PatientsListPage = ({onPatientClick}) => {
         </Box>
     );
 
+    const statusDialogElement = useMemo(() => (
+        <Dialog
+            open={statusDialogOpen}
+            onClose={handleCloseDialog}
+            PaperProps={{ sx: { borderRadius: '20px', minWidth: '400px', maxWidth: '90vw' } }}
+            disableEscapeKeyDown={statusUpdateLoading}
+            onBackdropClick={(e) => { if (statusUpdateLoading) e.stopPropagation(); }}
+        >
+            <DialogTitle sx={{
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                pb: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <FilterAltIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                    <Typography variant="h6">Alterar Status do Paciente</Typography>
+                </Box>
+                <IconButton
+                    edge="end"
+                    onClick={handleCloseDialog}
+                    disabled={statusUpdateLoading}
+                >
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
+
+            <DialogContent sx={{ pt: 3, pb: 1 }}>
+                {selectedPatient && (
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            Paciente
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Avatar
+                                src={selectedPatient.patientPhotoUrl}
+                                alt={selectedPatient.patientName || "Paciente"}
+                                sx={{
+                                    width: 40,
+                                    height: 40,
+                                    mr: 2,
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                    color: theme.palette.primary.main
+                                }}
+                            >
+                                {selectedPatient.patientName ? selectedPatient.patientName.charAt(0) : "P"}
+                            </Avatar>
+                            <Box>
+                                <Typography variant="subtitle1" fontWeight={500}>
+                                    {selectedPatient.patientName || "Paciente sem nome"}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {selectedPatient.patientEmail || "Sem e-mail"}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </Box>
+                )}
+
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
+                    Selecione o novo status
+                </Typography>
+
+                {/* Botões de status - Corrigindo o problema do flickering */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                    {STATUS_OPTIONS.filter(option => option.value !== "").map(option => {
+                        // Use uma função normal em vez de useCallback
+                        const handleStatusButtonClick = () => {
+                            if (!statusUpdateLoading) {
+                                setNewStatus(option.value);
+                            }
+                        };
+
+                        return (
+                            <Button
+                                key={option.value}
+                                variant={newStatus === option.value ? "contained" : "outlined"}
+                                onClick={handleStatusButtonClick}
+                                disabled={statusUpdateLoading}
+                                sx={{
+                                    justifyContent: 'flex-start',
+                                    py: 1.5,
+                                    px: 2,
+                                    borderRadius: '12px',
+                                    borderColor: newStatus === option.value
+                                        ? 'transparent'
+                                        : theme.palette.divider,
+                                    backgroundColor: newStatus === option.value
+                                        ? theme.palette.primary.main
+                                        : 'transparent',
+                                    color: newStatus === option.value
+                                        ? 'white'
+                                        : 'text.primary',
+                                    '&:hover': {
+                                        backgroundColor: newStatus === option.value
+                                            ? theme.palette.primary.dark
+                                            : alpha(theme.palette.primary.main, 0.04),
+                                    }
+                                }}
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                    <Box
+                                        sx={{
+                                            width: 12,
+                                            height: 12,
+                                            borderRadius: '50%',
+                                            mr: 2,
+                                            backgroundColor: option.color
+                                        }}
+                                    />
+                                    {option.label}
+                                    {option.icon && (
+                                        <Box sx={{ ml: 'auto', opacity: 0.7 }}>
+                                            {option.icon}
+                                        </Box>
+                                    )}
+                                </Box>
+                            </Button>
+                        );
+                    })}
+                </Box>
+
+                {/* O restante do Dialog permanece igual */}
+                {/* Histórico de status com estado de carregamento */}
+                {(statusHistory.length > 0 || statusHistoryLoading) && (
+                    <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            Histórico de Status
+                        </Typography>
+                        {statusHistoryLoading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                <CircularProgress size={24} />
+                            </Box>
+                        ) : (
+                            <Box sx={{ maxHeight: '150px', overflow: 'auto' }}>
+                                {statusHistory.map((item, index) => (
+                                    <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                                        <TimelineIcon sx={{ fontSize: '1rem', mr: 1, mt: 0.5, color: 'text.secondary' }} />
+                                        <Box>
+                                            <Typography variant="body2">
+                                                {item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : 'Desconhecido'}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {safeFormatDate(item.timestamp, 'dd/MM/yyyy HH:mm')} - {item.updatedBy || 'Sistema'}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Box>
+                        )}
+                    </Box>
+                )}
+
+                {/* Alertas de feedback */}
+                {statusUpdateError && (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                        {statusUpdateError}
+                    </Alert>
+                )}
+
+                {statusUpdateSuccess && (
+                    <Alert severity="success" sx={{ mt: 2 }}>
+                        Status atualizado com sucesso!
+                    </Alert>
+                )}
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                <Button
+                    onClick={handleCloseDialog}
+                    variant="outlined"
+                    disabled={statusUpdateLoading}
+                    sx={{ borderRadius: '50px' }}
+                >
+                    Cancelar
+                </Button>
+                <Button
+                    onClick={handleStatusSave}
+                    variant="contained"
+                    disabled={statusUpdateLoading}
+                    sx={{
+                        borderRadius: '50px',
+                        position: 'relative',
+                        minWidth: '100px'
+                    }}
+                >
+                    {statusUpdateLoading ? (
+                        <CircularProgress size={24} sx={{ color: 'white' }} />
+                    ) : "Salvar"}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    ), [
+        statusDialogOpen,
+        handleCloseDialog,
+        statusUpdateLoading,
+        statusUpdateError,
+        statusUpdateSuccess,
+        selectedPatient,
+        newStatus,
+        statusHistory,
+        statusHistoryLoading
+    ]);
+
+
     // Barra de ferramentas com busca e filtros
     const ToolbarSection = () => {
         // handleSearch é chamado apenas quando o usuário para de digitar
@@ -2604,211 +2780,7 @@ const PatientsListPage = ({onPatientClick}) => {
                     />
                 </Box>
             )}
-
-            <Dialog
-                open={statusDialogOpen}
-                onClose={handleCloseDialog}
-                PaperProps={{
-                    sx: {
-                        borderRadius: '20px',
-                        minWidth: '400px',
-                        maxWidth: '90vw'
-                    }
-                }}
-                // Impedir fechamento ao clicar fora quando estiver processando
-                disableEscapeKeyDown={statusUpdateLoading}
-                // Impedir fechamento ao clicar fora quando estiver processando
-                onBackdropClick={(e) => {
-                    if (statusUpdateLoading) {
-                        e.stopPropagation();
-                    }
-                }}
-            >
-                <DialogTitle sx={{
-                    borderBottom: `1px solid ${theme.palette.divider}`,
-                    pb: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <FilterAltIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                        <Typography variant="h6">Alterar Status do Paciente</Typography>
-                    </Box>
-                    <IconButton
-                        edge="end"
-                        onClick={handleCloseDialog}
-                        disabled={statusUpdateLoading}
-                    >
-                        <CloseIcon />
-                    </IconButton>
-                </DialogTitle>
-
-                <DialogContent sx={{ pt: 3, pb: 1 }}>
-                    {selectedPatient && (
-                        <Box sx={{ mb: 3 }}>
-                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                Paciente
-                            </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Avatar
-                                    src={selectedPatient.patientPhotoUrl}
-                                    alt={selectedPatient.patientName || "Paciente"}
-                                    sx={{
-                                        width: 40,
-                                        height: 40,
-                                        mr: 2,
-                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                        color: theme.palette.primary.main
-                                    }}
-                                >
-                                    {selectedPatient.patientName ? selectedPatient.patientName.charAt(0) : "P"}
-                                </Avatar>
-                                <Box>
-                                    <Typography variant="subtitle1" fontWeight={500}>
-                                        {selectedPatient.patientName || "Paciente sem nome"}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {selectedPatient.patientEmail || "Sem e-mail"}
-                                    </Typography>
-                                </Box>
-                            </Box>
-                        </Box>
-                    )}
-
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
-                        Selecione o novo status
-                    </Typography>
-
-                    {/* Botões de status - Corrigindo o problema do flickering */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
-                        {STATUS_OPTIONS.filter(option => option.value !== "").map(option => {
-                            // Memorizar a função de clique para evitar recriação a cada renderização
-                            const handleStatusButtonClick = React.useCallback(() => {
-                                if (!statusUpdateLoading) {
-                                    setNewStatus(option.value);
-                                }
-                            }, [option.value, statusUpdateLoading]);
-
-                            return (
-                                <Button
-                                    key={option.value}
-                                    variant={newStatus === option.value ? "contained" : "outlined"}
-                                    onClick={handleStatusButtonClick}
-                                    disabled={statusUpdateLoading}
-                                    sx={{
-                                        justifyContent: 'flex-start',
-                                        py: 1.5,
-                                        px: 2,
-                                        borderRadius: '12px',
-                                        borderColor: newStatus === option.value
-                                            ? 'transparent'
-                                            : theme.palette.divider,
-                                        backgroundColor: newStatus === option.value
-                                            ? theme.palette.primary.main
-                                            : 'transparent',
-                                        color: newStatus === option.value
-                                            ? 'white'
-                                            : 'text.primary',
-                                        '&:hover': {
-                                            backgroundColor: newStatus === option.value
-                                                ? theme.palette.primary.dark
-                                                : alpha(theme.palette.primary.main, 0.04),
-                                        }
-                                    }}
-                                >
-                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                        <Box
-                                            sx={{
-                                                width: 12,
-                                                height: 12,
-                                                borderRadius: '50%',
-                                                mr: 2,
-                                                backgroundColor: option.color
-                                            }}
-                                        />
-                                        {option.label}
-                                        {option.icon && (
-                                            <Box sx={{ ml: 'auto', opacity: 0.7 }}>
-                                                {option.icon}
-                                            </Box>
-                                        )}
-                                    </Box>
-                                </Button>
-                            );
-                        })}
-                    </Box>
-
-                    {/* O restante do Dialog permanece igual */}
-                    {/* Histórico de status com estado de carregamento */}
-                    {(statusHistory.length > 0 || statusHistoryLoading) && (
-                        <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                Histórico de Status
-                            </Typography>
-                            {statusHistoryLoading ? (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                                    <CircularProgress size={24} />
-                                </Box>
-                            ) : (
-                                <Box sx={{ maxHeight: '150px', overflow: 'auto' }}>
-                                    {statusHistory.map((item, index) => (
-                                        <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
-                                            <TimelineIcon sx={{ fontSize: '1rem', mr: 1, mt: 0.5, color: 'text.secondary' }} />
-                                            <Box>
-                                                <Typography variant="body2">
-                                                    {item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : 'Desconhecido'}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {safeFormatDate(item.timestamp, 'dd/MM/yyyy HH:mm')} - {item.updatedBy || 'Sistema'}
-                                                </Typography>
-                                            </Box>
-                                        </Box>
-                                    ))}
-                                </Box>
-                            )}
-                        </Box>
-                    )}
-
-                    {/* Alertas de feedback */}
-                    {statusUpdateError && (
-                        <Alert severity="error" sx={{ mt: 2 }}>
-                            {statusUpdateError}
-                        </Alert>
-                    )}
-
-                    {statusUpdateSuccess && (
-                        <Alert severity="success" sx={{ mt: 2 }}>
-                            Status atualizado com sucesso!
-                        </Alert>
-                    )}
-                </DialogContent>
-
-                <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-                    <Button
-                        onClick={handleCloseDialog}
-                        variant="outlined"
-                        disabled={statusUpdateLoading}
-                        sx={{ borderRadius: '50px' }}
-                    >
-                        Cancelar
-                    </Button>
-                    <Button
-                        onClick={handleStatusSave}
-                        variant="contained"
-                        disabled={statusUpdateLoading}
-                        sx={{
-                            borderRadius: '50px',
-                            position: 'relative',
-                            minWidth: '100px'
-                        }}
-                    >
-                        {statusUpdateLoading ? (
-                            <CircularProgress size={24} sx={{ color: 'white' }} />
-                        ) : "Salvar"}
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            {statusDialogElement}
         </TableContainer>
     );
 
