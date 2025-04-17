@@ -2579,6 +2579,10 @@ const PatientsListPage = ({onPatientClick}) => {
             <Dialog
                 open={statusDialogOpen}
                 keepMounted
+                disablePortal
+                BackdropProps={{
+                       invisible: true
+                }}
                 transitionDuration={0}
                 onClose={handleCloseDialog}
                 PaperProps={{
