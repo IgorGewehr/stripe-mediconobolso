@@ -14,6 +14,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { useRouter } from "next/navigation";
 import AnamneseDialog from "./anamneseDialog";
 import ReceitaDialog from "./receitasDialog";
+import ExamDialog from "./examDialog";
 
 // Paleta de cores (pode extrair para outro arquivo se quiser)
 const themeColors = {
@@ -126,62 +127,91 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
 
     const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
     const [openReceitaDialog, setOpenReceitaDialog] = useState(false);
+    const [openExamDialog, setOpenExamDialog] = useState(false); // Add exam dialog state
 
-    // Handler para abrir o diálogo de anamnese
+    // Handler for opening anamnese dialog
     const handleAnamneseClick = (isAdd) => {
         console.log(`Clicou em Anamnese ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
         setOpenAnamneseDialog(true);
     };
 
     const handleReceitasClick = (isAdd) => {
-        // Abre o dialog de Receita
         console.log(`Clicou em Receitas ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
         setOpenReceitaDialog(true);
     };
 
-    // Atualiza a função para notificar sobre atualizações
+    // Handler for opening exam dialog
+    const handleExamesClick = (isAdd) => {
+        console.log(`Clicou em Exames ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
+        setOpenExamDialog(true);
+    };
+
+    // Update handlers for saving/updating
     const handleSaveAnamnese = async (anamneseId) => {
         console.log(`Anamnese ${anamneseId} salva com sucesso!`);
         setOpenAnamneseDialog(false);
 
-        // Usa a função de atualização forçada se disponível
         if (forceUpdateNotas) {
             console.log("Forçando atualização de notas após salvar anamnese");
             await forceUpdateNotas();
         }
 
-        // Notifica o componente pai sobre a atualização (fallback)
         if (onNotaUpdated) {
             onNotaUpdated();
         }
     };
 
-    // Atualiza a função para notificar sobre atualizações
     const handleSaveReceita = async (receitaId) => {
         console.log(`Receita ${receitaId} salva com sucesso!`);
         setOpenReceitaDialog(false);
 
-        // Usa a função de atualização forçada se disponível
         if (forceUpdateNotas) {
             console.log("Forçando atualização de notas após salvar receita");
             await forceUpdateNotas();
         }
 
-        // Notifica o componente pai sobre a atualização (fallback)
         if (onNotaUpdated) {
             onNotaUpdated();
         }
     };
 
-    const handleExamesClick = (isAdd) => {
-        // Redirecionar para a página de novo exame ou lista de exames
-        console.log(`Clicou em Exames ${isAdd ? "(adicionar)" : ""} para o paciente ${pacienteId}`);
-        // router.push(`/exames/${pacienteId}${isAdd ? "/novo" : ""}`);
+    // Add handler for saving exams
+    const handleSaveExam = async (examData) => {
+        try {
+            console.log("Salvando exame:", examData);
+            // Create the exam using Firebase service
+            const examId = await FirebaseService.createExam(doctorId, pacienteId, examData);
+
+            console.log(`Exame ${examId} salvo com sucesso!`);
+            setOpenExamDialog(false);
+
+            // Force update notes if available
+            if (forceUpdateNotas) {
+                console.log("Forçando atualização de notas após salvar exame");
+                await forceUpdateNotas();
+            }
+
+            // Notify parent component
+            if (onNotaUpdated) {
+                onNotaUpdated();
+            }
+
+            return examId;
+        } catch (error) {
+            console.error("Erro ao salvar exame:", error);
+            alert("Erro ao salvar exame. Por favor, tente novamente.");
+            return null;
+        }
+    };
+
+    // Close handlers
+    const handleCloseExamDialog = () => {
+        setOpenExamDialog(false);
     };
 
     return (
         <Box sx={{ width: "100%", maxWidth: "840px" }}>
-            {/* Título */}
+            {/* Title */}
             <Typography
                 variant="h4"
                 sx={{
@@ -195,7 +225,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 Acompanhamento
             </Typography>
 
-            {/* Grid de cards */}
+            {/* Grid of cards */}
             <Grid container spacing={1}>
                 <Grid item xs={12} sm={6} md={3.4}>
                     <AcompanhamentoCard
@@ -219,7 +249,8 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                     />
                 </Grid>
             </Grid>
-            {/* Renderiza o diálogo de anamnese com a função onSave */}
+
+            {/* Dialogs */}
             <AnamneseDialog
                 open={openAnamneseDialog}
                 onClose={() => setOpenAnamneseDialog(false)}
@@ -228,13 +259,21 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 onSave={handleSaveAnamnese}
             />
 
-            {/* Renderiza o diálogo de receita com a função onSave */}
             <ReceitaDialog
                 open={openReceitaDialog}
                 onClose={() => setOpenReceitaDialog(false)}
                 patientId={pacienteId}
                 doctorId={doctorId}
                 onSave={handleSaveReceita}
+            />
+
+            {/* Add the ExamDialog */}
+            <ExamDialog
+                open={openExamDialog}
+                onClose={handleCloseExamDialog}
+                patientId={pacienteId}
+                doctorId={doctorId}
+                onSave={handleSaveExam}
             />
         </Box>
     );

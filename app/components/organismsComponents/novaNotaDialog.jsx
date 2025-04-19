@@ -657,7 +657,6 @@ const PatientNoteDialog = ({
         }
     };
 
-    // Função melhorada para abrir anexos
     // Função melhorada para abrir anexos em modo de edição
     const handleOpenAttachment = (attachment) => {
         console.log("Abrindo anexo em modo de edição:", attachment);
@@ -796,238 +795,60 @@ const PatientNoteDialog = ({
 
     const handleSave = async () => {
         if (!title.trim()) {
-            alert("Por favor, insira um título para a nota.");
+            alert("Por favor, insira um título.");
             return;
         }
 
         setIsLoading(true);
-        console.log("Iniciando salvamento da nota com", attachments.length, "anexos");
-
         try {
-            // Para notas em modo de edição
-            if (isEditMode && note.id) {
-                console.log("Editando nota existente:", note.id);
+            // 1) Cria a nota SEM anexos
+            const notePayload = {
+                noteTitle: title,
+                noteText: content,
+                noteType,
+                category: noteCategory,
+                consultationDate,
+                createdAt: new Date(),
+                lastModified: new Date(),
+                attachments: []    // começa vazio
+            };
+            const newNoteId = await FirebaseService.createNote(
+                user.uid,
+                patientId,
+                notePayload
+            );
 
-                // Processa anexos - mantém existentes e faz upload de novos
-                const processedAttachments = await Promise.all(
-                    attachments.map(async (attachment, index) => {
-                        console.log(`Processando anexo ${index + 1}/${attachments.length}:`, attachment.fileName);
-
-                        // Se o anexo já tem URL, apenas mantém
-                        if (attachment.fileUrl) {
-                            console.log("Anexo já possui URL:", attachment.fileUrl);
-                            // Remove o objeto File para evitar erro de serialização
-                            const { file, ...attachmentWithoutFile } = attachment;
-                            return attachmentWithoutFile;
-                        }
-
-                        // Se tem o objeto File, precisa fazer upload
-                        if (attachment.file) {
-                            setUploadProgress(`Fazendo upload do arquivo ${attachment.fileName}...`);
-                            console.log("Iniciando upload para:", attachment.fileName);
-
-                            try {
-                                // Usando o método específico para upload de anexo
-                                const fileInfo = await FirebaseService.uploadNoteAttachment(
-                                    attachment.file,
-                                    user.uid,
-                                    patientId,
-                                    note.id
-                                );
-
-                                console.log("Upload finalizado com sucesso:", fileInfo);
-                                return fileInfo;
-                            } catch (uploadError) {
-                                console.error("Erro no upload:", uploadError);
-
-                                // Tenta um método alternativo de upload mais direto
-                                try {
-                                    const path = `users/${user.uid}/patients/${patientId}/notes/${note.id}/${attachment.fileName}`;
-                                    console.log("Tentando método alternativo de upload para:", path);
-
-                                    const fileUrl = await FirebaseService.uploadFile(attachment.file, path);
-                                    console.log("Upload alternativo bem-sucedido, URL:", fileUrl);
-
-                                    return {
-                                        fileName: attachment.fileName,
-                                        fileType: attachment.fileType,
-                                        fileSize: attachment.fileSize,
-                                        fileUrl: fileUrl,
-                                        uploadedAt: attachment.uploadedAt || new Date()
-                                    };
-                                } catch (altError) {
-                                    console.error("Falha também no método alternativo:", altError);
-                                    return {
-                                        fileName: attachment.fileName,
-                                        fileType: attachment.fileType,
-                                        fileSize: attachment.fileSize,
-                                        uploadError: true,
-                                        errorMessage: altError.message,
-                                        uploadedAt: attachment.uploadedAt || new Date()
-                                    };
-                                }
-                            }
-                        }
-
-                        // Se chegou aqui, anexo sem URL e sem arquivo
-                        console.warn("Anexo sem URL e sem arquivo:", attachment);
-                        return null;
-                    })
-                );
-
-                // Filtrar anexos válidos (não nulos)
-                const validAttachments = processedAttachments.filter(att => att !== null);
-                console.log("Total de anexos válidos após processamento:", validAttachments.length);
-
-                // Dados da nota para atualização
-                const noteData = {
-                    noteTitle: title,
-                    noteText: content,
-                    noteType: noteType,
-                    category: noteCategory,
-                    consultationDate: consultationDate,
-                    attachments: validAttachments,
-                    lastModified: new Date()
-                };
-
-                console.log("Atualizando nota com dados:", noteData);
-                await FirebaseService.updateNote(user.uid, patientId, note.id, noteData);
-
-                if (onSave) {
-                    onSave({
-                        ...note,
-                        ...noteData
-                    });
-                }
-
-            } else {
-                // Para novas notas
-                console.log("Criando nova nota");
-
-                // Cria a nota sem os anexos primeiro (apenas metadados)
-                const initialAttachments = attachments.map(attachment => {
-                    // Remove o objeto File para não causar erro de serialização
-                    const { file, ...metadata } = attachment;
-                    return {
-                        ...metadata,
-                        pendingUpload: true
-                    };
-                });
-
-                const noteData = {
-                    noteTitle: title,
-                    noteText: content,
-                    noteType: noteType,
-                    category: noteCategory,
-                    consultationDate: consultationDate,
-                    attachments: initialAttachments,
-                    createdAt: new Date(),
-                    lastModified: new Date()
-                };
-
-                // Salva a nota e obtém o ID
-                let createdNoteId;
-                if (onSave) {
-                    try {
-                        console.log("Salvando nota inicial sem anexos processados");
-                        const saveResult = await onSave(noteData);
-
-                        // Determina o ID da nota criada
-                        createdNoteId = saveResult?.id ||
-                            (typeof saveResult === 'string' ? saveResult : null);
-
-                        console.log("Nota criada com ID:", createdNoteId);
-                    } catch (saveError) {
-                        console.error("Erro ao salvar nota:", saveError);
-                        throw saveError;
-                    }
-                }
-
-                // Se tiver ID e anexos, processa os uploads
-                if (createdNoteId && attachments.some(att => att.file)) {
-                    console.log("Processando uploads de anexos para nova nota");
-                    setUploadProgress('Processando anexos...');
-
-                    // Lista para armazenar anexos processados
-                    const updatedAttachments = [];
-
-                    // Processar cada anexo
-                    for (let i = 0; i < attachments.length; i++) {
-                        const attachment = attachments[i];
-
-                        if (attachment.file) {
-                            setUploadProgress(`Enviando arquivo ${i+1}/${attachments.length}: ${attachment.fileName}`);
-                            console.log(`Iniciando upload ${i+1}/${attachments.length}:`, attachment.fileName);
-
-                            try {
-                                // Caminho padrão do arquivo no Storage
-                                const path = `users/${user.uid}/patients/${patientId}/notes/${createdNoteId}/${attachment.fileName}`;
-                                console.log("Caminho de upload:", path);
-
-                                // Upload do arquivo
-                                const fileUrl = await FirebaseService.uploadFile(attachment.file, path);
-                                console.log("Upload bem-sucedido, URL:", fileUrl);
-
-                                // Adiciona o anexo processado à lista
-                                updatedAttachments.push({
-                                    fileName: attachment.fileName,
-                                    fileType: attachment.fileType,
-                                    fileSize: attachment.fileSize,
-                                    fileUrl: fileUrl,
-                                    storagePath: path, // Armazena o caminho para referência futura
-                                    uploadedAt: attachment.uploadedAt || new Date()
-                                });
-                            } catch (uploadError) {
-                                console.error(`Erro no upload do arquivo ${attachment.fileName}:`, uploadError);
-
-                                // Mantém o registro mesmo com erro
-                                updatedAttachments.push({
-                                    fileName: attachment.fileName,
-                                    fileType: attachment.fileType,
-                                    fileSize: attachment.fileSize,
-                                    uploadError: true,
-                                    errorMessage: uploadError.message,
-                                    uploadedAt: attachment.uploadedAt || new Date()
-                                });
-                            }
-                        } else if (attachment.fileUrl) {
-                            // Se já tem URL, mantém como está
-                            console.log("Mantendo anexo existente com URL:", attachment.fileUrl);
-                            updatedAttachments.push(attachment);
-                        }
-                    }
-
-                    // Atualiza a nota com os anexos processados
-                    if (updatedAttachments.length > 0) {
-                        try {
-                            console.log("Atualizando nota com anexos processados:", updatedAttachments);
-                            await FirebaseService.updateNote(user.uid, patientId, createdNoteId, {
-                                attachments: updatedAttachments,
-                                lastModified: new Date()
-                            });
-                            console.log("Nota atualizada com anexos");
-                        } catch (updateError) {
-                            console.error("Erro ao atualizar nota com anexos:", updateError);
-                            // Continua mesmo com erro na atualização
-                        }
-                    }
+            // 2) Para cada arquivo selecionado, faz o upload e já atualiza o campo attachments
+            for (const att of attachments) {
+                if (att.file instanceof File) {
+                    await FirebaseService.uploadNoteAttachment(
+                        att.file,
+                        user.uid,
+                        patientId,
+                        newNoteId
+                    );
                 }
             }
 
-            // Sucesso
+            // 3) (Opcional) busca a nota atualizada e notifica o onSave
+            const updatedNote = await FirebaseService.getNote(
+                user.uid,
+                patientId,
+                newNoteId
+            );
+            onSave && onSave(updatedNote);
+
+            // feedback e fecha
             setIsSaved(true);
-            console.log("Nota salva com sucesso");
-            setTimeout(() => {
-                onClose();
-            }, 1500);
-        } catch (error) {
-            console.error("Erro ao salvar nota:", error);
-            alert(`Erro ao salvar nota: ${error.message}. Tente novamente.`);
+            setTimeout(onClose, 800);
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao salvar nota: " + err.message);
         } finally {
             setIsLoading(false);
-            setUploadProgress(null);
         }
     };
+
 
     const getDateValue = (dateValue) => {
         if (!dateValue) return null;
