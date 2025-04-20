@@ -462,8 +462,8 @@ const ExamDialog = ({
             const formData = new FormData();
             formData.append('file', file);
 
-            // Chamar a API processexam com o arquivo
-            const response = await fetch('/api/processexam', {
+            // Chamar a API exame com o arquivo
+            const response = await fetch('/api/exame', {
                 method: 'POST',
                 body: formData,
             });
