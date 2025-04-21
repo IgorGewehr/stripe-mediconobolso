@@ -1,15 +1,135 @@
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 // Declare a rota como dinâmica para o Netlify
 export const dynamic = 'force-dynamic';
+
+// Função para OCR em ambiente Node.js
+async function extractTextWithOCR(pdfBuffer) {
+    try {
+        console.log("Iniciando OCR no servidor...");
+
+        // Criar diretório temporário para processamento
+        const tempDir = path.join(os.tmpdir(), `pdf-ocr-${Date.now()}`);
+        await fs.promises.mkdir(tempDir, { recursive: true });
+        const tempPdfPath = path.join(tempDir, 'temp.pdf');
+
+        // Salvar o buffer como arquivo temporário
+        await fs.promises.writeFile(tempPdfPath, pdfBuffer);
+        console.log(`PDF temporário salvo em: ${tempPdfPath}`);
+
+        // Importar bibliotecas necessárias
+        const { createWorker } = await import('tesseract.js');
+        const { PDFDocument } = await import('pdf-lib');
+        const sharp = await import('sharp');
+
+        // Carregar o PDF usando pdf-lib
+        const pdfDoc = await PDFDocument.load(pdfBuffer);
+        const pageCount = pdfDoc.getPageCount();
+        console.log(`PDF tem ${pageCount} páginas`);
+
+        // Configurar worker do Tesseract
+        const worker = await createWorker('por');
+
+        let fullText = '';
+
+        // Processar cada página
+        for (let i = 0; i < pageCount; i++) {
+            try {
+                console.log(`Processando página ${i + 1}/${pageCount}`);
+
+                // Extrair página como PDF separado
+                const subPdf = await PDFDocument.create();
+                const [page] = await subPdf.copyPages(pdfDoc, [i]);
+                subPdf.addPage(page);
+                const pagePdfBytes = await subPdf.save();
+
+                // Salvar página como PDF temporário
+                const pagePdfPath = path.join(tempDir, `page-${i}.pdf`);
+                await fs.promises.writeFile(pagePdfPath, pagePdfBytes);
+
+                // Converter PDF para imagem usando pdf-poppler (se instalado)
+                // Nota: Isso requer que o poppler-utils esteja instalado no sistema
+                try {
+                    const { default: pdf2pic } = await import('pdf2pic');
+
+                    const converter = pdf2pic({
+                        density: 300,
+                        savename: `page-${i}`,
+                        savedir: tempDir,
+                        format: 'png',
+                        size: 3000
+                    });
+
+                    const result = await converter.convert(pagePdfPath);
+                    console.log(`Página ${i + 1} convertida para imagem`);
+
+                    // Executar OCR na imagem
+                    const { data } = await worker.recognize(result.path);
+                    fullText += data.text + '\n\n';
+                } catch (pdf2picError) {
+                    console.error("Erro no pdf2pic, tentando alternativa:", pdf2picError);
+
+                    // Método alternativo usando puppeteer se pdf2pic falhar
+                    try {
+                        const { default: puppeteer } = await import('puppeteer');
+                        const browser = await puppeteer.launch();
+                        const page = await browser.newPage();
+
+                        // Carregar o PDF como data URL
+                        const pdfBase64 = pagePdfBytes.toString('base64');
+                        const dataUrl = `data:application/pdf;base64,${pdfBase64}`;
+                        await page.goto(dataUrl, { waitUntil: 'networkidle0' });
+
+                        // Capturar screenshot
+                        const imagePath = path.join(tempDir, `page-${i}.png`);
+                        await page.screenshot({ path: imagePath, fullPage: true });
+                        await browser.close();
+
+                        // Executar OCR na imagem capturada
+                        const { data } = await worker.recognize(imagePath);
+                        fullText += data.text + '\n\n';
+                    } catch (puppeteerError) {
+                        console.error("Ambos métodos de conversão falharam:", puppeteerError);
+                        throw new Error("Falha na conversão PDF para imagem");
+                    }
+                }
+            } catch (pageError) {
+                console.error(`Erro ao processar página ${i + 1}:`, pageError);
+            }
+        }
+
+        // Limpar recursos
+        await worker.terminate();
+
+        // Limpar arquivos temporários
+        try {
+            const files = await fs.promises.readdir(tempDir);
+            for (const file of files) {
+                await fs.promises.unlink(path.join(tempDir, file));
+            }
+            await fs.promises.rmdir(tempDir);
+            console.log("Arquivos temporários removidos");
+        } catch (cleanupError) {
+            console.error("Erro ao limpar arquivos temporários:", cleanupError);
+        }
+
+        return fullText;
+    } catch (error) {
+        console.error('Erro no OCR:', error);
+        throw new Error(`Falha ao extrair texto usando OCR: ${error.message}`);
+    }
+}
 
 export async function POST(req) {
     try {
         let text = "";
         let sourceType = "unknown";
 
-        // 1. Tentar processar como FormData (upload de arquivo)
+        // Tentar processar como FormData (upload de arquivo)
         try {
             const formData = await req.formData();
             const file = formData.get('file');
@@ -18,58 +138,76 @@ export async function POST(req) {
                 sourceType = "file-upload";
                 console.log(`Processando arquivo: ${file.name}, tipo: ${file.type}, tamanho: ${file.size} bytes`);
 
+                // Converter para Buffer
+                const buffer = Buffer.from(await file.arrayBuffer());
+
                 try {
-                    // Importação dinâmica do pdf-parse
+                    // Primeiro, tentar extrair texto com pdf-parse
+                    console.log("Iniciando extração de texto do PDF com pdf-parse...");
                     const pdfParseModule = await import('pdf-parse');
                     const pdfParse = pdfParseModule.default;
 
-                    // Converter para Buffer
-                    const buffer = Buffer.from(await file.arrayBuffer());
-
-                    // CORREÇÃO IMPORTANTE: Definir opções para evitar o erro de "test/data"
                     const options = {
-                        // Evitar carregar arquivos de teste internos
                         pagerender: null,
-                        max: 0, // Sem limite de páginas
-                        version: 'v2.0.550' // Especificar versão
+                        max: 0,
+                        version: 'v2.0.550'
                     };
 
-                    console.log("Iniciando extração de texto do PDF...");
-                    const data = await pdfParse(buffer, options);
-                    text = data.text || "";
-                    console.log(`Texto extraído com sucesso: ${text.length} caracteres`);
+                    try {
+                        const data = await pdfParse(buffer, options);
+                        text = data.text || "";
 
-                    if (!text.trim()) {
-                        throw new Error("O PDF não contém texto extraível");
+                        // Verificar se extraiu texto suficiente
+                        if (!text.trim() || text.length < 100) {
+                            console.log("Texto insuficiente extraído, tentando OCR...");
+
+                            // Tentar extrair com OCR
+                            text = await extractTextWithOCR(buffer);
+
+                            if (!text.trim()) {
+                                throw new Error("OCR não conseguiu extrair texto suficiente");
+                            }
+                        }
+
+                        console.log(`Texto extraído com sucesso: ${text.length} caracteres`);
+                    } catch (pdfExtractError) {
+                        console.error("Erro ao extrair texto com pdf-parse:", pdfExtractError);
+
+                        // Tentar com OCR como fallback
+                        try {
+                            console.log("Tentando extração com OCR...");
+                            text = await extractTextWithOCR(buffer);
+
+                            if (!text.trim()) {
+                                throw new Error("OCR falhou ao extrair texto");
+                            }
+
+                            console.log(`Texto extraído com OCR: ${text.length} caracteres`);
+                        } catch (ocrError) {
+                            console.error("Erro no OCR:", ocrError);
+                            return NextResponse.json({
+                                error: 'Falha ao processar o arquivo PDF',
+                                details: "Não foi possível extrair texto do PDF, nem com OCR. O arquivo pode estar danificado ou protegido.",
+                                code: "OCR_FAILED"
+                            }, { status: 400 });
+                        }
                     }
-                } catch (pdfError) {
-                    console.error('Erro detalhado ao processar PDF:', pdfError);
-
-                    // Tentar determinar o tipo de erro para mensagem mais útil
-                    let errorMessage = pdfError.message;
-                    if (errorMessage.includes('no such file or directory')) {
-                        errorMessage = "Erro interno no processador de PDF. Use um PDF com texto extraível.";
-                    } else if (errorMessage.includes('encrypted')) {
-                        errorMessage = "O PDF está protegido/criptografado e não pode ser processado.";
-                    }
-
+                } catch (processingError) {
+                    console.error("Erro ao processar PDF:", processingError);
                     return NextResponse.json({
                         error: 'Falha ao processar o arquivo PDF',
-                        details: errorMessage
+                        details: processingError.message || "Erro interno no processamento do PDF"
                     }, { status: 500 });
                 }
             } else {
                 return NextResponse.json({
-                    error: 'Arquivo não fornecido no FormData',
+                    error: 'Arquivo não fornecido',
                     details: 'Verifique se o campo "file" está presente no formulário'
                 }, { status: 400 });
             }
         } catch (formDataError) {
-            // Não é FormData, vamos tentar como JSON
-            console.log("Formato não é FormData, tentando JSON...");
-
+            // Processar como JSON
             try {
-                // 2. Tentar processar como JSON (texto ou URL)
                 const body = await req.json();
                 sourceType = "json";
 
@@ -99,6 +237,11 @@ export async function POST(req) {
 
                         const data = await pdfParse(buffer, options);
                         text = data.text || "";
+
+                        if (!text.trim()) {
+                            text = await extractTextWithOCR(buffer);
+                        }
+
                         console.log(`Texto extraído da URL: ${text.length} caracteres`);
                     } catch (urlError) {
                         console.error("Erro ao processar URL:", urlError);
@@ -130,51 +273,17 @@ export async function POST(req) {
         if (!text || text.trim().length === 0) {
             return NextResponse.json({
                 error: 'Texto não extraído ou vazio',
-                details: 'O PDF pode estar protegido ou não conter texto extraível'
+                details: 'Não foi possível extrair texto do PDF mesmo com OCR'
             }, { status: 400 });
         }
 
         // Truncar o texto se for muito longo
-        const maxLength = 15000; // Limite para a OpenAI
+        const maxLength = 15000;
         const truncatedText = text.length > maxLength
             ? text.substring(0, maxLength) + "... [texto truncado devido ao tamanho]"
             : text;
 
         console.log(`Texto para processamento (${sourceType}): ${truncatedText.length} caracteres`);
-
-        // Prompt para processamento com a OpenAI
-        const prompt = `
-            Analise o texto do exame médico a seguir e extraia todos os resultados em formato JSON.
-            O resultado deve ser agrupado nas seguintes categorias:
-            - LabGerais: Exames Laboratoriais Gerais
-            - PerfilLipidico: Perfil Lipídico
-            - Hepaticos: Exames Hepáticos e Pancreáticos
-            - Inflamatorios: Inflamatórios e Imunológicos
-            - Hormonais: Hormonais
-            - Vitaminas: Vitaminas e Minerais
-            - Infecciosos: Infecciosos / Sorologias
-            - Tumorais: Marcadores Tumorais
-            - Cardiacos: Cardíacos e Musculares
-            - Imagem: Imagem e Diagnóstico
-            - Outros: Outros Exames
-            
-            Estruture o JSON como:
-            {
-              "LabGerais": {
-                "Hemograma completo": "valor",
-                "Plaquetas": "valor"
-              },
-              "PerfilLipidico": {
-                "Colesterol Total": "valor"
-              }
-            }
-            
-            Inclua apenas as categorias onde houver resultados identificados.
-            Para cada exame, inclua o nome do exame e o resultado completo com unidades.
-            
-            Texto do exame:
-            ${truncatedText}
-        `;
 
         // Verificar se a chave da API está configurada
         if (!process.env.OPENAI_KEY) {
@@ -185,10 +294,10 @@ export async function POST(req) {
             }, { status: 500 });
         }
 
+        // Processar com OpenAI
         try {
             console.log("Iniciando processamento com OpenAI...");
 
-            // Chamada à API da OpenAI
             const openai = new OpenAI({
                 apiKey: process.env.OPENAI_KEY
             });
@@ -202,11 +311,42 @@ export async function POST(req) {
                     },
                     {
                         role: "user",
-                        content: prompt
+                        content: `
+                            Analise o texto do exame médico a seguir e extraia todos os resultados em formato JSON.
+                            O resultado deve ser agrupado nas seguintes categorias:
+                            - LabGerais: Exames Laboratoriais Gerais
+                            - PerfilLipidico: Perfil Lipídico
+                            - Hepaticos: Exames Hepáticos e Pancreáticos
+                            - Inflamatorios: Inflamatórios e Imunológicos
+                            - Hormonais: Hormonais
+                            - Vitaminas: Vitaminas e Minerais
+                            - Infecciosos: Infecciosos / Sorologias
+                            - Tumorais: Marcadores Tumorais
+                            - Cardiacos: Cardíacos e Musculares
+                            - Imagem: Imagem e Diagnóstico
+                            - Outros: Outros Exames
+                            
+                            Estruture o JSON como:
+                            {
+                              "LabGerais": {
+                                "Hemograma completo": "valor",
+                                "Plaquetas": "valor"
+                              },
+                              "PerfilLipidico": {
+                                "Colesterol Total": "valor"
+                              }
+                            }
+                            
+                            Inclua apenas as categorias onde houver resultados identificados.
+                            Para cada exame, inclua o nome do exame e o resultado completo com unidades.
+                            
+                            Texto do exame:
+                            ${truncatedText}
+                        `
                     }
                 ],
                 response_format: { type: "json_object" },
-                temperature: 0.2 // Baixa temperatura para respostas mais consistentes
+                temperature: 0.2
             });
 
             console.log("Resposta recebida da OpenAI");
@@ -225,17 +365,19 @@ export async function POST(req) {
                     return NextResponse.json({
                         success: true,
                         data: {},
-                        warning: "Nenhum resultado de exame identificado no texto fornecido"
+                        warning: "Nenhum resultado de exame identificado no texto fornecido",
+                        rawText: text.substring(0, 500) + "..." // Primeiros 500 caracteres para diagnóstico
                     });
                 }
 
                 return NextResponse.json({
                     success: true,
                     data: jsonResult,
-                    source: sourceType
+                    source: sourceType,
+                    textLength: text.length
                 });
             } catch (jsonError) {
-                console.error("Erro ao converter resposta para JSON:", jsonError, resultText);
+                console.error("Erro ao converter resposta para JSON:", jsonError);
                 return NextResponse.json({
                     error: "Falha ao converter a resposta da IA para JSON",
                     details: jsonError.message,
