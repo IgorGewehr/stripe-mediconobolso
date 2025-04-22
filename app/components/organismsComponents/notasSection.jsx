@@ -25,6 +25,7 @@ import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
 import NotesIcon from "@mui/icons-material/Notes";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import ViewListIcon from "@mui/icons-material/ViewList";
+import BiotechIcon from "@mui/icons-material/Biotech";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import FirebaseService from "../../../lib/firebaseService";
@@ -35,6 +36,7 @@ import ViewNoteDialog from "./viewNoteDialog";
 import ReceitaDialog from "./receitasDialog";
 import PatientNoteDialog from "./novaNotaDialog";
 import AllNotesViewDialog from "./allNotesDialog";
+import ExamDialog from "./examDialog"; // Importando o Dialog de exames
 
 // Theme colors
 const themeColors = {
@@ -50,6 +52,7 @@ const themeColors = {
     error: "#EF4444",
     anamnese: "#6366F1",
     receita: "#22C55E",
+    exame: "#F59E0B", // Nova cor para exames
 };
 
 // Action button component
@@ -89,9 +92,10 @@ function ActionButton({ onClick, disabled, color, startIcon, children, variant =
 
 // Note card component
 function NotaCard({ nota, onOpen }) {
-    // Check if it's an anamnese note or prescription
+    // Check if it's an anamnese note, prescription or exam
     const isAnamneseNote = nota.noteType === "Anamnese";
     const isReceitaNote = nota.noteType === "Receita";
+    const isExameNote = nota.noteType === "Exame";
 
     // Format date
     const formatDate = (date) => {
@@ -140,6 +144,14 @@ function NotaCard({ nota, onOpen }) {
                 hoverBoxShadow: "0px 4px 10px rgba(34, 197, 94, 0.2)",
                 hoverBorderColor: themeColors.receita
             };
+        } else if (isExameNote) {
+            return {
+                border: `1px solid ${themeColors.exame}`,
+                boxShadow: "0px 2px 4px rgba(245, 158, 11, 0.15)",
+                background: "linear-gradient(180deg, rgba(245, 158, 11, 0.05) 0%, rgba(255, 255, 255, 0) 100%)",
+                hoverBoxShadow: "0px 4px 10px rgba(245, 158, 11, 0.2)",
+                hoverBorderColor: themeColors.exame
+            };
         } else {
             return {
                 border: "1px solid #EAECEF",
@@ -155,6 +167,7 @@ function NotaCard({ nota, onOpen }) {
     const getLeftColumnBgColor = () => {
         if (isAnamneseNote) return "rgba(99, 102, 241, 0.08)";
         if (isReceitaNote) return "rgba(34, 197, 94, 0.08)";
+        if (isExameNote) return "rgba(245, 158, 11, 0.08)";
         return "#FBFCFD";
     };
 
@@ -162,6 +175,7 @@ function NotaCard({ nota, onOpen }) {
     const getRightColumnBgColor = () => {
         if (isAnamneseNote) return "rgba(99, 102, 241, 0.05)";
         if (isReceitaNote) return "rgba(34, 197, 94, 0.05)";
+        if (isExameNote) return "rgba(245, 158, 11, 0.05)";
         return "#FBFCFD";
     };
 
@@ -169,6 +183,7 @@ function NotaCard({ nota, onOpen }) {
     const getNoteTypeColor = () => {
         if (isAnamneseNote) return themeColors.anamnese;
         if (isReceitaNote) return themeColors.receita;
+        if (isExameNote) return themeColors.exame;
         return nota.noteType === "Consulta" ? themeColors.success : themeColors.primary;
     };
 
@@ -176,6 +191,7 @@ function NotaCard({ nota, onOpen }) {
     const getTitleColor = () => {
         if (isAnamneseNote) return themeColors.anamnese;
         if (isReceitaNote) return themeColors.receita;
+        if (isExameNote) return themeColors.exame;
         return "#111E5A";
     };
 
@@ -183,6 +199,7 @@ function NotaCard({ nota, onOpen }) {
     const getChipBgColor = () => {
         if (isAnamneseNote) return "rgba(99, 102, 241, 0.15)";
         if (isReceitaNote) return "rgba(34, 197, 94, 0.15)";
+        if (isExameNote) return "rgba(245, 158, 11, 0.15)";
         return "#ECF1FF";
     };
 
@@ -190,6 +207,7 @@ function NotaCard({ nota, onOpen }) {
     const getMoreAttachmentsBgColor = () => {
         if (isAnamneseNote) return "rgba(99, 102, 241, 0.1)";
         if (isReceitaNote) return "rgba(34, 197, 94, 0.1)";
+        if (isExameNote) return "rgba(245, 158, 11, 0.1)";
         return "#ECF1FF";
     };
 
@@ -252,7 +270,9 @@ function NotaCard({ nota, onOpen }) {
                                 ? "Anamnese:"
                                 : isReceitaNote
                                     ? "Receita:"
-                                    : nota.noteType === "Consulta" ? "Consulta:" : "Nota Rápida:"}
+                                    : isExameNote
+                                        ? "Exame:"
+                                        : nota.noteType === "Consulta" ? "Consulta:" : "Nota Rápida:"}
                         </Typography>
                     </Box>
                     <Typography
@@ -264,7 +284,8 @@ function NotaCard({ nota, onOpen }) {
                             ml: 1.75 // Aligned with the text above the icon
                         }}
                     >
-                        {nota.consultationDate ? formatDate(nota.consultationDate) : formatDate(nota.createdAt)}
+                        {nota.consultationDate ? formatDate(nota.consultationDate) :
+                            nota.examDate ? formatDate(nota.examDate) : formatDate(nota.createdAt)}
                     </Typography>
                     <Typography
                         variant="caption"
@@ -304,7 +325,7 @@ function NotaCard({ nota, onOpen }) {
                             whiteSpace: "nowrap"
                         }}
                     >
-                        {nota.noteTitle}
+                        {nota.noteTitle || nota.title}
                     </Typography>
 
                     {/* Content - Preview of text */}
@@ -322,7 +343,7 @@ function NotaCard({ nota, onOpen }) {
                             WebkitBoxOrient: "vertical",
                         }}
                     >
-                        {nota.noteText}
+                        {nota.noteText || nota.observations}
                     </Typography>
                 </Box>
 
@@ -443,6 +464,29 @@ function NotaCard({ nota, onOpen }) {
                     RECEITA
                 </Box>
             )}
+
+            {/* Exame Badge (if applicable) */}
+            {isExameNote && (
+                <Box
+                    sx={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        backgroundColor: themeColors.exame,
+                        color: "white",
+                        borderRadius: "0 12px 0 12px",
+                        px: 1.5,
+                        py: 0.3,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                    }}
+                >
+                    <BiotechIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                    EXAME
+                </Box>
+            )}
         </Card>
     );
 }
@@ -559,8 +603,10 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
     const [openNoteDialog, setOpenNoteDialog] = useState(false);
     const [openReceitaDialog, setOpenReceitaDialog] = useState(false);
     const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
+    const [openExameDialog, setOpenExameDialog] = useState(false); // Novo estado para o dialog de exames
     const [selectedNota, setSelectedNota] = useState(null);
     const [selectedReceita, setSelectedReceita] = useState(null);
+    const [selectedExame, setSelectedExame] = useState(null); // Novo estado para exame selecionado
     const [openViewNoteDialog, setOpenViewNoteDialog] = useState(false);
     const [selectedAnamnese, setSelectedAnamnese] = useState(null);
     const [openAllNotesDialog, setOpenAllNotesDialog] = useState(false);
@@ -576,7 +622,8 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
     const [metrics, setMetrics] = useState({
         notas: 0,
         anamneses: 0,
-        receitas: 0
+        receitas: 0,
+        exames: 0 // Nova métrica para exames
     });
 
     // Context
@@ -644,14 +691,19 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
 
     // Calculate metrics for badges
     const calculateMetrics = (notas) => {
-        const notasCount = notas.filter(nota => nota.noteType !== "Anamnese" && nota.noteType !== "Receita").length;
+        const notasCount = notas.filter(nota =>
+            nota.noteType !== "Anamnese" &&
+            nota.noteType !== "Receita" &&
+            nota.noteType !== "Exame").length;
         const anamnesesCount = notas.filter(nota => nota.noteType === "Anamnese").length;
         const receitasCount = notas.filter(nota => nota.noteType === "Receita").length;
+        const examesCount = notas.filter(nota => nota.noteType === "Exame").length;
 
         setMetrics({
             notas: notasCount,
             anamneses: anamnesesCount,
-            receitas: receitasCount
+            receitas: receitasCount,
+            exames: examesCount
         });
     };
 
@@ -664,7 +716,9 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
 
         if (activeFilter === "notas") {
             setFilteredNotas(notasData.filter(nota =>
-                nota.noteType !== "Anamnese" && nota.noteType !== "Receita"
+                nota.noteType !== "Anamnese" &&
+                nota.noteType !== "Receita" &&
+                nota.noteType !== "Exame"
             ));
             return;
         }
@@ -676,6 +730,11 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
 
         if (activeFilter === "receitas") {
             setFilteredNotas(notasData.filter(nota => nota.noteType === "Receita"));
+            return;
+        }
+
+        if (activeFilter === "exames") {
+            setFilteredNotas(notasData.filter(nota => nota.noteType === "Exame"));
             return;
         }
     };
@@ -695,6 +754,12 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
     // Function to open create anamnese dialog
     const handleOpenCreateAnamneseDialog = () => {
         setOpenAnamneseDialog(true);
+    };
+
+    // Function to open create exam dialog
+    const handleOpenCreateExameDialog = () => {
+        setSelectedExame(null);
+        setOpenExameDialog(true);
     };
 
     // Function to open all notes expanded dialog
@@ -734,6 +799,12 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
             setOpenAnamneseDialog(true);
             // Pass the anamneseId from the note
             setSelectedAnamnese(nota.anamneseId);
+        } else if (nota.noteType === "Exame" && nota.exameId) {
+            // Open exam dialog
+            setSelectedExame({
+                id: nota.exameId
+            });
+            setOpenExameDialog(true);
         } else {
             // For regular notes, open standard note dialog
             setOpenNoteDialog(true);
@@ -754,6 +825,12 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
 
     const handleCloseAnamneseDialog = async () => {
         setOpenAnamneseDialog(false);
+        await fetchNotas();
+    };
+
+    const handleCloseExameDialog = async () => {
+        setOpenExameDialog(false);
+        setSelectedExame(null);
         await fetchNotas();
     };
 
@@ -825,6 +902,22 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
         }
     };
 
+    // Handler to save exam
+    const handleSaveExame = async (exameId) => {
+        try {
+            if (onNotaUpdated) {
+                onNotaUpdated();
+            } else {
+                await fetchNotas();
+            }
+            setSuccessAction("criado");
+            setShowSuccessMessage(true);
+            setTimeout(() => setShowSuccessMessage(false), 3000);
+            setOpenExameDialog(false);
+        } catch (error) {
+            console.error("Erro ao salvar exame:", error);
+        }
+    };
 
     // Handler to delete note
     const handleDeleteNote = (noteId) => {
@@ -838,9 +931,21 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
 
         // Close dialog
         setOpenNoteDialog(false);
+        setOpenViewNoteDialog(false);
 
         // Update metrics
         calculateMetrics(notasData.filter(n => n.id !== noteId));
+    };
+
+    // Handler to delete exam
+    const handleDeleteExame = (exameId) => {
+        // Show success message
+        setSuccessAction("excluído");
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+
+        // Fetch updated notes
+        fetchNotas();
     };
 
     // Update active filter
@@ -857,6 +962,8 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                 return "Nova anamnese";
             case "receitas":
                 return "Nova receita";
+            case "exames":
+                return "Novo exame";
             default:
                 return "Nova nota";
         }
@@ -871,6 +978,8 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                 return handleOpenCreateAnamneseDialog();
             case "receitas":
                 return handleOpenCreateReceitaDialog();
+            case "exames":
+                return handleOpenCreateExameDialog();
             default:
                 return handleOpenCreateNoteDialog();
         }
@@ -1051,6 +1160,31 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                                 }}
                             />
                         </Button>
+                        <Button
+                            onClick={() => handleFilterChange('exames')}
+                            className={activeFilter === 'exames' ? 'active' : ''}
+                            sx={{
+                                backgroundColor: activeFilter === 'exames' ? themeColors.primary : 'transparent',
+                                color: activeFilter === 'exames' ? '#fff' : themeColors.textSecondary,
+                                '&:hover': {
+                                    backgroundColor: activeFilter === 'exames' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
+                                }
+                            }}
+                        >
+                            Exames
+                            <Badge
+                                badgeContent={metrics.exames}
+                                color="error"
+                                sx={{
+                                    ml: 1,
+                                    '& .MuiBadge-badge': {
+                                        fontSize: '0.6rem',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                    }
+                                }}
+                            />
+                        </Button>
                     </ButtonGroup>
                 </Box>
 
@@ -1115,7 +1249,7 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                             mr: 1
                         }}
                     />
-                    Nota {successAction} com sucesso!
+                    {activeFilter === 'exames' ? `Exame ${successAction} com sucesso!` : `Nota ${successAction} com sucesso!`}
                 </Box>
             </Fade>
 
@@ -1228,6 +1362,18 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                     doctorId={user?.uid}
                     anamneseId={selectedAnamnese}
                     onSave={handleSaveAnamnese}
+                />
+            )}
+
+            {/* Dialog to create/edit exam */}
+            {openExameDialog && (
+                <ExamDialog
+                    open={openExameDialog}
+                    onClose={handleCloseExameDialog}
+                    exam={selectedExame}
+                    patientId={pacienteId}
+                    onSave={handleSaveExame}
+                    onDelete={handleDeleteExame}
                 />
             )}
 

@@ -144,8 +144,10 @@ const ExamTable = ({ results = {}, onUpdateResults, readOnly = false }) => {
 
     // Função para copiar os resultados de uma categoria para a área de transferência
     const handleCopyCategory = (categoryId, event) => {
-        // Importante: Pare a propagação para evitar que o evento chegue ao AccordionSummary
-        event.stopPropagation();
+        // Não acionando o accordion ao clicar no botão de copiar
+        if (event) {
+            event.stopPropagation();
+        }
 
         const category = examCategories.find(cat => cat.id === categoryId);
         if (!category) return;
@@ -173,6 +175,48 @@ const ExamTable = ({ results = {}, onUpdateResults, readOnly = false }) => {
     // Função para exportar como PDF (simulação)
     const handleExportPDF = () => {
         alert("Funcionalidade de exportação para PDF será implementada em breve!");
+    };
+
+    // Renderizar componente de Copy Button que não é um Button real
+    const renderCopyButton = (categoryId) => {
+        return (
+            <Box
+                component="div"
+                role="button"
+                tabIndex={0}
+                aria-label="Copiar resultados"
+                onClick={(e) => handleCopyCategory(categoryId, e)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleCopyCategory(categoryId, e);
+                    }
+                }}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    color: copiedCategory === categoryId ? theme.palette.success.main : theme.palette.text.secondary,
+                    cursor: 'pointer',
+                    '&:hover': {
+                        backgroundColor: theme.palette.action.hover,
+                    },
+                    zIndex: 2
+                }}
+            >
+                <Tooltip title={copiedCategory === categoryId ? "Copiado!" : "Copiar resultados"}>
+                    <Box component="div" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {copiedCategory === categoryId
+                            ? <CheckCircleOutlineIcon fontSize="small" />
+                            : <ContentCopyOutlinedIcon fontSize="small" />
+                        }
+                    </Box>
+                </Tooltip>
+            </Box>
+        );
     };
 
     return (
@@ -241,14 +285,19 @@ const ExamTable = ({ results = {}, onUpdateResults, readOnly = false }) => {
                                 borderLeft: `4px solid ${category.color}`,
                                 '&.Mui-expanded': {
                                     borderBottom: `1px solid ${alpha(category.color, 0.2)}`
+                                },
+                                '& .MuiAccordionSummary-content': {
+                                    width: '100%',
+                                    // Importante: margin ajustada para manter espaço para o botão de expandir
+                                    margin: '12px 0',
                                 }
                             }}
                         >
                             <Box sx={{
                                 display: 'flex',
                                 alignItems: 'center',
+                                justifyContent: 'space-between',
                                 width: '100%',
-                                justifyContent: 'space-between'
                             }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <Box
@@ -273,32 +322,8 @@ const ExamTable = ({ results = {}, onUpdateResults, readOnly = false }) => {
                                     </Typography>
                                 </Box>
 
-                                {/* Button outside AccordionSummary but positioned visually inside */}
-                                <Box
-                                    sx={{
-                                        position: 'relative',
-                                        zIndex: 2,
-                                        mr: 4 // Make room for the expand icon
-                                    }}
-                                    onClick={(e) => e.stopPropagation()} // Prevent triggering accordion
-                                >
-                                    <Tooltip title="Copiar resultados">
-                                        <IconButton
-                                            size="small"
-                                            onClick={(e) => handleCopyCategory(category.id, e)}
-                                            sx={{
-                                                color: copiedCategory === category.id
-                                                    ? theme.palette.success.main
-                                                    : theme.palette.text.secondary
-                                            }}
-                                        >
-                                            {copiedCategory === category.id
-                                                ? <CheckCircleOutlineIcon fontSize="small" />
-                                                : <ContentCopyOutlinedIcon fontSize="small" />
-                                            }
-                                        </IconButton>
-                                    </Tooltip>
-                                </Box>
+                                {/* Este é o componente que renderiza o botão de copiar sem usar um <button> */}
+                                {renderCopyButton(category.id)}
                             </Box>
                         </AccordionSummary>
                         <AccordionDetails sx={{ p: 0 }}>

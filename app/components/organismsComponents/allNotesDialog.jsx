@@ -134,10 +134,7 @@ const theme = createTheme({
     }
 });
 
-// Transição para o Dialog
-const Transition = React.forwardRef(function Transition(props, ref) {
-    return <Slide direction="up" ref={ref} {...props} />;
-});
+
 
 // Função para determinar o tipo de arquivo
 const getFileTypeInfo = (fileName, fileType) => {

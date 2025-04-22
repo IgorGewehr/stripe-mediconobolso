@@ -771,234 +771,102 @@ const ExamDialog = ({
         }
 
         setIsLoading(true);
-        console.log("Iniciando salvamento do exame com", attachments.length, "anexos");
 
         try {
-            // For exams in edit mode
-            if (isEditMode && exam.id) {
-                console.log("Editando exame existente:", exam.id);
-
-                // Process attachments - keep existing ones and upload new ones
-                const processedAttachments = await Promise.all(
-                    attachments.map(async (attachment, index) => {
-                        console.log(`Processando anexo ${index + 1}/${attachments.length}:`, attachment.fileName);
-
-                        // If the attachment already has URL, just keep it
-                        if (attachment.fileUrl) {
-                            console.log("Anexo já possui URL:", attachment.fileUrl);
-                            // Remove the File object to avoid serialization error
-                            const { file, ...attachmentWithoutFile } = attachment;
-                            return attachmentWithoutFile;
-                        }
-
-                        // If it has the File object, upload it
-                        if (attachment.file) {
-                            setUploadProgress(`Fazendo upload do arquivo ${attachment.fileName}...`);
-                            console.log("Iniciando upload para:", attachment.fileName);
-
-                            try {
-                                // Using the specific method for uploading attachments
-                                const fileInfo = await FirebaseService.uploadExamAttachment(
-                                    attachment.file,
-                                    user.uid,
-                                    patientId,
-                                    exam.id
-                                );
-
-                                console.log("Upload finalizado com sucesso:", fileInfo);
-                                return fileInfo;
-                            } catch (uploadError) {
-                                console.error("Erro no upload:", uploadError);
-
-                                // Try an alternative, more direct upload method
-                                try {
-                                    const path = `users/${user.uid}/patients/${patientId}/exams/${exam.id}/${attachment.fileName}`;
-                                    console.log("Tentando método alternativo de upload para:", path);
-
-                                    const fileUrl = await FirebaseService.uploadFile(attachment.file, path);
-                                    console.log("Upload alternativo bem-sucedido, URL:", fileUrl);
-
-                                    return {
-                                        fileName: attachment.fileName,
-                                        fileType: attachment.fileType,
-                                        fileSize: attachment.fileSize,
-                                        fileUrl: fileUrl,
-                                        uploadedAt: attachment.uploadedAt || new Date()
-                                    };
-                                } catch (altError) {
-                                    console.error("Falha também no método alternativo:", altError);
-                                    return {
-                                        fileName: attachment.fileName,
-                                        fileType: attachment.fileType,
-                                        fileSize: attachment.fileSize,
-                                        uploadError: true,
-                                        errorMessage: altError.message,
-                                        uploadedAt: attachment.uploadedAt || new Date()
-                                    };
-                                }
-                            }
-                        }
-
-                        // If we got here, attachment has no URL and no file
-                        console.warn("Anexo sem URL e sem arquivo:", attachment);
-                        return null;
-                    })
-                );
-
-                // Filter valid attachments (non-null)
-                const validAttachments = processedAttachments.filter(att => att !== null);
-                console.log("Total de anexos válidos após processamento:", validAttachments.length);
-
-                // Exam data for update
-                const examData = {
-                    title: title,
-                    examDate: examDate,
+            let exameId = exam?.id;
+            // 1) Criar ou atualizar o exame
+            if (isEditMode && exameId) {
+                await FirebaseService.updateExam(user.uid, patientId, exameId, {
+                    title,
+                    examDate,
                     category: examCategory,
-                    observations: observations,
-                    attachments: validAttachments,
+                    observations,
+                    attachments,  // supondo que você já processou upload antes
                     results: examResults,
                     lastModified: new Date()
-                };
-
-                console.log("Atualizando exame com dados:", examData);
-                await FirebaseService.updateExam(user.uid, patientId, exam.id, examData);
-
-                if (onSave) {
-                    onSave({
-                        ...exam,
-                        ...examData
-                    });
-                }
-
-            } else {
-                // For new exams
-                console.log("Criando novo exame");
-
-                // Create the exam without attachments first (just metadata)
-                const initialAttachments = attachments.map(attachment => {
-                    // Remove the File object to avoid serialization error
-                    const { file, ...metadata } = attachment;
-                    return {
-                        ...metadata,
-                        pendingUpload: true
-                    };
                 });
-
+            } else {
+                // para novo exame, crie primeiro sem anexos
                 const examData = {
-                    title: title,
-                    examDate: examDate,
+                    title,
+                    examDate,
                     category: examCategory,
-                    observations: observations,
-                    attachments: initialAttachments,
+                    observations,
+                    attachments: attachments.map(att => {
+                        const { file, ...meta } = att;
+                        return meta;
+                    }),
                     results: examResults,
                     createdAt: new Date(),
                     lastModified: new Date()
                 };
+                exameId = await FirebaseService.createExam(user.uid, patientId, examData);
+            }
 
-                // Save the exam and get the ID
-                let createdExamId;
-                if (onSave) {
-                    try {
-                        console.log("Salvando exame inicial sem anexos processados");
-                        const saveResult = await onSave(examData);
-
-                        // Determine the created exam ID
-                        createdExamId = saveResult?.id ||
-                            (typeof saveResult === 'string' ? saveResult : null);
-
-                        console.log("Exame criado com ID:", createdExamId);
-                    } catch (saveError) {
-                        console.error("Erro ao salvar exame:", saveError);
-                        throw saveError;
-                    }
-                }
-
-                // If we have ID and attachments, process the uploads
-                if (createdExamId && attachments.some(att => att.file)) {
-                    console.log("Processando uploads de anexos para novo exame");
-                    setUploadProgress('Processando anexos...');
-
-                    // List to store processed attachments
-                    const updatedAttachments = [];
-
-                    // Process each attachment
-                    for (let i = 0; i < attachments.length; i++) {
-                        const attachment = attachments[i];
-
-                        if (attachment.file) {
-                            setUploadProgress(`Enviando arquivo ${i+1}/${attachments.length}: ${attachment.fileName}`);
-                            console.log(`Iniciando upload ${i+1}/${attachments.length}:`, attachment.fileName);
-
-                            try {
-                                // Standard path for the file in Storage
-                                const path = `users/${user.uid}/patients/${patientId}/exams/${createdExamId}/${attachment.fileName}`;
-                                console.log("Caminho de upload:", path);
-
-                                // Upload the file
-                                const fileUrl = await FirebaseService.uploadFile(attachment.file, path);
-                                console.log("Upload bem-sucedido, URL:", fileUrl);
-
-                                // Add the processed attachment to the list
-                                updatedAttachments.push({
-                                    fileName: attachment.fileName,
-                                    fileType: attachment.fileType,
-                                    fileSize: attachment.fileSize,
-                                    fileUrl: fileUrl,
-                                    storagePath: path, // Store the path for future reference
-                                    uploadedAt: attachment.uploadedAt || new Date()
-                                });
-                            } catch (uploadError) {
-                                console.error(`Erro no upload do arquivo ${attachment.fileName}:`, uploadError);
-
-                                // Keep the record even with error
-                                updatedAttachments.push({
-                                    fileName: attachment.fileName,
-                                    fileType: attachment.fileType,
-                                    fileSize: attachment.fileSize,
-                                    uploadError: true,
-                                    errorMessage: uploadError.message,
-                                    uploadedAt: attachment.uploadedAt || new Date()
-                                });
-                            }
-                        } else if (attachment.fileUrl) {
-                            // If it already has URL, keep it as is
-                            console.log("Mantendo anexo existente com URL:", attachment.fileUrl);
-                            updatedAttachments.push(attachment);
-                        }
-                    }
-
-                    // Update the exam with processed attachments
-                    if (updatedAttachments.length > 0) {
-                        try {
-                            console.log("Atualizando exame com anexos processados:", updatedAttachments);
-                            await FirebaseService.updateExam(user.uid, patientId, createdExamId, {
-                                attachments: updatedAttachments,
-                                lastModified: new Date()
-                            });
-                            console.log("Exame atualizado com anexos");
-                        } catch (updateError) {
-                            console.error("Erro ao atualizar exame com anexos:", updateError);
-                            // Continue even with error in update
-                        }
-                    }
+            // 2) (Re)envio de quaisquer anexos pendentes
+            for (const att of attachments) {
+                if (att.file) {
+                    const info = await FirebaseService.uploadExamAttachment(
+                        att.file,
+                        user.uid,
+                        patientId,
+                        exameId
+                    );
+                    // opcional: atualizar `attachments` no state com a `fileUrl`
                 }
             }
 
-            // Success
+            // 3) Montar payload da nota de exame
+            const formattedDate = format(
+                new Date(examDate),
+                "dd 'de' MMMM 'de' yyyy",
+                { locale: ptBR }
+            );
+            const notePayload = {
+                noteTitle: `Exame - ${title}`,
+                noteText: `Exame realizado em ${formattedDate}.`,
+                noteType: "Exame",
+                consultationDate: new Date(examDate),
+                exameId,
+                createdAt: new Date()
+            };
+
+            // 4) Criar ou atualizar a nota no Firestore
+            const todasNotas = await FirebaseService.listNotes(user.uid, patientId);
+            const notaExistente = todasNotas.find(n => n.exameId === exameId);
+
+            if (notaExistente) {
+                await FirebaseService.updateNote(
+                    user.uid,
+                    patientId,
+                    notaExistente.id,
+                    {
+                        noteText: `Exame atualizado em ${formattedDate}.`,
+                        lastModified: new Date()
+                    }
+                );
+            } else {
+                const newNoteId = await FirebaseService.createNote(
+                    user.uid,
+                    patientId,
+                    notePayload
+                );
+                // opcional: anexe o PDF/arquivos via uploadNoteAttachment
+            }
+
+            // 5) Feedback e fechar
             setIsSaved(true);
-            console.log("Exame salvo com sucesso");
             showNotification("Exame salvo com sucesso!");
-            setTimeout(() => {
-                onClose();
-            }, 1500);
+            setTimeout(onClose, 1200);
+
         } catch (error) {
             console.error("Erro ao salvar exame:", error);
-            showNotification(`Erro ao salvar exame: ${error.message}. Tente novamente.`, "error");
+            showNotification(`Erro ao salvar exame: ${error.message}`, "error");
         } finally {
             setIsLoading(false);
-            setUploadProgress(null);
         }
     };
+
 
     const handleConfirmDelete = () => {
         setIsDeleteConfirm(true);

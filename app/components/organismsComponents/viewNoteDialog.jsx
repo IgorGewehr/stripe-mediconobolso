@@ -60,7 +60,9 @@ import { ptBR } from 'date-fns/locale';
 import FirebaseService from "../../../lib/firebaseService";
 import AnamneseViewer from "./anamneseViwer";
 import ReceitaViewer from "./receitasViwer";
+import ExameViewer from "./examViwer"
 import jsPDF from "jspdf";
+import ExamViewer from "./examViwer";
 
 // Tema com cores para cada tipo de nota
 const theme = createTheme({
@@ -915,6 +917,18 @@ const ViewNoteDialog = ({
         return <AnamneseViewer anamneseData={noteData} typeColor={typeColor} onOpenPdf={handleOpenPdf} />;
     };
 
+    const renderExameDetails = () => {
+        if (noteType !== 'Exame' || !noteData) return null;
+
+        return (
+            <ExamViewer
+                examData={noteData}
+                typeColor={typeColor}
+                onOpenFile={handleOpenAttachment}
+            />
+        );
+    };
+
     // Rendering para informações de receita
     const renderReceitaDetails = () => {
         if (noteType !== 'Receita' || !noteData) return null;
@@ -1325,7 +1339,7 @@ const ViewNoteDialog = ({
                         {renderCategoryBanner()}
 
                         {/* Conteúdo principal */}
-                        {noteType !== 'Anamnese' && noteType !== 'Receita' && (
+                        {noteType !== 'Anamnese' && noteType !== 'Receita' && noteType !== 'Exame' && (
                             <Paper
                                 elevation={0}
                                 sx={{
@@ -1350,6 +1364,7 @@ const ViewNoteDialog = ({
 
                         {/* Mantém os detalhes específicos da anamnese */}
                         {noteType === 'Anamnese' && renderAnamneseDetails()}
+                        {noteType === 'Exame' && renderExameDetails()}
                         {renderMedicamentos()}
 
                         {noteType !== 'Anamnese' && noteType !== 'Receita' && renderAttachments()}
