@@ -70,14 +70,14 @@ export async function POST(req) {
   if (permittedEvents.includes(event.type)) {
     try {
       switch (event.type) {
+          // No caso 'checkout.session.completed' do webhook
         case 'checkout.session.completed': {
           const session = event.data.object;
 
           // Log detalhado para debug
           console.log('DADOS COMPLETOS DA SESSÃO:', JSON.stringify(session, null, 2));
-          console.log('METADADOS:', JSON.stringify(session.metadata, null, 2));
-          console.log('UID encontrado:', session.metadata?.uid);
-          console.log('DADOS DO CLIENTE:', JSON.stringify(session.customer_details, null, 2));
+          console.log('CUSTOMER DETAILS:', JSON.stringify(session.customer_details, null, 2));
+          console.log('CUSTOM FIELDS:', JSON.stringify(session.custom_fields, null, 2));
 
           console.log(`Checkout session completed, status: ${session.payment_status}`);
 
@@ -92,21 +92,16 @@ export async function POST(req) {
             // Extrair CPF do campo personalizado
             let cpf = '';
             try {
-              // Para API mais recente da Stripe
               if (session.custom_fields && Array.isArray(session.custom_fields)) {
                 const cpfField = session.custom_fields.find(field => field.key === 'cpf');
                 cpf = cpfField?.text?.value || '';
+                console.log('CPF encontrado:', cpf);
               }
-              // Fallback para API antiga ou metadata
-              else if (session.metadata?.cpf) {
-                cpf = session.metadata.cpf;
-              }
-              console.log('CPF capturado:', cpf);
             } catch (err) {
               console.error('Erro ao capturar CPF:', err);
             }
 
-            // Preparar objeto de dados para atualização
+            // Dados completos para atualização
             const userData = {
               assinouPlano: true,
               planType: session.metadata.plan || 'monthly',
@@ -122,31 +117,28 @@ export async function POST(req) {
               updatedAt: new Date()
             };
 
-            // Primeiro tenta com a função simplificada que funcionava antes
-            try {
-              await firebaseService.editUserData(uid, { assinouPlano: true });
-              console.log(`Status de assinatura atualizado com sucesso para o usuário ${uid}`);
+            console.log('DADOS PARA ATUALIZAÇÃO:', JSON.stringify(userData, null, 2));
 
-              // Depois tenta atualizar os dados completos
-              try {
-                await retryFirebaseUpdate(uid, userData);
-              } catch (detailError) {
-                console.error(`Falha ao atualizar detalhes do usuário: ${detailError.message}`);
-                // O status de assinatura já foi atualizado, então não é um erro fatal
-              }
+            // MUDANÇA IMPORTANTE: Fazer apenas UMA atualização com TODOS os dados
+            try {
+              // Usar diretamente o Firestore para garantir a atualização
+              const userRef = doc(firestore, "users", uid);
+              await updateDoc(userRef, userData);
+              console.log(`Usuário ${uid} atualizado com TODOS os dados`);
             } catch (error) {
-              console.error(`Erro na atualização simplificada: ${error.message}`);
-              // Tenta o método de retry como última alternativa
+              console.error(`Erro na atualização: ${error.message}`);
+
+              // Se falhar, tentar apenas o campo assinouPlano como fallback
               try {
-                // Atualizar apenas a assinatura se tudo mais falhar
-                await retryFirebaseUpdate(uid, { assinouPlano: true });
-              } catch (finalError) {
-                console.error(`ERRO CRÍTICO - Impossível atualizar usuário: ${finalError.message}`);
+                const userRef = doc(firestore, "users", uid);
+                await updateDoc(userRef, { assinouPlano: true });
+                console.log(`Fallback: assinouPlano atualizado para o usuário ${uid}`);
+              } catch (fallbackError) {
+                console.error(`ERRO CRÍTICO: ${fallbackError.message}`);
               }
             }
           } else {
             console.error('UID não encontrado nos metadados da sessão!');
-            console.log('Metadados completos:', JSON.stringify(session.metadata));
           }
           break;
         }
