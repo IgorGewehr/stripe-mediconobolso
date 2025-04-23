@@ -3,36 +3,37 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '../../../lib/stripe';
 import firebaseService from '../../../lib/firebaseService';
-import { doc, updateDoc } from 'firebase/firestore';
 import { firestore } from '../../../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
-// Função de retry para garantir a atualização
-async function retryFirebaseUpdate(uid, userData, maxRetries = 3) {
+// Função auxiliar para atualização com retry
+async function updateUserWithRetry(uid, userData, maxRetries = 3) {
   let attempt = 0;
 
   while (attempt < maxRetries) {
     try {
-      await firebaseService.editUserData(uid, userData);
-      console.log(`Usuário ${uid} atualizado com sucesso na tentativa ${attempt + 1}`);
+      // Tentar usar o método direto do Firestore primeiro (mais confiável)
+      const userRef = doc(firestore, "users", uid);
+      await updateDoc(userRef, userData);
+      console.log(`✅ Usuário ${uid} atualizado com sucesso (tentativa ${attempt + 1})`);
       return true;
     } catch (error) {
       attempt++;
-      console.error(`Tentativa ${attempt} falhou: ${error.message}`);
+      console.error(`❌ Tentativa ${attempt} falhou: ${error.message}`);
 
       if (attempt >= maxRetries) {
-        // Última alternativa: tentar diretamente
+        // Última alternativa: tentar via firebaseService
         try {
-          const userRef = doc(firestore, "users", uid);
-          await updateDoc(userRef, userData);
-          console.log(`Usuário ${uid} atualizado via Firestore direto após falhas`);
+          await firebaseService.editUserData(uid, userData);
+          console.log(`✅ Usuário ${uid} atualizado via firebaseService após ${maxRetries} falhas diretas`);
           return true;
-        } catch (directError) {
-          console.error(`Erro FATAL ao atualizar usuário: ${directError.message}`);
-          throw directError;
+        } catch (serviceError) {
+          console.error(`❌❌ Erro FATAL ao atualizar usuário: ${serviceError.message}`);
+          throw serviceError;
         }
       }
 
-      // Aguardar antes de tentar novamente
+      // Esperar antes de tentar novamente
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
@@ -49,7 +50,7 @@ export async function POST(req) {
     );
   } catch (err) {
     const errorMessage = err.message;
-    console.error(`Webhook Error: ${errorMessage}`);
+    console.error(`❌ Webhook Error: ${errorMessage}`);
     return NextResponse.json(
         { message: `Webhook Error: ${errorMessage}` },
         { status: 400 }
@@ -57,7 +58,7 @@ export async function POST(req) {
   }
 
   // Log para debug
-  console.log(`Recebido evento Stripe: ${event.type}`);
+  console.log(`🔔 Recebido evento Stripe: ${event.type}`);
 
   // Eventos que queremos tratar
   const permittedEvents = [
@@ -70,38 +71,35 @@ export async function POST(req) {
   if (permittedEvents.includes(event.type)) {
     try {
       switch (event.type) {
-          // No caso 'checkout.session.completed' do webhook
         case 'checkout.session.completed': {
           const session = event.data.object;
+          console.log(`✅ Checkout session completed, status: ${session.payment_status}`);
+          console.log('📋 SESSÃO ID:', session.id);
+          console.log('🔑 METADADOS:', JSON.stringify(session.metadata));
 
-          // Log detalhado para debug
-          console.log('DADOS COMPLETOS DA SESSÃO:', JSON.stringify(session, null, 2));
-          console.log('CUSTOMER DETAILS:', JSON.stringify(session.customer_details, null, 2));
-          console.log('CUSTOM FIELDS:', JSON.stringify(session.custom_fields, null, 2));
-
-          console.log(`Checkout session completed, status: ${session.payment_status}`);
-
-          // Atualiza o status de assinatura do usuário
+          // Atualiza o status de assinatura e dados do usuário
           if (session.metadata && session.metadata.uid) {
             const uid = session.metadata.uid;
-            console.log(`Atualizando usuário ${uid} com dados do checkout`);
+            console.log(`🔄 Atualizando usuário ${uid} com dados do checkout`);
 
             // Extrair informações de endereço do cliente
             const address = session.customer_details?.address || {};
+            console.log('🏠 ENDEREÇO ENCONTRADO:', JSON.stringify(address));
 
             // Extrair CPF do campo personalizado
+            console.log('🔑 CAMPOS PERSONALIZADOS:', JSON.stringify(session.custom_fields));
             let cpf = '';
             try {
               if (session.custom_fields && Array.isArray(session.custom_fields)) {
                 const cpfField = session.custom_fields.find(field => field.key === 'cpf');
                 cpf = cpfField?.text?.value || '';
-                console.log('CPF encontrado:', cpf);
+                console.log('📝 CPF ENCONTRADO:', cpf);
               }
-            } catch (err) {
-              console.error('Erro ao capturar CPF:', err);
+            } catch (cpfError) {
+              console.error('❌ Erro ao extrair CPF:', cpfError);
             }
 
-            // Dados completos para atualização
+            // Preparar objeto de dados para atualização
             const userData = {
               assinouPlano: true,
               planType: session.metadata.plan || 'monthly',
@@ -117,56 +115,52 @@ export async function POST(req) {
               updatedAt: new Date()
             };
 
-            console.log('DADOS PARA ATUALIZAÇÃO:', JSON.stringify(userData, null, 2));
+            console.log('📊 DADOS PARA ATUALIZAÇÃO:', JSON.stringify(userData));
 
-            // MUDANÇA IMPORTANTE: Fazer apenas UMA atualização com TODOS os dados
+            // Tenta atualizar com retry
             try {
-              // Usar diretamente o Firestore para garantir a atualização
-              const userRef = doc(firestore, "users", uid);
-              await updateDoc(userRef, userData);
-              console.log(`Usuário ${uid} atualizado com TODOS os dados`);
-            } catch (error) {
-              console.error(`Erro na atualização: ${error.message}`);
-
-              // Se falhar, tentar apenas o campo assinouPlano como fallback
+              await updateUserWithRetry(uid, userData);
+            } catch (updateError) {
+              console.error('❌ Falha em todas as tentativas de atualização:', updateError);
+              // Tentar pelo menos atualizar o status de assinatura
               try {
-                const userRef = doc(firestore, "users", uid);
-                await updateDoc(userRef, { assinouPlano: true });
-                console.log(`Fallback: assinouPlano atualizado para o usuário ${uid}`);
-              } catch (fallbackError) {
-                console.error(`ERRO CRÍTICO: ${fallbackError.message}`);
+                await updateUserWithRetry(uid, { assinouPlano: true });
+                console.log('⚠️ Apenas status de assinatura atualizado após falhas');
+              } catch (finalError) {
+                console.error('❌❌❌ Falha completa em atualizar o usuário:', finalError);
               }
             }
           } else {
-            console.error('UID não encontrado nos metadados da sessão!');
+            console.error('❌ UID não encontrado nos metadados da sessão!');
+            console.log('🔍 Metadados completos:', JSON.stringify(session.metadata));
           }
           break;
         }
 
         case 'customer.subscription.deleted': {
           const subscription = event.data.object;
-          console.log(`Subscription canceled for customer: ${subscription.customer}`);
+          console.log(`⛔ Subscription canceled for customer: ${subscription.customer}`);
 
           // Tentativa 1: Verificar metadados da subscription
           if (subscription.metadata && subscription.metadata.uid) {
             const uid = subscription.metadata.uid;
-            await firebaseService.editUserData(uid, { assinouPlano: false });
-            console.log(`Assinatura cancelada para usuário ${uid}`);
+            await updateUserWithRetry(uid, { assinouPlano: false });
+            console.log(`✅ Assinatura cancelada para usuário ${uid}`);
           }
           // Tentativa 2: Buscar cliente no Stripe
           else {
-            console.log('Buscando cliente no Stripe:', subscription.customer);
+            console.log('🔍 Buscando cliente no Stripe:', subscription.customer);
             try {
               const customer = await stripe.customers.retrieve(subscription.customer);
               if (customer && customer.metadata && customer.metadata.uid) {
                 const uid = customer.metadata.uid;
-                await firebaseService.editUserData(uid, { assinouPlano: false });
-                console.log(`Assinatura cancelada para usuário ${uid} (via customer)`);
+                await updateUserWithRetry(uid, { assinouPlano: false });
+                console.log(`✅ Assinatura cancelada para usuário ${uid} (via customer)`);
               } else {
-                console.log('Não foi possível encontrar o UID nos metadados do customer');
+                console.log('❓ Não foi possível encontrar o UID nos metadados do customer');
               }
             } catch (err) {
-              console.error('Erro ao buscar cliente no Stripe:', err);
+              console.error('❌ Erro ao buscar cliente no Stripe:', err);
             }
           }
           break;
@@ -174,36 +168,36 @@ export async function POST(req) {
 
         case 'invoice.payment_failed': {
           const invoice = event.data.object;
-          console.log(`Payment failed for customer: ${invoice.customer}`);
-          // Apenas log, sem ação adicional por enquanto
+          console.log(`⚠️ Payment failed for customer: ${invoice.customer}`);
+          // Apenas log por enquanto, sem ação específica
           break;
         }
 
         case 'customer.subscription.created': {
           const subscription = event.data.object;
-          console.log(`Subscription created for customer: ${subscription.customer}`);
-          console.log('Subscription metadata:', subscription.metadata);
+          console.log(`✨ Subscription created for customer: ${subscription.customer}`);
+          console.log('📋 Subscription metadata:', JSON.stringify(subscription.metadata));
 
           // Tentativa 1: Verificar metadados da subscription
           if (subscription.metadata && subscription.metadata.uid) {
             const uid = subscription.metadata.uid;
-            await firebaseService.editUserData(uid, { assinouPlano: true });
-            console.log(`Assinatura criada para usuário ${uid}`);
+            await updateUserWithRetry(uid, { assinouPlano: true });
+            console.log(`✅ Assinatura criada para usuário ${uid}`);
           }
           // Tentativa 2: Buscar cliente no Stripe
           else {
-            console.log('Buscando cliente no Stripe:', subscription.customer);
+            console.log('🔍 Buscando cliente no Stripe:', subscription.customer);
             try {
               const customer = await stripe.customers.retrieve(subscription.customer);
               if (customer && customer.metadata && customer.metadata.uid) {
                 const uid = customer.metadata.uid;
-                await firebaseService.editUserData(uid, { assinouPlano: true });
-                console.log(`Assinatura criada para usuário ${uid} (via customer)`);
+                await updateUserWithRetry(uid, { assinouPlano: true });
+                console.log(`✅ Assinatura criada para usuário ${uid} (via customer)`);
               } else {
-                console.log('Não foi possível encontrar o UID nos metadados do customer');
+                console.log('❓ Não foi possível encontrar o UID nos metadados do customer');
               }
             } catch (err) {
-              console.error('Erro ao buscar cliente no Stripe:', err);
+              console.error('❌ Erro ao buscar cliente no Stripe:', err);
             }
           }
           break;
@@ -213,7 +207,7 @@ export async function POST(req) {
           throw new Error(`Unhandled event: ${event.type}`);
       }
     } catch (error) {
-      console.error("Erro no processamento do webhook:", error);
+      console.error("❌ Erro no processamento do webhook:", error);
       return NextResponse.json({ message: 'Webhook handler failed' }, { status: 500 });
     }
   }
