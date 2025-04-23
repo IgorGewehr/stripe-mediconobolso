@@ -10,13 +10,14 @@ import PlanCard from './organismsComponents/planSelector';
 import { useAuth } from "./authProvider";
 import { useRouter } from 'next/navigation';
 import { useResponsiveScale } from './useScale';
-import Script from "next/script"; // Importação do hook de escala
+import Script from "next/script";
+import Analytics from "./organismsComponents/analytics"; // Importação do hook de escala
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 function CheckoutContent({ selectedPlan, onPlanChange }) {
     // Obtém o usuário autenticado e a função de logout do AuthProvider
-    const { user, loading, logout } = useAuth();
+    const { user, loading, logout, hasFreeTrialOffer } = useAuth();
     const router = useRouter();
     const [userInfo, setUserInfo] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -113,65 +114,7 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
 
     return (
         <>
-            {/*** Meta Pixel Events ***/}
-            {/* Initiate Checkout */}
-            <Script id="fb-init-checkout" strategy="afterInteractive">
-                {`fbq('track', 'InitiateCheckout');`}
-            </Script>
-            <noscript
-                dangerouslySetInnerHTML={{
-                    __html: `<img height="1" width="1" style="display:none"
-                    src="https://www.facebook.com/tr?id=1033180232110037&ev=InitiateCheckout&noscript=1"/>`
-                }}
-            />
-
-            {/* Lead */}
-            <Script id="fb-lead-event" strategy="afterInteractive">
-                {`fbq('track', 'Lead');`}
-            </Script>
-            <noscript
-                dangerouslySetInnerHTML={{
-                    __html: `<img height="1" width="1" style="display:none"
-                    src="https://www.facebook.com/tr?id=1033180232110037&ev=Lead&noscript=1"/>`
-                }}
-            />
-
-            {/* Purchase */}
-            <Script id="fb-purchase-event" strategy="afterInteractive">
-                {`fbq('track', 'Purchase');`}
-            </Script>
-            <noscript
-                dangerouslySetInnerHTML={{
-                    __html: `<img height="1" width="1" style="display:none"
-                    src="https://www.facebook.com/tr?id=1033180232110037&ev=Purchase&noscript=1"/>`
-                }}
-            />
-
-            {/*** Google Ads Conversion Snippets ***/}
-            {/* Compra (sem valor) */}
-            <Script id="gtag-purchase" strategy="afterInteractive">
-                {`gtag('event', 'conversion', {
-             'send_to': 'AW-17010595542/8yPWCPKzsLkaENatpK8_'
-           });`}
-            </Script>
-
-            {/* Initiate Checkout (com valor e moeda) */}
-            <Script id="gtag-initiate" strategy="afterInteractive">
-                {`gtag('event', 'conversion', {
-             'send_to': 'AW-17010595542/Jvp_CPWzsLkaENatpK8_',
-             'value': 1.0,
-             'currency': 'BRL'
-           });`}
-            </Script>
-
-            {/* Lead (com valor e moeda) */}
-            <Script id="gtag-lead" strategy="afterInteractive">
-                {`gtag('event', 'conversion', {
-             'send_to': 'AW-17010595542/ZmDLCPizsLkaENatpK8_',
-             'value': 1.0,
-             'currency': 'BRL'
-           });`}
-            </Script>
+            <Analytics/>
 
             <img
                 src="https://mediconobolso.online/split-test-for-elementor/v1/tests/1/track-conversion/"
@@ -282,13 +225,13 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                             options={{
                                 fetchClientSecret: async () => {
                                     try {
-                                        // Log para depuração
-                                        console.log(`Iniciando checkout para UID: ${user.uid}, Email: ${userInfo.email}`);
+                                        console.log(`Iniciando checkout para UID: ${user.uid}, Email: ${userInfo.email}, Plano: ${selectedPlan}, Trial: ${hasFreeTrialOffer}`);
 
                                         return await fetchClientSecret({
                                             plan: selectedPlan,
                                             uid: user.uid,
                                             email: userInfo.email,
+                                            includeTrial: hasFreeTrialOffer, // Nova propriedade
                                         });
                                     } catch (err) {
                                         console.error("Erro ao buscar client secret:", err);

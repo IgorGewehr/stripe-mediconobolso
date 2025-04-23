@@ -1,9 +1,9 @@
+// actions/stripe.js
 'use server';
-
 import { headers } from 'next/headers';
 import { stripe } from '../../lib/stripe';
 
-export async function fetchClientSecret({ plan, uid, email }) {
+export async function fetchClientSecret({ plan, uid, email, includeTrial = false }) {
   // Validação básica
   if (!uid) {
     console.error('fetchClientSecret called without uid!');
@@ -11,7 +11,7 @@ export async function fetchClientSecret({ plan, uid, email }) {
   }
 
   const origin = (await headers()).get('origin');
-  console.log(`Criando checkout para usuário: ${uid}, email: ${email}, plano: ${plan}`);
+  console.log(`Criando checkout para usuário: ${uid}, email: ${email}, plano: ${plan}, trial: ${includeTrial}`);
 
   // Define o priceId conforme o plano
   let priceId;
@@ -43,7 +43,17 @@ export async function fetchClientSecret({ plan, uid, email }) {
       console.log(`Novo cliente do Stripe criado: ${customer.id}`);
     }
 
-    // Criar a sessão de checkout com configuração simplificada de campos personalizados
+    // Preparar os dados de assinatura
+    const subscriptionData = {
+      metadata: { uid, plan, hasTrial: includeTrial ? 'true' : 'false' },
+    };
+
+    // Adicionar trial de 1 dia (24 horas) se solicitado
+    if (includeTrial) {
+      subscriptionData.trial_period_days = 1;
+    }
+
+    // Criar a sessão de checkout
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
       line_items: [
@@ -54,14 +64,11 @@ export async function fetchClientSecret({ plan, uid, email }) {
       ],
       mode: 'subscription',
       customer: customer.id,
-      metadata: { uid, plan },
-
+      metadata: { uid, plan, hasTrial: includeTrial ? 'true' : 'false' },
       // Definir URL de retorno
       return_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
-
       // Coletar endereço completo
       billing_address_collection: 'required',
-
       // Campo personalizado para CPF - CONFIGURAÇÃO SIMPLIFICADA
       custom_fields: [
         {
@@ -73,11 +80,7 @@ export async function fetchClientSecret({ plan, uid, email }) {
           type: 'text'
         }
       ],
-
-      subscription_data: {
-        metadata: { uid, plan },
-      },
-
+      subscription_data: subscriptionData, // Usar os dados preparados
     });
 
     console.log(`Sessão de checkout criada: ${session.id}`);
