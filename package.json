@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Full-stack example using Next.js",
   "scripts": {
-    "dev": "next",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "postinstall": "mkdir -p ./node_modules/pdf-parse/test/data && touch ./node_modules/pdf-parse/test/data/05-versions-space.pdf"
