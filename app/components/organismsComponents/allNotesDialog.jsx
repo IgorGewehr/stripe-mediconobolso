@@ -62,6 +62,12 @@ import BiotechIcon from "@mui/icons-material/Biotech";
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import AnamneseViewer from "./anamneseViwer";
+import ExamViewer from "./examViwer";
+
+// Transition component for dialog animations
+const Transition = React.forwardRef(function Transition(props, ref) {
+    return <Slide direction="up" ref={ref} {...props} />;
+});
 
 // Tema com cores para cada tipo de nota
 const theme = createTheme({
@@ -134,8 +140,6 @@ const theme = createTheme({
     }
 });
 
-
-
 // Função para determinar o tipo de arquivo
 const getFileTypeInfo = (fileName, fileType) => {
     if (!fileName) return { icon: <ArticleIcon />, color: "#94A3B8" };
@@ -178,7 +182,8 @@ const AllNotesViewDialog = ({
     const [metrics, setMetrics] = useState({
         notas: 0,
         anamneses: 0,
-        receitas: 0
+        receitas: 0,
+        exames: 0 // Added exames metric
     });
 
     const getPatientName = () => {
@@ -191,14 +196,19 @@ const AllNotesViewDialog = ({
         if (!notesData) return;
 
         // Calcular métricas
-        const notasCount = notesData.filter(nota => nota.noteType !== "Anamnese" && nota.noteType !== "Receita").length;
+        const notasCount = notesData.filter(nota =>
+            nota.noteType !== "Anamnese" &&
+            nota.noteType !== "Receita" &&
+            nota.noteType !== "Exame").length;
         const anamnesesCount = notesData.filter(nota => nota.noteType === "Anamnese").length;
         const receitasCount = notesData.filter(nota => nota.noteType === "Receita").length;
+        const examesCount = notesData.filter(nota => nota.noteType === "Exame").length;
 
         setMetrics({
             notas: notasCount,
             anamneses: anamnesesCount,
-            receitas: receitasCount
+            receitas: receitasCount,
+            exames: examesCount
         });
 
         // Aplicar filtros
@@ -206,12 +216,16 @@ const AllNotesViewDialog = ({
             setFilteredNotes(notesData);
         } else if (activeFilter === "notas") {
             setFilteredNotes(notesData.filter(nota =>
-                nota.noteType !== "Anamnese" && nota.noteType !== "Receita"
+                nota.noteType !== "Anamnese" &&
+                nota.noteType !== "Receita" &&
+                nota.noteType !== "Exame"
             ));
         } else if (activeFilter === "anamneses") {
             setFilteredNotes(notesData.filter(nota => nota.noteType === "Anamnese"));
         } else if (activeFilter === "receitas") {
             setFilteredNotes(notesData.filter(nota => nota.noteType === "Receita"));
+        } else if (activeFilter === "exames") {
+            setFilteredNotes(notesData.filter(nota => nota.noteType === "Exame"));
         }
 
         // Reset current note index if filtered notes changed
@@ -580,6 +594,22 @@ const AllNotesViewDialog = ({
         return <AnamneseViewer anamneseData={note} typeColor={typeColor} onOpenPdf={handleOpenPdf} />;
     };
 
+    // Rendering para detalhes do exame - NOVA FUNÇÃO
+    const renderExameDetails = (note) => {
+        if (note.noteType !== 'Exame' || !note) return null;
+
+        const typeColor = getTypeColor(note.noteType);
+
+        // Função para abrir anexos
+        const handleOpenFile = (attachment) => {
+            if (attachment.fileUrl) {
+                window.open(attachment.fileUrl, '_blank');
+            }
+        };
+
+        return <ExamViewer examData={note} typeColor={typeColor} onOpenFile={handleOpenFile} />;
+    };
+
     // Rendering para informações de receita
     const renderReceitaDetails = (note) => {
         if (note.noteType !== 'Receita' || !note) return null;
@@ -772,11 +802,19 @@ const AllNotesViewDialog = ({
                                             {attachment.fileSize} • {attachment.uploadedAt ? formatDateTime(attachment.uploadedAt) : 'Data desconhecida'}
                                         </Typography>
                                     </Box>
-                                    <Tooltip title="Abrir">
-                                        <IconButton size="small">
-                                            <LinkIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
+                                    {/* Fix for div inside p error - using component="span" */}
+                                    <IconButton
+                                        size="small"
+                                        component="span"
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: theme.palette.primary.main
+                                        }}
+                                    >
+                                        <LinkIcon fontSize="small" />
+                                    </IconButton>
                                 </Paper>
                             </Grid>
                         );
@@ -785,6 +823,29 @@ const AllNotesViewDialog = ({
             </Box>
         );
     };
+
+    // Function to render date with proper DOM structure to avoid nesting errors
+    const DateDisplay = ({ icon, text, color, isConsultation }) => (
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {React.cloneElement(icon, {
+                sx: {
+                    color: color || theme.palette.grey[400],
+                    fontSize: 18,
+                    mr: 1
+                }
+            })}
+            <Typography
+                variant="body2"
+                component="span"
+                sx={{
+                    fontWeight: isConsultation ? 500 : 'normal',
+                    color: color || 'text.secondary'
+                }}
+            >
+                {text}
+            </Typography>
+        </Box>
+    );
 
     return (
         <ThemeProvider theme={theme}>
@@ -900,6 +961,24 @@ const AllNotesViewDialog = ({
                                         fontWeight: 500
                                     }}
                                 />
+                                {/* Nova Tab para Exames */}
+                                <Tab
+                                    value="exames"
+                                    label={
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            Exames
+                                            <Badge
+                                                badgeContent={metrics.exames}
+                                                color="error"
+                                                sx={{ ml: 1 }}
+                                            />
+                                        </Box>
+                                    }
+                                    sx={{
+                                        textTransform: 'none',
+                                        fontWeight: 500
+                                    }}
+                                />
                             </Tabs>
                         )}
 
@@ -915,7 +994,7 @@ const AllNotesViewDialog = ({
 
                         {!isSmall && (
                             <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
-                                <Typography variant="body2" sx={{
+                                <Typography variant="body2" component="div" sx={{
                                     color: theme.palette.grey[600],
                                     mr: 2
                                 }}>
@@ -1017,6 +1096,24 @@ const AllNotesViewDialog = ({
                                     fontWeight: 500
                                 }}
                             />
+                            {/* Nova Tab para Exames em mobile */}
+                            <Tab
+                                value="exames"
+                                label={
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        Exames
+                                        <Badge
+                                            badgeContent={metrics.exames}
+                                            color="error"
+                                            sx={{ ml: 1 }}
+                                        />
+                                    </Box>
+                                }
+                                sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 500
+                                }}
+                            />
                         </Tabs>
                     )}
                 </AppBar>
@@ -1041,7 +1138,7 @@ const AllNotesViewDialog = ({
                             Anterior
                         </Button>
 
-                        <Typography variant="body2" sx={{
+                        <Typography variant="body2" component="div" sx={{
                             color: theme.palette.grey[600],
                         }}>
                             {filteredNotes.length > 0
@@ -1150,7 +1247,7 @@ const AllNotesViewDialog = ({
                                                         textOverflow: 'ellipsis',
                                                         whiteSpace: 'nowrap'
                                                     }}>
-                                                        {note.noteTitle || note.titulo || `${getTypeLabel(note.noteType)} - ${formatDate(note.createdAt)}`}
+                                                        {note.noteTitle || note.titulo || note.title || `${getTypeLabel(note.noteType)} - ${formatDate(note.createdAt)}`}
                                                     </Typography>
                                                 </Box>
 
@@ -1168,7 +1265,7 @@ const AllNotesViewDialog = ({
                                                         ml: 0.5
                                                     }}
                                                 >
-                                                    {note.noteText || "Sem descrição"}
+                                                    {note.noteText || note.observations || "Sem descrição"}
                                                 </Typography>
 
                                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1226,7 +1323,7 @@ const AllNotesViewDialog = ({
                                                         {getTypeIcon(currentNote.noteType)}
                                                     </Avatar>
                                                     <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                                                        {currentNote.noteTitle || currentNote.titulo || `${getTypeLabel(currentNote.noteType)} - ${formatDate(currentNote.createdAt)}`}
+                                                        {currentNote.noteTitle || currentNote.titulo || currentNote.title || `${getTypeLabel(currentNote.noteType)} - ${formatDate(currentNote.createdAt)}`}
                                                     </Typography>
                                                     <Chip
                                                         label={getTypeLabel(currentNote.noteType)}
@@ -1249,41 +1346,28 @@ const AllNotesViewDialog = ({
                                                     flexWrap: 'wrap',
                                                     gap: 2
                                                 }}>
+                                                    {/* Fix: Use the DateDisplay component to avoid DOM nesting errors */}
                                                     {currentNote.createdAt && (
-                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                            <CalendarTodayIcon sx={{ color: theme.palette.grey[400], fontSize: 18, mr: 1 }} />
-                                                            <Typography variant="body2" color="textSecondary">
-                                                                Criado em: {formatDateTime(currentNote.createdAt)}
-                                                            </Typography>
-                                                        </Box>
+                                                        <DateDisplay
+                                                            icon={<CalendarTodayIcon />}
+                                                            text={`Criado em: ${formatDateTime(currentNote.createdAt)}`}
+                                                        />
                                                     )}
 
                                                     {currentNote.lastModified && (
-                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                            <AccessTimeIcon sx={{ color: theme.palette.grey[400], fontSize: 18, mr: 1 }} />
-                                                            <Typography variant="body2" color="textSecondary">
-                                                                Atualizado: {formatTimeAgo(currentNote.lastModified)}
-                                                            </Typography>
-                                                        </Box>
+                                                        <DateDisplay
+                                                            icon={<AccessTimeIcon />}
+                                                            text={`Atualizado: ${formatTimeAgo(currentNote.lastModified)}`}
+                                                        />
                                                     )}
 
-                                                    {currentNote.consultationDate && (
-                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                            <EventNoteIcon sx={{
-                                                                color: getTypeColor(currentNote.noteType).main,
-                                                                fontSize: 18,
-                                                                mr: 1
-                                                            }} />
-                                                            <Typography
-                                                                variant="body2"
-                                                                sx={{
-                                                                    fontWeight: 500,
-                                                                    color: getTypeColor(currentNote.noteType).main
-                                                                }}
-                                                            >
-                                                                Consulta: {formatDate(currentNote.consultationDate)}
-                                                            </Typography>
-                                                        </Box>
+                                                    {(currentNote.consultationDate || currentNote.examDate) && (
+                                                        <DateDisplay
+                                                            icon={<EventNoteIcon />}
+                                                            text={`${currentNote.noteType === 'Exame' ? 'Exame' : 'Consulta'}: ${formatDate(currentNote.consultationDate || currentNote.examDate)}`}
+                                                            color={getTypeColor(currentNote.noteType).main}
+                                                            isConsultation={true}
+                                                        />
                                                     )}
                                                 </Box>
                                             </Box>
@@ -1337,17 +1421,19 @@ const AllNotesViewDialog = ({
 
                                         <Divider sx={{ mb: 3 }} />
 
-                                        {/* Note Content */}
-
-                                        {currentNote.noteType !== 'Anamnese'&&(
-                                            renderNoteContent(currentNote)
-                                        )}
+                                        {/* Note Content based on type */}
+                                        {currentNote.noteType !== 'Anamnese' &&
+                                            currentNote.noteType !== 'Exame' &&
+                                            renderNoteContent(currentNote)}
 
                                         {/* Note Type Specific Content */}
                                         {currentNote.noteType === 'Receita' && renderReceitaDetails(currentNote)}
                                         {currentNote.noteType === 'Anamnese' && renderAnamneseDetails(currentNote)}
+                                        {currentNote.noteType === 'Exame' && renderExameDetails(currentNote)}
                                         {renderMedicamentos(currentNote)}
-                                        {renderAttachments(currentNote)}
+
+                                        {/* Only show attachments for non-exam notes, as ExamViewer handles its own attachments */}
+                                        {currentNote.noteType !== 'Exame' && renderAttachments(currentNote)}
                                     </>
                                 )}
                             </Box>
