@@ -1,10 +1,7 @@
-import Checkout from './components/checkout'
-import AuthTemplate from "./components/authTemplate";
+export const dynamic = 'force-dynamic';
+
+import AuthTemplate from './components/authTemplate';
 
 export default function Page() {
-  return (
-    <div >
-      <AuthTemplate />
-    </div>
-  )
+    return <AuthTemplate />;
 }
