@@ -33,13 +33,11 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 // Ícones
 import CloseIcon from "@mui/icons-material/Close";
-import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import MedicationIcon from "@mui/icons-material/Medication";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import NotesIcon from "@mui/icons-material/Notes";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -50,11 +48,6 @@ import WarningIcon from "@mui/icons-material/Warning";
 import ImageIcon from "@mui/icons-material/Image";
 import ArticleIcon from "@mui/icons-material/Article";
 import LinkIcon from "@mui/icons-material/Link";
-import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
-import ThermostatIcon from "@mui/icons-material/Thermostat";
-import SpeedIcon from "@mui/icons-material/Speed";
-import BubbleChartIcon from "@mui/icons-material/BubbleChart";
-import FavoriteIcon from "@mui/icons-material/Favorite";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import BiotechIcon from "@mui/icons-material/Biotech";

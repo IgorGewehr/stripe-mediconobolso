@@ -9,7 +9,8 @@ import { fetchClientSecret } from '../actions/stripe';
 import PlanCard from './organismsComponents/planSelector';
 import { useAuth } from "./authProvider";
 import { useRouter } from 'next/navigation';
-import { useResponsiveScale } from './useScale'; // Importação do hook de escala
+import { useResponsiveScale } from './useScale';
+import Script from "next/script"; // Importação do hook de escala
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -111,6 +112,75 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
     }
 
     return (
+        <>
+            {/*** Meta Pixel Events ***/}
+            {/* Initiate Checkout */}
+            <Script id="fb-init-checkout" strategy="afterInteractive">
+                {`fbq('track', 'InitiateCheckout');`}
+            </Script>
+            <noscript
+                dangerouslySetInnerHTML={{
+                    __html: `<img height="1" width="1" style="display:none"
+                    src="https://www.facebook.com/tr?id=1033180232110037&ev=InitiateCheckout&noscript=1"/>`
+                }}
+            />
+
+            {/* Lead */}
+            <Script id="fb-lead-event" strategy="afterInteractive">
+                {`fbq('track', 'Lead');`}
+            </Script>
+            <noscript
+                dangerouslySetInnerHTML={{
+                    __html: `<img height="1" width="1" style="display:none"
+                    src="https://www.facebook.com/tr?id=1033180232110037&ev=Lead&noscript=1"/>`
+                }}
+            />
+
+            {/* Purchase */}
+            <Script id="fb-purchase-event" strategy="afterInteractive">
+                {`fbq('track', 'Purchase');`}
+            </Script>
+            <noscript
+                dangerouslySetInnerHTML={{
+                    __html: `<img height="1" width="1" style="display:none"
+                    src="https://www.facebook.com/tr?id=1033180232110037&ev=Purchase&noscript=1"/>`
+                }}
+            />
+
+            {/*** Google Ads Conversion Snippets ***/}
+            {/* Compra (sem valor) */}
+            <Script id="gtag-purchase" strategy="afterInteractive">
+                {`gtag('event', 'conversion', {
+             'send_to': 'AW-17010595542/8yPWCPKzsLkaENatpK8_'
+           });`}
+            </Script>
+
+            {/* Initiate Checkout (com valor e moeda) */}
+            <Script id="gtag-initiate" strategy="afterInteractive">
+                {`gtag('event', 'conversion', {
+             'send_to': 'AW-17010595542/Jvp_CPWzsLkaENatpK8_',
+             'value': 1.0,
+             'currency': 'BRL'
+           });`}
+            </Script>
+
+            {/* Lead (com valor e moeda) */}
+            <Script id="gtag-lead" strategy="afterInteractive">
+                {`gtag('event', 'conversion', {
+             'send_to': 'AW-17010595542/ZmDLCPizsLkaENatpK8_',
+             'value': 1.0,
+             'currency': 'BRL'
+           });`}
+            </Script>
+
+            <img
+                src="https://mediconobolso.online/split-test-for-elementor/v1/tests/1/track-conversion/"
+                alt=""
+                width={1}
+                height={1}
+                style={{ display: 'none' }}
+            />
+
         <Box sx={{
             display: 'flex',
             width: '100vw',
@@ -257,6 +327,7 @@ function CheckoutContent({ selectedPlan, onPlanChange }) {
                 </Box>
             </Box>
         </Box>
+        </>
     );
 }
 

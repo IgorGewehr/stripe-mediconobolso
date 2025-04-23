@@ -19,6 +19,7 @@ import UserProfileTemplate from "../components/userProfileTemplate";
 import HelpCenter from "../components/helpCenter";
 import UserDataTemplate from "../components/userDataTemplate"; // Importar o componente UserDataTemplate
 import {HelpCenter as HelpCenterIcon } from "@mui/icons-material";
+import Script from "next/script";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -231,6 +232,52 @@ export default function AppLayout({ children }) {
     };
 
     return (
+
+        <>
+            {/*** 1) Facebook Pixel base ***/}
+            <Script id="fb-base" strategy="afterInteractive">
+                {`
+          !function(f,b,e,v,n,t,s){
+            if(f.fbq) return;
+            n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq) f._fbq=n;
+            n.push=n; n.loaded=!0; n.version='2.0'; n.queue=[];
+            t=b.createElement(e); t.async=!0;
+            t.src=v; s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)
+          }(window, document,'script',
+             'https://connect.facebook.net/en_US/fbevents.js');
+          fbq('init', '1033180232110037');
+          fbq('track', 'PageView');
+        `}
+            </Script>
+
+            {/*** 2) Google Tag (gtag) base ***/}
+            <Script
+                src="https://www.googletagmanager.com/gtag/js?id=AW-17010595542"
+                strategy="afterInteractive"
+            />
+            <Script id="gtag-base" strategy="afterInteractive">
+                {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'AW-17010595542');
+        `}
+            </Script>
+
+            {/*** 3) Pixel branco de “track-conversion” ***/}
+            <Box
+                component="img"
+                src="https://mediconobolso.online/split-test-for-elementor/v1/tests/1/track-conversion/"
+                alt=""
+                width={1}
+                height={1}
+                sx={{ display: "none" }}
+            />
+
+
         <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF", }}>
             <Sidebar
                 initialSelected={activePage}
@@ -260,5 +307,6 @@ export default function AppLayout({ children }) {
                 </Box>
             </Box>
         </Box>
+            </>
     );
 }
