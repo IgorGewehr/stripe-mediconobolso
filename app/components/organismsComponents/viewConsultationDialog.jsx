@@ -691,21 +691,18 @@ const ViewConsultationDialog = ({
     };
 
     const getLocalDate = (dateValue) => {
-        if (!dateValue) return new Date();
-        // Se já for um objeto Date, retorne-o
+        // Se não houver valor, sinalize ausência
+        if (dateValue == null) return null;
+
         if (dateValue instanceof Date) return dateValue;
-        // Se for um Timestamp do Firebase
         if (dateValue && typeof dateValue.toDate === 'function') return dateValue.toDate();
-        // Se for uma string no formato "YYYY-MM-DD"
         if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
             const [year, month, day] = dateValue.split('-').map(Number);
             return new Date(year, month - 1, day);
         }
-        // Caso contrário, tenta converter diretamente
         const parsed = new Date(dateValue);
-        return isNaN(parsed.getTime()) ? new Date() : parsed;
+        return isNaN(parsed.getTime()) ? null : parsed;
     };
-
 
     // Busca dados do paciente
     useEffect(() => {
@@ -729,11 +726,7 @@ const ViewConsultationDialog = ({
     // Formatação de data
     const formatDate = (dateValue) => {
         const localDate = getLocalDate(dateValue);
-        // Se por algum motivo localDate for inválido, retorne uma string vazia
-        if (isNaN(localDate.getTime())) {
-            console.warn("Data inválida", dateValue);
-            return "";
-        }
+        if (!localDate) return "";           // agora trata null/undefined
         return format(localDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
     };
 
@@ -1413,7 +1406,7 @@ const ViewConsultationDialog = ({
                             >
                                 <CalendarTodayIcon sx={{ fontSize: '0.875rem' }} />
                                 <Typography variant="body2" component="div">
-                                    {formatDate(getLocalDate(consultationData.consultationDate))} às {consultationData.consultationTime || consultationData.horaInicio}
+                                    {formatDate(consultationData.consultationDate) || "–"} às {consultationData.consultationTime || "–"}
                                 </Typography>
                             </Typography>
                         </Box>
@@ -1489,7 +1482,9 @@ const ViewConsultationDialog = ({
                                                 <InfoItem
                                                     icon={<CalendarTodayIcon sx={{ color: statusColor.main }} />}
                                                     label="Data"
-                                                    value={formatDate(getLocalDate(consultationData.consultationDate))}
+                                                    value={
+                                                        formatDate(consultationData.consultationDate) || "–"
+                                                    }
                                                 />
                                             </Box>
                                         </Paper>

@@ -109,29 +109,21 @@ const AgendaMedica = ({initialConsultationId}) => {
 
     // Função para converter qualquer valor de data para objeto Date
     const parseAnyDate = (dateValue) => {
-        if (!dateValue) return new Date();
+        if (dateValue == null) return null;
 
-        // Para objetos Date
-        if (dateValue instanceof Date) {
-            return dateValue;
-        }
-
-        // Para Timestamps do Firebase
+        if (dateValue instanceof Date) return dateValue;
         if (dateValue && typeof dateValue.toDate === 'function') {
             return dateValue.toDate();
         }
-
         if (typeof dateValue === 'string') {
-            // Manter o dia exato sem conversão de fuso horário
             const parts = dateValue.split('-');
             if (parts.length === 3) {
-                // Criar data com o dia exato especificado
                 return new Date(parts[0], parts[1] - 1, parts[2]);
             }
-            return new Date(dateValue);
+            const parsed = new Date(dateValue);
+            return isNaN(parsed.getTime()) ? null : parsed;
         }
-
-        return new Date();
+        return null;
     };
 
     const handleViewAgendaFromConsultation = (consultation) => {

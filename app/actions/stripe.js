@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { stripe } from '../../lib/stripe';
 
 export async function fetchClientSecret({ plan, uid, email }) {
-  // Validação: não permitir que continue sem uid
+  // Validação básica
   if (!uid) {
     console.error('fetchClientSecret called without uid!');
     throw new Error('Usuário não identificado. Por favor, faça login novamente.');
@@ -22,7 +22,7 @@ export async function fetchClientSecret({ plan, uid, email }) {
   }
 
   try {
-    // Vamos criar ou atualizar o cliente do Stripe com o UID
+    // Buscar ou criar cliente no Stripe
     let customer;
     const existingCustomers = await stripe.customers.list({
       email: email,
@@ -31,13 +31,11 @@ export async function fetchClientSecret({ plan, uid, email }) {
 
     if (existingCustomers.data.length > 0) {
       customer = existingCustomers.data[0];
-      // Atualizar os metadados do cliente existente
       await stripe.customers.update(customer.id, {
         metadata: { uid }
       });
       console.log(`Cliente existente do Stripe atualizado: ${customer.id}`);
     } else {
-      // Criar um novo cliente com os metadados
       customer = await stripe.customers.create({
         email,
         metadata: { uid }
@@ -45,7 +43,7 @@ export async function fetchClientSecret({ plan, uid, email }) {
       console.log(`Novo cliente do Stripe criado: ${customer.id}`);
     }
 
-    // Cria a sessão com o cliente
+    // Criar a sessão de checkout com configuração simplificada de campos personalizados
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
       line_items: [
@@ -55,12 +53,31 @@ export async function fetchClientSecret({ plan, uid, email }) {
         },
       ],
       mode: 'subscription',
-      customer: customer.id, // Usar o ID do cliente que já tem os metadados
-      metadata: { uid }, // Também incluir no metadata da sessão
-      return_url: `${origin}/`, // redireciona para a home
+      customer: customer.id,
+      metadata: { uid, plan },
+
+      // Definir URL de retorno
+      return_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
+
+      // Coletar endereço completo
+      billing_address_collection: 'required',
+
+      // Campo personalizado para CPF - CONFIGURAÇÃO SIMPLIFICADA
+      custom_fields: [
+        {
+          key: 'cpf',
+          label: {
+            type: 'custom',
+            custom: 'CPF (apenas números)',
+          },
+          type: 'text'
+        }
+      ],
+
       subscription_data: {
-        metadata: { uid }, // E também nos metadados da subscription
+        metadata: { uid, plan },
       },
+
     });
 
     console.log(`Sessão de checkout criada: ${session.id}`);

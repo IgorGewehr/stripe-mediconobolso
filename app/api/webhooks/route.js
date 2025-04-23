@@ -43,14 +43,37 @@ export async function POST(req) {
           console.log(`Checkout session completed, status: ${session.payment_status}`);
           console.log('Session metadata:', session.metadata);
 
-          // Atualiza o status de assinatura para "true" no documento do usuário
+          // Atualiza o status de assinatura e dados do usuário
           if (session.metadata && session.metadata.uid) {
             const uid = session.metadata.uid;
-            console.log(`Atualizando usuário ${uid} para assinouPlano=true`);
+            console.log(`Atualizando usuário ${uid} com dados do checkout`);
+
+            // Extrair informações de endereço do cliente
+            const address = session.customer_details?.address || {};
+
+            // Extrair CPF do campo personalizado
+            const cpfField = session.custom_fields?.find(field => field.key === 'cpf');
+            const cpf = cpfField?.text?.value || '';
+
+            // Preparar objeto de dados para atualização
+            const userData = {
+              assinouPlano: true,
+              planType: session.metadata.plan || 'monthly',
+              address: {
+                street: address.line1 || '',
+                complement: address.line2 || '',
+                city: address.city || '',
+                state: address.state || '',
+                postalCode: address.postal_code || '',
+                country: address.country || 'BR',
+              },
+              cpf: cpf,
+              updatedAt: new Date()
+            };
 
             try {
               // Tentativa 1: Usando o firebaseService
-              await firebaseService.editUserData(uid, { assinouPlano: true });
+              await firebaseService.editUserData(uid, userData);
               console.log(`Usuário ${uid} atualizado com sucesso via firebaseService`);
             } catch (serviceError) {
               console.error(`Erro ao atualizar via firebaseService: ${serviceError.message}`);
@@ -58,19 +81,22 @@ export async function POST(req) {
               try {
                 // Tentativa 2: Tentando diretamente via Firestore
                 const userRef = doc(firestore, "users", uid);
-                await updateDoc(userRef, { assinouPlano: true });
+                await updateDoc(userRef, userData);
                 console.log(`Usuário ${uid} atualizado com sucesso via Firestore direto`);
               } catch (directError) {
                 console.error(`Erro ao atualizar diretamente via Firestore: ${directError.message}`);
                 throw directError;
               }
             }
+
           } else {
             console.error('UID não encontrado nos metadados da sessão!');
             console.log('Metadados completos:', JSON.stringify(session.metadata));
           }
           break;
         }
+
+          // Outros casos permanecem iguais...
         case 'customer.subscription.deleted': {
           const subscription = event.data.object;
           console.log(`Subscription canceled for customer: ${subscription.customer}`);
