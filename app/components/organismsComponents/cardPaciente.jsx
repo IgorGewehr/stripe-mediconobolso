@@ -1148,7 +1148,6 @@ function Card1({
                                 InputLabelProps={{
                                     shrink: true,
                                 }}
-                                required
                                 error={validationErrors.dataNascimento}
                                 helperText={validationErrors.dataNascimento ? "Data é obrigatória" : ""}
                                 size="small"
@@ -1463,7 +1462,6 @@ function Card1({
                                 label="Email"
                                 value={getSafeValue(formData, 'contato.email') || formData.patientEmail || formData.email || ""}
                                 onChange={handleChange('contato.email')}
-                                required
                                 error={validationErrors['contato.email']}
                                 helperText={validationErrors['contato.email'] ? "Email válido é obrigatório" : ""}
                                 placeholder="email@exemplo.com"
@@ -2674,22 +2672,19 @@ export default function PacienteCard({paciente}) {
             errors.nome = true;
         }
 
-        if (!formData.dataNascimento && !formData.birthDate) {
-            errors.dataNascimento = true;
-        }
-
-        // Nested objects validation
+        // Apenas o celular permanece obrigatório
         const celular = getSafeValue(formData, 'contato.celular') || formData.patientPhone || formData.phone;
         if (!celular) {
             errors['contato.celular'] = true;
         }
 
+        // Email não é mais obrigatório, mas deve ser válido se fornecido
         const email = getSafeValue(formData, 'contato.email') || formData.patientEmail || formData.email;
-        if (!email || !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+        if (email && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
             errors['contato.email'] = true;
         }
 
-        // Return true if no errors, otherwise set validation errors and return false
+        // Return true if no errors
         if (Object.keys(errors).length === 0) {
             setValidationErrors({});
             return true;
