@@ -2680,7 +2680,7 @@ export default function PacienteCard({paciente}) {
 
         // Email não é mais obrigatório, mas deve ser válido se fornecido
         const email = getSafeValue(formData, 'contato.email') || formData.patientEmail || formData.email;
-        if (email && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+        if (email && email !== "-" && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
             errors['contato.email'] = true;
         }
 
@@ -2696,20 +2696,25 @@ export default function PacienteCard({paciente}) {
 
     // Process form data for Firebase - versão corrigida
     const prepareFormDataForFirebase = () => {
+        // Função auxiliar para limpar valores '-'
+        const cleanValue = (value) => {
+            return value === '-' ? '' : value;
+        };
+
         // Map the form data structure to what Firebase expects
         const processedData = {
             // Basic info
             patientName: formData.nome || formData.patientName,
-            birthDate: formData.dataNascimento || formData.birthDate,
-            bloodType: formData.tipoSanguineo || formData.bloodType,
+            birthDate: formData.dataNascimento || formData.birthDate || '',
+            bloodType: formData.tipoSanguineo || formData.bloodType || '',
 
-            // Contact
-            patientPhone: getSafeValue(formData, 'contato.celular') || formData.patientPhone || formData.phone,
-            secondaryPhone: getSafeValue(formData, 'contato.fixo') || formData.secondaryPhone,
-            contatoAdicional: getSafeValue(formData, 'contato.adicional'),
-            patientEmail: getSafeValue(formData, 'contato.email') || formData.patientEmail || formData.email,
+            // Contact - com limpeza de valores "-"
+            patientPhone: cleanValue(getSafeValue(formData, 'contato.celular')) || formData.patientPhone || formData.phone,
+            secondaryPhone: cleanValue(getSafeValue(formData, 'contato.fixo')) || formData.secondaryPhone || '',
+            contatoAdicional: cleanValue(getSafeValue(formData, 'contato.adicional')) || '',
+            patientEmail: cleanValue(getSafeValue(formData, 'contato.email')) || formData.patientEmail || formData.email || '',
 
-            // Address
+            // O resto do seu código permanece o mesmo...
             patientAddress: formData.endereco?.rua || formData.patientAddress || formData.address,
             city: formData.endereco?.cidade || formData.city,
             state: formData.endereco?.estado || formData.state,
@@ -2735,7 +2740,7 @@ export default function PacienteCard({paciente}) {
 
             historicoConduta: {
                 doencasHereditarias: formData.historicoMedico || formData.historicoConduta?.doencasHereditarias || "",
-                condutaInicial: formData.historicoConduta?.condutaInicial || "" // Adicionada esta linha
+                condutaInicial: formData.historicoConduta?.condutaInicial || ""
             },
         };
 
