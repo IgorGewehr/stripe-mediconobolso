@@ -1,4 +1,3 @@
-// authProvider.js - Com lógica aprimorada para teste gratuito
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
@@ -16,52 +15,59 @@ export const AuthProvider = ({ children }) => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
+    // Handle free trial offer routes - this needs to run FIRST and separately
     useEffect(() => {
-        // Verificar se o usuário chegou via rota especial com oferta de teste
-        const checkTrialOffer = () => {
-            // Verifica se a URL atual ou anterior contém /pv1
-            if (pathname === '/pv1' || pathname === '/checkout/pv1' || pathname.includes('/pv1')) {
-                localStorage.setItem('hasFreeTrialOffer', 'true');
-                setHasFreeTrialOffer(true);
+        // Check for trial offer routes immediately when component mounts
+        if (pathname === '/pv1') {
+            console.log('PV1 route detected, setting free trial offer and redirecting');
+            // First set the trial offer flag
+            localStorage.setItem('hasFreeTrialOffer', 'true');
+            setHasFreeTrialOffer(true);
 
-                // Se estiver na rota /pv1, redireciona para checkout preservando a oferta
-                if (pathname === '/pv1') {
-                    router.push('/checkout');
-                }
-                return true;
-            }
+            // Use setTimeout to ensure state is updated before navigation
+            setTimeout(() => {
+                router.push('/checkout');
+            }, 100);
+        } else if (pathname === '/checkout/pv1' || pathname.includes('/pv1')) {
+            console.log('PV1 included in path, setting free trial offer');
+            localStorage.setItem('hasFreeTrialOffer', 'true');
+            setHasFreeTrialOffer(true);
+        }
+    }, [pathname, router]); // This effect only depends on pathname and router
 
-            // Verifica se tem o parâmetro dct na URL
-            const dctParam = searchParams.get('dct');
-            if (dctParam === '1') {
-                localStorage.setItem('hasFreeTrialOffer', 'true');
-                setHasFreeTrialOffer(true);
-                return true;
-            }
-
-            // Verifica se já tem a informação no localStorage
+    // Handle other trials parameters and localStorage
+    useEffect(() => {
+        // Check for dct parameter
+        const dctParam = searchParams.get('dct');
+        if (dctParam === '1') {
+            console.log('DCT parameter detected, setting free trial offer');
+            localStorage.setItem('hasFreeTrialOffer', 'true');
+            setHasFreeTrialOffer(true);
+        } else {
+            // Check localStorage as fallback
             const storedTrialOffer = localStorage.getItem('hasFreeTrialOffer');
-            if (storedTrialOffer === 'true') {
+            if (storedTrialOffer === 'true' && !hasFreeTrialOffer) {
+                console.log('Free trial found in localStorage');
                 setHasFreeTrialOffer(true);
-                return true;
             }
+        }
+    }, [searchParams, hasFreeTrialOffer]);
 
-            return false;
-        };
-
-        checkTrialOffer();
-    }, [pathname, searchParams, router]);
-
+    // Handle authentication state
     useEffect(() => {
+        console.log('Authentication state check running, pathname:', pathname);
         const unsubscribe = onAuthStateChanged(firebaseService.auth, async (authUser) => {
             if (authUser) {
                 try {
                     const userData = await firebaseService.getUserData(authUser.uid);
                     setUser({ uid: authUser.uid, ...userData });
 
-                    // Verificar se o usuário já tem assinatura e está tentando acessar o checkout
-                    if (userData && userData.assinouPlano && pathname === '/checkout') {
-                        // Se já tem assinatura, redireciona para o app
+                    // Only redirect if not on a special route
+                    if (userData && userData.assinouPlano && pathname === '/checkout' &&
+                        !pathname.includes('/pv1') && // Don't redirect if on special route
+                        searchParams.get('dct') !== '1') { // Don't redirect if dct param exists
+
+                        console.log('User already has plan, redirecting to app');
                         router.push('/app');
                     }
                 } catch (error) {
@@ -70,9 +76,9 @@ export const AuthProvider = ({ children }) => {
                 }
             } else {
                 setUser(null);
-                // Redireciona para login APENAS se tentar acessar rotas protegidas da aplicação (/app)
-                // NÃO redireciona se tentar acessar /checkout
+                // Redirect to login ONLY if trying to access protected routes
                 if (pathname.startsWith('/app')) {
+                    console.log('Unauthenticated user trying to access protected route, redirecting to login');
                     router.push('/');
                 }
             }
@@ -80,7 +86,7 @@ export const AuthProvider = ({ children }) => {
         });
 
         return () => unsubscribe();
-    }, [pathname, router]);
+    }, [pathname, router, searchParams]);
 
     const logout = async () => {
         try {
@@ -93,7 +99,7 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={{ user, loading, logout, hasFreeTrialOffer }}>
-            {children}
+            {!loading && children}
         </AuthContext.Provider>
     );
 };
