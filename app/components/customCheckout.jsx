@@ -228,7 +228,8 @@ const PlanCard = React.memo(({ plan, isSelected, onSelect }) => (
                 transform: 'translateY(-5px)',
                 boxShadow: '0 6px 12px rgba(0,0,0,0.2)'
             },
-            fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' } // Ajustando tamanho de fonte responsivo
+            fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' }, // Ajustando tamanho de fonte responsivo
+            width: '100%' // Garantir que o card ocupe 100% da largura disponível
         }}
         onClick={onSelect}
         elevation={isSelected ? 8 : 1}
@@ -1024,19 +1025,20 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 ) : (
                     // Formulário de Checkout normal quando não está processando webhook
                     <>
-                        {/* Logo em telas pequenas */}
+                        {/* Logo em telas pequenas - MODIFICADO PARA CENTRALIZAR */}
                         <Box sx={{
                             display: { xs: 'flex', md: 'none' },
                             flexDirection: 'column',
-                            alignItems: 'flex-start', // Alterado de center para flex-start
+                            alignItems: 'center', // Alterado de flex-start para center
                             mb: 3
                         }}>
                             <Box sx={{
                                 display: 'flex',
-                                justifyContent: 'flex-start', // Alterado de center para flex-start
+                                justifyContent: 'center', // Alterado de flex-start para center
                                 alignItems: 'center',
                                 width: '100%',
-                                mb: 2
+                                mb: 2,
+                                position: 'relative' // Adicionado para posicionar o botão de login relativamente a este container
                             }}>
                                 <Image
                                     src="/ico.svg"
@@ -1057,16 +1059,15 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                             borderColor: '#E5A830',
                                             backgroundColor: 'rgba(249, 185, 52, 0.08)'
                                         },
-                                        ml: 2,
                                         position: 'absolute',
                                         right: 16,
-                                        top: 16
+                                        top: 0
                                     }}
                                 >
                                     Entrar
                                 </Button>
                             </Box>
-                            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, textAlign: 'center' }}> {/* Adicionado textAlign: 'center' */}
                                 Potencialize sua prática médica
                             </Typography>
                         </Box>
@@ -1263,7 +1264,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                 )}
                             </Box>
 
-                            {/* Seção 2: SELEÇÃO DE PLANO */}
+                            {/* Seção 2: SELEÇÃO DE PLANO - MODIFICADO PARA RESPONSIVIDADE */}
                             <Box sx={{ mb: 5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, pl: 0 }}> {/* Adicionado pl: 0 */}
                                     <Box sx={{
@@ -1284,14 +1285,39 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                     </Typography>
                                 </Box>
 
-                                <Grid container spacing={2} sx={{ pl: 3 }}> {/* Adicionado pl: 3 */}
+                                {/* GRID MODIFICADO - Em mobile, cada cartão ocupa 100% da largura */}
+                                {hasFreeTrialOffer && (
+                                    <Box sx={{
+                                        pl: 3,
+                                        mb: 3,
+                                        p: 2,
+                                        bgcolor: 'rgba(249, 185, 52, 0.1)',
+                                        border: '1px solid #F9B934',
+                                        borderRadius: 1,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        textAlign: 'center'
+                                    }}>
+                                        <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'medium', mb: 1 }}>
+                                            Você receberá 24 horas de teste gratuito! A cobrança começará apenas após esse período.
+                                        </Typography>
+                                        <Typography variant="subtitle1" sx={{ color: '#F9B934', fontWeight: 'bold' }}>
+                                            INICIAR TESTE
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                                <Grid container spacing={2} sx={{ pl: 3, width: '100%' }}> {/* Adicionado width: 100% */}
                                     {Object.keys(plans).map((planKey) => (
-                                        <Grid item xs={4} sm={4} md={4} key={planKey} sx={{ display: 'flex' }}>
-                                            <PlanCard
-                                                plan={plans[planKey]}
-                                                isSelected={selectedPlan === planKey}
-                                                onSelect={() => handlePlanSelect(planKey)}
-                                            />
+                                        <Grid item xs={12} sm={6} md={4} key={planKey} sx={{ display: 'flex', width: '100%' }}>
+                                            <Box sx={{ width: '100%' }}>
+                                                <PlanCard
+                                                    plan={plans[planKey]}
+                                                    isSelected={selectedPlan === planKey}
+                                                    onSelect={() => handlePlanSelect(planKey)}
+                                                />
+                                            </Box>
                                         </Grid>
                                     ))}
                                 </Grid>
@@ -1713,10 +1739,18 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                     {hasFreeTrialOffer && (
                                         <Alert
                                             severity="info"
-                                            sx={{ mt: 2, mb: 2, bgcolor: '#1E3A5B', color: 'white', ml: 3 }}
+                                            sx={{
+                                                mt: 2,
+                                                mb: 2,
+                                                bgcolor: '#1E3A5B',
+                                                color: 'white',
+                                                ml: 3,
+                                                border: '1px solid #F9B934',
+                                                fontWeight: 'medium'
+                                            }}
                                             icon={<LockIcon sx={{ color: '#F9B934' }} />}
                                         >
-                                            Você receberá 24 horas de teste gratuito! A cobrança começará após esse período.
+                                            Você receberá 24 horas de teste gratuito! A cobrança começará apenas após esse período.
                                         </Alert>
                                     )}
 
@@ -1744,16 +1778,16 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                         }}
                                         startIcon={isProcessingPayment ? <CircularProgress size={20} color="inherit" /> : null}
                                     >
-                                        {isProcessingPayment ? 'PROCESSANDO...' : 'FINALIZAR PAGAMENTO'}
+                                        {isProcessingPayment ? 'PROCESSANDO...' : (hasFreeTrialOffer ? 'INICIAR TESTE' : 'FINALIZAR PAGAMENTO')}
                                     </Button>
                                 </Box>
                             )}
                         </Box>
 
-                        {/* Copyright/Footer */}
+                        {/* Copyright/Footer - CENTRALIZADO PARA MOBILE */}
                         <Box sx={{
                             display: 'flex',
-                            justifyContent: 'flex-start', // Alterado de center para flex-start
+                            justifyContent: { xs: 'center', md: 'flex-start' }, // Centralizado no mobile, alinhado à esquerda no desktop
                             mt: 'auto',
                             pt: 3,
                             opacity: 0.7
