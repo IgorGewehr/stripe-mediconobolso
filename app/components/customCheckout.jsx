@@ -447,23 +447,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                     subscriptionActive = true;
                     setWebhookSuccess(true);
 
-                    // Track purchase event for Facebook Pixel when subscription is confirmed
-                    if (window.fbq) {
-                        const planPrice =
-                            selectedPlan === 'monthly' ? 127 :
-                                selectedPlan === 'quarterly' ? 345 :
-                                    selectedPlan === 'annual' ? 1143 : 0;
-
-                        window.fbq('track', 'Purchase', {
-                            value: planPrice,
-                            currency: 'BRL',
-                            content_type: 'product',
-                            content_name: plans[selectedPlan]?.name || selectedPlan,
-                            content_ids: [plans[selectedPlan]?.priceId]
-                        });
-                        console.log('Facebook Pixel: Purchase event tracked', planPrice, selectedPlan);
-                    }
-
                     console.log("Subscription active! Will redirect after minimum loading time...");
                 }
 
@@ -1816,17 +1799,17 @@ export default function CustomCheckout({ hasFreeTrialOffer }) {
             const script = document.createElement('script');
             script.id = 'facebook-pixel-script';
             script.innerHTML = `
-                !function(f,b,e,v,n,t,s)
-                {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-                n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-                n.queue=[];t=b.createElement(e);t.async=!0;
-                t.src=v;s=b.getElementsByTagName(e)[0];
-                s.parentNode.insertBefore(t,s)}(window, document,'script',
-                'https://connect.facebook.net/en_US/fbevents.js');
-                fbq('init', '1033180232110037');
-                fbq('track', 'PageView');
-            `;
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '1033180232110037');
+            fbq('track', 'InitiateCheckout');
+        `;
             document.head.appendChild(script);
 
             // Add noscript pixel
@@ -1835,7 +1818,7 @@ export default function CustomCheckout({ hasFreeTrialOffer }) {
             img.height = 1;
             img.width = 1;
             img.style.display = 'none';
-            img.src = 'https://www.facebook.com/tr?id=1033180232110037&ev=PageView&noscript=1';
+            img.src = 'https://www.facebook.com/tr?id=1033180232110037&ev=InitiateCheckout&noscript=1';
             noscript.appendChild(img);
             document.head.appendChild(noscript);
         }
