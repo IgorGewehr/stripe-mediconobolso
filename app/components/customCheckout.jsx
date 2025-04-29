@@ -1291,19 +1291,15 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                         pl: 3,
                                         mb: 3,
                                         p: 2,
-                                        bgcolor: 'rgba(249, 185, 52, 0.1)',
-                                        border: '1px solid #F9B934',
+                                        bgcolor: 'rgba(249, 185, 52, 0.08)',
+                                        border: '1px solid rgba(249, 185, 52, 0.3)',
                                         borderRadius: 1,
                                         display: 'flex',
-                                        flexDirection: 'column',
                                         alignItems: 'center',
-                                        textAlign: 'center'
                                     }}>
-                                        <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'medium', mb: 1 }}>
+                                        <LockIcon sx={{ color: '#F9B934', mr: 2 }} />
+                                        <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'medium' }}>
                                             Você receberá 24 horas de teste gratuito! A cobrança começará apenas após esse período.
-                                        </Typography>
-                                        <Typography variant="subtitle1" sx={{ color: '#F9B934', fontWeight: 'bold' }}>
-                                            INICIAR TESTE
                                         </Typography>
                                     </Box>
                                 )}
