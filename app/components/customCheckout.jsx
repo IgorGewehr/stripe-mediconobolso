@@ -1297,8 +1297,17 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                         display: 'flex',
                                         alignItems: 'center',
                                     }}>
-                                        <LockIcon sx={{ color: '#F9B934', mr: 2 }} />
-                                        <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'medium' }}>
+                                        <LockIcon sx={{ color: '#F9B934', mr: 1.5, flexShrink: 0 }} />
+                                        <Typography
+                                            variant="body1"
+                                            sx={{
+                                                color: 'white',
+                                                fontWeight: 'medium',
+                                                letterSpacing: '-0.01em',
+                                                whiteSpace: { sm: 'nowrap', xs: 'normal' },
+                                                fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' }
+                                            }}
+                                        >
                                             Você receberá 24 horas de teste gratuito! A cobrança começará apenas após esse período.
                                         </Typography>
                                     </Box>
