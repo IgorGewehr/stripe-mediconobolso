@@ -1,20 +1,42 @@
 "use client";
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Box, CircularProgress } from '@mui/material';
-import CustomCheckout from './customCheckout'; // Importe o novo componente
+import CustomCheckout from './customCheckout';
 import { useAuth } from "./authProvider";
 import Analytics from "./organismsComponents/analytics";
 
+// Facebook Pixel implementation
+
+
+// Loading component for Suspense fallback
+function LoadingCheckout() {
+    return (
+        <Box
+            sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100vh',
+                width: '100vw',
+                backgroundColor: '#0F0F0F'
+            }}
+        >
+            <CircularProgress sx={{ color: '#F9B934' }} size={60} />
+        </Box>
+    );
+}
+
 function CheckoutContent() {
-    // Precisamos apenas do auth para manter o trial offer
     const { hasFreeTrialOffer } = useAuth();
 
     return (
         <>
-            <Analytics/>
+            <Analytics />
 
-            {/* Pixel de conversão - mantido do código original */}
+
+
+            {/* Existing conversion pixel */}
             <img
                 src="https://mediconobolso.online/split-test-for-elementor/v1/tests/1/track-conversion/"
                 alt=""
@@ -23,7 +45,7 @@ function CheckoutContent() {
                 style={{ display: 'none' }}
             />
 
-            {/* Nosso novo componente de checkout, passando o hasFreeTrialOffer */}
+            {/* Checkout component */}
             <CustomCheckout hasFreeTrialOffer={hasFreeTrialOffer} />
         </>
     );
@@ -31,13 +53,7 @@ function CheckoutContent() {
 
 export default function Checkout() {
     return (
-        <Suspense
-            fallback={
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                    <CircularProgress color="primary" />
-                </Box>
-            }
-        >
+        <Suspense fallback={<LoadingCheckout />}>
             <CheckoutContent />
         </Suspense>
     );

@@ -5,7 +5,7 @@ import { headers } from 'next/headers';
 
 export async function POST(req) {
     try {
-        const { plan, uid, email, name, includeTrial = false } = await req.json();
+        const { plan, uid, email, name, cpf, includeTrial = false } = await req.json();
         const origin = (await headers()).get('origin');
 
         // Validação básica
@@ -60,7 +60,8 @@ export async function POST(req) {
             await stripe.customers.update(customer.id, {
                 metadata: {
                     uid,
-                    checkoutVersion: '2.0'
+                    checkoutVersion: '2.0',
+                    cpf: cpf ? cpf.replace(/\D/g, '') : undefined // Armazenamos o CPF como metadado
                 },
                 name: name || ''
             });
@@ -71,7 +72,8 @@ export async function POST(req) {
                 email,
                 metadata: {
                     uid,
-                    checkoutVersion: '2.0'
+                    checkoutVersion: '2.0',
+                    cpf: cpf ? cpf.replace(/\D/g, '') : undefined // Armazenamos o CPF como metadado
                 },
                 name: name || ''
             });
@@ -105,16 +107,31 @@ export async function POST(req) {
         console.log(`Criando assinatura para cliente: ${customer.id}`);
         const subscription = await stripe.subscriptions.create(subscriptionData);
 
-        // Extrair o Payment Intent da fatura mais recente
-        const paymentIntent = subscription.latest_invoice.payment_intent;
-
         console.log(`Assinatura criada: ID=${subscription.id}, Status=${subscription.status}`);
-        console.log(`Payment Intent: ID=${paymentIntent.id}, Status=${paymentIntent.status}`);
 
-        return NextResponse.json({
-            subscriptionId: subscription.id,
-            clientSecret: paymentIntent.client_secret
-        });
+        // Extrair o Payment Intent da fatura mais recente com verificação de segurança
+        const invoice = subscription.latest_invoice;
+        const paymentIntent = invoice && invoice.payment_intent;
+
+        if (paymentIntent) {
+            // Se existir um payment intent
+            console.log(`Payment Intent: ID=${paymentIntent.id}, Status=${paymentIntent.status}`);
+
+            return NextResponse.json({
+                subscriptionId: subscription.id,
+                clientSecret: paymentIntent.client_secret,
+                status: subscription.status
+            });
+        } else {
+            // Se não existir payment intent (como em assinaturas trial)
+            console.log('Sem payment intent para esta assinatura (possivelmente um trial)');
+
+            return NextResponse.json({
+                subscriptionId: subscription.id,
+                status: subscription.status,
+                success: true
+            });
+        }
 
     } catch (error) {
         // Log detalhado do erro para depuração
