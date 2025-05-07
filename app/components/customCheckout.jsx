@@ -1226,7 +1226,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                                 value={formData.phone}
                                                 name="phone"
                                                 onChange={handleInputChange}
-                                                placeholder="35 99740 3092"
+                                                placeholder="telefone"
                                                 variant="outlined"
                                                 error={Boolean(errors.phone)}
                                                 helperText={errors.phone || ""}
