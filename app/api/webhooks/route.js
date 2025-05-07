@@ -5,6 +5,7 @@ import { stripe } from '../../../lib/stripe';
 import firebaseService from '../../../lib/firebaseService';
 import { firestore } from '../../../lib/firebase';
 import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
+import { sendWelcomeEmail } from '../../../lib/emailService';
 
 // Função auxiliar para atualização com retry
 async function updateUserWithRetry(uid, userData, maxRetries = 3) {
@@ -76,6 +77,21 @@ async function processEvent(event) {
           return { success: true, message: 'Já processado' };
         }
 
+        // Obter email e nome do cliente
+        let customerEmail = session.customer_email;
+        let customerName = session.customer_details?.name;
+
+        // Se não tiver o email na sessão, buscar do customer
+        if (!customerEmail && session.customer) {
+          try {
+            const customer = await stripe.customers.retrieve(session.customer);
+            customerEmail = customer.email;
+            customerName = customerName || customer.name;
+          } catch (err) {
+            console.warn('Erro ao buscar dados do customer:', err);
+          }
+        }
+
         // Atualiza o status de assinatura e dados do usuário
         if (session.metadata && session.metadata.uid) {
           const uid = session.metadata.uid;
@@ -120,6 +136,26 @@ async function processEvent(event) {
           try {
             await updateUserWithRetry(uid, userData);
 
+            // ✨ ENVIAR EMAIL DE BOAS-VINDAS ✨
+            if (customerEmail) {
+              console.log('📧 Enviando email de boas-vindas para:', customerEmail);
+              const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/dashboard`;
+
+              // Usar o nome encontrado ou um fallback baseado no email
+              const welcomeName = customerName || customerEmail.split('@')[0];
+
+              const emailResult = await sendWelcomeEmail(customerEmail, welcomeName, appLink);
+
+              if (emailResult.success) {
+                console.log('✅ Email de boas-vindas enviado com sucesso!');
+              } else {
+                console.error('❌ Falha ao enviar email de boas-vindas:', emailResult.error);
+                // Não interrompe o processamento se o email falhar
+              }
+            } else {
+              console.warn('⚠️ Email do cliente não encontrado para envio de boas-vindas');
+            }
+
             // Marcar como processado para garantir idempotência
             try {
               await stripe.checkout.sessions.update(session.id, {
@@ -143,6 +179,74 @@ async function processEvent(event) {
           console.error('❌ UID não encontrado nos metadados da sessão!');
           console.log('🔍 Metadados completos:', JSON.stringify(session.metadata));
           throw new Error('UID não encontrado nos metadados da sessão');
+        }
+        break;
+      }
+
+      case 'customer.subscription.created': {
+        const subscription = event.data.object;
+        console.log(`✨ Subscription created for customer: ${subscription.customer}`);
+        console.log('📋 Subscription metadata:', JSON.stringify(subscription.metadata));
+
+        // Obter email e nome do cliente
+        let customerEmail = '';
+        let customerName = '';
+        let uid = '';
+
+        // Tentativa 1: Verificar metadados da subscription
+        if (subscription.metadata && subscription.metadata.uid) {
+          uid = subscription.metadata.uid;
+        }
+        // Tentativa 2: Buscar cliente no Stripe
+        else {
+          console.log('🔍 Buscando cliente no Stripe:', subscription.customer);
+          try {
+            const customer = await stripe.customers.retrieve(subscription.customer);
+            customerEmail = customer.email;
+            customerName = customer.name;
+
+            if (customer && customer.metadata && customer.metadata.uid) {
+              uid = customer.metadata.uid;
+            } else {
+              console.log('❓ Não foi possível encontrar o UID nos metadados do customer');
+              throw new Error('UID não encontrado para nova assinatura');
+            }
+          } catch (err) {
+            console.error('❌ Erro ao buscar cliente no Stripe:', err);
+            throw err;
+          }
+        }
+
+        // Se temos UID, processar
+        if (uid) {
+          const subscriptionData = {
+            assinouPlano: true,
+            subscriptionCreatedAt: new Date(),
+            subscriptionId: subscription.id,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            planType: subscription.metadata.plan || 'monthly'
+          };
+
+          await updateUserWithRetry(uid, subscriptionData);
+          console.log(`✅ Assinatura criada para usuário ${uid}`);
+
+          // ✨ ENVIAR EMAIL DE BOAS-VINDAS (se ainda não foi enviado no checkout.session.completed) ✨
+          if (customerEmail) {
+            console.log('📧 Enviando email de boas-vindas para:', customerEmail);
+            const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/dashboard`;
+
+            // Usar o nome encontrado ou um fallback baseado no email
+            const welcomeName = customerName || customerEmail.split('@')[0];
+
+            const emailResult = await sendWelcomeEmail(customerEmail, welcomeName, appLink);
+
+            if (emailResult.success) {
+              console.log('✅ Email de boas-vindas enviado com sucesso!');
+            } else {
+              console.error('❌ Falha ao enviar email de boas-vindas:', emailResult.error);
+              // Não interrompe o processamento se o email falhar
+            }
+          }
         }
         break;
       }
@@ -262,50 +366,6 @@ async function processEvent(event) {
             }
           } catch (err) {
             console.error('❌ Erro ao processar falha de pagamento:', err);
-            throw err;
-          }
-        }
-        break;
-      }
-
-      case 'customer.subscription.created': {
-        const subscription = event.data.object;
-        console.log(`✨ Subscription created for customer: ${subscription.customer}`);
-        console.log('📋 Subscription metadata:', JSON.stringify(subscription.metadata));
-
-        // Tentativa 1: Verificar metadados da subscription
-        if (subscription.metadata && subscription.metadata.uid) {
-          const uid = subscription.metadata.uid;
-          await updateUserWithRetry(uid, {
-            assinouPlano: true,
-            subscriptionCreatedAt: new Date(),
-            subscriptionId: subscription.id,
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-            planType: subscription.metadata.plan || 'monthly'
-          });
-          console.log(`✅ Assinatura criada para usuário ${uid}`);
-        }
-        // Tentativa 2: Buscar cliente no Stripe
-        else {
-          console.log('🔍 Buscando cliente no Stripe:', subscription.customer);
-          try {
-            const customer = await stripe.customers.retrieve(subscription.customer);
-            if (customer && customer.metadata && customer.metadata.uid) {
-              const uid = customer.metadata.uid;
-              await updateUserWithRetry(uid, {
-                assinouPlano: true,
-                subscriptionCreatedAt: new Date(),
-                subscriptionId: subscription.id,
-                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-                planType: subscription.items?.data[0]?.price?.metadata?.plan || 'monthly'
-              });
-              console.log(`✅ Assinatura criada para usuário ${uid} (via customer)`);
-            } else {
-              console.log('❓ Não foi possível encontrar o UID nos metadados do customer');
-              throw new Error('UID não encontrado para nova assinatura');
-            }
-          } catch (err) {
-            console.error('❌ Erro ao buscar cliente no Stripe:', err);
             throw err;
           }
         }

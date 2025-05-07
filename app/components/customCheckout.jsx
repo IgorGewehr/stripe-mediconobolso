@@ -358,6 +358,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
     const [formData, setFormData] = useState({
         // Dados de cadastro
         fullName: "", // Campo único de nome completo
+        phone: "",
         email: "",
         password: "",
         // Removida a confirmação de senha
@@ -382,6 +383,15 @@ function CheckoutForm({ hasFreeTrialOffer }) {
 
     // Estados para configuração e UI
     const [selectedPlan, setSelectedPlan] = useState('');
+
+    const formatPhone = (value) => {
+        value = value.replace(/\D/g, '');
+        if (value.length <= 11) {
+            value = value.replace(/^(\d{2})(\d)/g, '$1 $2');
+            value = value.replace(/(\d{5})(\d)/, '$1 $2');
+        }
+        return value;
+    };
 
     // Estados para feedback ao usuário
     const [errors, setErrors] = useState({});
@@ -499,6 +509,11 @@ function CheckoutForm({ hasFreeTrialOffer }) {
     const handleInputChange = useCallback((e) => {
         const { name, value } = e.target;
 
+        if (name === "phone") {
+            const formattedValue = formatPhone(value);
+            setFormData(prev => ({ ...prev, [name]: formattedValue }));
+        }
+
         // Formatação especial para CPF
         if (name === "billingCpf") {
             const formattedValue = formatCPF(value);
@@ -581,6 +596,9 @@ function CheckoutForm({ hasFreeTrialOffer }) {
         if (!user) {
             if (!formData.fullName.trim()) newErrors.fullName = "Nome completo é obrigatório";
 
+            if (!formData.phone.trim()) newErrors.phone = "Telefone é obrigatório";
+            else if (formData.phone.replace(/\D/g, '').length < 10) newErrors.phone = "Telefone inválido";
+
             if (!formData.email.trim()) newErrors.email = "Email é obrigatório";
             else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Email inválido";
 
@@ -615,6 +633,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 const userData = {
                     fullName: formData.fullName.trim(),
                     email: formData.email,
+                    phone: formData.phone,
                     assinouPlano: false,
                     createdAt: new Date(),
                     checkoutStarted: true
@@ -821,6 +840,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 },
                 cardHolderName: formData.cardholderName,
                 cpf: formData.billingCpf,
+                phone: formData.phone,
                 checkoutStarted: true,
                 fullName: formData.fullName
             };
@@ -1198,6 +1218,40 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                     {/* Campos de senha apenas se o usuário não estiver logado */}
                                     {!user && (
                                         <>
+                                            <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                                Telefone
+                                            </Typography>
+                                            <TextField
+                                                fullWidth
+                                                value={formData.phone}
+                                                name="phone"
+                                                onChange={handleInputChange}
+                                                placeholder="35 99740 3092"
+                                                variant="outlined"
+                                                error={Boolean(errors.phone)}
+                                                helperText={errors.phone || ""}
+                                                disabled={authLoading}
+                                                sx={{
+                                                    mb: 2,
+                                                    '& .MuiOutlinedInput-root': {
+                                                        backgroundColor: '#1F1F1F',
+                                                        color: 'white',
+                                                        '& fieldset': {
+                                                            borderColor: '#3F3F3F',
+                                                        },
+                                                        '&:hover fieldset': {
+                                                            borderColor: '#5F5F5F',
+                                                        },
+                                                        '&.Mui-focused fieldset': {
+                                                            borderColor: '#7F7F7F',
+                                                        },
+                                                    },
+                                                    '& .MuiFormHelperText-root': {
+                                                        color: '#FF4747',
+                                                    }
+                                                }}
+                                            />
+
                                             <Typography variant="body2" sx={{ mb: 0.5, fontSize: '1.1rem' }}>
                                                 Senha
                                             </Typography>
