@@ -5,14 +5,18 @@ import {
     Box,
     Typography,
     Chip,
-    Button,
-    CircularProgress,
-    useTheme,
-    alpha,
     Paper,
     Grid,
     Tooltip,
-    IconButton
+    IconButton,
+    CircularProgress,
+    useTheme,
+    alpha,
+    Divider,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    Alert
 } from "@mui/material";
 
 // Icons
@@ -23,6 +27,9 @@ import ImageIcon from "@mui/icons-material/Image";
 import FileIcon from "@mui/icons-material/InsertDriveFile";
 import AttachFileOutlinedIcon from "@mui/icons-material/AttachFileOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import FileDownloadDoneIcon from '@mui/icons-material/FileDownloadDone';
 
 // Format date
 import { format } from 'date-fns';
@@ -31,14 +38,12 @@ import { ptBR } from 'date-fns/locale';
 // Firebase Service
 import FirebaseService from "../../../lib/firebaseService";
 
-// Exam results table
-import ExamTable from "./examTable";
-
 const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
     const theme = useTheme();
     const [loading, setLoading] = useState(false);
     const [normalizedData, setNormalizedData] = useState(null);
     const [error, setError] = useState(null);
+    const [expandedCategory, setExpandedCategory] = useState(null);
 
     useEffect(() => {
         const normalizeData = async () => {
@@ -103,6 +108,12 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
 
                 console.log("Normalized data:", normalized);
                 setNormalizedData(normalized);
+
+                // Determine first category with results to expand
+                const firstCategoryWithResults = findFirstCategoryWithResults(normalized.results);
+                if (firstCategoryWithResults) {
+                    setExpandedCategory(firstCategoryWithResults);
+                }
             } catch (error) {
                 console.error("Error normalizing exam data:", error);
                 setError(`Erro ao processar dados: ${error.message}`);
@@ -114,23 +125,95 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
         normalizeData();
     }, [examData]);
 
+    // Find first category with results
+    const findFirstCategoryWithResults = (results) => {
+        if (!results) return null;
+
+        for (const categoryId of Object.keys(results)) {
+            if (Object.keys(results[categoryId]).length > 0) {
+                return categoryId;
+            }
+        }
+        return null;
+    };
+
+    // Get exam categories configuration
+    const getExamCategories = () => {
+        return [
+            {
+                id: "LabGerais",
+                title: "Exames Laboratoriais Gerais",
+                icon: "🩸",
+                color: "#EF4444"
+            },
+            {
+                id: "PerfilLipidico",
+                title: "Perfil Lipídico",
+                icon: "⭕️",
+                color: "#F97316"
+            },
+            {
+                id: "Hepaticos",
+                title: "Exames Hepáticos e Pancreáticos",
+                icon: "🫁",
+                color: "#EC4899"
+            },
+            {
+                id: "Inflamatorios",
+                title: "Inflamatórios e Imunológicos",
+                icon: "🔬",
+                color: "#EAB308"
+            },
+            {
+                id: "Hormonais",
+                title: "Hormonais",
+                icon: "⚗️",
+                color: "#8B5CF6"
+            },
+            {
+                id: "Vitaminas",
+                title: "Vitaminas e Minerais",
+                icon: "💊",
+                color: "#F59E0B"
+            },
+            {
+                id: "Infecciosos",
+                title: "Infecciosos / Sorologias",
+                icon: "🦠",
+                color: "#06B6D4"
+            },
+            {
+                id: "Tumorais",
+                title: "Marcadores Tumorais",
+                icon: "🔍",
+                color: "#F43F5E"
+            },
+            {
+                id: "Cardiacos",
+                title: "Cardíacos e Musculares",
+                icon: "❤️",
+                color: "#10B981"
+            },
+            {
+                id: "Imagem",
+                title: "Imagem e Diagnóstico",
+                icon: "📷",
+                color: "#6366F1"
+            },
+            {
+                id: "Outros",
+                title: "Outros Exames",
+                icon: "🧪",
+                color: "#3B82F6"
+            }
+        ];
+    };
+
     // Get icon and color for exam category
     const getCategoryInfo = (categoryId) => {
-        const categories = {
-            "LabGerais": { icon: "🩸", name: "Exames Laboratoriais Gerais", color: "#EF4444" },
-            "PerfilLipidico": { icon: "⭕️", name: "Perfil Lipídico", color: "#F97316" },
-            "Hepaticos": { icon: "🫁", name: "Exames Hepáticos e Pancreáticos", color: "#EC4899" },
-            "Inflamatorios": { icon: "🔬", name: "Inflamatórios e Imunológicos", color: "#EAB308" },
-            "Hormonais": { icon: "⚗️", name: "Hormonais", color: "#8B5CF6" },
-            "Vitaminas": { icon: "💊", name: "Vitaminas e Minerais", color: "#F59E0B" },
-            "Infecciosos": { icon: "🦠", name: "Infecciosos / Sorologias", color: "#06B6D4" },
-            "Tumorais": { icon: "🔍", name: "Marcadores Tumorais", color: "#F43F5E" },
-            "Cardiacos": { icon: "❤️", name: "Cardíacos e Musculares", color: "#10B981" },
-            "Imagem": { icon: "📷", name: "Imagem e Diagnóstico", color: "#6366F1" },
-            "Outros": { icon: "🧪", name: "Outros Exames", color: "#3B82F6" }
-        };
-
-        return categories[categoryId] || { icon: "🔬", name: "Exame", color: typeColor?.main || "#F59E0B" };
+        const categories = getExamCategories();
+        const category = categories.find(cat => cat.id === categoryId);
+        return category || { icon: "🔬", name: "Exame", color: typeColor?.main || "#F59E0B" };
     };
 
     // Function to get file icon
@@ -168,20 +251,14 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
     if (error) {
         return (
             <Box sx={{ py: 3, color: 'error.main' }}>
-                <Typography variant="h6" color="error" gutterBottom>
-                    Erro ao carregar o exame
-                </Typography>
-                <Typography variant="body1">
-                    {error}
-                </Typography>
-                <Button
-                    variant="outlined"
-                    color="primary"
-                    sx={{ mt: 2 }}
-                    onClick={() => window.location.reload()}
-                >
-                    Tentar novamente
-                </Button>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                        Erro ao carregar o exame
+                    </Typography>
+                    <Typography variant="body2">
+                        {error}
+                    </Typography>
+                </Alert>
             </Box>
         );
     }
@@ -203,6 +280,32 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
 
     // Check if there are exam results
     const hasResults = normalizedData.results && Object.keys(normalizedData.results).length > 0;
+
+    // Count total exams with results
+    const countTotalExamsWithResults = () => {
+        let count = 0;
+        if (!normalizedData.results) return count;
+
+        Object.values(normalizedData.results).forEach(category => {
+            count += Object.keys(category).length;
+        });
+
+        return count;
+    };
+
+    // Get categories that have results
+    const getCategoriesWithResults = () => {
+        const categories = getExamCategories();
+        return categories.filter(category =>
+            normalizedData.results[category.id] &&
+            Object.keys(normalizedData.results[category.id]).length > 0
+        );
+    };
+
+    // Handle category expansion
+    const handleToggleCategory = (categoryId) => {
+        setExpandedCategory(expandedCategory === categoryId ? null : categoryId);
+    };
 
     return (
         <Box sx={{ pt: 1, pb: 2, width: '100%' }}>
@@ -236,7 +339,7 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
                         {normalizedData.title || "Exame sem título"}
                     </Typography>
                     <Chip
-                        label={categoryInfo.name}
+                        label={categoryInfo.title}
                         size="small"
                         sx={{
                             backgroundColor: alpha(categoryColor, 0.1),
@@ -268,7 +371,7 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
                 </Paper>
             )}
 
-            {/* Exam Results - if available */}
+            {/* Exam Results - if available, show only filled fields */}
             {hasResults && (
                 <Paper elevation={1} sx={{
                     p: 2,
@@ -276,23 +379,163 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
                     borderLeft: `4px solid ${categoryColor}`,
                     mb: 3
                 }}>
-                    <Typography
-                        variant="subtitle1"
-                        sx={{
-                            fontWeight: 600,
-                            color: categoryColor,
-                            mb: 2,
-                            display: 'flex',
-                            alignItems: 'center'
-                        }}
-                    >
-                        <BiotechIcon sx={{ mr: 1 }} />
-                        Resultados do Exame
-                    </Typography>
-                    <ExamTable
-                        results={normalizedData.results}
-                        readOnly={true}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography
+                            variant="subtitle1"
+                            sx={{
+                                fontWeight: 600,
+                                color: categoryColor,
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <BiotechIcon sx={{ mr: 1 }} />
+                            Resultados do Exame
+                        </Typography>
+
+                        <Chip
+                            icon={<FileDownloadDoneIcon />}
+                            label={`${countTotalExamsWithResults()} resultados`}
+                            size="small"
+                            color="primary"
+                            sx={{ height: 28 }}
+                        />
+                    </Box>
+
+                    <Divider sx={{ mb: 2 }} />
+
+                    {/* Only show categories that have results */}
+                    {getCategoriesWithResults().map(category => {
+                        const categoryResults = normalizedData.results[category.id] || {};
+                        const filledExams = Object.entries(categoryResults);
+                        const filledCount = filledExams.length;
+
+                        if (filledCount === 0) return null;
+
+                        return (
+                            <Accordion
+                                key={category.id}
+                                expanded={expandedCategory === category.id}
+                                onChange={() => handleToggleCategory(category.id)}
+                                sx={{
+                                    mb: 2,
+                                    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
+                                    borderRadius: '12px !important',
+                                    overflow: 'hidden',
+                                    '&:before': {
+                                        display: 'none',
+                                    },
+                                    border: `1px solid ${alpha(category.color, 0.5)}`
+                                }}
+                            >
+                                <AccordionSummary
+                                    expandIcon={<ExpandMoreIcon />}
+                                    sx={{
+                                        backgroundColor: alpha(category.color, 0.15),
+                                        borderLeft: `4px solid ${category.color}`,
+                                        '&.Mui-expanded': {
+                                            borderBottom: `1px solid ${alpha(category.color, 0.2)}`
+                                        },
+                                        '& .MuiAccordionSummary-content': {
+                                            width: '100%',
+                                            margin: '12px 0',
+                                        },
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <Box component="span" sx={{ mr: 1.5, fontSize: '20px' }}>
+                                                {category.icon}
+                                            </Box>
+                                            <Typography sx={{ fontWeight: 600, color: category.color }}>
+                                                {category.title}
+                                            </Typography>
+                                        </Box>
+
+                                        <Chip
+                                            label={`${filledCount} exame${filledCount !== 1 ? 's' : ''}`}
+                                            size="small"
+                                            sx={{
+                                                backgroundColor: 'white',
+                                                color: category.color,
+                                                fontWeight: 500,
+                                                fontSize: '11px',
+                                                height: '22px'
+                                            }}
+                                        />
+                                    </Box>
+                                </AccordionSummary>
+
+                                <AccordionDetails sx={{ p: 0 }}>
+                                    <Paper elevation={0} sx={{ width: '100%', borderRadius: 0 }}>
+                                        {filledExams.map(([examName, value], index) => (
+                                            <Box
+                                                key={examName}
+                                                sx={{
+                                                    p: 2,
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    borderBottom: index < filledExams.length - 1 ?
+                                                        `1px solid ${alpha(category.color, 0.1)}` : 'none',
+                                                    backgroundColor: alpha(category.color, 0.03),
+                                                    '&:hover': {
+                                                        backgroundColor: alpha(category.color, 0.05)
+                                                    }
+                                                }}
+                                            >
+                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                    <Typography
+                                                        sx={{
+                                                            fontWeight: 500,
+                                                            color: theme.palette.grey[800],
+                                                            display: 'flex',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        {examName}
+
+                                                        {/* Check if it's a non-standard exam detected by AI */}
+                                                        {!getExamCategories()
+                                                            .find(cat => cat.id === category.id)?.exams
+                                                            ?.includes(examName) && (
+                                                            <Tooltip title="Detectado pela IA">
+                                                                <AutoAwesomeIcon
+                                                                    fontSize="small"
+                                                                    color="primary"
+                                                                    sx={{ ml: 1, fontSize: 16 }}
+                                                                />
+                                                            </Tooltip>
+                                                        )}
+                                                    </Typography>
+                                                </Box>
+
+                                                <Typography
+                                                    sx={{
+                                                        fontWeight: 600,
+                                                        color: theme.palette.grey[700],
+                                                        textAlign: 'right',
+                                                        ml: 2
+                                                    }}
+                                                >
+                                                    {value}
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                    </Paper>
+                                </AccordionDetails>
+                            </Accordion>
+                        );
+                    })}
+
+                    {/* When no categories have results */}
+                    {getCategoriesWithResults().length === 0 && (
+                        <Box sx={{ textAlign: 'center', py: 3 }}>
+                            <Typography color="text.secondary">
+                                Nenhum resultado de exame encontrado.
+                            </Typography>
+                        </Box>
+                    )}
                 </Paper>
             )}
 
@@ -311,68 +554,72 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
                         </Typography>
                     </Box>
                     <Grid container spacing={2}>
-                        {normalizedData.attachments.map((attachment, index) => (
-                            <Grid item xs={12} sm={6} md={4} key={index}>
-                                <Paper
-                                    elevation={0}
-                                    sx={{
-                                        p: 1.5,
-                                        border: '1px solid #EAECEF',
-                                        borderRadius: '8px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        cursor: 'pointer',
-                                        '&:hover': {
-                                            backgroundColor: alpha(categoryColor, 0.05),
-                                            borderColor: alpha(categoryColor, 0.3),
-                                        }
-                                    }}
-                                    onClick={() => onOpenFile && onOpenFile(attachment)}
-                                >
-                                    <Box sx={{
-                                        width: 40,
-                                        height: 40,
-                                        borderRadius: '8px',
-                                        backgroundColor: alpha(categoryColor, 0.1),
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        mr: 1.5
-                                    }}>
-                                        {getFileIcon(attachment.fileType, attachment.fileName)}
-                                    </Box>
-                                    <Box sx={{ flex: 1, overflow: 'hidden' }}>
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                fontWeight: 500,
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap'
-                                            }}
-                                        >
-                                            {attachment.fileName}
-                                        </Typography>
-                                        <Typography
-                                            variant="caption"
-                                            sx={{ color: 'text.secondary' }}
-                                        >
-                                            {attachment.fileSize || ''}
-                                        </Typography>
-                                    </Box>
-                                    <Tooltip title="Visualizar">
-                                        <IconButton
-                                            size="small"
-                                            color="primary"
-                                            component="span" // Using span to avoid button inside button
-                                            sx={{ display: 'flex' }}
-                                        >
-                                            <VisibilityIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
-                                </Paper>
-                            </Grid>
-                        ))}
+                        {normalizedData.attachments.map((attachment, index) => {
+                            const fileInfo = getFileIcon(attachment.fileType, attachment.fileName);
+
+                            return (
+                                <Grid item xs={12} sm={6} md={4} key={index}>
+                                    <Paper
+                                        elevation={0}
+                                        sx={{
+                                            p: 1.5,
+                                            border: '1px solid #EAECEF',
+                                            borderRadius: '8px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            cursor: 'pointer',
+                                            '&:hover': {
+                                                backgroundColor: alpha(categoryColor, 0.05),
+                                                borderColor: alpha(categoryColor, 0.3),
+                                            }
+                                        }}
+                                        onClick={() => onOpenFile && onOpenFile(attachment)}
+                                    >
+                                        <Box sx={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: '8px',
+                                            backgroundColor: alpha(categoryColor, 0.1),
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            mr: 1.5
+                                        }}>
+                                            {fileInfo.icon}
+                                        </Box>
+                                        <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    fontWeight: 500,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                {attachment.fileName}
+                                            </Typography>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{ color: 'text.secondary' }}
+                                            >
+                                                {attachment.fileSize || ''}
+                                            </Typography>
+                                        </Box>
+                                        <Tooltip title="Visualizar">
+                                            <IconButton
+                                                size="small"
+                                                color="primary"
+                                                component="span" // Using span to avoid button inside button
+                                                sx={{ display: 'flex' }}
+                                            >
+                                                <VisibilityIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </Paper>
+                                </Grid>
+                            );
+                        })}
                     </Grid>
                 </Paper>
             )}
