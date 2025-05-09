@@ -777,7 +777,26 @@ const ViewNoteDialog = ({
 
     const handleEdit = () => {
         if (onEdit) {
-            onEdit(noteData);
+            // Se for um exame, extrair dados completos do exame
+            if (noteType === 'Exame') {
+                // Garantir que temos todos os dados necessários
+                const fullExamData = {
+                    ...noteData,
+                    id: noteData.id || noteData.exameId,  // Usar ID do exame ou da nota
+                    title: noteData.title || noteData.noteTitle,
+                    examDate: noteData.examDate || noteData.consultationDate || noteData.createdAt,
+                    category: noteData.category || "LabGerais",
+                    observations: noteData.observations || noteData.noteText,
+                    results: noteData.results || {},
+                    attachments: noteData.attachments || []
+                };
+
+                console.log("Editando exame com dados completos:", fullExamData);
+                onEdit(fullExamData, noteType);
+            } else {
+                // Para outros tipos de nota, passar os dados normalmente
+                onEdit(noteData);
+            }
         }
     };
 

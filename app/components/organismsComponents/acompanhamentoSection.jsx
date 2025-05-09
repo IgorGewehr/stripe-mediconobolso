@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import AnamneseDialog from "./anamneseDialog";
 import ReceitaDialog from "./receitasDialog";
 import ExamDialog from "./examDialog";
+import FirebaseService from "../../../lib/firebaseService";
 
 // Paleta de cores (pode extrair para outro arquivo se quiser)
 const themeColors = {

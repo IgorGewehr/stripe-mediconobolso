@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef, useMemo} from 'react';
 import {
     Dialog,
     DialogContent,
@@ -21,7 +21,14 @@ import {
     MenuItem,
     Tooltip,
     Snackbar,
-    Alert
+    Alert,
+    Stepper,
+    Step,
+    StepLabel,
+    Skeleton,
+    Badge,
+    Backdrop,
+    LinearProgress
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -34,8 +41,16 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import KeyboardArrowDownOutlinedIcon from '@mui/icons-material/KeyboardArrowDownOutlined';
+import KeyboardArrowUpOutlinedIcon from '@mui/icons-material/KeyboardArrowUpOutlined';
 import BiotechIcon from '@mui/icons-material/Biotech';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from '../../../lib/firebaseService';
@@ -58,10 +73,19 @@ const theme = createTheme({
         },
         success: {
             main: '#22C55E',
+            light: '#DCFCE7',
         },
         error: {
             main: '#F04438',
             light: '#FEE4E2',
+        },
+        warning: {
+            main: '#F79009',
+            light: '#FEF0C7',
+        },
+        info: {
+            main: '#3B82F6',
+            light: '#DBEAFE',
         },
         examCategory: {
             LabGerais: {
@@ -185,6 +209,35 @@ const theme = createTheme({
     }
 });
 
+const OcrTipsDialog = ({ open, onClose }) => (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogContent sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                Dicas para melhorar o reconhecimento de texto
+            </Typography>
+
+            <Box component="ul" sx={{ pl: 3 }}>
+                <Typography component="li" sx={{ mb: 1 }}>Certifique-se que o texto está bem iluminado e nítido</Typography>
+                <Typography component="li" sx={{ mb: 1 }}>Evite reflexos, dobras ou sombras no documento</Typography>
+                <Typography component="li" sx={{ mb: 1 }}>Posicione a câmera diretamente acima do documento</Typography>
+                <Typography component="li" sx={{ mb: 1 }}>Use um fundo com contraste com o documento</Typography>
+                <Typography component="li" sx={{ mb: 1 }}>Para PDFs escaneados, use uma resolução mínima de 300 DPI</Typography>
+                <Typography component="li" sx={{ mb: 1 }}>Documentos impressos geralmente funcionam melhor que manuscritos</Typography>
+                <Typography component="li" sx={{ mb: 1 }}>Tente recortar apenas a área que contém os resultados do exame</Typography>
+            </Box>
+
+            <Button
+                variant="contained"
+                fullWidth
+                onClick={onClose}
+                sx={{ mt: 2 }}
+            >
+                Entendi
+            </Button>
+        </DialogContent>
+    </Dialog>
+);
+
 // Styled Dialog with smoother transitions
 const StyledDialog = ({ open, onClose, children, ...props }) => (
     <Dialog
@@ -268,89 +321,6 @@ const SecondaryButton = ({ children, ...props }) => (
     </Button>
 );
 
-// Attachment chip with better styling
-const AttachmentChip = ({ file, onOpen, onRemove, disabled }) => {
-    const getFileIcon = (fileType, fileName) => {
-        if (!fileType && !fileName) return null;
-
-        if (fileType && fileType.startsWith('image/') ||
-            (fileName && (fileName.toLowerCase().endsWith('.jpg') ||
-                fileName.toLowerCase().endsWith('.jpeg') ||
-                fileName.toLowerCase().endsWith('.png') ||
-                fileName.toLowerCase().endsWith('.gif')))) {
-            return '📷';
-        }
-
-        if (fileType === 'application/pdf' || (fileName && fileName.toLowerCase().endsWith('.pdf'))) {
-            return '📄';
-        }
-
-        return '📎';
-    };
-
-    return (
-        <Box
-            sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                backgroundColor: '#F6F7F9',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                margin: '0 8px 8px 0',
-                fontWeight: 500,
-                fontSize: '14px',
-                color: '#64748B',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                    backgroundColor: '#EAECEF',
-                }
-            }}
-        >
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                }}
-                onClick={onOpen}
-            >
-                <Box sx={{ mr: 1.5, fontSize: '16px' }}>
-                    {getFileIcon(file.fileType, file.fileName)}
-                </Box>
-                <Typography sx={{ color: '#475467', fontWeight: 500 }}>
-                    {file.fileName}
-                </Typography>
-                <Typography
-                    component="span"
-                    sx={{
-                        fontSize: '13px',
-                        color: '#94A3B8',
-                        ml: 1,
-                        fontWeight: 400
-                    }}
-                >
-                    {file.fileSize}
-                </Typography>
-            </Box>
-            <IconButton
-                size="small"
-                onClick={onRemove}
-                disabled={disabled}
-                sx={{
-                    ml: 1,
-                    p: 0.5,
-                    color: '#94A3B8',
-                    '&:hover': {
-                        color: '#F04438',
-                        backgroundColor: alpha('#F04438', 0.1),
-                    }
-                }}
-            >
-                <CloseIcon fontSize="small" sx={{ fontSize: '16px' }} />
-            </IconButton>
-        </Box>
-    );
-};
 
 // Exam categories (matches the categories in the ExamTable component)
 const examCategories = [
@@ -366,6 +336,50 @@ const examCategories = [
     { id: "Imagem", name: "Imagem e Diagnóstico", icon: "📷" },
     { id: "Outros", name: "Outros Exames", icon: "🧪" }
 ];
+
+// Adicione este componente antes do ExamDialog principal
+const ErrorFeedback = ({ message, onDismiss }) => (
+    <Paper
+        elevation={0}
+        sx={{
+            p: 2,
+            mb: 3,
+            borderRadius: '8px',
+            border: `1px solid ${theme.palette.error.light}`,
+            backgroundColor: alpha(theme.palette.error.light, 0.3),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+        }}
+    >
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <ErrorOutlineIcon color="error" sx={{ mr: 1.5 }} />
+            <Typography sx={{ color: theme.palette.error.dark }}>
+                {message || "Ocorreu um erro. Por favor, tente novamente."}
+            </Typography>
+        </Box>
+
+        {onDismiss && (
+            <IconButton size="small" onClick={onDismiss} sx={{ ml: 1 }}>
+                <CloseIcon fontSize="small" />
+            </IconButton>
+        )}
+    </Paper>
+);
+
+
+
+// E atualize a função showNotification para lidar com erros persistentes
+const showNotification = (message, severity = 'success') => {
+    // Se for um erro crítico, exibir no componente de erro em vez de notificação
+    if (severity === 'error' && message.includes('crítico')) {
+        setErrorMessage(message);
+    } else {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    }
+};
 
 // Main component for exam dialog
 const ExamDialog = ({
@@ -389,14 +403,19 @@ const ExamDialog = ({
     const [isDragging, setIsDragging] = useState(false);
     const [showExamTable, setShowExamTable] = useState(false);
     const [examResults, setExamResults] = useState({});
+    const [currentProcessingFile, setCurrentProcessingFile] = useState(null);
 
     const [isLoading, setIsLoading] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
     const [isDeleteConfirm, setIsDeleteConfirm] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(null);
+    const [processingProgress, setProcessingProgress] = useState(0);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+    const [showTips, setShowTips] = useState(false);
+    const [showOcrTips, setShowOcrTips] = useState(false);
+    const [errorMessage, setErrorMessage] = useState(null);
 
     // Função para mostrar notificações
     const showNotification = (message, severity = 'success') => {
@@ -404,6 +423,21 @@ const ExamDialog = ({
         setSnackbarSeverity(severity);
         setSnackbarOpen(true);
     };
+
+    // Dicas de processamento
+    // Dicas de processamento
+    const processingTips = [
+        "Os melhores resultados são obtidos com PDFs gerados digitalmente, não escaneados.",
+        "PDFs com texto selecionável produzem resultados melhores e mais rápidos.",
+        "Arquivos DOCX também são suportados para processamento automático.",
+        "Imagens de exames (JPG, PNG, GIF) são processadas usando OCR para extrair os dados.",
+        "Para melhores resultados com imagens, certifique-se que o texto esteja nítido e bem iluminado.",
+        "Evite imagens com reflexos, sombras ou texto borrado para melhor precisão.",
+        "O processamento extrai dados de exames laboratoriais de todas as categorias disponíveis.",
+        "Após o processamento, você pode ajustar manualmente quaisquer valores incorretos.",
+        "Arquivos muito grandes ou complexos podem ser truncados para processamento.",
+        "Se o processamento falhar, verifique a qualidade do arquivo e tente novamente."
+    ];
 
     // Initialize form with exam data in edit mode
     useEffect(() => {
@@ -432,6 +466,7 @@ const ExamDialog = ({
         setIsLoading(false);
         setIsSaved(false);
         setIsDeleteConfirm(false);
+        setCurrentProcessingFile(null);
     }, [exam, open]);
 
     // Function to format date for display
@@ -445,185 +480,555 @@ const ExamDialog = ({
         }
     };
 
-    // NOVA FUNÇÃO: Processar arquivo PDF com IA
-    const processExamPDF = async (file) => {
-        // Verificar se é um arquivo PDF
-        if (file.type !== 'application/pdf' &&
-            !file.name.toLowerCase().endsWith('.pdf')) {
-            showNotification("Por favor, selecione um arquivo PDF válido", "error");
+    // Adicione esta função utilitária no início do componente ExamDialog
+    const detectFileType = (file) => {
+        try {
+            // Verificar se temos um objeto de arquivo válido
+            if (!file) return { isPdf: false, isDocx: false, isImage: false, isSupported: false };
+
+            // Obter tipo a partir do MIME type ou nome do arquivo
+            const fileName = file.fileName || file.name || '';
+            const fileType = file.fileType || file.type || '';
+            const fileExt = fileName.toLowerCase().split('.').pop();
+
+            // Verificar cada tipo
+            const isPdf = fileType === 'application/pdf' || fileExt === 'pdf';
+            const isDocx = fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                fileExt === 'docx' || fileExt === 'doc';
+            const isImage = fileType.startsWith('image/') ||
+                ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExt);
+
+            return {
+                isPdf,
+                isDocx,
+                isImage,
+                isSupported: isPdf || isDocx || isImage
+            };
+        } catch (error) {
+            console.error("Erro ao detectar tipo de arquivo:", error);
+            // Em caso de erro, retornar valor padrão seguro
+            return { isPdf: false, isDocx: false, isImage: false, isSupported: false };
+        }
+    };
+
+    // Attachment chip with better styling
+    const AttachmentChip = ({ file, onOpen, onRemove, onProcess, disabled }) => {
+        // Usar a função detectFileType para segurança
+        const { isPdf, isDocx, isImage } = detectFileType(file);
+
+        const getFileIcon = () => {
+            try {
+                if (isPdf) return <PictureAsPdfIcon sx={{ color: "#EF4444", fontSize: '18px' }} />;
+                if (isDocx) return <DescriptionOutlinedIcon sx={{ color: "#3B82F6", fontSize: '18px' }} />;
+                if (isImage) return <ImageOutlinedIcon sx={{ color: "#10B981", fontSize: '18px' }} />;
+                return <AttachFileOutlinedIcon sx={{ color: "#64748B", fontSize: '18px' }} />;
+            } catch (error) {
+                console.error("Erro ao renderizar ícone:", error);
+                // Fallback em caso de erro
+                return <AttachFileOutlinedIcon sx={{ color: "#64748B", fontSize: '18px' }} />;
+            }
+        };
+
+        // Função segura para clicar no anexo
+        const handleOpenSafely = () => {
+            try {
+                if (onOpen) onOpen();
+            } catch (error) {
+                console.error("Erro ao abrir anexo:", error);
+                // Mostra feedback visual em vez de crashar
+                alert("Não foi possível abrir este anexo. Por favor, tente novamente.");
+            }
+        };
+
+        // Função segura para remover o anexo
+        const handleRemoveSafely = () => {
+            try {
+                if (onRemove) onRemove();
+            } catch (error) {
+                console.error("Erro ao remover anexo:", error);
+                alert("Não foi possível remover este anexo. Por favor, tente novamente.");
+            }
+        };
+
+        // Função segura para processar o anexo
+        const handleProcessSafely = () => {
+            try {
+                if (onProcess) onProcess();
+            } catch (error) {
+                console.error("Erro ao processar anexo:", error);
+                alert("Não foi possível processar este anexo. Por favor, tente novamente.");
+            }
+        };
+
+        return (
+            <Box
+                sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    backgroundColor: '#F6F7F9',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    margin: '0 8px 8px 0',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    color: '#64748B',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                        backgroundColor: '#EAECEF',
+                    }
+                }}
+            >
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                    }}
+                    onClick={handleOpenSafely}
+                >
+                    <Box sx={{ mr: 1.5, fontSize: '16px', display: 'flex', alignItems: 'center' }}>
+                        {getFileIcon()}
+                    </Box>
+                    <Typography sx={{ color: '#475467', fontWeight: 500 }}>
+                        {file.fileName || "Anexo"}
+                    </Typography>
+                    <Typography
+                        component="span"
+                        sx={{
+                            fontSize: '13px',
+                            color: '#94A3B8',
+                            ml: 1,
+                            fontWeight: 400
+                        }}
+                    >
+                        {file.fileSize || ""}
+                    </Typography>
+                </Box>
+
+                {/* Mostrar botão de processar para PDF/DOCX/Imagens */}
+                {(isPdf || isDocx || isImage) && onProcess && (
+                    <Tooltip title="Processar com IA">
+                        <IconButton
+                            size="small"
+                            onClick={handleProcessSafely}
+                            disabled={disabled}
+                            color="primary"
+                            sx={{
+                                ml: 0.5,
+                                p: 0.5,
+                                '&:hover': {
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                }
+                            }}
+                        >
+                            <AutoAwesomeIcon fontSize="small" sx={{ fontSize: '16px' }} />
+                        </IconButton>
+                    </Tooltip>
+                )}
+
+                <Tooltip title="Remover anexo">
+                    <IconButton
+                        size="small"
+                        onClick={handleRemoveSafely}
+                        disabled={disabled}
+                        sx={{
+                            ml: 0.5,
+                            p: 0.5,
+                            color: '#94A3B8',
+                            '&:hover': {
+                                color: '#F04438',
+                                backgroundColor: alpha('#F04438', 0.1),
+                            }
+                        }}
+                    >
+                        <CloseIcon fontSize="small" sx={{ fontSize: '16px' }} />
+                    </IconButton>
+                </Tooltip>
+            </Box>
+        );
+    };
+
+    // NOVA FUNÇÃO: Processar arquivo PDF/DOCX/Imagem com IA
+    const processExamFile = async (file) => {
+        // Se não recebemos um arquivo válido, não tente processar
+        if (!file) {
+            showNotification("Arquivo inválido", "error");
             return false;
         }
 
-        setIsLoading(true);
-        setUploadProgress('Processando arquivo de exame com IA...');
-
         try {
-            // Enviar o arquivo diretamente para a API processar
-            const formData = new FormData();
-            formData.append('file', file);
+            // Verificar se é um arquivo processável usando nossa função de detecção segura
+            const { isPdf, isDocx, isImage, isSupported } = detectFileType(file);
 
-            // Chamar a API exame com o arquivo
-            const response = await fetch('/api/exame', {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `Erro na API: ${response.status}`);
+            if (!isSupported) {
+                showNotification("Por favor, selecione um arquivo PDF, DOCX ou imagem válida", "warning");
+                return false;
             }
 
-            const result = await response.json();
+            setIsLoading(true);
 
-            if (result.success && result.data) {
-                // Atualizar os resultados no estado
-                setExamResults(result.data);
-
-                // Mostrar a tabela de resultados automaticamente
-                setShowExamTable(true);
-
-                // Sugerir título baseado na categoria ou data
-                if (!title.trim()) {
-                    const category = examCategories.find(cat => cat.id === examCategory);
-                    const categoryName = category ? category.name : '';
-                    const formattedDate = formatDateDisplay(examDate);
-                    setTitle(`${categoryName} - ${formattedDate}`);
-                }
-
-                // Adicionar observação sobre processamento automático
-                if (!observations.includes('Processado automaticamente')) {
-                    setObservations(prev =>
-                        `${prev ? prev + '\n\n' : ''}Processado automaticamente pela IA em ${new Date().toLocaleString()}.`
-                    );
-                }
-
-                showNotification("Arquivo processado com sucesso! Resultados extraídos.", "success");
-                return true;
+            // Feedback específico por tipo de arquivo
+            if (isImage) {
+                setUploadProgress(`Processando imagem com OCR...`);
+            } else if (isPdf) {
+                setUploadProgress(`Processando PDF com IA...`);
+            } else if (isDocx) {
+                setUploadProgress(`Processando DOCX com IA...`);
             } else {
-                throw new Error("Falha ao processar o resultado");
+                setUploadProgress(`Processando arquivo...`);
             }
-        } catch (error) {
-            console.error('Erro ao processar o arquivo:', error);
-            showNotification(`Não foi possível processar o arquivo: ${error.message}`, "error");
-            return false;
-        } finally {
+
+            setCurrentProcessingFile(file.name || file.fileName || "arquivo");
+
+            // Iniciar animação de progresso
+            setProcessingProgress(0);
+            const progressInterval = setInterval(() => {
+                setProcessingProgress(prev => {
+                    try {
+                        // Simular progresso até 90% (os últimos 10% quando a resposta chega)
+                        const newProgress = prev + (Math.random() * 2);
+                        return newProgress >= 90 ? 90 : newProgress;
+                    } catch (error) {
+                        console.error("Erro ao atualizar progresso:", error);
+                        return prev; // Em caso de erro, manter o valor anterior
+                    }
+                });
+            }, 300);
+
+            try {
+                // Enviar o arquivo diretamente para a API processar
+                const formData = new FormData();
+                try {
+                    // Tentar adicionar o arquivo ao FormData
+                    formData.append('file', file);
+                } catch (formError) {
+                    console.error("Erro ao criar FormData:", formError);
+
+                    // Se falhar, tentar com um Blob ou outro método
+                    if (file.arrayBuffer) {
+                        try {
+                            const buffer = await file.arrayBuffer();
+                            const blob = new Blob([buffer], { type: file.type || 'application/octet-stream' });
+                            formData.append('file', blob, file.name || file.fileName || 'arquivo');
+                        } catch (blobError) {
+                            console.error("Erro ao criar Blob:", blobError);
+                            throw new Error("Não foi possível processar este arquivo");
+                        }
+                    } else {
+                        throw new Error("Formato de arquivo não suportado");
+                    }
+                }
+
+                // Chamar a API exame com o arquivo
+                let response;
+                try {
+                    response = await fetch('/api/exame', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                } catch (fetchError) {
+                    console.error("Erro na requisição:", fetchError);
+                    throw new Error("Falha na conexão com o servidor. Verifique sua internet.");
+                }
+
+                clearInterval(progressInterval);
+                setProcessingProgress(100);
+
+                // Atraso para o usuário ver que chegou a 100%
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                if (!response.ok) {
+                    let errorMessage = "Erro ao processar arquivo";
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorData.details || `Erro na API: ${response.status}`;
+                    } catch (jsonError) {
+                        console.error("Erro ao processar resposta de erro:", jsonError);
+                        errorMessage = `Erro no servidor: ${response.status}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch (jsonError) {
+                    console.error("Erro ao processar resposta JSON:", jsonError);
+                    throw new Error("Resposta inválida do servidor");
+                }
+
+                if (result.success && result.data) {
+                    try {
+                        // Atualizar os resultados no estado
+                        setExamResults(result.data);
+
+                        // Mostrar a tabela de resultados automaticamente
+                        setShowExamTable(true);
+
+                        // Sugerir título baseado na categoria ou data
+                        if (!title.trim()) {
+                            try {
+                                const category = examCategories.find(cat => cat.id === examCategory);
+                                const categoryName = category ? category.name : '';
+                                const formattedDate = formatDateDisplay(examDate);
+                                setTitle(`${categoryName} - ${formattedDate}`);
+                            } catch (titleError) {
+                                console.error("Erro ao gerar título:", titleError);
+                                // Não exibir erro ao usuário para não interromper o fluxo principal
+                            }
+                        }
+
+                        // Adicionar observação sobre processamento automático
+                        try {
+                            if (!observations.includes('Processado automaticamente')) {
+                                setObservations(prev =>
+                                    `${prev ? prev + '\n\n' : ''}Processado automaticamente pela IA em ${new Date().toLocaleString()}.`
+                                );
+                            }
+                        } catch (obsError) {
+                            console.error("Erro ao atualizar observações:", obsError);
+                            // Não exibir erro ao usuário para não interromper o fluxo principal
+                        }
+
+                        showNotification("Arquivo processado com sucesso! Resultados extraídos.", "success");
+                        return true;
+                    } catch (stateError) {
+                        console.error("Erro ao atualizar estado com resultados:", stateError);
+                        // Mesmo com erro no estado, tentamos mostrar resultados parciais
+                        showNotification("Arquivo processado, mas houve um erro ao exibir resultados. Tente novamente.", "warning");
+                        return false;
+                    }
+                } else if (result.warning) {
+                    // Caso não encontre resultados, mas não seja um erro
+                    showNotification(result.warning, "warning");
+                    return false;
+                } else {
+                    throw new Error("Falha ao processar o resultado");
+                }
+            } catch (error) {
+                console.error('Erro ao processar o arquivo:', error);
+                showNotification(`Não foi possível processar o arquivo: ${error.message}`, "error");
+                return false;
+            } finally {
+                // Garantir que o intervalo seja limpo em todos os casos
+                if (progressInterval) clearInterval(progressInterval);
+
+                setIsLoading(false);
+                setUploadProgress(null);
+                setCurrentProcessingFile(null);
+                setProcessingProgress(0);
+            }
+        } catch (globalError) {
+            // Captura qualquer erro inesperado em todo o processo
+            console.error("Erro global ao processar arquivo:", globalError);
+            showNotification("Ocorreu um erro inesperado. Por favor, tente novamente.", "error");
+
+            // Garantir que o estado seja limpo mesmo em caso de erro catastrófico
             setIsLoading(false);
             setUploadProgress(null);
+            setCurrentProcessingFile(null);
+            setProcessingProgress(0);
+
+            return false;
         }
     };
 
     // Função para processar arquivos carregados
     const processFiles = async (files) => {
-        if (!files || files.length === 0) return;
+        try {
+            if (!files || files.length === 0) return;
 
-        const fileList = Array.from(files);
+            // Evitar processamento de muitos arquivos simultaneamente
+            const MAX_FILES = 10;
+            let fileList = Array.from(files);
 
-        // Verificar se há arquivos PDF para processamento automático
-        const pdfFiles = fileList.filter(file =>
-            file.type === 'application/pdf' ||
-            file.name.toLowerCase().endsWith('.pdf')
-        );
+            if (fileList.length > MAX_FILES) {
+                showNotification(`Limite de ${MAX_FILES} arquivos por vez. Processando apenas os primeiros ${MAX_FILES}.`, "warning");
+                fileList = fileList.slice(0, MAX_FILES);
+            }
 
-        // Se houver um PDF, tentar processá-lo primeiro com IA
-        let processingResult = false;
-        if (pdfFiles.length > 0) {
-            try {
-                const firstPdf = pdfFiles[0];
-                processingResult = await processExamPDF(firstPdf);
+            // Verificar se há arquivos PDF, DOCX ou imagens para processamento automático
+            const processableFiles = fileList.filter(file => {
+                const { isSupported } = detectFileType(file);
+                return isSupported;
+            });
 
-                if (processingResult) {
-                    showNotification("PDF processado com sucesso! Resultados extraídos automaticamente.");
+            // Se não há arquivos processáveis
+            if (processableFiles.length === 0 && fileList.length > 0) {
+                showNotification("Nenhum arquivo selecionado pode ser processado. Use PDF, DOCX ou imagens.", "warning");
+            }
+
+            // Se houver um arquivo processável, tentar processá-lo primeiro com IA
+            let processingResult = false;
+            if (processableFiles.length > 0) {
+                try {
+                    const fileToProcess = processableFiles[0];
+                    processingResult = await processExamFile(fileToProcess);
+                } catch (error) {
+                    console.error("Erro ao processar arquivo automaticamente:", error);
+                    showNotification("O processamento automático falhou. O arquivo será anexado normalmente.", "warning");
+                    // Continuar com o upload normal mesmo se o processamento falhar
                 }
-            } catch (error) {
-                console.error("Erro ao processar PDF automaticamente:", error);
-                showNotification("O processamento automático falhou. O arquivo será anexado normalmente.", "warning");
-                // Continuar com o upload normal mesmo se o processamento falhar
             }
-        }
 
-        // Para exames em modo de edição, fazer upload dos arquivos
-        if (isEditMode && exam.id) {
-            setIsLoading(true);
-            setUploadProgress('Fazendo upload dos arquivos...');
-            try {
-                for (const file of fileList) {
-                    const fileInfo = await FirebaseService.uploadExamAttachment(
-                        file,
-                        user.uid,
-                        patientId,
-                        exam.id
-                    );
-                    setAttachments(prev => [...prev, fileInfo]);
+            // Para exames em modo de edição, fazer upload dos arquivos
+            if (isEditMode && exam && exam.id) {
+                setIsLoading(true);
+                setUploadProgress('Fazendo upload dos arquivos...');
+
+                try {
+                    let successCount = 0;
+                    let errorCount = 0;
+
+                    for (const file of fileList) {
+                        try {
+                            const fileInfo = await FirebaseService.uploadExamAttachment(
+                                file,
+                                user.uid,
+                                patientId,
+                                exam.id
+                            );
+                            setAttachments(prev => [...prev, fileInfo]);
+                            successCount++;
+                        } catch (uploadError) {
+                            console.error(`Erro ao fazer upload do arquivo ${file.name}:`, uploadError);
+                            errorCount++;
+                        }
+                    }
+
+                    // Mensagem de feedback baseada no resultado
+                    if (successCount > 0 && errorCount === 0) {
+                        showNotification(`${successCount} arquivo${successCount > 1 ? 's' : ''} enviado${successCount > 1 ? 's' : ''} com sucesso!`);
+                    } else if (successCount > 0 && errorCount > 0) {
+                        showNotification(`${successCount} arquivo${successCount > 1 ? 's' : ''} enviado${successCount > 1 ? 's' : ''}, mas ${errorCount} falhou.`, "warning");
+                    } else if (errorCount > 0) {
+                        showNotification(`Falha ao enviar ${errorCount} arquivo${errorCount > 1 ? 's' : ''}. Tente novamente.`, "error");
+                    }
+                } catch (error) {
+                    console.error("Erro ao fazer upload dos arquivos:", error);
+                    showNotification("Erro ao fazer upload dos arquivos. Tente novamente.", "error");
+                } finally {
+                    setIsLoading(false);
+                    setUploadProgress(null);
                 }
-                showNotification("Arquivos enviados com sucesso!");
-            } catch (error) {
-                console.error("Erro ao fazer upload dos arquivos:", error);
-                showNotification("Erro ao fazer upload dos arquivos. Tente novamente.", "error");
-            } finally {
-                setIsLoading(false);
-                setUploadProgress(null);
-            }
-        } else {
-            // Para novos exames, apenas armazenar informações e o objeto do arquivo
-            const newAttachments = fileList.map(file => ({
-                fileName: file.name,
-                fileType: file.type,
-                fileSize: formatFileSize(file.size),
-                file: file, // Manter o objeto do arquivo para upload posterior
-                uploadedAt: new Date()
-            }));
-            setAttachments(prev => [...prev, ...newAttachments]);
+            } else {
+                // Para novos exames, apenas armazenar informações e o objeto do arquivo
+                try {
+                    const newAttachments = fileList.map(file => {
+                        try {
+                            return {
+                                fileName: file.name || "arquivo",
+                                fileType: file.type || "application/octet-stream",
+                                fileSize: formatFileSize(file.size || 0),
+                                file: file, // Manter o objeto do arquivo para upload posterior
+                                uploadedAt: new Date()
+                            };
+                        } catch (fileError) {
+                            console.error("Erro ao processar informações do arquivo:", fileError);
+                            return {
+                                fileName: "arquivo desconhecido",
+                                fileType: "application/octet-stream",
+                                fileSize: "desconhecido",
+                                file: file,
+                                uploadedAt: new Date(),
+                                hasError: true
+                            };
+                        }
+                    });
 
-            if (fileList.length > 0 && !pdfFiles.length) {
-                showNotification('Arquivos adicionados e serão enviados ao salvar o exame.');
+                    setAttachments(prev => [...prev, ...newAttachments]);
+
+                    if (fileList.length > 0 && !processingResult) {
+                        showNotification(`${fileList.length} arquivo${fileList.length > 1 ? 's' : ''} adicionado${fileList.length > 1 ? 's' : ''} e será${fileList.length > 1 ? 'ão' : ''} enviado${fileList.length > 1 ? 's' : ''} ao salvar o exame.`);
+                    }
+                } catch (attachError) {
+                    console.error("Erro ao adicionar anexos:", attachError);
+                    showNotification("Erro ao adicionar anexos. Tente novamente.", "error");
+                }
             }
+        } catch (globalError) {
+            console.error("Erro global no processamento de arquivos:", globalError);
+            showNotification("Ocorreu um erro inesperado. Por favor, tente novamente.", "error");
         }
     };
 
     // Função para processar anexo existente
-    const handleProcessExistingAttachment = async () => {
-        // Encontrar o primeiro anexo PDF
-        const pdfAttachment = attachments.find(
-            att => att.fileType === 'application/pdf' ||
-                (att.fileName && att.fileName.toLowerCase().endsWith('.pdf'))
-        );
-
-        if (!pdfAttachment) {
-            showNotification("Nenhum arquivo PDF encontrado nos anexos.", "warning");
-            return;
+    const handleProcessExistingAttachment = async (attachment) => {
+        if (!attachment) {
+            showNotification("Anexo inválido", "error");
+            return false;
         }
 
-        setIsLoading(true);
-        setUploadProgress('Processando anexo...');
-
         try {
-            let fileToProcess;
-
-            if (pdfAttachment.file) {
-                // Se temos o objeto File diretamente
-                fileToProcess = pdfAttachment.file;
-            } else if (pdfAttachment.fileUrl) {
-                // Se o arquivo já está no servidor, precisamos baixá-lo
-                const response = await fetch(pdfAttachment.fileUrl);
-                if (!response.ok) throw new Error("Falha ao obter o arquivo do servidor");
-
-                const blob = await response.blob();
-                fileToProcess = new File([blob], pdfAttachment.fileName, {
-                    type: 'application/pdf'
-                });
-            } else {
-                throw new Error("Não foi possível acessar o conteúdo do arquivo");
+            // Verificar se já temos um file object
+            if (attachment.file) {
+                return await processExamFile(attachment.file);
             }
 
-            // Processar o arquivo
-            await processExamPDF(fileToProcess);
+            // Se não temos o objeto file diretamente, mas temos URL
+            if (attachment.fileUrl) {
+                setIsLoading(true);
 
+                // Detectar tipo para feedback específico
+                const { isPdf, isDocx, isImage } = detectFileType(attachment);
+
+                if (isImage) {
+                    setUploadProgress('Baixando imagem para OCR...');
+                } else if (isPdf) {
+                    setUploadProgress('Baixando PDF para processamento...');
+                } else if (isDocx) {
+                    setUploadProgress('Baixando DOCX para processamento...');
+                } else {
+                    setUploadProgress('Baixando arquivo para processamento...');
+                }
+
+                setCurrentProcessingFile(attachment.fileName || "arquivo");
+
+                try {
+                    // Baixar o arquivo da URL com timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+                    const response = await fetch(attachment.fileUrl, {
+                        signal: controller.signal
+                    }).finally(() => clearTimeout(timeoutId));
+
+                    if (!response.ok) throw new Error("Falha ao obter o arquivo do servidor");
+
+                    const blob = await response.blob();
+                    const file = new File([blob], attachment.fileName || "arquivo", {
+                        type: attachment.fileType || 'application/octet-stream'
+                    });
+
+                    // Processar o arquivo
+                    return await processExamFile(file);
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.error('Timeout ao baixar arquivo:', error);
+                        showNotification('O download do arquivo demorou muito. Verifique sua conexão.', "error");
+                    } else {
+                        console.error('Erro ao processar anexo da URL:', error);
+                        showNotification('Não foi possível processar o anexo: ' + error.message, "error");
+                    }
+                    setIsLoading(false);
+                    setUploadProgress(null);
+                    setCurrentProcessingFile(null);
+                    return false;
+                }
+            } else {
+                showNotification("Não foi possível acessar o conteúdo do arquivo", "error");
+                return false;
+            }
         } catch (error) {
-            console.error('Erro ao processar anexo existente:', error);
-            showNotification('Não foi possível processar o anexo: ' + error.message, "error");
-        } finally {
+            console.error("Erro inesperado ao processar anexo:", error);
+            showNotification("Ocorreu um erro ao processar o anexo. Tente novamente.", "error");
+
+            // Garantir limpeza do estado
             setIsLoading(false);
             setUploadProgress(null);
+            setCurrentProcessingFile(null);
+
+            return false;
         }
     };
 
@@ -770,103 +1175,163 @@ const ExamDialog = ({
             return;
         }
 
-        setIsLoading(true);
+        let saveAttempts = 0;
+        const maxAttempts = 3;
+        let savedSuccessfully = false;
 
-        try {
-            let exameId = exam?.id;
-            // 1) Criar ou atualizar o exame
-            if (isEditMode && exameId) {
-                await FirebaseService.updateExam(user.uid, patientId, exameId, {
-                    title,
-                    examDate,
-                    category: examCategory,
-                    observations,
-                    attachments,  // supondo que você já processou upload antes
-                    results: examResults,
-                    lastModified: new Date()
-                });
-            } else {
-                // para novo exame, crie primeiro sem anexos
-                const examData = {
-                    title,
-                    examDate,
-                    category: examCategory,
-                    observations,
-                    attachments: attachments.map(att => {
-                        const { file, ...meta } = att;
-                        return meta;
-                    }),
-                    results: examResults,
-                    createdAt: new Date(),
-                    lastModified: new Date()
-                };
-                exameId = await FirebaseService.createExam(user.uid, patientId, examData);
-            }
+        while (saveAttempts < maxAttempts && !savedSuccessfully) {
+            saveAttempts++;
 
-            // 2) (Re)envio de quaisquer anexos pendentes
-            for (const att of attachments) {
-                if (att.file) {
-                    const info = await FirebaseService.uploadExamAttachment(
-                        att.file,
-                        user.uid,
-                        patientId,
-                        exameId
+            try {
+                setIsLoading(true);
+
+                // Feedback com tentativa atual
+                if (saveAttempts > 1) {
+                    setUploadProgress(`Tentativa ${saveAttempts}/${maxAttempts} de salvar o exame...`);
+                } else {
+                    setUploadProgress("Salvando exame...");
+                }
+
+                let exameId = exam?.id;
+                // 1) Criar ou atualizar o exame
+                if (isEditMode && exameId) {
+                    await FirebaseService.updateExam(user.uid, patientId, exameId, {
+                        title,
+                        examDate,
+                        category: examCategory,
+                        observations,
+                        attachments: attachments.map(att => {
+                            // Remover campos que não devem ser salvos
+                            const { file, ...meta } = att;
+                            return meta;
+                        }),
+                        results: examResults,
+                        lastModified: new Date()
+                    });
+                } else {
+                    // para novo exame, crie primeiro sem anexos
+                    const examData = {
+                        title,
+                        examDate,
+                        category: examCategory,
+                        observations,
+                        attachments: attachments.map(att => {
+                            const { file, ...meta } = att;
+                            return meta;
+                        }),
+                        results: examResults,
+                        createdAt: new Date(),
+                        lastModified: new Date()
+                    };
+                    exameId = await FirebaseService.createExam(user.uid, patientId, examData);
+                }
+
+                // 2) (Re)envio de quaisquer anexos pendentes
+                const uploadPromises = [];
+                for (const att of attachments) {
+                    if (att.file) {
+                        const uploadPromise = FirebaseService.uploadExamAttachment(
+                            att.file,
+                            user.uid,
+                            patientId,
+                            exameId
+                        ).then(info => {
+                            // Atualizar o state local com as URLs dos arquivos (opcional)
+                            console.log("Arquivo enviado:", info);
+                        }).catch(error => {
+                            console.error("Erro ao enviar anexo:", error);
+                            // Registrar erro mas não falhar completamente
+                            return null;
+                        });
+                        uploadPromises.push(uploadPromise);
+                    }
+                }
+
+                if (uploadPromises.length > 0) {
+                    // Usar allSettled para não falhar se um upload específico falhar
+                    const results = await Promise.allSettled(uploadPromises);
+                    const failedUploads = results.filter(r => r.status === 'rejected').length;
+
+                    if (failedUploads > 0) {
+                        console.warn(`${failedUploads} anexos não puderam ser enviados`);
+                    }
+                }
+
+                // 3) Montar payload da nota de exame
+                try {
+                    const formattedDate = format(
+                        new Date(examDate),
+                        "dd 'de' MMMM 'de' yyyy",
+                        { locale: ptBR }
                     );
-                    // opcional: atualizar `attachments` no state com a `fileUrl`
+
+                    const hasResults = Object.keys(examResults).length > 0;
+                    const notePayload = {
+                        noteTitle: `Exame - ${title}`,
+                        noteText: `Exame realizado em ${formattedDate}.${
+                            hasResults ? '\n\nExame processado com resultados estruturados.' : ''
+                        }`,
+                        noteType: "Exame",
+                        consultationDate: new Date(examDate),
+                        exameId,
+                        createdAt: new Date()
+                    };
+
+                    // 4) Criar ou atualizar a nota no Firestore
+                    const todasNotas = await FirebaseService.listNotes(user.uid, patientId);
+                    const notaExistente = todasNotas.find(n => n.exameId === exameId);
+
+                    if (notaExistente) {
+                        await FirebaseService.updateNote(
+                            user.uid,
+                            patientId,
+                            notaExistente.id,
+                            {
+                                noteTitle: `Exame - ${title}`,
+                                noteText: `Exame atualizado em ${formattedDate}.${
+                                    hasResults ? '\n\nExame possui resultados estruturados.' : ''
+                                }`,
+                                lastModified: new Date()
+                            }
+                        );
+                    } else {
+                        await FirebaseService.createNote(
+                            user.uid,
+                            patientId,
+                            notePayload
+                        );
+                    }
+                } catch (noteError) {
+                    console.error("Erro ao criar nota associada:", noteError);
+                    // Continuar mesmo se a nota falhar - o exame já foi salvo
+                }
+
+                // 5) Feedback e fechar
+                savedSuccessfully = true;
+                setIsSaved(true);
+                showNotification("Exame salvo com sucesso!");
+                setTimeout(() => {
+                    onClose();
+                    if (onSave) onSave(exameId);
+                }, 1200);
+
+            } catch (error) {
+                console.error(`Erro ao salvar exame (tentativa ${saveAttempts}/${maxAttempts}):`, error);
+
+                if (saveAttempts >= maxAttempts) {
+                    showNotification(`Não foi possível salvar o exame após ${maxAttempts} tentativas. Por favor, tente novamente mais tarde.`, "error");
+                } else {
+                    // Esperar um pouco antes de tentar novamente
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            } finally {
+                if (!savedSuccessfully) {
+                    setIsLoading(false);
+                    setUploadProgress(null);
                 }
             }
-
-            // 3) Montar payload da nota de exame
-            const formattedDate = format(
-                new Date(examDate),
-                "dd 'de' MMMM 'de' yyyy",
-                { locale: ptBR }
-            );
-            const notePayload = {
-                noteTitle: `Exame - ${title}`,
-                noteText: `Exame realizado em ${formattedDate}.`,
-                noteType: "Exame",
-                consultationDate: new Date(examDate),
-                exameId,
-                createdAt: new Date()
-            };
-
-            // 4) Criar ou atualizar a nota no Firestore
-            const todasNotas = await FirebaseService.listNotes(user.uid, patientId);
-            const notaExistente = todasNotas.find(n => n.exameId === exameId);
-
-            if (notaExistente) {
-                await FirebaseService.updateNote(
-                    user.uid,
-                    patientId,
-                    notaExistente.id,
-                    {
-                        noteText: `Exame atualizado em ${formattedDate}.`,
-                        lastModified: new Date()
-                    }
-                );
-            } else {
-                const newNoteId = await FirebaseService.createNote(
-                    user.uid,
-                    patientId,
-                    notePayload
-                );
-                // opcional: anexe o PDF/arquivos via uploadNoteAttachment
-            }
-
-            // 5) Feedback e fechar
-            setIsSaved(true);
-            showNotification("Exame salvo com sucesso!");
-            setTimeout(onClose, 1200);
-
-        } catch (error) {
-            console.error("Erro ao salvar exame:", error);
-            showNotification(`Erro ao salvar exame: ${error.message}`, "error");
-        } finally {
-            setIsLoading(false);
         }
     };
-
 
     const handleConfirmDelete = () => {
         setIsDeleteConfirm(true);
@@ -906,6 +1371,27 @@ const ExamDialog = ({
         showNotification("Funcionalidade de escaneamento será implementada em breve!", "info");
     };
 
+    // Verificar se temos anexos processáveis (PDF/DOCX/Imagens)
+    const hasProcessableAttachments = useMemo(() => {
+        try {
+            return attachments.some(att => {
+                try {
+                    const { isSupported } = detectFileType(att);
+                    return isSupported;
+                } catch (error) {
+                    console.error("Erro ao verificar tipo de anexo:", error);
+                    return false;
+                }
+            });
+        } catch (error) {
+            console.error("Erro ao verificar anexos processáveis:", error);
+            return false;
+        }
+    }, [attachments]);
+
+    // Verificar se temos resultados já extraídos
+    const hasExtractedResults = Object.keys(examResults).length > 0;
+
     return (
         <ThemeProvider theme={theme}>
             <StyledDialog open={open} onClose={isLoading ? null : onClose}>
@@ -937,23 +1423,42 @@ const ExamDialog = ({
                         justifyContent: 'space-between',
                         borderBottom: '1px solid #EAECEF',
                     }}>
-                        <IconButton
-                            onClick={onClose}
-                            disabled={isLoading}
-                            sx={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: '50%',
-                                backgroundColor: '#F6F7F9',
-                                color: '#64748B',
-                                '&:hover': {
-                                    backgroundColor: '#EAECEF',
-                                    color: '#475467'
-                                }
-                            }}
-                        >
-                            <ArrowBackIcon />
-                        </IconButton>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <IconButton
+                                onClick={onClose}
+                                disabled={isLoading}
+                                sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: '50%',
+                                    backgroundColor: '#F6F7F9',
+                                    color: '#64748B',
+                                    mr: 2,
+                                    '&:hover': {
+                                        backgroundColor: '#EAECEF',
+                                        color: '#475467'
+                                    }
+                                }}
+                            >
+                                <ArrowBackIcon />
+                            </IconButton>
+
+                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#101828' }}>
+                                {isEditMode ? 'Editar exame' : 'Novo exame'}
+                            </Typography>
+
+                            {/* Status indicator */}
+                            {isLoading && (
+                                <Fade in={true}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+                                        <CircularProgress size={16} sx={{ mr: 1 }} />
+                                        <Typography variant="body2" color="text.secondary">
+                                            {uploadProgress || 'Processando...'}
+                                        </Typography>
+                                    </Box>
+                                </Fade>
+                            )}
+                        </Box>
 
                         {isEditMode && !isDeleteConfirm ? (
                             <Button
@@ -1032,9 +1537,112 @@ const ExamDialog = ({
                             width: '100%',
                             maxWidth: '900px',
                             mx: 'auto',
+                            position: 'relative'
                         }}>
+                            {/* Progress bar when processing */}
+                            {isLoading && currentProcessingFile && (
+                                <Backdrop
+                                    open={true}
+                                    sx={{
+                                        position: 'fixed',
+                                        zIndex: 9999,
+                                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <Paper
+                                        elevation={3}
+                                        sx={{
+                                            p: 4,
+                                            borderRadius: '16px',
+                                            maxWidth: '420px',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                width: 80,
+                                                height: 80,
+                                                borderRadius: '50%',
+                                                backgroundColor: alpha(categoryColor.light, 0.3),
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                margin: '0 auto 20px'
+                                            }}
+                                        >
+                                            <AutoAwesomeIcon
+                                                sx={{
+                                                    fontSize: 40,
+                                                    color: categoryColor.main,
+                                                    animation: 'pulse 1.5s infinite'
+                                                }}
+                                            />
+                                        </Box>
+
+                                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 600, color: categoryColor.dark }}>
+                                            Processando com IA
+                                        </Typography>
+
+                                        <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
+                                            {currentProcessingFile}
+                                        </Typography>
+
+                                        <Box sx={{ width: '100%', mb: 2 }}>
+                                            <LinearProgress
+                                                variant="determinate"
+                                                value={processingProgress}
+                                                sx={{
+                                                    height: 10,
+                                                    borderRadius: 5,
+                                                    backgroundColor: alpha(categoryColor.main, 0.2),
+                                                    '& .MuiLinearProgress-bar': {
+                                                        backgroundColor: categoryColor.main,
+                                                        borderRadius: 5
+                                                    }
+                                                }}
+                                            />
+                                        </Box>
+
+                                        <Typography variant="body2" color="text.secondary">
+                                            {uploadProgress || `${Math.round(processingProgress)}% - Extraindo dados do documento...`}
+                                        </Typography>
+
+                                        <Box sx={{ mt: 3, fontSize: 12, color: 'text.secondary', fontStyle: 'italic' }}>
+                                            Este processo pode levar alguns segundos dependendo do tamanho do arquivo
+                                        </Box>
+                                    </Paper>
+                                </Backdrop>
+                            )}
+
+                            {/* Adicione este estilo para a animação de pulso */}
+                            <style jsx global>{`
+    @keyframes pulse {
+        0% {
+            filter: drop-shadow(0 0 0 ${categoryColor.main});
+            transform: scale(1);
+        }
+        50% {
+            filter: drop-shadow(0 0 10px ${alpha(categoryColor.main, 0.4)});
+            transform: scale(1.1);
+        }
+        100% {
+            filter: drop-shadow(0 0 0 ${categoryColor.main});
+            transform: scale(1);
+        }
+    }
+`}</style>
                             {/* Icon and Title */}
-                            <Box sx={{ textAlign: 'center', mb: 4 }}>
+                            <Box sx={{
+                                textAlign: 'center',
+                                mb: 4,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center'
+                            }}>
                                 <Box
                                     sx={{
                                         width: 56,
@@ -1046,7 +1654,6 @@ const ExamDialog = ({
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         mb: 2,
-                                        mx: 'auto',
                                         fontSize: '28px'
                                     }}
                                 >
@@ -1062,6 +1669,56 @@ const ExamDialog = ({
                                 >
                                     {isEditMode ? 'Editar exame' : 'Novo exame'}
                                 </Typography>
+
+                                {/* Dicas de processamento */}
+                                <Button
+                                    variant="text"
+                                    startIcon={<TipsAndUpdatesOutlinedIcon />}
+                                    onClick={() => setShowTips(!showTips)}
+                                    sx={{
+                                        mt: 1,
+                                        color: theme.palette.info.main,
+                                        textTransform: 'none',
+                                        fontSize: '14px',
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    {showTips ? 'Ocultar dicas' : 'Ver dicas de processamento'}
+                                </Button>
+
+                                {showTips && (
+                                    <Fade in={showTips}>
+                                        <Paper
+                                            elevation={0}
+                                            sx={{
+                                                mt: 2,
+                                                p: 2,
+                                                borderRadius: '8px',
+                                                border: `1px solid ${theme.palette.info.light}`,
+                                                bgcolor: alpha(theme.palette.info.light, 0.3),
+                                                width: '100%',
+                                                maxWidth: '600px'
+                                            }}
+                                        >
+                                            <Typography variant="subtitle2" sx={{ mb: 1, color: theme.palette.info.dark }}>
+                                                Dicas para melhor processamento
+                                            </Typography>
+                                            <Box component="ul" sx={{ m: 0, pl: 3 }}>
+                                                {processingTips.map((tip, index) => (
+                                                    <Typography key={index} component="li" variant="body2" sx={{ mb: 0.5 }}>
+                                                        {tip}
+                                                    </Typography>
+                                                ))}
+                                                {errorMessage && (
+                                                    <ErrorFeedback
+                                                        message={errorMessage}
+                                                        onDismiss={() => setErrorMessage(null)}
+                                                    />
+                                                )}
+                                            </Box>
+                                        </Paper>
+                                    </Fade>
+                                )}
                             </Box>
 
                             {/* Exam Category Selector */}
@@ -1073,6 +1730,7 @@ const ExamDialog = ({
                                         value={examCategory}
                                         onChange={(e) => setExamCategory(e.target.value)}
                                         label="Categoria do Exame"
+                                        disabled={isLoading}
                                         sx={{
                                             borderRadius: '10px',
                                             '& .MuiSelect-select': {
@@ -1125,26 +1783,39 @@ const ExamDialog = ({
                                 }}
                             >
                                 {/* Loading overlay */}
-                                {isLoading && uploadProgress && (
-                                    <Box sx={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        bgcolor: 'rgba(255,255,255,0.9)',
-                                        zIndex: 10,
-                                        borderRadius: '16px',
-                                    }}>
-                                        <CircularProgress size={40} color="primary" />
-                                        <Typography sx={{ mt: 2, fontSize: '15px', fontWeight: 500 }}>
-                                            {uploadProgress}
-                                        </Typography>
-                                    </Box>
+                                {isLoading && uploadProgress && !currentProcessingFile && (
+                                    <Backdrop
+                                        open={true}
+                                        sx={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            backgroundColor: 'rgba(255,255,255,0.9)',
+                                            zIndex: 10,
+                                            borderRadius: '16px',
+                                        }}
+                                    >
+                                        <Box sx={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            p: 3,
+                                            backgroundColor: 'white',
+                                            borderRadius: '12px',
+                                            boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.1)',
+                                            maxWidth: '320px',
+                                        }}>
+                                            <CircularProgress size={40} color="primary" sx={{ mb: 2 }} />
+                                            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                                                Processando
+                                            </Typography>
+                                            <Typography sx={{ fontSize: '15px', color: 'text.secondary', textAlign: 'center' }}>
+                                                {uploadProgress}
+                                            </Typography>
+                                        </Box>
+                                    </Backdrop>
                                 )}
 
                                 {/* Basic Info Section */}
@@ -1265,8 +1936,76 @@ const ExamDialog = ({
                                         multiple
                                         style={{ display: 'none' }}
                                         ref={fileInputRef}
-                                        onChange={handleFileInputChange}
+                                        onChange={(e) => {
+                                            try {
+                                                handleFileInputChange(e);
+                                            } catch (error) {
+                                                console.error("Erro no upload de arquivo:", error);
+                                                showNotification("Erro ao processar arquivos selecionados", "error");
+                                            } finally {
+                                                // Limpar o input para permitir selecionar o mesmo arquivo novamente
+                                                if (fileInputRef.current) fileInputRef.current.value = '';
+                                            }
+                                        }}
+                                        accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.gif,.bmp,.webp"
                                     />
+
+                                    {/* Upload section header with badge showing count */}
+                                    <Box sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        mb: 2
+                                    }}>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#344054' }}>
+                                            Anexos e Processamento
+                                        </Typography>
+
+                                        {attachments.length > 0 && (
+                                            <Badge
+                                                badgeContent={attachments.length}
+                                                color="primary"
+                                                sx={{
+                                                    '& .MuiBadge-badge': {
+                                                        fontSize: '12px',
+                                                        fontWeight: 'bold',
+                                                        minWidth: '22px',
+                                                        height: '22px',
+                                                        borderRadius: '11px'
+                                                    }
+                                                }}
+                                            >
+                                                <AttachFileOutlinedIcon sx={{ color: theme.palette.grey[500] }} />
+                                            </Badge>
+                                        )}
+                                    </Box>
+
+                                    {/* Processamento automático info */}
+                                    <Box sx={{
+                                        mb: 3,
+                                        p: 2,
+                                        borderRadius: '8px',
+                                        backgroundColor: alpha(theme.palette.info.light, 0.3),
+                                        border: `1px solid ${theme.palette.info.light}`,
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}>
+                                        <AutoAwesomeIcon
+                                            sx={{
+                                                color: theme.palette.info.main,
+                                                mr: 2,
+                                                fontSize: '20px'
+                                            }}
+                                        />
+                                        <Box>
+                                            <Typography variant="subtitle2" sx={{ color: theme.palette.info.dark, fontWeight: 600 }}>
+                                                Processamento Automático
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: theme.palette.grey[700] }}>
+                                                Faça upload de um arquivo PDF ou DOCX para extrair automaticamente os resultados do exame.
+                                            </Typography>
+                                        </Box>
+                                    </Box>
 
                                     {/* Drag & Drop or Upload Area */}
                                     <Box sx={{
@@ -1316,7 +2055,7 @@ const ExamDialog = ({
                                                 ou clique para selecionar arquivos
                                             </Typography>
                                             <Typography variant="caption" sx={{ color: '#94A3B8', textAlign: 'center' }}>
-                                                Formatos suportados: PDF, DOC, DOCX, JPG, PNG
+                                                Formatos suportados: PDF, DOC, DOCX, JPG, JPEG, PNG, GIF, BMP, WEBP
                                             </Typography>
                                         </Box>
 
@@ -1372,26 +2111,36 @@ const ExamDialog = ({
                                                     Anexos ({attachments.length})
                                                 </Typography>
                                                 <Box sx={{ display: 'flex', gap: 2 }}>
-                                                    {/* Botão para processar com IA */}
-                                                    {attachments.some(att =>
-                                                        att.fileType === 'application/pdf' ||
-                                                        (att.fileName && att.fileName.toLowerCase().endsWith('.pdf'))
-                                                    ) && (
+                                                    {/* Botão para processar com IA - mostrado somente quando há anexos processáveis */}
+                                                    {hasProcessableAttachments && (
                                                         <Button
-                                                            variant="text"
+                                                            variant="outlined"
                                                             startIcon={<AutoAwesomeIcon />}
-                                                            onClick={handleProcessExistingAttachment}
+                                                            onClick={() => {
+                                                                // Encontrar primeiro PDF/DOCX e processá-lo
+                                                                const pdfOrDocx = attachments.find(att =>
+                                                                    att.fileType === 'application/pdf' ||
+                                                                    att.fileName?.toLowerCase().endsWith('.pdf') ||
+                                                                    att.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                                                                    att.fileName?.toLowerCase().endsWith('.docx')
+                                                                );
+
+                                                                if (pdfOrDocx) {
+                                                                    handleProcessExistingAttachment(pdfOrDocx);
+                                                                }
+                                                            }}
                                                             disabled={isLoading}
                                                             sx={{
+                                                                height: 36,
                                                                 color: categoryColor.main,
-                                                                fontSize: '14px',
-                                                                fontWeight: 500,
+                                                                borderColor: categoryColor.main,
                                                                 '&:hover': {
-                                                                    backgroundColor: alpha(categoryColor.light, 0.5)
+                                                                    backgroundColor: alpha(categoryColor.light, 0.3),
+                                                                    borderColor: categoryColor.dark
                                                                 }
                                                             }}
                                                         >
-                                                            Processar PDF com IA
+                                                            Processar com IA
                                                         </Button>
                                                     )}
 
@@ -1409,7 +2158,7 @@ const ExamDialog = ({
                                                             }
                                                         }}
                                                     >
-                                                        Adicionar mais arquivos
+                                                        Adicionar mais
                                                     </Button>
                                                 </Box>
                                             </Box>
@@ -1429,6 +2178,7 @@ const ExamDialog = ({
                                                         file={file}
                                                         onOpen={() => handleOpenAttachment(file)}
                                                         onRemove={() => handleRemoveAttachment(index)}
+                                                        onProcess={() => handleProcessExistingAttachment(file)}
                                                         disabled={isLoading}
                                                     />
                                                 ))}
@@ -1436,6 +2186,7 @@ const ExamDialog = ({
                                         </Box>
                                     )}
 
+                                    {/* "Drop files here" overlay */}
                                     {isDragging && (
                                         <Box
                                             sx={{
@@ -1475,86 +2226,134 @@ const ExamDialog = ({
                                     )}
                                 </Box>
 
-                                {/* Exam Results Table Toggle Button */}
-                                <Box sx={{
-                                    p: 2,
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    borderTop: '1px solid #EAECEF'
-                                }}>
-                                    <Button
-                                        variant="outlined"
-                                        color="primary"
-                                        startIcon={showExamTable ? <KeyboardArrowDownOutlinedIcon /> : <KeyboardArrowDownOutlinedIcon sx={{ transform: 'rotate(-90deg)' }} />}
-                                        onClick={handleToggleExamTable}
-                                        sx={{
-                                            borderRadius: '8px',
-                                            height: '48px',
-                                            width: '100%',
-                                            maxWidth: '400px',
-                                            fontWeight: 600,
-                                            borderColor: categoryColor.main,
-                                            color: categoryColor.main,
-                                            '&:hover': {
-                                                borderColor: categoryColor.dark,
-                                                backgroundColor: alpha(categoryColor.light, 0.3),
-                                            }
-                                        }}
-                                    >
-                                        {showExamTable ? 'Fechar tabela de resultados' : 'Abrir tabela de resultados'}
-                                    </Button>
-                                </Box>
-
-                                {/* Exam Results Table */}
-                                <Fade in={showExamTable}>
+                                {/* Exam Results Section */}
+                                <Box sx={{ borderTop: '1px solid #EAECEF' }}>
+                                    {/* Exam Results Table Toggle Button */}
                                     <Box sx={{
-                                        p: 3,
-                                        borderTop: showExamTable ? '1px solid #EAECEF' : 'none',
-                                        display: showExamTable ? 'block' : 'none',
-                                        bgcolor: alpha(categoryColor.light, 0.1)
+                                        p: 2,
+                                        display: 'flex',
+                                        justifyContent: 'center',
                                     }}>
-                                        <Typography
-                                            variant="h6"
+                                        <Button
+                                            variant={hasExtractedResults ? "contained" : "outlined"}
+                                            color={hasExtractedResults ? "primary" : "inherit"}
+                                            startIcon={showExamTable ? <KeyboardArrowUpOutlinedIcon /> : <KeyboardArrowDownOutlinedIcon />}
+                                            endIcon={hasExtractedResults ? <Badge
+                                                badgeContent={
+                                                    Object.values(examResults).reduce((acc, category) => acc + Object.keys(category).length, 0)
+                                                }
+                                                color="success"
+                                                sx={{
+                                                    '& .MuiBadge-badge': {
+                                                        fontSize: '10px',
+                                                        height: '18px',
+                                                        minWidth: '18px',
+                                                        padding: '0 6px'
+                                                    }
+                                                }}
+                                            >
+                                                <BiotechIcon fontSize="small" />
+                                            </Badge> : null}
+                                            onClick={handleToggleExamTable}
                                             sx={{
+                                                borderRadius: '8px',
+                                                height: '48px',
+                                                width: '100%',
+                                                maxWidth: '400px',
                                                 fontWeight: 600,
-                                                mb: 3,
-                                                color: categoryColor.dark,
-                                                textAlign: 'center'
+                                                ...(hasExtractedResults ? {
+                                                    backgroundColor: categoryColor.main,
+                                                    color: 'white',
+                                                    '&:hover': {
+                                                        backgroundColor: categoryColor.dark,
+                                                    }
+                                                } : {
+                                                    borderColor: '#D0D5DD',
+                                                    color: theme.palette.grey[700],
+                                                    '&:hover': {
+                                                        borderColor: theme.palette.grey[500],
+                                                        backgroundColor: alpha(theme.palette.grey[100], 0.8),
+                                                    }
+                                                })
                                             }}
                                         >
-                                            Resultados do Exame
-                                        </Typography>
-
-                                        <ExamTable
-                                            results={examResults}
-                                            onUpdateResults={setExamResults}
-                                            readOnly={isLoading}
-                                        />
+                                            {showExamTable ? 'Ocultar resultados do exame' : (
+                                                hasExtractedResults ? 'Ver resultados extraídos' : 'Tabela de resultados'
+                                            )}
+                                        </Button>
                                     </Box>
-                                </Fade>
+
+                                    {/* Exam Results Table */}
+                                    <Fade in={showExamTable}>
+                                        <Box sx={{
+                                            p: 3,
+                                            borderTop: showExamTable ? '1px solid #EAECEF' : 'none',
+                                            display: showExamTable ? 'block' : 'none',
+                                            bgcolor: alpha(categoryColor.light, 0.1)
+                                        }}>
+                                            <Typography
+                                                variant="h6"
+                                                sx={{
+                                                    fontWeight: 600,
+                                                    mb: 3,
+                                                    color: categoryColor.dark,
+                                                    textAlign: 'center',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
+                                            >
+                                                <BiotechIcon sx={{ mr: 1 }} />
+                                                Resultados do Exame
+                                            </Typography>
+
+                                            <ExamTable
+                                                results={examResults}
+                                                onUpdateResults={setExamResults}
+                                                readOnly={isLoading}
+                                            />
+                                        </Box>
+                                    </Fade>
+                                </Box>
 
                                 {/* Actions Footer */}
                                 <Box sx={{
                                     display: 'flex',
-                                    justifyContent: 'flex-end',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
                                     p: 3,
                                     borderTop: '1px solid #EAECEF',
                                     bgcolor: '#fff'
                                 }}>
-                                    <PrimaryButton
-                                        onClick={handleSave}
-                                        disabled={isLoading || !title.trim()}
-                                        loading={isLoading}
-                                        success={isSaved}
-                                        sx={{
-                                            backgroundColor: categoryColor.main,
-                                            '&:hover': {
-                                                backgroundColor: categoryColor.dark,
-                                            }
-                                        }}
-                                    >
-                                        {isSaved ? "Salvo com sucesso!" : "Salvar exame"}
-                                    </PrimaryButton>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                                        {hasExtractedResults
+                                            ? `${Object.values(examResults).reduce((acc, category) => acc + Object.keys(category).length, 0)} resultados extraídos`
+                                            : ''}
+                                    </Typography>
+
+                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                        <SecondaryButton
+                                            onClick={onClose}
+                                            disabled={isLoading}
+                                        >
+                                            Cancelar
+                                        </SecondaryButton>
+
+                                        <PrimaryButton
+                                            onClick={handleSave}
+                                            disabled={isLoading || !title.trim()}
+                                            loading={isLoading}
+                                            success={isSaved}
+                                            sx={{
+                                                backgroundColor: categoryColor.main,
+                                                '&:hover': {
+                                                    backgroundColor: categoryColor.dark,
+                                                }
+                                            }}
+                                        >
+                                            {isSaved ? "Salvo com sucesso!" : "Salvar exame"}
+                                        </PrimaryButton>
+                                    </Box>
                                 </Box>
                             </Paper>
                         </Box>
@@ -1571,16 +2370,19 @@ const ExamDialog = ({
                     <Alert
                         onClose={() => setSnackbarOpen(false)}
                         severity={snackbarSeverity}
+                        variant="filled"
                         sx={{
                             width: '100%',
                             borderRadius: '10px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            fontWeight: 500
                         }}
                     >
                         {snackbarMessage}
                     </Alert>
                 </Snackbar>
             </StyledDialog>
+            <OcrTipsDialog open={showOcrTips} onClose={() => setShowOcrTips(false)} />
         </ThemeProvider>
     );
 };

@@ -7,6 +7,86 @@ import * as os from 'os';
 // Declare a rota como dinâmica para o Netlify
 export const dynamic = 'force-dynamic';
 
+// Função para extrair texto de arquivos DOCX
+async function extractTextFromDOCX(buffer) {
+    try {
+        console.log("Extraindo texto de DOCX...");
+        const mammoth = await import('mammoth');
+
+        const result = await mammoth.extractRawText({
+            buffer: buffer
+        });
+
+        console.log(`Texto extraído do DOCX: ${result.value.length} caracteres`);
+        return result.value;
+    } catch (error) {
+        console.error("Erro ao extrair texto do DOCX:", error);
+        throw error;
+    }
+}
+
+// Função para processar imagens com OCR
+async function extractTextFromImage(buffer, fileName) {
+    try {
+        console.log(`Iniciando OCR na imagem: ${fileName}...`);
+
+        // Criar diretório temporário para processamento
+        const tempDir = path.join(os.tmpdir(), `img-ocr-${Date.now()}`);
+        await fs.promises.mkdir(tempDir, { recursive: true });
+        const imagePath = path.join(tempDir, 'temp-image.png');
+
+        // Melhorar qualidade da imagem antes do OCR (opcional)
+        try {
+            const sharp = await import('sharp');
+            const enhancedImage = await sharp(buffer)
+                .greyscale() // Converter para escala de cinza
+                .normalize() // Normalizar o contraste
+                .sharpen() // Melhorar a nitidez
+                .toBuffer();
+
+            // Salvar imagem processada
+            await fs.promises.writeFile(imagePath, enhancedImage);
+            console.log("Imagem pré-processada para melhorar OCR");
+        } catch (sharpError) {
+            console.warn("Não foi possível pré-processar a imagem:", sharpError);
+            // Se falhar o pré-processamento, usar imagem original
+            await fs.promises.writeFile(imagePath, buffer);
+        }
+
+        // Executar OCR com Tesseract
+        const { createWorker } = await import('tesseract.js');
+        // Usar o português para melhorar reconhecimento de textos médicos em PT-BR
+        const worker = await createWorker('por');
+
+        // Configurar parâmetros de OCR para melhorar reconhecimento de texto médico
+        await worker.setParameters({
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.:;%<>(){}[]+-=/*"\'´`~^ºª!?@#$&_\\|µΩ∞±≤≥÷×≠',
+            preserve_interword_spaces: '1',
+        });
+
+        // Executar OCR
+        const { data } = await worker.recognize(imagePath);
+        const extractedText = data.text;
+
+        // Limpar recursos
+        await worker.terminate();
+
+        // Limpar arquivos temporários
+        try {
+            await fs.promises.unlink(imagePath);
+            await fs.promises.rmdir(tempDir);
+        } catch (cleanupError) {
+            console.error("Erro ao limpar arquivos temporários:", cleanupError);
+        }
+
+        console.log(`Texto extraído da imagem: ${extractedText.length} caracteres`);
+        return extractedText;
+    } catch (error) {
+        console.error('Erro no OCR da imagem:', error);
+        throw new Error(`Falha ao extrair texto da imagem: ${error.message}`);
+    }
+}
+
 // Função para OCR em ambiente Node.js - essa será nossa principal estratégia
 async function extractTextWithOCR(pdfBuffer) {
     try {
@@ -190,10 +270,89 @@ async function extractTextWithPdfJS(pdfBuffer) {
     }
 }
 
+// Função para processar texto extraído com OpenAI e estruturar resultados dos exames
+async function processTextWithOpenAI(text) {
+    try {
+        // Truncar o texto se for muito longo
+        const maxLength = 15000;
+        const truncatedText = text.length > maxLength
+            ? text.substring(0, maxLength) + "... [texto truncado devido ao tamanho]"
+            : text;
+
+        console.log(`Processando texto com OpenAI: ${truncatedText.length} caracteres`);
+
+        // Verificar se a chave da API está configurada
+        if (!process.env.OPENAI_KEY) {
+            console.error('OPENAI_KEY não configurada');
+            throw new Error('Configuração da API de IA não encontrada');
+        }
+
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_KEY
+        });
+
+        const response = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+                {
+                    role: "system",
+                    content: "Você é um assistente especializado em processar resultados de exames médicos."
+                },
+                {
+                    role: "user",
+                    content: `
+                        Analise o texto do exame médico a seguir e extraia todos os resultados em formato JSON.
+                        O resultado deve ser agrupado nas seguintes categorias:
+                        - LabGerais: Exames Laboratoriais Gerais
+                        - PerfilLipidico: Perfil Lipídico
+                        - Hepaticos: Exames Hepáticos e Pancreáticos
+                        - Inflamatorios: Inflamatórios e Imunológicos
+                        - Hormonais: Hormonais
+                        - Vitaminas: Vitaminas e Minerais
+                        - Infecciosos: Infecciosos / Sorologias
+                        - Tumorais: Marcadores Tumorais
+                        - Cardiacos: Cardíacos e Musculares
+                        - Imagem: Imagem e Diagnóstico
+                        - Outros: Outros Exames
+                        
+                        Estruture o JSON como:
+                        {
+                          "LabGerais": {
+                            "Hemograma completo": "valor",
+                            "Plaquetas": "valor"
+                          },
+                          "PerfilLipidico": {
+                            "Colesterol Total": "valor"
+                          }
+                        }
+                        
+                        Inclua apenas as categorias onde houver resultados identificados.
+                        Para cada exame, inclua o nome do exame e o resultado completo com unidades.
+                        
+                        Texto do exame:
+                        ${truncatedText}
+                    `
+                }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.2
+        });
+
+        // Extrair e validar o JSON retornado
+        const resultText = response.choices[0].message.content;
+        return JSON.parse(resultText);
+    } catch (error) {
+        console.error('Erro ao processar texto com OpenAI:', error);
+        throw error;
+    }
+}
+
 export async function POST(req) {
     try {
         let text = "";
         let sourceType = "unknown";
+        let fileName = "";
+        let fileType = "";
 
         // Tentar processar como FormData (upload de arquivo)
         try {
@@ -202,7 +361,10 @@ export async function POST(req) {
 
             if (file) {
                 sourceType = "file-upload";
-                console.log(`Processando arquivo: ${file.name}, tipo: ${file.type}, tamanho: ${file.size} bytes`);
+                fileName = file.name || "arquivo";
+                fileType = file.type || "";
+
+                console.log(`Processando arquivo: ${fileName}, tipo: ${fileType}, tamanho: ${file.size} bytes`);
 
                 // Definir limite de tamanho máximo
                 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
@@ -216,7 +378,29 @@ export async function POST(req) {
                 // Converter para Buffer
                 const buffer = Buffer.from(await file.arrayBuffer());
 
-                try {
+                // Verificar tipo de arquivo e processar adequadamente
+                const isDocx = fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                    fileName.toLowerCase().endsWith('.docx');
+
+                const isPdf = fileType === 'application/pdf' ||
+                    fileName.toLowerCase().endsWith('.pdf');
+
+                const isImage = fileType.startsWith('image/') ||
+                    fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
+
+                if (isDocx) {
+                    // Processar DOCX
+                    try {
+                        text = await extractTextFromDOCX(buffer);
+                        console.log(`Texto extraído do DOCX: ${text.length} caracteres`);
+                    } catch (docxError) {
+                        console.error("Erro ao processar DOCX:", docxError);
+                        return NextResponse.json({
+                            error: 'Falha ao processar o arquivo DOCX',
+                            details: docxError.message
+                        }, { status: 500 });
+                    }
+                } else if (isPdf) {
                     // Estratégia 1: Tentar extrair com pdf.js
                     try {
                         text = await extractTextWithPdfJS(buffer);
@@ -234,18 +418,23 @@ export async function POST(req) {
                         console.log("Tentando extração com OCR...");
                         text = await extractTextWithOCR(buffer);
                     }
-
-                    if (!text.trim()) {
-                        throw new Error("Nenhum método conseguiu extrair texto suficiente");
+                } else if (isImage) {
+                    // Processar imagem com OCR
+                    try {
+                        text = await extractTextFromImage(buffer, fileName);
+                        console.log(`Texto extraído da imagem: ${text.length} caracteres`);
+                    } catch (imageError) {
+                        console.error("Erro ao processar imagem:", imageError);
+                        return NextResponse.json({
+                            error: 'Falha ao processar a imagem',
+                            details: imageError.message
+                        }, { status: 500 });
                     }
-
-                    console.log(`Texto extraído com sucesso: ${text.length} caracteres`);
-                } catch (processingError) {
-                    console.error("Erro ao processar PDF:", processingError);
+                } else {
                     return NextResponse.json({
-                        error: 'Falha ao processar o arquivo PDF',
-                        details: processingError.message || "Erro interno no processamento do PDF"
-                    }, { status: 500 });
+                        error: 'Tipo de arquivo não suportado',
+                        details: 'Por favor, envie arquivos nos formatos PDF, DOCX ou imagens (JPG, JPEG, PNG, GIF)'
+                    }, { status: 400 });
                 }
             } else {
                 return NextResponse.json({
@@ -269,26 +458,45 @@ export async function POST(req) {
                             throw new Error(`Falha ao baixar o arquivo: ${response.status} ${response.statusText}`);
                         }
 
+                        // Tentar determinar o tipo de arquivo da URL
+                        const contentType = response.headers.get('content-type') || '';
+                        const urlPath = new URL(body.url).pathname.toLowerCase();
+
                         // Obter o conteúdo binário
                         const fileBuffer = await response.arrayBuffer();
                         const buffer = Buffer.from(fileBuffer);
 
-                        // Processar com os mesmos métodos
-                        try {
-                            text = await extractTextWithPdfJS(buffer);
-                            if (!text.trim() || text.length < 100) {
+                        const isDocx = contentType.includes('openxmlformats-officedocument') || urlPath.endsWith('.docx');
+                        const isPdf = contentType.includes('application/pdf') || urlPath.endsWith('.pdf');
+                        const isImage = contentType.startsWith('image/') ||
+                            urlPath.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
+
+                        if (isDocx) {
+                            text = await extractTextFromDOCX(buffer);
+                        } else if (isPdf) {
+                            // Processar com os mesmos métodos de PDF
+                            try {
+                                text = await extractTextWithPdfJS(buffer);
+                                if (!text.trim() || text.length < 100) {
+                                    text = await extractTextWithOCR(buffer);
+                                }
+                            } catch (urlPdfError) {
+                                console.error("Erro na extração primária:", urlPdfError);
                                 text = await extractTextWithOCR(buffer);
                             }
-                        } catch (urlPdfError) {
-                            console.error("Erro na extração primária:", urlPdfError);
-                            text = await extractTextWithOCR(buffer);
+                        } else if (isImage) {
+                            // Extrair texto da imagem com OCR
+                            const fileName = urlPath.split('/').pop() || 'image.jpg';
+                            text = await extractTextFromImage(buffer, fileName);
+                        } else {
+                            throw new Error('Tipo de arquivo não suportado da URL. Use PDF, DOCX ou imagens.');
                         }
 
                         console.log(`Texto extraído da URL: ${text.length} caracteres`);
                     } catch (urlError) {
                         console.error("Erro ao processar URL:", urlError);
                         return NextResponse.json({
-                            error: 'Falha ao processar o PDF da URL',
+                            error: 'Falha ao processar o arquivo da URL',
                             details: urlError.message
                         }, { status: 500 });
                     }
@@ -315,135 +523,46 @@ export async function POST(req) {
         if (!text || text.trim().length === 0) {
             return NextResponse.json({
                 error: 'Texto não extraído ou vazio',
-                details: 'Não foi possível extrair texto do PDF mesmo com OCR'
+                details: 'Não foi possível extrair texto do arquivo mesmo com OCR'
             }, { status: 400 });
         }
 
-        // Truncar o texto se for muito longo
-        const maxLength = 15000;
-        const truncatedText = text.length > maxLength
-            ? text.substring(0, maxLength) + "... [texto truncado devido ao tamanho]"
-            : text;
-
-        console.log(`Texto para processamento (${sourceType}): ${truncatedText.length} caracteres`);
-
-        // Verificar se a chave da API está configurada
-        if (!process.env.OPENAI_KEY) {
-            console.error('OPENAI_KEY não configurada');
-            return NextResponse.json({
-                error: 'Configuração da API de IA não encontrada',
-                details: 'A variável de ambiente OPENAI_KEY não está configurada'
-            }, { status: 500 });
-        }
-
-        // Processar com OpenAI
+        // Processar o texto extraído com OpenAI
         try {
-            console.log("Iniciando processamento com OpenAI...");
+            const jsonResult = await processTextWithOpenAI(text);
 
-            const openai = new OpenAI({
-                apiKey: process.env.OPENAI_KEY
-            });
+            // Verificar se há pelo menos alguma categoria de exame
+            const categoryCount = Object.keys(jsonResult).length;
+            console.log(`Categorias encontradas: ${categoryCount}`);
 
-            const response = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [
-                    {
-                        role: "system",
-                        content: "Você é um assistente especializado em processar resultados de exames médicos."
-                    },
-                    {
-                        role: "user",
-                        content: `
-                            Analise o texto do exame médico a seguir e extraia todos os resultados em formato JSON.
-                            O resultado deve ser agrupado nas seguintes categorias:
-                            - LabGerais: Exames Laboratoriais Gerais
-                            - PerfilLipidico: Perfil Lipídico
-                            - Hepaticos: Exames Hepáticos e Pancreáticos
-                            - Inflamatorios: Inflamatórios e Imunológicos
-                            - Hormonais: Hormonais
-                            - Vitaminas: Vitaminas e Minerais
-                            - Infecciosos: Infecciosos / Sorologias
-                            - Tumorais: Marcadores Tumorais
-                            - Cardiacos: Cardíacos e Musculares
-                            - Imagem: Imagem e Diagnóstico
-                            - Outros: Outros Exames
-                            
-                            Estruture o JSON como:
-                            {
-                              "LabGerais": {
-                                "Hemograma completo": "valor",
-                                "Plaquetas": "valor"
-                              },
-                              "PerfilLipidico": {
-                                "Colesterol Total": "valor"
-                              }
-                            }
-                            
-                            Inclua apenas as categorias onde houver resultados identificados.
-                            Para cada exame, inclua o nome do exame e o resultado completo com unidades.
-                            
-                            Texto do exame:
-                            ${truncatedText}
-                        `
-                    }
-                ],
-                response_format: { type: "json_object" },
-                temperature: 0.2
-            });
-
-            console.log("Resposta recebida da OpenAI");
-
-            // Extrair e validar o JSON retornado
-            const resultText = response.choices[0].message.content;
-
-            try {
-                const jsonResult = JSON.parse(resultText);
-
-                // Verificar se há pelo menos alguma categoria de exame
-                const categoryCount = Object.keys(jsonResult).length;
-                console.log(`Categorias encontradas: ${categoryCount}`);
-
-                if (categoryCount === 0) {
-                    return NextResponse.json({
-                        success: true,
-                        data: {},
-                        warning: "Nenhum resultado de exame identificado no texto fornecido",
-                        rawText: text.substring(0, 500) + "..." // Primeiros 500 caracteres para diagnóstico
-                    });
-                }
-
+            if (categoryCount === 0) {
                 return NextResponse.json({
                     success: true,
-                    data: jsonResult,
-                    source: sourceType,
-                    textLength: text.length
+                    data: {},
+                    warning: "Nenhum resultado de exame identificado no texto fornecido",
+                    rawText: text.substring(0, 500) + "..." // Primeiros 500 caracteres para diagnóstico
                 });
-            } catch (jsonError) {
-                console.error("Erro ao converter resposta para JSON:", jsonError);
-                return NextResponse.json({
-                    error: "Falha ao converter a resposta da IA para JSON",
-                    details: jsonError.message,
-                    rawContent: resultText.substring(0, 200) + "..." // Primeiros 200 caracteres para diagnóstico
-                }, { status: 500 });
-            }
-        } catch (openaiError) {
-            console.error('Erro na chamada da OpenAI:', openaiError);
-
-            // Verificar tipos específicos de erro
-            let errorMessage = openaiError.message;
-            if (errorMessage.includes('billing') || errorMessage.includes('quota')) {
-                errorMessage = "Limite da API excedido. Tente novamente mais tarde.";
-            } else if (errorMessage.includes('timeout')) {
-                errorMessage = "Tempo limite excedido. O servidor está ocupado, tente novamente.";
-            } else if (errorMessage.includes('rate limit')) {
-                errorMessage = "Muitas requisições. Aguarde alguns segundos e tente novamente.";
             }
 
             return NextResponse.json({
-                error: 'Falha na comunicação com o serviço de IA',
-                details: errorMessage
+                success: true,
+                data: jsonResult,
+                source: sourceType,
+                fileType: fileType,
+                fileName: fileName,
+                textLength: text.length
+            });
+
+        } catch (processingError) {
+            console.error("Erro ao processar texto com OpenAI:", processingError);
+
+            return NextResponse.json({
+                error: "Falha ao processar o texto extraído",
+                details: processingError.message,
+                textSample: text.substring(0, 300) + "..." // Amostra para diagnóstico
             }, { status: 500 });
         }
+
     } catch (error) {
         console.error('Erro geral não tratado:', error);
         return NextResponse.json({
