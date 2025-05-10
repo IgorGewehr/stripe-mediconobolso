@@ -309,47 +309,6 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
 
     return (
         <Box sx={{ pt: 1, pb: 2, width: '100%' }}>
-            {/* Header with Exam Title and Category - Left aligned and minimalist */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Box
-                    sx={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: '12px',
-                        backgroundColor: alpha(categoryColor, 0.1),
-                        color: categoryColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mr: 2,
-                        fontSize: '22px'
-                    }}
-                >
-                    {categoryInfo.icon || <BiotechIcon sx={{ fontSize: 24 }} />}
-                </Box>
-                <Box>
-                    <Typography
-                        variant="h5"
-                        sx={{
-                            fontWeight: 600,
-                            color: '#101828',
-                            mb: 0.5
-                        }}
-                    >
-                        {normalizedData.title || "Exame sem título"}
-                    </Typography>
-                    <Chip
-                        label={categoryInfo.title}
-                        size="small"
-                        sx={{
-                            backgroundColor: alpha(categoryColor, 0.1),
-                            color: categoryColor,
-                            fontWeight: 500,
-                            height: 24
-                        }}
-                    />
-                </Box>
-            </Box>
 
             {/* Observations - if available */}
             {normalizedData.observations && (
