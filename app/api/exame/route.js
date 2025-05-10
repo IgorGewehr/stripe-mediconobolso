@@ -1,3 +1,4 @@
+// api/exame.js (arquivo completo atualizado)
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
 import * as fs from 'fs';
@@ -270,6 +271,74 @@ async function extractTextWithPdfJS(pdfBuffer) {
     }
 }
 
+// NOVA FUNÇÃO: Processar texto para extrair informações do paciente
+async function processPatientInfoWithAI(text) {
+    try {
+        // Truncar o texto se for muito longo
+        const maxLength = 15000;
+        const truncatedText = text.length > maxLength
+            ? text.substring(0, maxLength) + "... [texto truncado devido ao tamanho]"
+            : text;
+
+        console.log(`Processando texto com OpenAI para extrair dados do paciente: ${truncatedText.length} caracteres`);
+
+        // Verificar se a chave da API está configurada
+        if (!process.env.OPENAI_KEY) {
+            console.error('OPENAI_KEY não configurada');
+            throw new Error('Configuração da API de IA não encontrada');
+        }
+
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_KEY
+        });
+
+        const response = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+                {
+                    role: "system",
+                    content: "Você é um assistente especializado em extrair informações de pacientes de documentos médicos."
+                },
+                {
+                    role: "user",
+                    content: `
+                        Analise o texto a seguir e extraia informações básicas do paciente em formato JSON.
+                        Extraia APENAS as seguintes informações (somente se estiverem presentes no texto):
+                        
+                        - nome (nome completo do paciente)
+                        - email (endereço de e-mail do paciente)
+                        - telefone (número de telefone, formate como (00) 00000-0000)
+                        - tipoSanguineo (deve ser um dos seguintes: A+, A-, B+, B-, AB+, AB-, O+, O-)
+                        - genero (deve ser "masculino" ou "feminino")
+                        - dataNascimento (data de nascimento no formato DD/MM/AAAA)
+                        - endereco (endereço completo)
+                        - cpf (CPF do paciente, formate como 000.000.000-00)
+                        - cidade (cidade do paciente)
+                        - estado (estado do paciente, use sigla de 2 letras: SP, RJ, etc.)
+                        - cep (CEP, formate como 00000-000)
+                        
+                        Se alguma informação não estiver presente no texto, NÃO inclua o campo no JSON.
+                        Nunca invente ou preencha informações que não estejam explicitamente presentes no documento.
+                        Se encontrar informações com nomes diferentes, mas que correspondam claramente a esses campos, faça o mapeamento correto.
+                        
+                        Texto do documento:
+                        ${truncatedText}
+                    `
+                }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.2
+        });
+
+        // Extrair e validar o JSON retornado
+        const resultText = response.choices[0].message.content;
+        return JSON.parse(resultText);
+    } catch (error) {
+        console.error('Erro ao processar texto com OpenAI:', error);
+        throw error;
+    }
+}
+
 // Função para processar texto extraído com OpenAI e estruturar resultados dos exames
 async function processTextWithOpenAI(text) {
     try {
@@ -353,11 +422,18 @@ export async function POST(req) {
         let sourceType = "unknown";
         let fileName = "";
         let fileType = "";
+        let extractType = "exam"; // Default é extração de exames médicos
 
         // Tentar processar como FormData (upload de arquivo)
         try {
             const formData = await req.formData();
             const file = formData.get('file');
+
+            // Verificar se há um parâmetro de tipo de extração
+            if (formData.get('extractType')) {
+                extractType = formData.get('extractType');
+                console.log(`Tipo de extração solicitada: ${extractType}`);
+            }
 
             if (file) {
                 sourceType = "file-upload";
@@ -504,6 +580,12 @@ export async function POST(req) {
                     sourceType = "direct-text";
                     text = body.text;
                     console.log(`Texto fornecido diretamente: ${text.length} caracteres`);
+
+                    // Verificar tipo de extração no body
+                    if (body.extractType) {
+                        extractType = body.extractType;
+                        console.log(`Tipo de extração solicitada no JSON: ${extractType}`);
+                    }
                 } else {
                     return NextResponse.json({
                         error: 'Corpo da requisição inválido',
@@ -529,19 +611,41 @@ export async function POST(req) {
 
         // Processar o texto extraído com OpenAI
         try {
-            const jsonResult = await processTextWithOpenAI(text);
+            let jsonResult;
 
-            // Verificar se há pelo menos alguma categoria de exame
-            const categoryCount = Object.keys(jsonResult).length;
-            console.log(`Categorias encontradas: ${categoryCount}`);
+            // Escolher o processamento adequado conforme o tipo solicitado
+            if (extractType === 'patientInfo') {
+                // Processar para informações de paciente
+                jsonResult = await processPatientInfoWithAI(text);
 
-            if (categoryCount === 0) {
-                return NextResponse.json({
-                    success: true,
-                    data: {},
-                    warning: "Nenhum resultado de exame identificado no texto fornecido",
-                    rawText: text.substring(0, 500) + "..." // Primeiros 500 caracteres para diagnóstico
-                });
+                // Verificar se conseguiu extrair alguns dados do paciente
+                const fieldCount = Object.keys(jsonResult).length;
+                console.log(`Campos de paciente encontrados: ${fieldCount}`);
+
+                if (fieldCount === 0) {
+                    return NextResponse.json({
+                        success: true,
+                        data: {},
+                        warning: "Nenhuma informação de paciente identificada no texto fornecido",
+                        rawText: text.substring(0, 500) + "..." // Primeiros 500 caracteres para diagnóstico
+                    });
+                }
+            } else {
+                // Processamento padrão para exames
+                jsonResult = await processTextWithOpenAI(text);
+
+                // Verificar se há pelo menos alguma categoria de exame
+                const categoryCount = Object.keys(jsonResult).length;
+                console.log(`Categorias encontradas: ${categoryCount}`);
+
+                if (categoryCount === 0) {
+                    return NextResponse.json({
+                        success: true,
+                        data: {},
+                        warning: "Nenhum resultado de exame identificado no texto fornecido",
+                        rawText: text.substring(0, 500) + "..." // Primeiros 500 caracteres para diagnóstico
+                    });
+                }
             }
 
             return NextResponse.json({

@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from "react";
+// InfoBasicasForm.jsx (atualizado)
+"use client";
+
+import React, {useState, useEffect, useRef, useMemo} from 'react';
 import {
     Box,
     Grid,
@@ -10,6 +13,15 @@ import {
     Button,
     Avatar,
     InputAdornment,
+    Tooltip,
+    CircularProgress,
+    Backdrop,
+    Paper,
+    alpha,
+    LinearProgress,
+    Snackbar,
+    Alert,
+    Fade,
 } from "@mui/material";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import EmailIcon from "@mui/icons-material/Email";
@@ -17,6 +29,11 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import MaleIcon from "@mui/icons-material/Male";
 import FemaleIcon from "@mui/icons-material/Female";
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
+import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
+import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
+import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 
 // ------------------ ESTILOS ------------------
 const FormLabel = styled(Typography)(() => ({
@@ -98,6 +115,24 @@ const PhotoUploadButton = styled(Button)(() => ({
     justifyContent: "center",
 }));
 
+// Botão AI para extração de dados
+const AIExtractButton = styled(Button)(({ theme }) => ({
+    borderRadius: '999px',
+    backgroundColor: '#1852FE',
+    color: '#FFFFFF',
+    textTransform: 'none',
+    padding: '8px 16px',
+    fontWeight: 600,
+    boxShadow: '0 2px 4px rgba(24, 82, 254, 0.25)',
+    '&:hover': {
+        backgroundColor: '#0A3AA8',
+        boxShadow: '0 4px 8px rgba(24, 82, 254, 0.35)',
+    },
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+}));
+
 // Função para formatar a data de nascimento
 const formatBirthDate = (value) => {
     if (!value) return "";
@@ -117,12 +152,38 @@ const formatBirthDate = (value) => {
 
 function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrigger = 0 }) {
     const [photoPreview, setPhotoPreview] = useState(null);
+    const [isExtracting, setIsExtracting] = useState(false);
+    const [processingProgress, setProcessingProgress] = useState(0);
+    const [currentProcessingFile, setCurrentProcessingFile] = useState(null);
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+    const [showTips, setShowTips] = useState(false);
+    const fileInputRef = useRef(null);
+
+    // Dicas de processamento para extração de dados
+    const extractionTips = [
+        "Os melhores resultados são obtidos com documentos ou imagens nítidas e bem iluminadas.",
+        "A IA extrai apenas as informações que estão presentes no documento.",
+        "Documentos digitais geralmente produzem melhores resultados que documentos escaneados.",
+        "Fichas de paciente, prontuários ou formulários de cadastro são ideais para extração.",
+        "Os campos reconhecidos são: nome, email, telefone, tipo sanguíneo, gênero, data de nascimento, endereço, CPF, cidade, estado e CEP.",
+        "Você pode editar quaisquer dados extraídos antes de salvar o paciente.",
+        "Se você tiver um formulário de referência com estrutura específica, o sistema se adaptará após algumas extrações."
+    ];
 
     useEffect(() => {
         if (resetTrigger > 0) {
             setPhotoPreview(null);
         }
     }, [resetTrigger]);
+
+    // Exibir notificações
+    const showNotification = (message, severity = 'success') => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -208,8 +269,452 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
         updateFormData({ cep: formatCEP(value) });
     };
 
+    // Detectar tipo de arquivo
+    const detectFileType = (file) => {
+        try {
+            if (!file) return { isPdf: false, isDocx: false, isImage: false, isSupported: false };
+
+            const fileName = file.fileName || file.name || '';
+            const fileType = file.fileType || file.type || '';
+            const fileExt = fileName.toLowerCase().split('.').pop();
+
+            const isPdf = fileType === 'application/pdf' || fileExt === 'pdf';
+            const isDocx = fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                fileExt === 'docx' || fileExt === 'doc';
+            const isImage = fileType.startsWith('image/') ||
+                ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExt);
+
+            return {
+                isPdf,
+                isDocx,
+                isImage,
+                isSupported: isPdf || isDocx || isImage
+            };
+        } catch (error) {
+            console.error("Erro ao detectar tipo de arquivo:", error);
+            return { isPdf: false, isDocx: false, isImage: false, isSupported: false };
+        }
+    };
+
+    // Iniciar processo de extração de dados
+    const handleStartExtraction = () => {
+        // Abrir diálogo de seleção de arquivo
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    // Processar arquivo selecionado para extração
+    const handleFileInputChange = async (e) => {
+        try {
+            if (!e.target.files || e.target.files.length === 0) return;
+
+            const file = e.target.files[0];
+            const { isSupported, isPdf, isDocx, isImage } = detectFileType(file);
+
+            if (!isSupported) {
+                showNotification("Por favor, selecione um arquivo PDF, DOCX ou imagem válida", "warning");
+                return;
+            }
+
+            setIsExtracting(true);
+            setCurrentProcessingFile(file.name);
+            setProcessingProgress(0);
+
+            // Simular progresso
+            const progressInterval = setInterval(() => {
+                setProcessingProgress(prev => {
+                    const newProgress = prev + (Math.random() * 2);
+                    return newProgress >= 90 ? 90 : newProgress;
+                });
+            }, 300);
+
+            try {
+                // Preparar FormData
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('extractType', 'patientInfo'); // Indicar que queremos extrair dados do paciente
+
+                // Chamar a API
+                const response = await fetch('/api/exame', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                clearInterval(progressInterval);
+                setProcessingProgress(100);
+
+                // Pequeno atraso para mostrar progress 100%
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                if (!response.ok) {
+                    let errorMessage = "Erro ao processar arquivo";
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorData.details || `Erro na API: ${response.status}`;
+                    } catch (jsonError) {
+                        errorMessage = `Erro no servidor: ${response.status}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    // Atualizar o formulário com os dados extraídos
+                    updateFormData(result.data);
+
+                    // Contar campos extraídos
+                    const fieldsExtracted = Object.keys(result.data).length;
+
+                    if (fieldsExtracted > 0) {
+                        showNotification(`Extração concluída! ${fieldsExtracted} campos preenchidos.`, "success");
+                    } else {
+                        showNotification("Nenhuma informação encontrada no documento.", "warning");
+                    }
+                } else if (result.warning) {
+                    showNotification(result.warning, "warning");
+                } else {
+                    throw new Error("Falha ao processar o resultado");
+                }
+            } catch (error) {
+                console.error('Erro ao processar o arquivo:', error);
+                showNotification(`Não foi possível processar o arquivo: ${error.message}`, "error");
+            } finally {
+                clearInterval(progressInterval);
+                setIsExtracting(false);
+                setCurrentProcessingFile(null);
+                setProcessingProgress(0);
+
+                // Limpar o input para permitir selecionar o mesmo arquivo novamente
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            }
+        } catch (globalError) {
+            console.error("Erro global ao processar arquivo:", globalError);
+            showNotification("Ocorreu um erro inesperado. Por favor, tente novamente.", "error");
+            setIsExtracting(false);
+            setCurrentProcessingFile(null);
+            setProcessingProgress(0);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    // Function para scanear documento
+    const handleScanDocument = () => {
+        showNotification("Funcionalidade de escaneamento será implementada em breve!", "info");
+    };
+
     return (
-        <Box component="form" autoComplete="off" sx={{ p: 2 }}>
+        <Box component="form" autoComplete="off" sx={{ p: 2, position: 'relative' }}>
+            {/* Input de arquivo oculto para extração de dados */}
+            <input
+                type="file"
+                style={{ display: 'none' }}
+                ref={fileInputRef}
+                onChange={handleFileInputChange}
+                accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+            />
+
+            {/* Backdrop para processamento */}
+            <Backdrop
+                open={isExtracting}
+                sx={{
+                    position: 'fixed',
+                    zIndex: 9999,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
+                <Paper
+                    elevation={3}
+                    sx={{
+                        p: 4,
+                        borderRadius: '16px',
+                        maxWidth: '420px',
+                        textAlign: 'center'
+                    }}
+                >
+                    <Box
+                        sx={{
+                            width: 80,
+                            height: 80,
+                            borderRadius: '50%',
+                            backgroundColor: alpha('#1852FE', 0.2),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 20px',
+                            animation: 'pulse 1.5s infinite'
+                        }}
+                    >
+                        <AutoAwesomeIcon
+                            sx={{
+                                fontSize: 40,
+                                color: '#1852FE',
+                            }}
+                        />
+                    </Box>
+
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 600, color: '#0A3AA8' }}>
+                        Extraindo Dados
+                    </Typography>
+
+                    <Typography variant="body1" sx={{ mb: 3, color: '#475467' }}>
+                        {currentProcessingFile}
+                    </Typography>
+
+                    <Box sx={{ width: '100%', mb: 2 }}>
+                        <LinearProgress
+                            variant="determinate"
+                            value={processingProgress}
+                            sx={{
+                                height: 10,
+                                borderRadius: 5,
+                                backgroundColor: alpha('#1852FE', 0.2),
+                                '& .MuiLinearProgress-bar': {
+                                    backgroundColor: '#1852FE',
+                                    borderRadius: 5
+                                }
+                            }}
+                        />
+                    </Box>
+
+                    <Typography variant="body2" color="text.secondary">
+                        {`${Math.round(processingProgress)}% - Analisando documento...`}
+                    </Typography>
+
+                    <Box sx={{ mt: 3, fontSize: 12, color: 'text.secondary', fontStyle: 'italic' }}>
+                        A IA está identificando e extraindo informações do documento
+                    </Box>
+                </Paper>
+            </Backdrop>
+
+            {/* Animação de pulso para efeitos visuais */}
+            <style jsx global>{`
+                @keyframes pulse {
+                    0% {
+                        filter: drop-shadow(0 0 0 #1852FE);
+                        transform: scale(1);
+                    }
+                    50% {
+                        filter: drop-shadow(0 0 10px rgba(24, 82, 254, 0.4));
+                        transform: scale(1.1);
+                    }
+                    100% {
+                        filter: drop-shadow(0 0 0 #1852FE);
+                        transform: scale(1);
+                    }
+                }
+            `}</style>
+
+            {/* Cabeçalho com botão de extração */}
+            <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 3,
+                borderBottom: '1px solid rgba(17, 30, 90, 0.1)',
+                pb: 2
+            }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Tooltip title="Dicas para extração de dados">
+                        <Button
+                            variant="text"
+                            color={showTips ? "primary" : "inherit"}
+                            onClick={() => setShowTips(!showTips)}
+                            sx={{
+                                color: showTips ? '#1852FE' : '#475467',
+                                textTransform: 'none',
+                            }}
+                            startIcon={<TipsAndUpdatesOutlinedIcon />}
+                        >
+                            Dicas
+                        </Button>
+                    </Tooltip>
+
+                    <AIExtractButton
+                        onClick={handleStartExtraction}
+                        disabled={isExtracting}
+                        startIcon={
+                            isExtracting
+                                ? <CircularProgress size={20} color="inherit" />
+                                : <AutoAwesomeIcon />
+                        }
+                    >
+                        {isExtracting ? "Extraindo..." : "Extrair Dados com IA"}
+                    </AIExtractButton>
+                </Box>
+            </Box>
+
+            {/* Mostrar dicas quando habilitado */}
+            {showTips && (
+                <Fade in={showTips}>
+                    <Box sx={{
+                        mb: 3,
+                        p: 2,
+                        borderRadius: 2,
+                        backgroundColor: alpha('#1852FE', 0.05),
+                        border: '1px solid',
+                        borderColor: alpha('#1852FE', 0.2)
+                    }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#0A3AA8' }}>
+                            Como funciona a extração de dados de pacientes
+                        </Typography>
+
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+                                <Box sx={{
+                                    display: 'flex',
+                                    borderRadius: '50%',
+                                    p: 0.5,
+                                    bgcolor: alpha('#1852FE', 0.1),
+                                    minWidth: 32,
+                                    height: 32,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mt: 0.5
+                                }}>
+                                    <InsertDriveFileOutlinedIcon fontSize="small" sx={{ color: '#1852FE' }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#344054' }}>
+                                        1. Selecione um arquivo
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: '#475467' }}>
+                                        Envie um documento PDF, DOCX ou uma imagem contendo dados do paciente
+                                    </Typography>
+                                </Box>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+                                <Box sx={{
+                                    display: 'flex',
+                                    borderRadius: '50%',
+                                    p: 0.5,
+                                    bgcolor: alpha('#1852FE', 0.1),
+                                    minWidth: 32,
+                                    height: 32,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mt: 0.5
+                                }}>
+                                    <AutoAwesomeIcon fontSize="small" sx={{ color: '#1852FE' }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#344054' }}>
+                                        2. A IA processa o documento
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: '#475467' }}>
+                                        Nossa IA analisa o documento e extrai as informações relevantes
+                                    </Typography>
+                                </Box>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                <Box sx={{
+                                    display: 'flex',
+                                    borderRadius: '50%',
+                                    p: 0.5,
+                                    bgcolor: alpha('#1852FE', 0.1),
+                                    minWidth: 32,
+                                    height: 32,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mt: 0.5
+                                }}>
+                                    <FileDownloadDoneIcon fontSize="small" sx={{ color: '#1852FE' }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#344054' }}>
+                                        3. Formulário preenchido automaticamente
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: '#475467' }}>
+                                        Os campos são preenchidos com as informações extraídas
+                                    </Typography>
+                                </Box>
+                            </Box>
+
+                            <Typography variant="caption" sx={{ mt: 2, fontStyle: 'italic', color: '#475467' }}>
+                                Verifique e ajuste os dados extraídos se necessário antes de salvar o paciente
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Fade>
+            )}
+
+            {/* Alternativa para extração de dados */}
+            <Box sx={{
+                position: 'relative',
+                maxHeight: showTips ? '0' : '200px',
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease-in-out',
+                mb: showTips ? 0 : 3
+            }}>
+                <Fade in={!showTips} timeout={300}>
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        gap: 2,
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: alpha('#1852FE', 0.05),
+                        border: '1px dashed',
+                        borderColor: alpha('#1852FE', 0.3),
+                        alignItems: 'center',
+                        position: 'absolute',
+                        width: '100%',
+                        opacity: showTips ? 0 : 1
+                    }}>
+                        <Typography variant="body2" sx={{ color: '#344054', fontWeight: 500 }}>
+                            Economize tempo! Extraia automaticamente as informações do paciente de documentos ou imagens.
+                        </Typography>
+
+                        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+                            <Button
+                                variant="outlined"
+                                onClick={handleScanDocument}
+                                startIcon={<CameraAltOutlinedIcon />}
+                                sx={{
+                                    borderRadius: '999px',
+                                    textTransform: 'none',
+                                    fontWeight: 500,
+                                    color: '#475467',
+                                    borderColor: '#D0D5DD',
+                                    '&:hover': {
+                                        borderColor: '#B0B7C3',
+                                        backgroundColor: 'rgba(208, 213, 221, 0.1)'
+                                    }
+                                }}
+                            >
+                                Escanear
+                            </Button>
+
+                            <Button
+                                variant="contained"
+                                onClick={handleStartExtraction}
+                                startIcon={<AttachFileOutlinedIcon />}
+                                sx={{
+                                    borderRadius: '999px',
+                                    textTransform: 'none',
+                                    fontWeight: 500,
+                                    backgroundColor: '#1852FE',
+                                    boxShadow: 'none',
+                                    '&:hover': {
+                                        backgroundColor: '#0A3AA8',
+                                        boxShadow: '0 2px 4px rgba(10, 58, 168, 0.2)'
+                                    }
+                                }}
+                            >
+                                Selecionar Arquivo
+                            </Button>
+                        </Box>
+                    </Box>
+                </Fade>
+            </Box>
+
             {/* Foto do Paciente */}
             <Box sx={{ mb: 3 }}>
                 <input type="text" name="dummy" style={{ display: "none" }} autoComplete="off" />
@@ -482,8 +987,37 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                     />
                 </Grid>
             </Grid>
+
+            {/* Notificações */}
+            <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={6000}
+                onClose={() => setSnackbarOpen(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={() => setSnackbarOpen(false)}
+                    severity={snackbarSeverity}
+                    variant="filled"
+                    sx={{
+                        width: '100%',
+                        borderRadius: '10px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        fontWeight: 500
+                    }}
+                >
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
+
+// Adicione o ícone que faltava
+const FileDownloadDoneIcon = (props) => (
+    <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path d="M5 12.8L8.5 16.3L19 5.8M5 19H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
 
 export default InfoBasicasForm;
