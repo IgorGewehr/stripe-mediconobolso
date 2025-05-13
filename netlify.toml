@@ -22,4 +22,3 @@ external_node_modules = [
   "tesseract.js",
   "tesseract.js-core"
 ]
-timeout = 30
