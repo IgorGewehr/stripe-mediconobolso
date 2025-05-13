@@ -11,7 +11,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const preferredRegion = 'auto';
 export const maxDuration = 300; // 5 minutos para processamento
-export const workerEnabled = false; // Desabilitar workers para esta rota
 
 // Função para extrair texto de arquivos DOCX
 async function extractTextFromDOCX(buffer) {
