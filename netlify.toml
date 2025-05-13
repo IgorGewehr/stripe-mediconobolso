@@ -10,17 +10,16 @@ NEXT_USE_NETLIFY_EDGE = "true"
 NEXT_IGNORE_PRERENDER_ERRORS = "true"
 SKIP_STATIC_GENERATION_WITH_PRERENDER_ERRORS = "true"
 
-# Configuração para funções serverless
 [functions]
-# Usar esbuild para o bundler de Node
 node_bundler = "esbuild"
-# Incluir arquivos WASM do Tesseract e outros binários
 included_files = [
   "node_modules/tesseract.js-core/**/*",
   "node_modules/tesseract.js/**/*",
   "node_modules/sharp/**/*"
 ]
-# Especificar módulos que devem ser mantidos como externos
-external_node_modules = ["sharp", "tesseract.js", "tesseract.js-core"]
-# Aumentar limite de tempo para processamento de imagens
+external_node_modules = [
+  "sharp",
+  "tesseract.js",
+  "tesseract.js-core"
+]
 timeout = 30
