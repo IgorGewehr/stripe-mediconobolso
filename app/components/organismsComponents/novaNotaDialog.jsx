@@ -801,7 +801,7 @@ const PatientNoteDialog = ({
 
         setIsLoading(true);
         try {
-            // 1) Cria a nota SEM anexos
+            // Prepare o payload da nota
             const notePayload = {
                 noteTitle: title,
                 noteText: content,
@@ -810,40 +810,24 @@ const PatientNoteDialog = ({
                 consultationDate,
                 createdAt: new Date(),
                 lastModified: new Date(),
-                attachments: []    // começa vazio
+                attachments: attachments.map(att => {
+                    // Mantenha referência ao arquivo para upload posterior
+                    if (att.file instanceof File) {
+                        return { ...att };
+                    }
+                    return att;
+                })
             };
-            const newNoteId = await FirebaseService.createNote(
-                user.uid,
-                patientId,
-                notePayload
-            );
 
-            // 2) Para cada arquivo selecionado, faz o upload e já atualiza o campo attachments
-            for (const att of attachments) {
-                if (att.file instanceof File) {
-                    await FirebaseService.uploadNoteAttachment(
-                        att.file,
-                        user.uid,
-                        patientId,
-                        newNoteId
-                    );
-                }
-            }
+            // Apenas notifique o componente pai com os dados da nota
+            onSave && onSave(notePayload);
 
-            // 3) (Opcional) busca a nota atualizada e notifica o onSave
-            const updatedNote = await FirebaseService.getNote(
-                user.uid,
-                patientId,
-                newNoteId
-            );
-            onSave && onSave(updatedNote);
-
-            // feedback e fecha
+            // Feedback e fecha
             setIsSaved(true);
             setTimeout(onClose, 800);
         } catch (err) {
             console.error(err);
-            alert("Erro ao salvar nota: " + err.message);
+            alert("Erro ao preparar nota: " + err.message);
         } finally {
             setIsLoading(false);
         }

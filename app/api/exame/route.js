@@ -1,12 +1,17 @@
-// api/exame.js (arquivo completo atualizado)
+// app/api/exame/route.js (arquivo completo atualizado)
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import sharp from 'sharp'; // Importação estática do sharp
 
-// Declare a rota como dinâmica para o Netlify
+// Configurações da rota API para Next.js 15
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const preferredRegion = 'auto';
+export const maxDuration = 300; // 5 minutos para processamento
+export const workerEnabled = false; // Desabilitar workers para esta rota
 
 // Função para extrair texto de arquivos DOCX
 async function extractTextFromDOCX(buffer) {
@@ -36,9 +41,9 @@ async function extractTextFromImage(buffer, fileName) {
         await fs.promises.mkdir(tempDir, { recursive: true });
         const imagePath = path.join(tempDir, 'temp-image.png');
 
-        // Melhorar qualidade da imagem antes do OCR (opcional)
+        // Melhorar qualidade da imagem antes do OCR (com Sharp)
         try {
-            const sharp = await import('sharp');
+            // Usando importação estática do sharp
             const enhancedImage = await sharp(buffer)
                 .greyscale() // Converter para escala de cinza
                 .normalize() // Normalizar o contraste
@@ -271,7 +276,7 @@ async function extractTextWithPdfJS(pdfBuffer) {
     }
 }
 
-// NOVA FUNÇÃO: Processar texto para extrair informações do paciente
+// Processar texto para extrair informações do paciente
 async function processPatientInfoWithAI(text) {
     try {
         // Truncar o texto se for muito longo
