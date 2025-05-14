@@ -337,7 +337,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
     const stripe = useStripe();
     const elements = useElements();
     const router = useRouter();
-    const { user, loading: authLoading, logout } = useAuth();
+    const { user, loading: authLoading, logout, hasFreeTrialOffer, referralSource } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -639,6 +639,12 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                     checkoutStarted: true
                 };
 
+                // Adicionar flag específica para enrico
+                if (referralSource === 'enrico') {
+                    userData.enrico = true;
+                    console.log('Cliente marcado como vindo através do Enrico');
+                }
+
                 // Registrar usuário no Firebase
                 await firebaseService.signUp(
                     formData.email,
@@ -655,7 +661,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 setIsCreatingAccount(false);
             }
         }
-    }, [formData, userCreated, user, mapFirebaseError, validatePersonalInfo]);
+    }, [formData, userCreated, user, mapFirebaseError, validatePersonalInfo, referralSource]);
 
     // Validação dos dados de pagamento e endereço
     const validatePaymentInfo = useCallback(() => {
@@ -845,6 +851,12 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 fullName: formData.fullName
             };
 
+            // Adicionar flag específica para Enrico na atualização inicial
+            if (referralSource === 'enrico') {
+                userData.enrico = true;
+                console.log('Cliente marcado como vindo através do Enrico (dados iniciais)');
+            }
+
             await firebaseService.editUserData(currentUser.uid, userData);
             console.log("Dados do usuário atualizados no Firebase");
 
@@ -858,7 +870,8 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                     email: currentUser.email || formData.email,
                     name: formData.fullName.trim(),
                     cpf: formData.billingCpf,
-                    includeTrial: hasFreeTrialOffer
+                    includeTrial: hasFreeTrialOffer,
+                    referralSource: referralSource // Adiciona a referência do influenciador
                 })
             });
 
@@ -902,12 +915,21 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             }
 
             // 4) Atualizar dados adicionais no Firestore após confirmação do pagamento
-            await firebaseService.editUserData(currentUser.uid, {
+            const updateData = {
                 assinouPlano: false, // Mantenha como false até confirmação do webhook
                 planType: selectedPlan,
                 subscriptionId,
-                checkoutCompleted: true
-            });
+                checkoutCompleted: true,
+                referralSource: referralSource // Armazena também no Firebase
+            };
+
+            // Adicionar flag específica para Enrico na finalização do pagamento
+            if (referralSource === 'enrico') {
+                updateData.enrico = true;
+                console.log('Cliente marcado como vindo através do Enrico (finalização do pagamento)');
+            }
+
+            await firebaseService.editUserData(currentUser.uid, updateData);
 
             setSuccess('Pagamento processado com sucesso! Aguardando confirmação...');
 
@@ -920,7 +942,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             setIsProcessingPayment(false);
             setLoading(false);
         }
-    }, [validatePaymentInfo, selectedPlan, formData, stripe, elements, hasFreeTrialOffer, router, mapStripeError, pollUserSubscriptionStatus, plans]);
+    }, [validatePaymentInfo, selectedPlan, formData, stripe, elements, hasFreeTrialOffer, router, mapStripeError, pollUserSubscriptionStatus, plans, referralSource]);
 
     // Complete return statement for the CheckoutForm component
     return (

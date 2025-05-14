@@ -11,31 +11,79 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [hasFreeTrialOffer, setHasFreeTrialOffer] = useState(false);
+    // Novo estado para armazenar referência do influenciador
+    const [referralSource, setReferralSource] = useState(null);
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Handle free trial offer routes - this needs to run FIRST and separately
+    // Função auxiliar para extrair referência de influenciador do pathname
+    const extractReferralSource = (path) => {
+        // Primeira verificação: padrão /checkout/INFLUENCER/
+        const checkoutInfluencerRegex = /\/checkout\/([^\/]+)\/?$/;
+        const checkoutMatch = path.match(checkoutInfluencerRegex);
+
+        if (checkoutMatch && checkoutMatch[1] && checkoutMatch[1] !== 'pv1') {
+            return checkoutMatch[1];
+        }
+
+        // Segunda verificação: padrão /checkout/pv1/INFLUENCER/
+        const checkoutPv1InfluencerRegex = /\/checkout\/pv1\/([^\/]+)\/?$/;
+        const pv1Match = path.match(checkoutPv1InfluencerRegex);
+
+        if (pv1Match && pv1Match[1]) {
+            return pv1Match[1];
+        }
+
+        return null;
+    };
+
+    // Handle free trial offer routes and referral sources - this needs to run FIRST
     useEffect(() => {
-        // Check for trial offer routes immediately when component mounts
+        console.log('Processing route:', pathname);
+        let shouldSetFreeTrial = false;
+        let referrer = null;
+
+        // Check for immediate redirects like /pv1
         if (pathname === '/pv1') {
             console.log('PV1 route detected, setting free trial offer and redirecting');
-            // First set the trial offer flag
-            localStorage.setItem('hasFreeTrialOffer', 'true');
-            setHasFreeTrialOffer(true);
+            shouldSetFreeTrial = true;
 
             // Use setTimeout to ensure state is updated before navigation
             setTimeout(() => {
                 router.push('/checkout');
             }, 100);
-        } else if (pathname === '/checkout/pv1' || pathname.includes('/pv1')) {
+        }
+        // Check for free trial in path
+        else if (pathname.includes('/pv1')) {
             console.log('PV1 included in path, setting free trial offer');
+            shouldSetFreeTrial = true;
+        }
+
+        // Extract referral source from URL
+        referrer = extractReferralSource(pathname);
+
+        if (referrer) {
+            console.log(`Referral source detected: ${referrer}`);
+            localStorage.setItem('referralSource', referrer);
+            setReferralSource(referrer);
+        } else {
+            // Check localStorage as fallback for referralSource
+            const storedReferrer = localStorage.getItem('referralSource');
+            if (storedReferrer && !referralSource) {
+                console.log(`Referral source found in localStorage: ${storedReferrer}`);
+                setReferralSource(storedReferrer);
+            }
+        }
+
+        // Set free trial offer if needed
+        if (shouldSetFreeTrial) {
             localStorage.setItem('hasFreeTrialOffer', 'true');
             setHasFreeTrialOffer(true);
         }
-    }, [pathname, router]); // This effect only depends on pathname and router
+    }, [pathname, router, referralSource]);
 
-    // Handle other trials parameters and localStorage
+    // Handle other trial parameters and localStorage
     useEffect(() => {
         // Check for dct parameter
         const dctParam = searchParams.get('dct');
@@ -43,10 +91,10 @@ export const AuthProvider = ({ children }) => {
             console.log('DCT parameter detected, setting free trial offer');
             localStorage.setItem('hasFreeTrialOffer', 'true');
             setHasFreeTrialOffer(true);
-        } else {
-            // Check localStorage as fallback
+        } else if (!hasFreeTrialOffer) {
+            // Check localStorage as fallback for free trial
             const storedTrialOffer = localStorage.getItem('hasFreeTrialOffer');
-            if (storedTrialOffer === 'true' && !hasFreeTrialOffer) {
+            if (storedTrialOffer === 'true') {
                 console.log('Free trial found in localStorage');
                 setHasFreeTrialOffer(true);
             }
@@ -98,7 +146,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, logout, hasFreeTrialOffer }}>
+        <AuthContext.Provider value={{ user, loading, logout, hasFreeTrialOffer, referralSource }}>
             {!loading && children}
         </AuthContext.Provider>
     );

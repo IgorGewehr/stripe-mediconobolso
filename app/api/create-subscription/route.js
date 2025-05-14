@@ -5,7 +5,7 @@ import { headers } from 'next/headers';
 
 export async function POST(req) {
     try {
-        const { plan, uid, email, name, cpf, includeTrial = false } = await req.json();
+        const { plan, uid, email, name, cpf, includeTrial = false, referralSource = null } = await req.json();
         const origin = (await headers()).get('origin');
 
         // Validação básica
@@ -24,7 +24,7 @@ export async function POST(req) {
             );
         }
 
-        console.log(`Iniciando criação de assinatura: UID=${uid}, Email=${email}, Plano=${plan}, Trial=${includeTrial}`);
+        console.log(`Iniciando criação de assinatura: UID=${uid}, Email=${email}, Plano=${plan}, Trial=${includeTrial}, Referência=${referralSource || 'Nenhuma'}`);
 
         // Define o priceId conforme o plano
         let priceId;
@@ -61,11 +61,12 @@ export async function POST(req) {
                 metadata: {
                     uid,
                     checkoutVersion: '2.0',
-                    cpf: cpf ? cpf.replace(/\D/g, '') : undefined // Armazenamos o CPF como metadado
+                    cpf: cpf ? cpf.replace(/\D/g, '') : undefined,
+                    referral_source: referralSource || undefined // Adiciona referência do influenciador
                 },
                 name: name || ''
             });
-            console.log(`Cliente existente atualizado: ID=${customer.id}, Nome=${name || 'N/A'}`);
+            console.log(`Cliente existente atualizado: ID=${customer.id}, Nome=${name || 'N/A'}, Referência=${referralSource || 'Nenhuma'}`);
         } else {
             // Cria um novo cliente
             customer = await stripe.customers.create({
@@ -73,11 +74,12 @@ export async function POST(req) {
                 metadata: {
                     uid,
                     checkoutVersion: '2.0',
-                    cpf: cpf ? cpf.replace(/\D/g, '') : undefined // Armazenamos o CPF como metadado
+                    cpf: cpf ? cpf.replace(/\D/g, '') : undefined,
+                    referral_source: referralSource || undefined // Adiciona referência do influenciador
                 },
                 name: name || ''
             });
-            console.log(`Novo cliente criado: ID=${customer.id}, Nome=${name || 'N/A'}`);
+            console.log(`Novo cliente criado: ID=${customer.id}, Nome=${name || 'N/A'}, Referência=${referralSource || 'Nenhuma'}`);
         }
 
         // Preparar os dados da assinatura
@@ -94,7 +96,8 @@ export async function POST(req) {
                 uid,
                 plan,
                 hasTrial: includeTrial ? 'true' : 'false',
-                checkoutVersion: '2.0'
+                checkoutVersion: '2.0',
+                referral_source: referralSource || undefined // Adiciona referência do influenciador também nos metadados da assinatura
             }
         };
 
