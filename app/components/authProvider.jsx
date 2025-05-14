@@ -18,64 +18,66 @@ export const AuthProvider = ({ children }) => {
 
     // Função auxiliar para extrair referência de influenciador do pathname
     const extractReferralSource = (path) => {
-        // Primeira verificação: padrão /checkout/INFLUENCER/
-        const checkoutInfluencerRegex = /\/checkout\/([^\/]+)\/?$/;
-        const checkoutMatch = path.match(checkoutInfluencerRegex);
+        // Padrão: /checkout/INFLUENCER/
+        if (path.startsWith('/checkout/')) {
+            const parts = path.split('/').filter(Boolean);
 
-        if (checkoutMatch && checkoutMatch[1] && checkoutMatch[1] !== 'pv1') {
-            return checkoutMatch[1];
-        }
+            // Se for /checkout/pv1/INFLUENCER/
+            if (parts.length === 3 && parts[1] === 'pv1') {
+                return parts[2];
+            }
 
-        // Segunda verificação: padrão /checkout/pv1/INFLUENCER/
-        const checkoutPv1InfluencerRegex = /\/checkout\/pv1\/([^\/]+)\/?$/;
-        const pv1Match = path.match(checkoutPv1InfluencerRegex);
-
-        if (pv1Match && pv1Match[1]) {
-            return pv1Match[1];
+            // Se for /checkout/INFLUENCER/ (mas não /checkout/pv1/)
+            if (parts.length === 2 && parts[1] !== 'pv1') {
+                return parts[1];
+            }
         }
 
         return null;
     };
 
-    // Handle free trial offer routes and referral sources - this needs to run FIRST
+    // Detecção de rotas especiais e redirecionamentos
     useEffect(() => {
         console.log('Processing route:', pathname);
         let shouldSetFreeTrial = false;
         let referrer = null;
         let shouldRedirect = false;
 
-        // Detecção da rota /pv1 - redirecionar para /checkout
+        // Caso especial: rota /pv1 simples - redirecionar para /checkout com trial
         if (pathname === '/pv1') {
             console.log('PV1 route detected, setting free trial offer and redirecting');
             shouldSetFreeTrial = true;
             shouldRedirect = true;
         }
-        // Detecção das rotas que iniciam com /checkout/
+        // Para rotas com prefixo /checkout/
         else if (pathname.startsWith('/checkout/')) {
-            // Se não for a rota principal /checkout
+            // Se não for exatamente /checkout
             if (pathname !== '/checkout') {
                 shouldRedirect = true;
 
-                // Verificar se é uma rota de pv1 - DEVE ser especificamente /checkout/pv1 ou iniciar com /checkout/pv1/
+                // CUIDADO! Ativar trial APENAS se o caminho for /checkout/pv1 ou iniciar com /checkout/pv1/
                 if (pathname === '/checkout/pv1' || pathname.startsWith('/checkout/pv1/')) {
-                    console.log('PV1 route detected as trial offer path');
+                    console.log('PV1 trial path detected, offering free trial');
                     shouldSetFreeTrial = true;
                 } else {
-                    console.log('Non-trial checkout route detected');
+                    console.log('Non-trial checkout path detected');
                 }
 
                 // Extrair referência do influenciador
                 referrer = extractReferralSource(pathname);
                 if (referrer) {
                     console.log(`Referral source detected: ${referrer}`);
-                    localStorage.setItem('referralSource', referrer);
-                    setReferralSource(referrer);
                 }
             }
         }
 
-        // Se não encontrou referência no URL, verificar localStorage
-        if (!referrer && !referralSource) {
+        // Atualizar referência do influenciador se encontrado
+        if (referrer) {
+            localStorage.setItem('referralSource', referrer);
+            setReferralSource(referrer);
+        }
+        // Verificar localStorage para referralSource
+        else if (!referralSource) {
             const storedReferrer = localStorage.getItem('referralSource');
             if (storedReferrer) {
                 console.log(`Referral source found in localStorage: ${storedReferrer}`);
@@ -89,11 +91,9 @@ export const AuthProvider = ({ children }) => {
             setHasFreeTrialOffer(true);
         }
 
-        // Redirecionar se for uma rota especial
+        // Redirecionar para a rota principal de checkout se necessário
         if (shouldRedirect) {
-            // Usar setTimeout para garantir que os estados sejam atualizados
             setTimeout(() => {
-                // Evitar que o redirecionamento seja feito se o usuário já saiu da página
                 if (pathname !== '/checkout') {
                     console.log('Redirecting to main checkout page...');
                     router.replace('/checkout');
@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }) => {
                     const userData = await firebaseService.getUserData(authUser.uid);
                     setUser({ uid: authUser.uid, ...userData });
 
-                    // Only redirect if not on a special route
+                    // Only redirect if already has plan and on checkout page
                     if (userData && userData.assinouPlano && pathname === '/checkout' &&
                         searchParams.get('dct') !== '1') { // Don't redirect if dct param exists
 

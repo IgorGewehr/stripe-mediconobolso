@@ -553,6 +553,8 @@ function CheckoutForm({ hasFreeTrialOffer }) {
         setShowPassword(prev => !prev);
     }, []);
 
+    const effectiveHasFreeTrialOffer = hasFreeTrialOffer || freeTrialFromAuth;
+
     // Função para mapear erros do Firebase para mensagens amigáveis
     const mapFirebaseError = useCallback((error) => {
         switch (error.code) {
@@ -870,7 +872,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                     email: currentUser.email || formData.email,
                     name: formData.fullName.trim(),
                     cpf: formData.billingCpf,
-                    includeTrial: hasFreeTrialOffer,
+                    includeTrial: effectiveHasFreeTrialOffer,
                     referralSource: referralSource // Adiciona a referência do influenciador
                 })
             });
@@ -942,7 +944,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             setIsProcessingPayment(false);
             setLoading(false);
         }
-    }, [validatePaymentInfo, selectedPlan, formData, stripe, elements, hasFreeTrialOffer, router, mapStripeError, pollUserSubscriptionStatus, plans, referralSource]);
+    }, [validatePaymentInfo, selectedPlan, formData, stripe, elements, effectiveHasFreeTrialOffer, router, mapStripeError, pollUserSubscriptionStatus, plans, referralSource]);
 
     // Complete return statement for the CheckoutForm component
     return (
@@ -1345,7 +1347,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                 </Box>
 
                                 {/* GRID MODIFICADO - Em mobile, cada cartão ocupa 100% da largura */}
-                                {hasFreeTrialOffer && (
+                                {effectiveHasFreeTrialOffer && (
                                     <Box sx={{
                                         pl: 3,
                                         mb: 3,
@@ -1800,7 +1802,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                         </Alert>
                                     )}
 
-                                    {hasFreeTrialOffer && (
+                                    {effectiveHasFreeTrialOffer && (
                                         <Alert
                                             severity="info"
                                             sx={{
@@ -1842,7 +1844,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                         }}
                                         startIcon={isProcessingPayment ? <CircularProgress size={20} color="inherit" /> : null}
                                     >
-                                        {isProcessingPayment ? 'PROCESSANDO...' : (hasFreeTrialOffer ? 'INICIAR TESTE' : 'FINALIZAR PAGAMENTO')}
+                                        {isProcessingPayment ? 'PROCESSANDO...' : (effectiveHasFreeTrialOffer ? 'INICIAR TESTE' : 'FINALIZAR PAGAMENTO')}
                                     </Button>
                                 </Box>
                             )}
@@ -1868,7 +1870,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
 }
 
 // Componente wrapper com o provider do Stripe
-export default function CustomCheckout({ hasFreeTrialOffer: freeTrialFromProps }) {
+export default function CustomCheckout({ hasFreeTrialOffer: effectiveHasFreeTrialOffer }) {
     useEffect(() => {
         // Facebook Pixel Code - Meta tag (only add if it doesn't exist)
         if (typeof window !== 'undefined' && !document.getElementById('facebook-pixel-script')) {
@@ -1902,7 +1904,7 @@ export default function CustomCheckout({ hasFreeTrialOffer: freeTrialFromProps }
 
     return (
         <Elements stripe={stripePromise}>
-            <CheckoutForm hasFreeTrialOffer={freeTrialFromProps} />
+            <CheckoutForm hasFreeTrialOffer={effectiveHasFreeTrialOffer} />
         </Elements>
     );
 }
