@@ -11,7 +11,6 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [hasFreeTrialOffer, setHasFreeTrialOffer] = useState(false);
-    // Novo estado para armazenar referência do influenciador
     const [referralSource, setReferralSource] = useState(null);
     const router = useRouter();
     const pathname = usePathname();
@@ -43,32 +42,38 @@ export const AuthProvider = ({ children }) => {
         console.log('Processing route:', pathname);
         let shouldSetFreeTrial = false;
         let referrer = null;
+        let shouldRedirect = false;
 
-        // Check for immediate redirects like /pv1
+        // Detecção da rota /pv1 - redirecionar para /checkout
         if (pathname === '/pv1') {
             console.log('PV1 route detected, setting free trial offer and redirecting');
             shouldSetFreeTrial = true;
-
-            // Use setTimeout to ensure state is updated before navigation
-            setTimeout(() => {
-                router.push('/checkout');
-            }, 100);
+            shouldRedirect = true;
         }
-        // Check for free trial in path
-        else if (pathname.includes('/pv1')) {
-            console.log('PV1 included in path, setting free trial offer');
-            shouldSetFreeTrial = true;
+        // Detecção das rotas /checkout/pv1/ - extrair informação e redirecionar
+        else if (pathname.startsWith('/checkout/')) {
+            // Se não for a rota principal /checkout
+            if (pathname !== '/checkout') {
+                shouldRedirect = true;
+
+                // Verificar se contém pv1 no caminho
+                if (pathname.includes('/pv1')) {
+                    console.log('PV1 included in path, setting free trial offer');
+                    shouldSetFreeTrial = true;
+                }
+
+                // Extrair referência do influenciador
+                referrer = extractReferralSource(pathname);
+                if (referrer) {
+                    console.log(`Referral source detected: ${referrer}`);
+                    localStorage.setItem('referralSource', referrer);
+                    setReferralSource(referrer);
+                }
+            }
         }
 
-        // Extract referral source from URL
-        referrer = extractReferralSource(pathname);
-
-        if (referrer) {
-            console.log(`Referral source detected: ${referrer}`);
-            localStorage.setItem('referralSource', referrer);
-            setReferralSource(referrer);
-        } else {
-            // Check localStorage as fallback for referralSource
+        // Se não encontrou referência no URL, verificar localStorage
+        if (!referrer) {
             const storedReferrer = localStorage.getItem('referralSource');
             if (storedReferrer && !referralSource) {
                 console.log(`Referral source found in localStorage: ${storedReferrer}`);
@@ -76,10 +81,22 @@ export const AuthProvider = ({ children }) => {
             }
         }
 
-        // Set free trial offer if needed
+        // Configurar trial se necessário
         if (shouldSetFreeTrial) {
             localStorage.setItem('hasFreeTrialOffer', 'true');
             setHasFreeTrialOffer(true);
+        }
+
+        // Redirecionar se for uma rota especial, mas apenas se não for POST (para evitar loop)
+        if (shouldRedirect) {
+            // Usar setTimeout para garantir que os estados sejam atualizados
+            setTimeout(() => {
+                // Evitar que o redirecionamento seja feito se o usuário já saiu da página
+                if (pathname !== '/checkout') {
+                    console.log('Redirecting to main checkout page...');
+                    router.replace('/checkout');
+                }
+            }, 100);
         }
     }, [pathname, router, referralSource]);
 
@@ -112,7 +129,6 @@ export const AuthProvider = ({ children }) => {
 
                     // Only redirect if not on a special route
                     if (userData && userData.assinouPlano && pathname === '/checkout' &&
-                        !pathname.includes('/pv1') && // Don't redirect if on special route
                         searchParams.get('dct') !== '1') { // Don't redirect if dct param exists
 
                         console.log('User already has plan, redirecting to app');
