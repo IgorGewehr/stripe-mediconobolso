@@ -337,7 +337,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
     const stripe = useStripe();
     const elements = useElements();
     const router = useRouter();
-    const { user, loading: authLoading, logout, hasFreeTrialOffer, referralSource } = useAuth();
+    const { user, loading: authLoading, logout, hasFreeTrialOffer: freeTrialFromAuth, referralSource } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -1868,7 +1868,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
 }
 
 // Componente wrapper com o provider do Stripe
-export default function CustomCheckout({ hasFreeTrialOffer }) {
+export default function CustomCheckout({ hasFreeTrialOffer: freeTrialFromProps }) {
     useEffect(() => {
         // Facebook Pixel Code - Meta tag (only add if it doesn't exist)
         if (typeof window !== 'undefined' && !document.getElementById('facebook-pixel-script')) {
@@ -1902,7 +1902,7 @@ export default function CustomCheckout({ hasFreeTrialOffer }) {
 
     return (
         <Elements stripe={stripePromise}>
-            <CheckoutForm hasFreeTrialOffer={hasFreeTrialOffer} />
+            <CheckoutForm hasFreeTrialOffer={freeTrialFromProps} />
         </Elements>
     );
 }
