@@ -5,7 +5,42 @@ import { headers } from 'next/headers';
 
 export async function POST(req) {
     try {
-        const { plan, uid, email, name, cpf, includeTrial = false, referralSource = null } = await req.json();
+        // Extrair dados da requisição com tratamento de erros
+        let requestData;
+        try {
+            requestData = await req.json();
+        } catch (parseError) {
+            console.error('Erro ao analisar o JSON da requisição:', parseError);
+            return NextResponse.json(
+                { message: 'Formato de requisição inválido. Por favor, tente novamente.' },
+                { status: 400 }
+            );
+        }
+
+        const {
+            plan,
+            uid,
+            email,
+            name,
+            cpf,
+            includeTrial = false
+        } = requestData;
+
+        // Tratamento seguro do referralSource para evitar erro em metadados
+        let referralSource = null;
+        try {
+            referralSource = requestData.referralSource;
+            // Garantir que referralSource seja uma string válida e não muito longa
+            if (referralSource && (typeof referralSource !== 'string' || referralSource.length > 100)) {
+                console.warn(`referralSource inválido, formato: ${typeof referralSource}, comprimento: ${referralSource?.length}`);
+                referralSource = null;
+            }
+        } catch (refError) {
+            console.error('Erro ao processar referralSource:', refError);
+            // Definimos como null em caso de erro, não interrompendo o fluxo principal
+            referralSource = null;
+        }
+
         const origin = (await headers()).get('origin');
 
         // Validação básica
@@ -47,39 +82,81 @@ export async function POST(req) {
             );
         }
 
-        // Buscar ou criar cliente no Stripe
-        let customer;
-        const existingCustomers = await stripe.customers.list({
-            email: email,
-            limit: 1
-        });
+        // Preparar metadados com tratamento de erros
+        let customerMetadata = { uid, checkoutVersion: '2.0' };
+        let subscriptionMetadata = { uid, plan, hasTrial: includeTrial ? 'true' : 'false', checkoutVersion: '2.0' };
 
-        if (existingCustomers.data.length > 0) {
-            customer = existingCustomers.data[0];
-            // Atualiza os metadados e nome do cliente existente
-            await stripe.customers.update(customer.id, {
-                metadata: {
-                    uid,
-                    checkoutVersion: '2.0',
-                    cpf: cpf ? cpf.replace(/\D/g, '') : undefined,
-                    referral_source: referralSource || undefined // Adiciona referência do influenciador
-                },
-                name: name || ''
+        try {
+            // Adicionar CPF aos metadados com tratamento de erro
+            if (cpf) {
+                const sanitizedCpf = typeof cpf === 'string' ? cpf.replace(/\D/g, '') : '';
+                if (sanitizedCpf) {
+                    customerMetadata.cpf = sanitizedCpf;
+                }
+            }
+
+            // Adicionar referralSource com tratamento de erro
+            if (referralSource) {
+                customerMetadata.referral_source = referralSource;
+                subscriptionMetadata.referral_source = referralSource;
+            }
+        } catch (metadataError) {
+            console.error('Erro ao processar campos de metadados opcionais:', metadataError);
+            // Continua o fluxo mesmo com erro nos metadados opcionais
+        }
+
+        // Buscar ou criar cliente no Stripe com tratamento de erros robustos
+        let customer;
+        try {
+            const existingCustomers = await stripe.customers.list({
+                email: email,
+                limit: 1
             });
-            console.log(`Cliente existente atualizado: ID=${customer.id}, Nome=${name || 'N/A'}, Referência=${referralSource || 'Nenhuma'}`);
-        } else {
-            // Cria um novo cliente
-            customer = await stripe.customers.create({
-                email,
-                metadata: {
-                    uid,
-                    checkoutVersion: '2.0',
-                    cpf: cpf ? cpf.replace(/\D/g, '') : undefined,
-                    referral_source: referralSource || undefined // Adiciona referência do influenciador
-                },
-                name: name || ''
-            });
-            console.log(`Novo cliente criado: ID=${customer.id}, Nome=${name || 'N/A'}, Referência=${referralSource || 'Nenhuma'}`);
+
+            if (existingCustomers.data.length > 0) {
+                customer = existingCustomers.data[0];
+                // Atualiza os metadados e nome do cliente existente
+                await stripe.customers.update(customer.id, {
+                    metadata: customerMetadata,
+                    name: name || ''
+                });
+                console.log(`Cliente existente atualizado: ID=${customer.id}, Nome=${name || 'N/A'}, Referência=${referralSource || 'Nenhuma'}`);
+            } else {
+                // Cria um novo cliente
+                customer = await stripe.customers.create({
+                    email,
+                    metadata: customerMetadata,
+                    name: name || ''
+                });
+                console.log(`Novo cliente criado: ID=${customer.id}, Nome=${name || 'N/A'}, Referência=${referralSource || 'Nenhuma'}`);
+            }
+        } catch (customerError) {
+            console.error('Erro ao criar/atualizar cliente:', customerError);
+
+            // Verifica se o erro ocorreu por causa dos metadados
+            if (customerError.message && customerError.message.includes('metadata')) {
+                console.warn('Erro nos metadados do cliente, tentando sem metadados opcionais');
+
+                // Tenta novamente só com os metadados essenciais
+                const basicMetadata = { uid, checkoutVersion: '2.0' };
+
+                if (existingCustomers && existingCustomers.data && existingCustomers.data.length > 0) {
+                    customer = existingCustomers.data[0];
+                    await stripe.customers.update(customer.id, {
+                        metadata: basicMetadata,
+                        name: name || ''
+                    });
+                } else {
+                    customer = await stripe.customers.create({
+                        email,
+                        metadata: basicMetadata,
+                        name: name || ''
+                    });
+                }
+            } else {
+                // Se foi outro erro, repassamos para o tratamento geral
+                throw customerError;
+            }
         }
 
         // Preparar os dados da assinatura
@@ -92,13 +169,7 @@ export async function POST(req) {
                 payment_method_types: ['card']
             },
             expand: ['latest_invoice.payment_intent'],
-            metadata: {
-                uid,
-                plan,
-                hasTrial: includeTrial ? 'true' : 'false',
-                checkoutVersion: '2.0',
-                referral_source: referralSource || undefined // Adiciona referência do influenciador também nos metadados da assinatura
-            }
+            metadata: subscriptionMetadata
         };
 
         // Adicionar trial de 1 dia (24 horas) se solicitado
@@ -106,15 +177,44 @@ export async function POST(req) {
             subscriptionData.trial_period_days = 1;
         }
 
-        // Criar a assinatura
-        console.log(`Criando assinatura para cliente: ${customer.id}`);
-        const subscription = await stripe.subscriptions.create(subscriptionData);
+        // Criar a assinatura com tratamento de erros específicos para metadados
+        let subscription;
+        try {
+            console.log(`Criando assinatura para cliente: ${customer.id}`);
+            subscription = await stripe.subscriptions.create(subscriptionData);
+        } catch (subscriptionError) {
+            // Verifica se o erro é devido aos metadados
+            if (subscriptionError.message && subscriptionError.message.includes('metadata')) {
+                console.warn('Erro nos metadados da assinatura, tentando sem metadados opcionais');
+
+                // Remove os metadados opcionais e tenta novamente
+                const basicMetadata = {
+                    uid,
+                    plan,
+                    hasTrial: includeTrial ? 'true' : 'false',
+                    checkoutVersion: '2.0'
+                };
+
+                subscriptionData.metadata = basicMetadata;
+                subscription = await stripe.subscriptions.create(subscriptionData);
+            } else {
+                // Se foi outro erro, repassamos para o tratamento geral
+                throw subscriptionError;
+            }
+        }
 
         console.log(`Assinatura criada: ID=${subscription.id}, Status=${subscription.status}`);
 
         // Extrair o Payment Intent da fatura mais recente com verificação de segurança
-        const invoice = subscription.latest_invoice;
-        const paymentIntent = invoice && invoice.payment_intent;
+        let paymentIntent = null;
+
+        try {
+            const invoice = subscription.latest_invoice;
+            paymentIntent = invoice && invoice.payment_intent;
+        } catch (invoiceError) {
+            console.error('Erro ao acessar invoice ou payment intent:', invoiceError);
+            // Continua sem o payment intent se houver erro
+        }
 
         if (paymentIntent) {
             // Se existir um payment intent
@@ -142,28 +242,72 @@ export async function POST(req) {
 
         // Determinar mensagem de erro mais específica para o cliente
         let errorMessage = 'Erro ao configurar a assinatura. Por favor, tente novamente.';
+        let statusCode = 500;
 
-        if (error.type === 'StripeCardError') {
-            errorMessage = 'Erro no cartão: ' + error.message;
-        } else if (error.type === 'StripeInvalidRequestError') {
-            errorMessage = 'Erro na solicitação: ' + error.message;
-        } else if (error.code === 'resource_missing') {
-            errorMessage = 'Recurso não encontrado: ' + error.message;
-        } else if (error.code === 'rate_limit') {
-            errorMessage = 'Muitas solicitações. Por favor, tente novamente em alguns instantes.';
-        } else if (error.code === 'authentication_required') {
-            errorMessage = 'Autenticação adicional necessária para este cartão. Por favor, tente novamente ou use outro cartão.';
-        } else if (error.code === 'card_declined') {
-            errorMessage = 'O cartão foi recusado. Por favor, verifique os dados ou use outro cartão.';
-        } else if (error.code === 'expired_card') {
-            errorMessage = 'O cartão está expirado. Por favor, use outro cartão.';
-        } else if (error.code === 'insufficient_funds') {
-            errorMessage = 'Fundos insuficientes no cartão. Por favor, use outro método de pagamento.';
+        if (error.type) {
+            switch (error.type) {
+                case 'StripeCardError':
+                    errorMessage = 'Erro no cartão: ' + error.message;
+                    statusCode = 400;
+                    break;
+                case 'StripeInvalidRequestError':
+                    errorMessage = 'Erro na solicitação: ' + error.message;
+                    statusCode = 400;
+                    break;
+                case 'StripeAPIError':
+                    errorMessage = 'Erro no serviço de pagamento. Por favor, tente novamente mais tarde.';
+                    break;
+                case 'StripeConnectionError':
+                    errorMessage = 'Erro de conexão com o serviço de pagamento. Por favor, verifique sua conexão ou tente novamente mais tarde.';
+                    break;
+                case 'StripeAuthenticationError':
+                    errorMessage = 'Erro interno de autenticação. Por favor, contate o suporte.';
+                    break;
+                case 'StripeRateLimitError':
+                    errorMessage = 'Muitas solicitações. Por favor, aguarde um momento e tente novamente.';
+                    statusCode = 429;
+                    break;
+            }
+        } else if (error.code) {
+            switch (error.code) {
+                case 'resource_missing':
+                    errorMessage = 'Recurso não encontrado: ' + error.message;
+                    statusCode = 404;
+                    break;
+                case 'rate_limit':
+                    errorMessage = 'Muitas solicitações. Por favor, tente novamente em alguns instantes.';
+                    statusCode = 429;
+                    break;
+                case 'authentication_required':
+                    errorMessage = 'Autenticação adicional necessária para este cartão. Por favor, tente novamente ou use outro cartão.';
+                    statusCode = 402;
+                    break;
+                case 'card_declined':
+                    errorMessage = 'O cartão foi recusado. Por favor, verifique os dados ou use outro cartão.';
+                    statusCode = 402;
+                    break;
+                case 'expired_card':
+                    errorMessage = 'O cartão está expirado. Por favor, use outro cartão.';
+                    statusCode = 402;
+                    break;
+                case 'insufficient_funds':
+                    errorMessage = 'Fundos insuficientes no cartão. Por favor, use outro método de pagamento.';
+                    statusCode = 402;
+                    break;
+                case 'incorrect_cvc':
+                    errorMessage = 'Código de segurança incorreto. Verifique o CVC do seu cartão.';
+                    statusCode = 402;
+                    break;
+                case 'processing_error':
+                    errorMessage = 'Erro ao processar o pagamento. Por favor, tente novamente.';
+                    statusCode = 402;
+                    break;
+            }
         }
 
         return NextResponse.json(
             { message: errorMessage },
-            { status: 500 }
+            { status: statusCode }
         );
     }
 }

@@ -1,110 +1,222 @@
-// app/api/exame/route.js (arquivo completo atualizado)
+// app/api/exame/route.js (arquivo completo otimizado para Netlify)
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import sharp from 'sharp'; // Importação estática do sharp
+
+// Importar sharp com tratamento de erro para Netlify
+let sharp;
+try {
+    sharp = require('sharp');
+    console.log('[NETLIFY_DEBUG] Sharp importado com sucesso');
+} catch (sharpError) {
+    console.error('[NETLIFY_DEBUG] Erro ao importar Sharp:', sharpError);
+    // Estabelecer um mock para evitar erros
+    sharp = null;
+}
 
 // Configurações da rota API para Next.js 15
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const preferredRegion = 'auto';
-export const maxDuration = 300; // 5 minutos para processamento
+export const maxDuration = 60; // Reduzido para 60 segundos para evitar timeouts na Netlify
 
 // Função para extrair texto de arquivos DOCX
 async function extractTextFromDOCX(buffer) {
     try {
-        console.log("Extraindo texto de DOCX...");
+        console.log("[NETLIFY_DEBUG] Extraindo texto de DOCX...");
         const mammoth = await import('mammoth');
 
         const result = await mammoth.extractRawText({
             buffer: buffer
         });
 
-        console.log(`Texto extraído do DOCX: ${result.value.length} caracteres`);
+        console.log(`[NETLIFY_DEBUG] Texto extraído do DOCX: ${result.value.length} caracteres`);
         return result.value;
     } catch (error) {
-        console.error("Erro ao extrair texto do DOCX:", error);
+        console.error("[NETLIFY_DEBUG] Erro ao extrair texto do DOCX:", error);
         throw error;
     }
 }
 
-// Função para processar imagens com OCR
+// Função otimizada para processar imagens com OCR no ambiente Netlify
 async function extractTextFromImage(buffer, fileName) {
     try {
-        console.log(`Iniciando OCR na imagem: ${fileName}...`);
+        console.log(`[NETLIFY_IMAGE_DEBUG] Iniciando OCR para imagem: ${fileName}, tamanho: ${buffer.length} bytes`);
 
-        // Criar diretório temporário para processamento
-        const tempDir = path.join(os.tmpdir(), `img-ocr-${Date.now()}`);
-        await fs.promises.mkdir(tempDir, { recursive: true });
-        const imagePath = path.join(tempDir, 'temp-image.png');
+        // Identificar ambiente Netlify para logs específicos
+        const isNetlify = process.env.NETLIFY || process.env.CONTEXT === 'production' || process.env.CONTEXT === 'deploy-preview';
+        console.log(`[NETLIFY_IMAGE_DEBUG] Executando em ambiente Netlify: ${isNetlify ? 'Sim' : 'Não'}`);
 
-        // Melhorar qualidade da imagem antes do OCR (com Sharp)
-        try {
-            // Usando importação estática do sharp
-            const enhancedImage = await sharp(buffer)
-                .greyscale() // Converter para escala de cinza
-                .normalize() // Normalizar o contraste
-                .sharpen() // Melhorar a nitidez
-                .toBuffer();
-
-            // Salvar imagem processada
-            await fs.promises.writeFile(imagePath, enhancedImage);
-            console.log("Imagem pré-processada para melhorar OCR");
-        } catch (sharpError) {
-            console.warn("Não foi possível pré-processar a imagem:", sharpError);
-            // Se falhar o pré-processamento, usar imagem original
-            await fs.promises.writeFile(imagePath, buffer);
+        // Verificar buffer válido
+        if (!buffer || buffer.length === 0) {
+            throw new Error('Buffer de imagem vazio ou inválido');
         }
 
-        // Executar OCR com Tesseract
-        const { createWorker } = await import('tesseract.js');
-        // Usar o português para melhorar reconhecimento de textos médicos em PT-BR
-        const worker = await createWorker('por');
-
-        // Configurar parâmetros de OCR para melhorar reconhecimento de texto médico
-        await worker.setParameters({
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.:;%<>(){}[]+-=/*"\'´`~^ºª!?@#$&_\\|µΩ∞±≤≥÷×≠',
-            preserve_interword_spaces: '1',
-        });
-
-        // Executar OCR
-        const { data } = await worker.recognize(imagePath);
-        const extractedText = data.text;
-
-        // Limpar recursos
-        await worker.terminate();
-
-        // Limpar arquivos temporários
+        // Estratégia 1: Usar memória diretamente sem arquivos temporários
         try {
-            await fs.promises.unlink(imagePath);
-            await fs.promises.rmdir(tempDir);
-        } catch (cleanupError) {
-            console.error("Erro ao limpar arquivos temporários:", cleanupError);
-        }
+            console.log('[NETLIFY_IMAGE_DEBUG] Tentando OCR direto na memória');
 
-        console.log(`Texto extraído da imagem: ${extractedText.length} caracteres`);
-        return extractedText;
+            // Importar tesseract.js
+            const { createWorker } = await import('tesseract.js');
+            console.log('[NETLIFY_IMAGE_DEBUG] Tesseract.js importado com sucesso');
+
+            // Pré-processar a imagem com sharp se disponível
+            let processedBuffer = buffer;
+            if (sharp) {
+                try {
+                    console.log('[NETLIFY_IMAGE_DEBUG] Pré-processando imagem com Sharp antes do OCR');
+                    processedBuffer = await sharp(buffer)
+                        .resize(1800, 1800, { fit: 'inside', withoutEnlargement: true })
+                        .greyscale()
+                        .normalize()
+                        .sharpen()
+                        .toBuffer();
+                    console.log('[NETLIFY_IMAGE_DEBUG] Imagem pré-processada com sucesso');
+                } catch (sharpError) {
+                    console.error('[NETLIFY_IMAGE_DEBUG] Erro na pré-processamento com Sharp, usando imagem original:', sharpError);
+                }
+            }
+
+            // Usar configurações simplificadas para o worker
+            console.log('[NETLIFY_IMAGE_DEBUG] Configurando worker Tesseract');
+            const worker = await createWorker({
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        console.log(`[NETLIFY_IMAGE_DEBUG] OCR progresso: ${Math.round(m.progress * 100)}%`);
+                    }
+                }
+            });
+
+            // Usar português para melhor reconhecimento de textos médicos
+            await worker.loadLanguage('por');
+            await worker.initialize('por');
+
+            console.log('[NETLIFY_IMAGE_DEBUG] Iniciando reconhecimento de texto');
+            const { data } = await worker.recognize(processedBuffer);
+            console.log(`[NETLIFY_IMAGE_DEBUG] OCR concluído: ${data.text.length} caracteres extraídos`);
+
+            // Liberar recursos
+            await worker.terminate();
+            console.log('[NETLIFY_IMAGE_DEBUG] Worker Tesseract finalizado');
+
+            // Verificar se conseguimos texto suficiente
+            if (!data.text || data.text.trim().length < 20) {
+                console.log('[NETLIFY_IMAGE_DEBUG] Pouco texto extraído, tentando método alternativo');
+                throw new Error('Texto extraído insuficiente');
+            }
+
+            return data.text;
+        } catch (memoryError) {
+            console.error('[NETLIFY_IMAGE_DEBUG] Falha no OCR em memória:', memoryError);
+
+            // Estratégia 2: Usar arquivos temporários na pasta /tmp garantida na Netlify
+            console.log('[NETLIFY_IMAGE_DEBUG] Tentando OCR com arquivos temporários');
+
+            // Determinar diretório temporário adequado para Netlify
+            const isNetlifyEnv = process.env.NETLIFY === 'true';
+            const tempRootDir = isNetlifyEnv ? '/tmp' : os.tmpdir();
+            const tempDir = path.join(tempRootDir, `ocr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
+
+            try {
+                console.log(`[NETLIFY_IMAGE_DEBUG] Criando diretório: ${tempDir}`);
+                await fs.promises.mkdir(tempDir, { recursive: true });
+            } catch (mkdirError) {
+                console.error('[NETLIFY_IMAGE_DEBUG] Erro ao criar diretório:', mkdirError);
+                // Usar diretório raiz temporário como fallback
+                console.log(`[NETLIFY_IMAGE_DEBUG] Usando diretório raiz temporário: ${tempRootDir}`);
+            }
+
+            // Processar imagem com versão mais simples de sharp
+            const imagePath = path.join(tempDir, `img-${Date.now()}.png`);
+
+            try {
+                if (sharp) {
+                    console.log('[NETLIFY_IMAGE_DEBUG] Processando imagem com Sharp');
+                    // Configurações mais básicas para evitar problemas
+                    const optimizedImage = await sharp(buffer)
+                        .resize(1800, 1800, { fit: 'inside' })
+                        .toFormat('png')
+                        .toBuffer();
+
+                    await fs.promises.writeFile(imagePath, optimizedImage);
+                } else {
+                    // Fallback: usar buffer original
+                    console.log('[NETLIFY_IMAGE_DEBUG] Usando buffer original');
+                    await fs.promises.writeFile(imagePath, buffer);
+                }
+
+                // Verificar se o arquivo foi criado
+                const fileStats = await fs.promises.stat(imagePath);
+                console.log(`[NETLIFY_IMAGE_DEBUG] Arquivo salvo: ${imagePath}, tamanho: ${fileStats.size} bytes`);
+
+                // Executar OCR com configurações simplificadas
+                const { createWorker } = await import('tesseract.js');
+                const worker = await createWorker();
+
+                // Carregar idioma português
+                await worker.loadLanguage('por');
+                await worker.initialize('por');
+
+                // Processar a imagem
+                console.log('[NETLIFY_IMAGE_DEBUG] Iniciando OCR no arquivo salvo');
+                const { data } = await worker.recognize(imagePath);
+                console.log(`[NETLIFY_IMAGE_DEBUG] Texto extraído: ${data.text.length} caracteres`);
+
+                // Liberar recursos
+                await worker.terminate();
+
+                // Limpar arquivos temporários
+                try {
+                    await fs.promises.unlink(imagePath);
+                    await fs.promises.rmdir(tempDir, { recursive: true });
+                } catch (cleanupError) {
+                    console.error('[NETLIFY_IMAGE_DEBUG] Erro na limpeza:', cleanupError);
+                }
+
+                return data.text;
+            } catch (fileProcessingError) {
+                console.error('[NETLIFY_IMAGE_DEBUG] Erro no processamento de arquivo:', fileProcessingError);
+
+                // Último recurso: processamento direto do buffer com configurações mínimas
+                try {
+                    console.log('[NETLIFY_IMAGE_DEBUG] Tentando último recurso: OCR direto no buffer');
+                    const { createWorker } = await import('tesseract.js');
+                    const worker = await createWorker('por');
+                    const result = await worker.recognize(buffer);
+                    await worker.terminate();
+
+                    return result.data.text;
+                } catch (lastResortError) {
+                    console.error('[NETLIFY_IMAGE_DEBUG] Falha na última tentativa:', lastResortError);
+                    throw new Error(`OCR falhou em todas as estratégias: ${lastResortError.message}`);
+                }
+            }
+        }
     } catch (error) {
-        console.error('Erro no OCR da imagem:', error);
-        throw new Error(`Falha ao extrair texto da imagem: ${error.message}`);
+        console.error('[NETLIFY_IMAGE_DEBUG] Erro crítico no processamento OCR:', error);
+        // Retornar mensagem para diagnóstico em vez de uma exceção
+        return `[ERRO DE OCR: ${error.message}] Falha ao processar imagem.`;
     }
 }
 
 // Função para OCR em ambiente Node.js - essa será nossa principal estratégia
 async function extractTextWithOCR(pdfBuffer) {
     try {
-        console.log("Iniciando OCR no servidor...");
+        console.log("[NETLIFY_DEBUG] Iniciando OCR no PDF...");
 
-        // Criar diretório temporário para processamento
-        const tempDir = path.join(os.tmpdir(), `pdf-ocr-${Date.now()}`);
+        // Criar diretório temporário para processamento - adaptar para Netlify
+        const isNetlifyEnv = process.env.NETLIFY === 'true';
+        const tempRootDir = isNetlifyEnv ? '/tmp' : os.tmpdir();
+        const tempDir = path.join(tempRootDir, `pdf-ocr-${Date.now()}`);
+
         await fs.promises.mkdir(tempDir, { recursive: true });
         const tempPdfPath = path.join(tempDir, 'temp.pdf');
 
         // Salvar o buffer como arquivo temporário
         await fs.promises.writeFile(tempPdfPath, pdfBuffer);
-        console.log(`PDF temporário salvo em: ${tempPdfPath}`);
+        console.log(`[NETLIFY_DEBUG] PDF temporário salvo em: ${tempPdfPath}`);
 
         // Importar bibliotecas necessárias
         const { createWorker } = await import('tesseract.js');
@@ -113,7 +225,12 @@ async function extractTextWithOCR(pdfBuffer) {
         // Carregar o PDF usando pdf-lib para extrair páginas
         const pdfDoc = await PDFDocument.load(pdfBuffer);
         const pageCount = pdfDoc.getPageCount();
-        console.log(`PDF tem ${pageCount} páginas`);
+        console.log(`[NETLIFY_DEBUG] PDF tem ${pageCount} páginas`);
+
+        // Limitar páginas processadas na Netlify
+        const maxPagesToProcess = isNetlifyEnv ? 10 : 20; // Reduzir para Netlify
+        const pagesToProcess = Math.min(pageCount, maxPagesToProcess);
+        console.log(`[NETLIFY_DEBUG] Processando até ${pagesToProcess} páginas`);
 
         // Configurar worker do Tesseract com português
         const worker = await createWorker('por');
@@ -121,9 +238,9 @@ async function extractTextWithOCR(pdfBuffer) {
         let fullText = '';
 
         // Processar cada página
-        for (let i = 0; i < Math.min(pageCount, 20); i++) { // Limite de 20 páginas para evitar processamento muito longo
+        for (let i = 0; i < pagesToProcess; i++) {
             try {
-                console.log(`Processando página ${i + 1}/${pageCount}`);
+                console.log(`[NETLIFY_DEBUG] Processando página ${i + 1}/${pagesToProcess}`);
 
                 // Extrair página como PDF separado
                 const subPdf = await PDFDocument.create();
@@ -136,6 +253,11 @@ async function extractTextWithOCR(pdfBuffer) {
                 await fs.promises.writeFile(pagePdfPath, pagePdfBytes);
 
                 try {
+                    // Verifica se estamos na Netlify - se sim, pular Puppeteer que pode não funcionar bem
+                    if (isNetlifyEnv) {
+                        throw new Error("Puppeteer desabilitado em ambiente Netlify");
+                    }
+
                     // Método 1: Tentar usar puppeteer (mais confiável para renderizar PDFs)
                     const { default: puppeteer } = await import('puppeteer');
                     const browser = await puppeteer.launch({
@@ -169,58 +291,77 @@ async function extractTextWithOCR(pdfBuffer) {
                     const { data } = await worker.recognize(imagePath);
                     fullText += data.text + '\n\n';
                 } catch (puppeteerError) {
-                    console.error("Erro no método primário:", puppeteerError);
+                    console.log("[NETLIFY_DEBUG] Usando método alternativo para PDF:", puppeteerError.message);
 
-                    // Método 2: Usar módulo sharp como fallback
+                    // Método 2: Tentar converter PDF em imagem
                     try {
                         const imagePath = path.join(tempDir, `page-${i}-alt.png`);
 
-                        // Tentativa direta com pdf-img-convert
-                        try {
-                            const { convert } = await import('pdf-img-convert');
-                            const outputImages = await convert(pagePdfPath, {
-                                width: 2000,
-                                height: 2000
-                            });
-
-                            // Salvar primeira imagem gerada
-                            if (outputImages && outputImages.length > 0) {
-                                await fs.promises.writeFile(imagePath, outputImages[0]);
-
-                                // Executar OCR na imagem
-                                const { data } = await worker.recognize(imagePath);
-                                fullText += data.text + '\n\n';
-                            }
-                        } catch (convertError) {
-                            console.error("Erro na conversão alternativa:", convertError);
-
-                            // Se falhar, tentar com poppler/pdftoppm se disponível através de Node
+                        if (sharp) {
+                            // Tentativa com pdf-img-convert
                             try {
-                                const { execSync } = await import('child_process');
-                                execSync(`pdftoppm -png -r 300 "${pagePdfPath}" "${path.join(tempDir, 'page-pdftoppm')}"`,
-                                    { stdio: 'pipe' });
+                                const { convert } = await import('pdf-img-convert');
+                                const outputImages = await convert(pagePdfPath, {
+                                    width: 1800,
+                                    height: 1800
+                                });
 
-                                // Verificar se gerou o arquivo
-                                const popplerFilePath = path.join(tempDir, 'page-pdftoppm-1.png');
-                                if (fs.existsSync(popplerFilePath)) {
-                                    const { data } = await worker.recognize(popplerFilePath);
+                                // Salvar primeira imagem gerada
+                                if (outputImages && outputImages.length > 0) {
+                                    await fs.promises.writeFile(imagePath, outputImages[0]);
+
+                                    // Executar OCR na imagem
+                                    const { data } = await worker.recognize(imagePath);
                                     fullText += data.text + '\n\n';
+                                } else {
+                                    throw new Error("Nenhuma imagem convertida");
                                 }
-                            } catch (popplerError) {
-                                console.error("Todas as alternativas de conversão falharam");
+                            } catch (convertError) {
+                                console.error("[NETLIFY_DEBUG] Erro na conversão PDF para imagem:", convertError);
+
+                                // Método 3: Último recurso - extrair texto diretamente com pdf.js
+                                try {
+                                    const { getDocument } = await import('pdfjs-dist');
+
+                                    const loadingTask = getDocument({ data: pagePdfBytes });
+                                    const pdf = await loadingTask.promise;
+                                    const page = await pdf.getPage(1);
+                                    const textContent = await page.getTextContent();
+                                    const pageText = textContent.items.map(item => item.str).join(' ');
+
+                                    fullText += pageText + '\n\n';
+                                } catch (pdfJsError) {
+                                    console.error("[NETLIFY_DEBUG] Falha na extração direta:", pdfJsError);
+                                }
+                            }
+                        } else {
+                            // Sem sharp, usar apenas pdf.js
+                            try {
+                                const { getDocument } = await import('pdfjs-dist');
+
+                                const loadingTask = getDocument({ data: pagePdfBytes });
+                                const pdf = await loadingTask.promise;
+                                const page = await pdf.getPage(1);
+                                const textContent = await page.getTextContent();
+                                const pageText = textContent.items.map(item => item.str).join(' ');
+
+                                fullText += pageText + '\n\n';
+                            } catch (pdfJsError) {
+                                console.error("[NETLIFY_DEBUG] Falha na extração PDF:", pdfJsError);
                             }
                         }
                     } catch (allMethodsError) {
-                        console.error("Todos os métodos de conversão falharam:", allMethodsError);
+                        console.error("[NETLIFY_DEBUG] Todos os métodos de extração PDF falharam:", allMethodsError);
                     }
                 }
             } catch (pageError) {
-                console.error(`Erro ao processar página ${i + 1}:`, pageError);
+                console.error(`[NETLIFY_DEBUG] Erro ao processar página ${i + 1}:`, pageError);
             }
         }
 
         // Limpar recursos
         await worker.terminate();
+        console.log("[NETLIFY_DEBUG] Worker Tesseract finalizado");
 
         // Limpar arquivos temporários
         try {
@@ -229,22 +370,22 @@ async function extractTextWithOCR(pdfBuffer) {
                 await fs.promises.unlink(path.join(tempDir, file));
             }
             await fs.promises.rmdir(tempDir);
-            console.log("Arquivos temporários removidos");
+            console.log("[NETLIFY_DEBUG] Arquivos temporários removidos");
         } catch (cleanupError) {
-            console.error("Erro ao limpar arquivos temporários:", cleanupError);
+            console.error("[NETLIFY_DEBUG] Erro ao limpar arquivos temporários:", cleanupError);
         }
 
         return fullText;
     } catch (error) {
-        console.error('Erro no OCR:', error);
-        throw new Error(`Falha ao extrair texto usando OCR: ${error.message}`);
+        console.error('[NETLIFY_DEBUG] Erro no OCR do PDF:', error);
+        throw new Error(`Falha ao extrair texto do PDF: ${error.message}`);
     }
 }
 
 // Função alternativa para tentar extrair texto diretamente do PDF
 async function extractTextWithPdfJS(pdfBuffer) {
     try {
-        console.log("Tentando extrair texto com pdf.js...");
+        console.log("[NETLIFY_DEBUG] Tentando extrair texto com pdf.js...");
 
         // Usar o pdf.js em vez de pdf-parse
         const { getDocument } = await import('pdfjs-dist');
@@ -270,7 +411,7 @@ async function extractTextWithPdfJS(pdfBuffer) {
 
         return fullText;
     } catch (error) {
-        console.error('Erro ao extrair texto com pdf.js:', error);
+        console.error('[NETLIFY_DEBUG] Erro ao extrair texto com pdf.js:', error);
         throw error;
     }
 }
@@ -284,11 +425,11 @@ async function processPatientInfoWithAI(text) {
             ? text.substring(0, maxLength) + "... [texto truncado devido ao tamanho]"
             : text;
 
-        console.log(`Processando texto com OpenAI para extrair dados do paciente: ${truncatedText.length} caracteres`);
+        console.log(`[NETLIFY_DEBUG] Processando texto com OpenAI para extrair dados do paciente: ${truncatedText.length} caracteres`);
 
         // Verificar se a chave da API está configurada
         if (!process.env.OPENAI_KEY) {
-            console.error('OPENAI_KEY não configurada');
+            console.error('[NETLIFY_DEBUG] OPENAI_KEY não configurada');
             throw new Error('Configuração da API de IA não encontrada');
         }
 
@@ -338,7 +479,7 @@ async function processPatientInfoWithAI(text) {
         const resultText = response.choices[0].message.content;
         return JSON.parse(resultText);
     } catch (error) {
-        console.error('Erro ao processar texto com OpenAI:', error);
+        console.error('[NETLIFY_DEBUG] Erro ao processar texto com OpenAI:', error);
         throw error;
     }
 }
@@ -352,11 +493,11 @@ async function processTextWithOpenAI(text) {
             ? text.substring(0, maxLength) + "... [texto truncado devido ao tamanho]"
             : text;
 
-        console.log(`Processando texto com OpenAI: ${truncatedText.length} caracteres`);
+        console.log(`[NETLIFY_DEBUG] Processando texto com OpenAI: ${truncatedText.length} caracteres`);
 
         // Verificar se a chave da API está configurada
         if (!process.env.OPENAI_KEY) {
-            console.error('OPENAI_KEY não configurada');
+            console.error('[NETLIFY_DEBUG] OPENAI_KEY não configurada');
             throw new Error('Configuração da API de IA não encontrada');
         }
 
@@ -415,7 +556,7 @@ async function processTextWithOpenAI(text) {
         const resultText = response.choices[0].message.content;
         return JSON.parse(resultText);
     } catch (error) {
-        console.error('Erro ao processar texto com OpenAI:', error);
+        console.error('[NETLIFY_DEBUG] Erro ao processar texto com OpenAI:', error);
         throw error;
     }
 }
@@ -428,15 +569,25 @@ export async function POST(req) {
         let fileType = "";
         let extractType = "exam"; // Default é extração de exames médicos
 
+        console.log('[NETLIFY_DEBUG] Iniciando processamento de requisição');
+        const startTime = Date.now();
+
+        // Detectar ambiente Netlify
+        const isNetlifyEnv = process.env.NETLIFY === 'true' ||
+            process.env.CONTEXT === 'production' ||
+            process.env.CONTEXT === 'deploy-preview';
+        console.log(`[NETLIFY_DEBUG] Ambiente Netlify detectado: ${isNetlifyEnv ? 'Sim' : 'Não'}`);
+
         // Tentar processar como FormData (upload de arquivo)
         try {
+            console.log('[NETLIFY_DEBUG] Tentando processar como FormData');
             const formData = await req.formData();
             const file = formData.get('file');
 
             // Verificar se há um parâmetro de tipo de extração
             if (formData.get('extractType')) {
                 extractType = formData.get('extractType');
-                console.log(`Tipo de extração solicitada: ${extractType}`);
+                console.log(`[NETLIFY_DEBUG] Tipo de extração solicitada: ${extractType}`);
             }
 
             if (file) {
@@ -444,18 +595,19 @@ export async function POST(req) {
                 fileName = file.name || "arquivo";
                 fileType = file.type || "";
 
-                console.log(`Processando arquivo: ${fileName}, tipo: ${fileType}, tamanho: ${file.size} bytes`);
+                console.log(`[NETLIFY_DEBUG] Processando arquivo: ${fileName}, tipo: ${fileType}, tamanho: ${file.size} bytes`);
 
                 // Definir limite de tamanho máximo
-                const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+                const MAX_FILE_SIZE = isNetlifyEnv ? 10 * 1024 * 1024 : 15 * 1024 * 1024; // 10MB na Netlify
                 if (file.size > MAX_FILE_SIZE) {
                     return NextResponse.json({
                         error: 'Arquivo muito grande',
-                        details: 'O tamanho máximo permitido é 15MB'
+                        details: `O tamanho máximo permitido é ${isNetlifyEnv ? '10MB' : '15MB'}`
                     }, { status: 400 });
                 }
 
                 // Converter para Buffer
+                console.log('[NETLIFY_DEBUG] Convertendo arquivo para buffer');
                 const buffer = Buffer.from(await file.arrayBuffer());
 
                 // Verificar tipo de arquivo e processar adequadamente
@@ -471,10 +623,11 @@ export async function POST(req) {
                 if (isDocx) {
                     // Processar DOCX
                     try {
+                        console.log('[NETLIFY_DEBUG] Processando arquivo DOCX');
                         text = await extractTextFromDOCX(buffer);
-                        console.log(`Texto extraído do DOCX: ${text.length} caracteres`);
+                        console.log(`[NETLIFY_DEBUG] Texto extraído do DOCX: ${text.length} caracteres`);
                     } catch (docxError) {
-                        console.error("Erro ao processar DOCX:", docxError);
+                        console.error("[NETLIFY_DEBUG] Erro ao processar DOCX:", docxError);
                         return NextResponse.json({
                             error: 'Falha ao processar o arquivo DOCX',
                             details: docxError.message
@@ -483,31 +636,74 @@ export async function POST(req) {
                 } else if (isPdf) {
                     // Estratégia 1: Tentar extrair com pdf.js
                     try {
+                        console.log('[NETLIFY_DEBUG] Tentando extrair texto do PDF com pdf.js');
                         text = await extractTextWithPdfJS(buffer);
-                        console.log(`Texto extraído com pdf.js: ${text.length} caracteres`);
+                        console.log(`[NETLIFY_DEBUG] Texto extraído com pdf.js: ${text.length} caracteres`);
 
                         // Verificar se extraiu texto suficiente
                         if (!text.trim() || text.length < 100) {
-                            console.log("Texto insuficiente extraído com pdf.js, tentando OCR...");
+                            console.log("[NETLIFY_DEBUG] Texto insuficiente extraído com pdf.js, tentando OCR...");
                             text = await extractTextWithOCR(buffer);
                         }
                     } catch (pdfJSError) {
-                        console.error("Erro ao extrair texto com pdf.js:", pdfJSError);
+                        console.error("[NETLIFY_DEBUG] Erro ao extrair texto com pdf.js:", pdfJSError);
 
                         // Estratégia 2: Ir direto para OCR como fallback
-                        console.log("Tentando extração com OCR...");
+                        console.log("[NETLIFY_DEBUG] Tentando extração com OCR...");
                         text = await extractTextWithOCR(buffer);
                     }
                 } else if (isImage) {
-                    // Processar imagem com OCR
+                    // Processar imagem com OCR otimizado para Netlify
                     try {
+                        console.log(`[NETLIFY_DEBUG] Iniciando processamento de imagem: ${fileName}`);
                         text = await extractTextFromImage(buffer, fileName);
-                        console.log(`Texto extraído da imagem: ${text.length} caracteres`);
+
+                        // Verificar se o texto começa com indicador de erro
+                        if (text.startsWith('[ERRO DE OCR')) {
+                            console.error(`[NETLIFY_DEBUG] OCR falhou: ${text}`);
+
+                            // Tentar outro método como fallback - diretamente com tesseract
+                            try {
+                                console.log('[NETLIFY_DEBUG] Tentando método OCR alternativo');
+                                const { createWorker } = await import('tesseract.js');
+                                const worker = await createWorker();
+                                await worker.loadLanguage('por');
+                                await worker.initialize('por');
+
+                                // Usar o buffer diretamente
+                                const result = await worker.recognize(buffer);
+                                text = result.data.text;
+                                await worker.terminate();
+
+                                console.log(`[NETLIFY_DEBUG] OCR alternativo extraiu ${text.length} caracteres`);
+                            } catch (fallbackError) {
+                                console.error('[NETLIFY_DEBUG] Erro no OCR alternativo:', fallbackError);
+                                return NextResponse.json({
+                                    error: 'Falha no processamento da imagem',
+                                    details: 'Não foi possível extrair texto da imagem após múltiplas tentativas',
+                                    errorType: 'ocr_failure'
+                                }, { status: 500 });
+                            }
+                        }
+
+                        console.log(`[NETLIFY_DEBUG] Texto extraído da imagem: ${text.length} caracteres`);
+
+                        // Verificar se o texto extraído é suficiente
+                        if (!text || text.trim().length < 30) {
+                            console.warn('[NETLIFY_DEBUG] Texto extraído insuficiente');
+                            return NextResponse.json({
+                                warning: 'Texto extraído insuficiente',
+                                textLength: text ? text.length : 0,
+                                sampleText: text ? text.substring(0, 200) : '',
+                                suggestion: 'Tente uma imagem com melhor qualidade ou um arquivo PDF'
+                            }, { status: 200 });
+                        }
                     } catch (imageError) {
-                        console.error("Erro ao processar imagem:", imageError);
+                        console.error("[NETLIFY_DEBUG] Erro crítico no processamento de imagem:", imageError);
                         return NextResponse.json({
-                            error: 'Falha ao processar a imagem',
-                            details: imageError.message
+                            error: 'Falha no processamento da imagem',
+                            details: imageError.message,
+                            suggestion: 'Tente novamente com uma imagem de melhor qualidade ou com um arquivo PDF'
                         }, { status: 500 });
                     }
                 } else {
@@ -525,12 +721,13 @@ export async function POST(req) {
         } catch (formDataError) {
             // Processar como JSON
             try {
+                console.log('[NETLIFY_DEBUG] Tentando processar como JSON');
                 const body = await req.json();
                 sourceType = "json";
 
                 if (body.url) {
                     sourceType = "remote-url";
-                    console.log(`Processando URL: ${body.url}`);
+                    console.log(`[NETLIFY_DEBUG] Processando URL: ${body.url}`);
 
                     try {
                         const response = await fetch(body.url);
@@ -561,7 +758,7 @@ export async function POST(req) {
                                     text = await extractTextWithOCR(buffer);
                                 }
                             } catch (urlPdfError) {
-                                console.error("Erro na extração primária:", urlPdfError);
+                                console.error("[NETLIFY_DEBUG] Erro na extração primária:", urlPdfError);
                                 text = await extractTextWithOCR(buffer);
                             }
                         } else if (isImage) {
@@ -572,9 +769,9 @@ export async function POST(req) {
                             throw new Error('Tipo de arquivo não suportado da URL. Use PDF, DOCX ou imagens.');
                         }
 
-                        console.log(`Texto extraído da URL: ${text.length} caracteres`);
+                        console.log(`[NETLIFY_DEBUG] Texto extraído da URL: ${text.length} caracteres`);
                     } catch (urlError) {
-                        console.error("Erro ao processar URL:", urlError);
+                        console.error("[NETLIFY_DEBUG] Erro ao processar URL:", urlError);
                         return NextResponse.json({
                             error: 'Falha ao processar o arquivo da URL',
                             details: urlError.message
@@ -583,12 +780,12 @@ export async function POST(req) {
                 } else if (body.text) {
                     sourceType = "direct-text";
                     text = body.text;
-                    console.log(`Texto fornecido diretamente: ${text.length} caracteres`);
+                    console.log(`[NETLIFY_DEBUG] Texto fornecido diretamente: ${text.length} caracteres`);
 
                     // Verificar tipo de extração no body
                     if (body.extractType) {
                         extractType = body.extractType;
-                        console.log(`Tipo de extração solicitada no JSON: ${extractType}`);
+                        console.log(`[NETLIFY_DEBUG] Tipo de extração solicitada no JSON: ${extractType}`);
                     }
                 } else {
                     return NextResponse.json({
@@ -597,7 +794,7 @@ export async function POST(req) {
                     }, { status: 400 });
                 }
             } catch (jsonError) {
-                console.error("Erro ao processar corpo da requisição:", jsonError);
+                console.error("[NETLIFY_DEBUG] Erro ao processar corpo da requisição:", jsonError);
                 return NextResponse.json({
                     error: 'Formato da requisição inválido',
                     details: 'Esperava FormData (arquivo) ou JSON (text/url)'
@@ -620,11 +817,12 @@ export async function POST(req) {
             // Escolher o processamento adequado conforme o tipo solicitado
             if (extractType === 'patientInfo') {
                 // Processar para informações de paciente
+                console.log('[NETLIFY_DEBUG] Processando informações do paciente');
                 jsonResult = await processPatientInfoWithAI(text);
 
                 // Verificar se conseguiu extrair alguns dados do paciente
                 const fieldCount = Object.keys(jsonResult).length;
-                console.log(`Campos de paciente encontrados: ${fieldCount}`);
+                console.log(`[NETLIFY_DEBUG] Campos de paciente encontrados: ${fieldCount}`);
 
                 if (fieldCount === 0) {
                     return NextResponse.json({
@@ -636,11 +834,12 @@ export async function POST(req) {
                 }
             } else {
                 // Processamento padrão para exames
+                console.log('[NETLIFY_DEBUG] Processando resultados de exames');
                 jsonResult = await processTextWithOpenAI(text);
 
                 // Verificar se há pelo menos alguma categoria de exame
                 const categoryCount = Object.keys(jsonResult).length;
-                console.log(`Categorias encontradas: ${categoryCount}`);
+                console.log(`[NETLIFY_DEBUG] Categorias encontradas: ${categoryCount}`);
 
                 if (categoryCount === 0) {
                     return NextResponse.json({
@@ -652,17 +851,22 @@ export async function POST(req) {
                 }
             }
 
+            // Calcular tempo total de processamento
+            const processingTime = (Date.now() - startTime) / 1000;
+            console.log(`[NETLIFY_DEBUG] Processamento completo em ${processingTime.toFixed(2)}s`);
+
             return NextResponse.json({
                 success: true,
                 data: jsonResult,
                 source: sourceType,
                 fileType: fileType,
                 fileName: fileName,
-                textLength: text.length
+                textLength: text.length,
+                processingTimeSeconds: processingTime.toFixed(2)
             });
 
         } catch (processingError) {
-            console.error("Erro ao processar texto com OpenAI:", processingError);
+            console.error("[NETLIFY_DEBUG] Erro ao processar texto com OpenAI:", processingError);
 
             return NextResponse.json({
                 error: "Falha ao processar o texto extraído",
@@ -672,7 +876,7 @@ export async function POST(req) {
         }
 
     } catch (error) {
-        console.error('Erro geral não tratado:', error);
+        console.error('[NETLIFY_DEBUG] Erro geral não tratado:', error);
         return NextResponse.json({
             error: 'Falha no processamento',
             details: error.message

@@ -9,16 +9,23 @@ package = "@netlify/plugin-nextjs"
 NEXT_USE_NETLIFY_EDGE = "true"
 NEXT_IGNORE_PRERENDER_ERRORS = "true"
 SKIP_STATIC_GENERATION_WITH_PRERENDER_ERRORS = "true"
+NODE_OPTIONS = "--max-old-space-size=4096"
 
 [functions]
 node_bundler = "esbuild"
 included_files = [
   "node_modules/tesseract.js-core/**/*",
   "node_modules/tesseract.js/**/*",
-  "node_modules/sharp/**/*"
+  "node_modules/sharp/**/*",
+  "node_modules/pdfjs-dist/**/*"
 ]
 external_node_modules = [
   "sharp",
   "tesseract.js",
   "tesseract.js-core"
 ]
+directory = "netlify/functions"
+timeout = 60  # Aumentado para 60 segundos
+
+[[plugins]]
+package = "@netlify/plugin-functions-install-core"
