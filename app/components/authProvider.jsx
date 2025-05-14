@@ -50,16 +50,18 @@ export const AuthProvider = ({ children }) => {
             shouldSetFreeTrial = true;
             shouldRedirect = true;
         }
-        // Detecção das rotas /checkout/pv1/ - extrair informação e redirecionar
+        // Detecção das rotas que iniciam com /checkout/
         else if (pathname.startsWith('/checkout/')) {
             // Se não for a rota principal /checkout
             if (pathname !== '/checkout') {
                 shouldRedirect = true;
 
-                // Verificar se contém pv1 no caminho
-                if (pathname.includes('/pv1')) {
-                    console.log('PV1 included in path, setting free trial offer');
+                // Verificar se é uma rota de pv1 - DEVE ser especificamente /checkout/pv1 ou iniciar com /checkout/pv1/
+                if (pathname === '/checkout/pv1' || pathname.startsWith('/checkout/pv1/')) {
+                    console.log('PV1 route detected as trial offer path');
                     shouldSetFreeTrial = true;
+                } else {
+                    console.log('Non-trial checkout route detected');
                 }
 
                 // Extrair referência do influenciador
@@ -73,9 +75,9 @@ export const AuthProvider = ({ children }) => {
         }
 
         // Se não encontrou referência no URL, verificar localStorage
-        if (!referrer) {
+        if (!referrer && !referralSource) {
             const storedReferrer = localStorage.getItem('referralSource');
-            if (storedReferrer && !referralSource) {
+            if (storedReferrer) {
                 console.log(`Referral source found in localStorage: ${storedReferrer}`);
                 setReferralSource(storedReferrer);
             }
@@ -87,7 +89,7 @@ export const AuthProvider = ({ children }) => {
             setHasFreeTrialOffer(true);
         }
 
-        // Redirecionar se for uma rota especial, mas apenas se não for POST (para evitar loop)
+        // Redirecionar se for uma rota especial
         if (shouldRedirect) {
             // Usar setTimeout para garantir que os estados sejam atualizados
             setTimeout(() => {
