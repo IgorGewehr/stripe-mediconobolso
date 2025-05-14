@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "postinstall": "mkdir -p ./node_modules/pdf-parse/test/data && touch ./node_modules/pdf-parse/test/data/05-versions-space.pdf"
+    "postinstall": "mkdir -p ./node_modules/pdf-parse/test/data && touch ./node_modules/pdf-parse/test/data/05-versions-space.pdf && npm rebuild sharp --platform=linux --arch=x64 --libc=glibc || true"
   },
   "dependencies": {
     "@date-io/date-fns": "^3.2.1",

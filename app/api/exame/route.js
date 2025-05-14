@@ -45,158 +45,62 @@ async function extractTextFromImage(buffer, fileName) {
     try {
         console.log(`[NETLIFY_IMAGE_DEBUG] Iniciando OCR para imagem: ${fileName}, tamanho: ${buffer.length} bytes`);
 
-        // Identificar ambiente Netlify para logs específicos
-        const isNetlify = process.env.NETLIFY || process.env.CONTEXT === 'production' || process.env.CONTEXT === 'deploy-preview';
-        console.log(`[NETLIFY_IMAGE_DEBUG] Executando em ambiente Netlify: ${isNetlify ? 'Sim' : 'Não'}`);
+        // Forçar detecção de Netlify para garantir comportamento correto
+        const isNetlify = true;
+        console.log(`[NETLIFY_IMAGE_DEBUG] Assumindo ambiente Netlify: Sim`);
 
         // Verificar buffer válido
         if (!buffer || buffer.length === 0) {
             throw new Error('Buffer de imagem vazio ou inválido');
         }
 
-        // Estratégia 1: Usar memória diretamente sem arquivos temporários
         try {
-            console.log('[NETLIFY_IMAGE_DEBUG] Tentando OCR direto na memória');
+            console.log('[NETLIFY_IMAGE_DEBUG] Tentando OCR com configurações para Netlify');
 
             // Importar tesseract.js
             const { createWorker } = await import('tesseract.js');
             console.log('[NETLIFY_IMAGE_DEBUG] Tesseract.js importado com sucesso');
 
-            // Pré-processar a imagem com sharp se disponível
-            let processedBuffer = buffer;
-            if (sharp) {
-                try {
-                    console.log('[NETLIFY_IMAGE_DEBUG] Pré-processando imagem com Sharp antes do OCR');
-                    processedBuffer = await sharp(buffer)
-                        .resize(1800, 1800, { fit: 'inside', withoutEnlargement: true })
-                        .greyscale()
-                        .normalize()
-                        .sharpen()
-                        .toBuffer();
-                    console.log('[NETLIFY_IMAGE_DEBUG] Imagem pré-processada com sucesso');
-                } catch (sharpError) {
-                    console.error('[NETLIFY_IMAGE_DEBUG] Erro na pré-processamento com Sharp, usando imagem original:', sharpError);
-                }
-            }
-
-            // Usar configurações simplificadas para o worker
-            console.log('[NETLIFY_IMAGE_DEBUG] Configurando worker Tesseract');
+            // SOLUÇÃO CRÍTICA: Configuração para evitar gravação no sistema de arquivos
             const worker = await createWorker({
-                logger: m => {
-                    if (m.status === 'recognizing text') {
-                        console.log(`[NETLIFY_IMAGE_DEBUG] OCR progresso: ${Math.round(m.progress * 100)}%`);
-                    }
-                }
+                // Usar CDN remoto para modelos em vez de baixar localmente
+                langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+                // Cache em diretório temporário
+                cachePath: '/tmp/tesseract-cache',
+                // Não tentar criar arquivos de log/cache
+                logger: m => console.log(`[TESSERACT] ${m.status} ${m.progress.toFixed(2)}`),
+                // Evitar recursos que exigem gravação
+                errorHandler: e => console.error('[TESSERACT_ERROR]', e)
             });
 
-            // Usar português para melhor reconhecimento de textos médicos
+            // Carregar idioma português diretamente da CDN
             await worker.loadLanguage('por');
             await worker.initialize('por');
 
+            // Configurações simplificadas
+            await worker.setParameters({
+                tessjs_create_box: '0',
+                tessjs_create_hocr: '0',
+                tessjs_create_tsv: '0',
+                tessjs_create_unlv: '0',
+            });
+
             console.log('[NETLIFY_IMAGE_DEBUG] Iniciando reconhecimento de texto');
-            const { data } = await worker.recognize(processedBuffer);
-            console.log(`[NETLIFY_IMAGE_DEBUG] OCR concluído: ${data.text.length} caracteres extraídos`);
+            const result = await worker.recognize(buffer);
+            console.log(`[NETLIFY_IMAGE_DEBUG] OCR concluído: ${result.data.text.length} caracteres`);
 
-            // Liberar recursos
+            // Terminar worker explicitamente
             await worker.terminate();
-            console.log('[NETLIFY_IMAGE_DEBUG] Worker Tesseract finalizado');
 
-            // Verificar se conseguimos texto suficiente
-            if (!data.text || data.text.trim().length < 20) {
-                console.log('[NETLIFY_IMAGE_DEBUG] Pouco texto extraído, tentando método alternativo');
-                throw new Error('Texto extraído insuficiente');
-            }
+            return result.data.text;
+        } catch (tesseractError) {
+            console.error('[NETLIFY_IMAGE_DEBUG] Erro no OCR:', tesseractError);
 
-            return data.text;
-        } catch (memoryError) {
-            console.error('[NETLIFY_IMAGE_DEBUG] Falha no OCR em memória:', memoryError);
-
-            // Estratégia 2: Usar arquivos temporários na pasta /tmp garantida na Netlify
-            console.log('[NETLIFY_IMAGE_DEBUG] Tentando OCR com arquivos temporários');
-
-            // Determinar diretório temporário adequado para Netlify
-            const isNetlifyEnv = process.env.NETLIFY === 'true';
-            const tempRootDir = isNetlifyEnv ? '/tmp' : os.tmpdir();
-            const tempDir = path.join(tempRootDir, `ocr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
-
-            try {
-                console.log(`[NETLIFY_IMAGE_DEBUG] Criando diretório: ${tempDir}`);
-                await fs.promises.mkdir(tempDir, { recursive: true });
-            } catch (mkdirError) {
-                console.error('[NETLIFY_IMAGE_DEBUG] Erro ao criar diretório:', mkdirError);
-                // Usar diretório raiz temporário como fallback
-                console.log(`[NETLIFY_IMAGE_DEBUG] Usando diretório raiz temporário: ${tempRootDir}`);
-            }
-
-            // Processar imagem com versão mais simples de sharp
-            const imagePath = path.join(tempDir, `img-${Date.now()}.png`);
-
-            try {
-                if (sharp) {
-                    console.log('[NETLIFY_IMAGE_DEBUG] Processando imagem com Sharp');
-                    // Configurações mais básicas para evitar problemas
-                    const optimizedImage = await sharp(buffer)
-                        .resize(1800, 1800, { fit: 'inside' })
-                        .toFormat('png')
-                        .toBuffer();
-
-                    await fs.promises.writeFile(imagePath, optimizedImage);
-                } else {
-                    // Fallback: usar buffer original
-                    console.log('[NETLIFY_IMAGE_DEBUG] Usando buffer original');
-                    await fs.promises.writeFile(imagePath, buffer);
-                }
-
-                // Verificar se o arquivo foi criado
-                const fileStats = await fs.promises.stat(imagePath);
-                console.log(`[NETLIFY_IMAGE_DEBUG] Arquivo salvo: ${imagePath}, tamanho: ${fileStats.size} bytes`);
-
-                // Executar OCR com configurações simplificadas
-                const { createWorker } = await import('tesseract.js');
-                const worker = await createWorker();
-
-                // Carregar idioma português
-                await worker.loadLanguage('por');
-                await worker.initialize('por');
-
-                // Processar a imagem
-                console.log('[NETLIFY_IMAGE_DEBUG] Iniciando OCR no arquivo salvo');
-                const { data } = await worker.recognize(imagePath);
-                console.log(`[NETLIFY_IMAGE_DEBUG] Texto extraído: ${data.text.length} caracteres`);
-
-                // Liberar recursos
-                await worker.terminate();
-
-                // Limpar arquivos temporários
-                try {
-                    await fs.promises.unlink(imagePath);
-                    await fs.promises.rmdir(tempDir, { recursive: true });
-                } catch (cleanupError) {
-                    console.error('[NETLIFY_IMAGE_DEBUG] Erro na limpeza:', cleanupError);
-                }
-
-                return data.text;
-            } catch (fileProcessingError) {
-                console.error('[NETLIFY_IMAGE_DEBUG] Erro no processamento de arquivo:', fileProcessingError);
-
-                // Último recurso: processamento direto do buffer com configurações mínimas
-                try {
-                    console.log('[NETLIFY_IMAGE_DEBUG] Tentando último recurso: OCR direto no buffer');
-                    const { createWorker } = await import('tesseract.js');
-                    const worker = await createWorker('por');
-                    const result = await worker.recognize(buffer);
-                    await worker.terminate();
-
-                    return result.data.text;
-                } catch (lastResortError) {
-                    console.error('[NETLIFY_IMAGE_DEBUG] Falha na última tentativa:', lastResortError);
-                    throw new Error(`OCR falhou em todas as estratégias: ${lastResortError.message}`);
-                }
-            }
+            // Retornar mensagem de fallback
+            return "Não foi possível processar o texto desta imagem no ambiente serverless. Recomendamos converter o documento para PDF antes de enviar para melhor compatibilidade.";
         }
     } catch (error) {
-        console.error('[NETLIFY_IMAGE_DEBUG] Erro crítico no processamento OCR:', error);
-        // Retornar mensagem para diagnóstico em vez de uma exceção
+        console.error('[NETLIFY_IMAGE_DEBUG] Erro crítico:', error);
         return `[ERRO DE OCR: ${error.message}] Falha ao processar imagem.`;
     }
 }
