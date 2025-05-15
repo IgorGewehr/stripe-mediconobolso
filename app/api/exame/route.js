@@ -469,7 +469,6 @@ async function processTextWithOpenAI(text) {
 }
 
 export async function POST(req) {
-
     const isNetlifyEnv = Boolean(
         process.env.NETLIFY ||
         process.env.CONTEXT ||
@@ -495,154 +494,26 @@ export async function POST(req) {
             process.env.CONTEXT === 'deploy-preview';
         console.log(`[NETLIFY_DEBUG] Ambiente Netlify detectado: ${isNetlifyEnv ? 'Sim' : 'Não'}`);
 
-        // Tentar processar como FormData (upload de arquivo)
-        try {
-            console.log('[NETLIFY_DEBUG] Tentando processar como FormData');
-            const formData = await req.formData();
-            const file = formData.get('file');
+        // Verificar o tipo de conteúdo da requisição
+        const contentType = req.headers.get('content-type') || '';
 
-            // Verificar se há um parâmetro de tipo de extração
-            if (formData.get('extractType')) {
-                extractType = formData.get('extractType');
-                console.log(`[NETLIFY_DEBUG] Tipo de extração solicitada: ${extractType}`);
-            }
-
-            if (file) {
-                sourceType = "file-upload";
-                fileName = file.name || "arquivo";
-                fileType = file.type || "";
-
-                console.log(`[NETLIFY_DEBUG] Processando arquivo: ${fileName}, tipo: ${fileType}, tamanho: ${file.size} bytes`);
-
-                // Definir limite de tamanho máximo
-                const MAX_FILE_SIZE = isNetlifyEnv ? 10 * 1024 * 1024 : 15 * 1024 * 1024; // 10MB na Netlify
-                if (file.size > MAX_FILE_SIZE) {
-                    return NextResponse.json({
-                        error: 'Arquivo muito grande',
-                        details: `O tamanho máximo permitido é ${isNetlifyEnv ? '10MB' : '15MB'}`
-                    }, { status: 400 });
-                }
-
-                // Converter para Buffer
-                console.log('[NETLIFY_DEBUG] Convertendo arquivo para buffer');
-                const buffer = Buffer.from(await file.arrayBuffer());
-
-                // Verificar tipo de arquivo e processar adequadamente
-                const isDocx = fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                    fileName.toLowerCase().endsWith('.docx');
-
-                const isPdf = fileType === 'application/pdf' ||
-                    fileName.toLowerCase().endsWith('.pdf');
-
-                const isImage = fileType.startsWith('image/') ||
-                    fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
-
-                if (isDocx) {
-                    // Processar DOCX
-                    try {
-                        console.log('[NETLIFY_DEBUG] Processando arquivo DOCX');
-                        text = await extractTextFromDOCX(buffer);
-                        console.log(`[NETLIFY_DEBUG] Texto extraído do DOCX: ${text.length} caracteres`);
-                    } catch (docxError) {
-                        console.error("[NETLIFY_DEBUG] Erro ao processar DOCX:", docxError);
-                        return NextResponse.json({
-                            error: 'Falha ao processar o arquivo DOCX',
-                            details: docxError.message
-                        }, { status: 500 });
-                    }
-                } else if (isPdf) {
-                    // Estratégia 1: Tentar extrair com pdf.js
-                    try {
-                        console.log('[NETLIFY_DEBUG] Tentando extrair texto do PDF com pdf.js');
-                        text = await extractTextWithPdfJS(buffer);
-                        console.log(`[NETLIFY_DEBUG] Texto extraído com pdf.js: ${text.length} caracteres`);
-
-                        // Verificar se extraiu texto suficiente
-                        if (!text.trim() || text.length < 100) {
-                            console.log("[NETLIFY_DEBUG] Texto insuficiente extraído com pdf.js, tentando OCR...");
-                            text = await extractTextWithOCR(buffer);
-                        }
-                    } catch (pdfJSError) {
-                        console.error("[NETLIFY_DEBUG] Erro ao extrair texto com pdf.js:", pdfJSError);
-
-                        // Estratégia 2: Ir direto para OCR como fallback
-                        console.log("[NETLIFY_DEBUG] Tentando extração com OCR...");
-                        text = await extractTextWithOCR(buffer);
-                    }
-                } else if (isImage) {
-                    // Processar imagem com OCR otimizado para Netlify
-                    try {
-                        console.log(`[NETLIFY_DEBUG] Iniciando processamento de imagem: ${fileName}`);
-                        text = await extractTextFromImage(buffer, fileName);
-
-                        // Verificar se o texto começa com indicador de erro
-                        if (text.startsWith('[ERRO DE OCR')) {
-                            console.error(`[NETLIFY_DEBUG] OCR falhou: ${text}`);
-
-                            // Tentar outro método como fallback - diretamente com tesseract
-                            try {
-                                console.log('[NETLIFY_DEBUG] Tentando método OCR alternativo');
-                                const { createWorker } = await import('tesseract.js');
-                                const worker = await createWorker();
-                                await worker.loadLanguage('por');
-                                await worker.initialize('por');
-
-                                // Usar o buffer diretamente
-                                const result = await worker.recognize(buffer);
-                                text = result.data.text;
-                                await worker.terminate();
-
-                                console.log(`[NETLIFY_DEBUG] OCR alternativo extraiu ${text.length} caracteres`);
-                            } catch (fallbackError) {
-                                console.error('[NETLIFY_DEBUG] Erro no OCR alternativo:', fallbackError);
-                                return NextResponse.json({
-                                    error: 'Falha no processamento da imagem',
-                                    details: 'Não foi possível extrair texto da imagem após múltiplas tentativas',
-                                    errorType: 'ocr_failure'
-                                }, { status: 500 });
-                            }
-                        }
-
-                        console.log(`[NETLIFY_DEBUG] Texto extraído da imagem: ${text.length} caracteres`);
-
-                        // Verificar se o texto extraído é suficiente
-                        if (!text || text.trim().length < 30) {
-                            console.warn('[NETLIFY_DEBUG] Texto extraído insuficiente');
-                            return NextResponse.json({
-                                warning: 'Texto extraído insuficiente',
-                                textLength: text ? text.length : 0,
-                                sampleText: text ? text.substring(0, 200) : '',
-                                suggestion: 'Tente uma imagem com melhor qualidade ou um arquivo PDF'
-                            }, { status: 200 });
-                        }
-                    } catch (imageError) {
-                        console.error("[NETLIFY_DEBUG] Erro crítico no processamento de imagem:", imageError);
-                        return NextResponse.json({
-                            error: 'Falha no processamento da imagem',
-                            details: imageError.message,
-                            suggestion: 'Tente novamente com uma imagem de melhor qualidade ou com um arquivo PDF'
-                        }, { status: 500 });
-                    }
-                } else {
-                    return NextResponse.json({
-                        error: 'Tipo de arquivo não suportado',
-                        details: 'Por favor, envie arquivos nos formatos PDF, DOCX ou imagens (JPG, JPEG, PNG, GIF)'
-                    }, { status: 400 });
-                }
-            } else {
-                return NextResponse.json({
-                    error: 'Arquivo não fornecido',
-                    details: 'Verifique se o campo "file" está presente no formulário'
-                }, { status: 400 });
-            }
-        } catch (formDataError) {
-            // Processar como JSON
+        // Processar requisição JSON (texto já extraído pelo OCR no browser)
+        if (contentType.includes('application/json')) {
             try {
-                console.log('[NETLIFY_DEBUG] Tentando processar como JSON');
+                console.log('[NETLIFY_DEBUG] Processando como JSON (possível texto do OCR browser)');
                 const body = await req.json();
-                sourceType = "json";
 
-                if (body.url) {
+                if (body.text) {
+                    sourceType = "browser-ocr";
+                    text = body.text;
+                    console.log(`[NETLIFY_DEBUG] Texto recebido via OCR browser: ${text.length} caracteres`);
+
+                    // Verificar tipo de extração no body
+                    if (body.extractType) {
+                        extractType = body.extractType;
+                        console.log(`[NETLIFY_DEBUG] Tipo de extração solicitada no JSON: ${extractType}`);
+                    }
+                } else if (body.url) {
                     sourceType = "remote-url";
                     console.log(`[NETLIFY_DEBUG] Processando URL: ${body.url}`);
 
@@ -679,9 +550,12 @@ export async function POST(req) {
                                 text = await extractTextWithOCR(buffer);
                             }
                         } else if (isImage) {
-                            // Extrair texto da imagem com OCR
-                            const fileName = urlPath.split('/').pop() || 'image.jpg';
-                            text = await extractTextFromImage(buffer, fileName);
+                            // Para imagens, retornar sugestão de processamento no browser
+                            return NextResponse.json({
+                                status: 'browser_processing_required',
+                                message: "Imagens são melhor processadas diretamente no navegador para maior precisão",
+                                suggestion: "Use o processamento OCR no navegador para esta imagem"
+                            }, { status: 200 });
                         } else {
                             throw new Error('Tipo de arquivo não suportado da URL. Use PDF, DOCX ou imagens.');
                         }
@@ -694,16 +568,6 @@ export async function POST(req) {
                             details: urlError.message
                         }, { status: 500 });
                     }
-                } else if (body.text) {
-                    sourceType = "direct-text";
-                    text = body.text;
-                    console.log(`[NETLIFY_DEBUG] Texto fornecido diretamente: ${text.length} caracteres`);
-
-                    // Verificar tipo de extração no body
-                    if (body.extractType) {
-                        extractType = body.extractType;
-                        console.log(`[NETLIFY_DEBUG] Tipo de extração solicitada no JSON: ${extractType}`);
-                    }
                 } else {
                     return NextResponse.json({
                         error: 'Corpo da requisição inválido',
@@ -711,12 +575,120 @@ export async function POST(req) {
                     }, { status: 400 });
                 }
             } catch (jsonError) {
-                console.error("[NETLIFY_DEBUG] Erro ao processar corpo da requisição:", jsonError);
+                console.error("[NETLIFY_DEBUG] Erro ao processar corpo JSON:", jsonError);
                 return NextResponse.json({
                     error: 'Formato da requisição inválido',
-                    details: 'Esperava FormData (arquivo) ou JSON (text/url)'
+                    details: 'Erro ao processar JSON'
                 }, { status: 400 });
             }
+        }
+        // Processar como FormData (upload de arquivo)
+        else if (contentType.includes('multipart/form-data') || contentType.includes('form-data')) {
+            try {
+                console.log('[NETLIFY_DEBUG] Tentando processar como FormData');
+                const formData = await req.formData();
+                const file = formData.get('file');
+
+                // Verificar se há um parâmetro de tipo de extração
+                if (formData.get('extractType')) {
+                    extractType = formData.get('extractType');
+                    console.log(`[NETLIFY_DEBUG] Tipo de extração solicitada: ${extractType}`);
+                }
+
+                if (file) {
+                    sourceType = "file-upload";
+                    fileName = file.name || "arquivo";
+                    fileType = file.type || "";
+
+                    console.log(`[NETLIFY_DEBUG] Processando arquivo: ${fileName}, tipo: ${fileType}, tamanho: ${file.size} bytes`);
+
+                    // Definir limite de tamanho máximo
+                    const MAX_FILE_SIZE = isNetlifyEnv ? 10 * 1024 * 1024 : 15 * 1024 * 1024; // 10MB na Netlify
+                    if (file.size > MAX_FILE_SIZE) {
+                        return NextResponse.json({
+                            error: 'Arquivo muito grande',
+                            details: `O tamanho máximo permitido é ${isNetlifyEnv ? '10MB' : '15MB'}`
+                        }, { status: 400 });
+                    }
+
+                    // Converter para Buffer
+                    console.log('[NETLIFY_DEBUG] Convertendo arquivo para buffer');
+                    const buffer = Buffer.from(await file.arrayBuffer());
+
+                    // Verificar tipo de arquivo e processar adequadamente
+                    const isDocx = fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                        fileName.toLowerCase().endsWith('.docx');
+
+                    const isPdf = fileType === 'application/pdf' ||
+                        fileName.toLowerCase().endsWith('.pdf');
+
+                    const isImage = fileType.startsWith('image/') ||
+                        fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
+
+                    if (isDocx) {
+                        // Processar DOCX
+                        try {
+                            console.log('[NETLIFY_DEBUG] Processando arquivo DOCX');
+                            text = await extractTextFromDOCX(buffer);
+                            console.log(`[NETLIFY_DEBUG] Texto extraído do DOCX: ${text.length} caracteres`);
+                        } catch (docxError) {
+                            console.error("[NETLIFY_DEBUG] Erro ao processar DOCX:", docxError);
+                            return NextResponse.json({
+                                error: 'Falha ao processar o arquivo DOCX',
+                                details: docxError.message
+                            }, { status: 500 });
+                        }
+                    } else if (isPdf) {
+                        // Estratégia 1: Tentar extrair com pdf.js
+                        try {
+                            console.log('[NETLIFY_DEBUG] Tentando extrair texto do PDF com pdf.js');
+                            text = await extractTextWithPdfJS(buffer);
+                            console.log(`[NETLIFY_DEBUG] Texto extraído com pdf.js: ${text.length} caracteres`);
+
+                            // Verificar se extraiu texto suficiente
+                            if (!text.trim() || text.length < 100) {
+                                console.log("[NETLIFY_DEBUG] Texto insuficiente extraído com pdf.js, tentando OCR...");
+                                text = await extractTextWithOCR(buffer);
+                            }
+                        } catch (pdfJSError) {
+                            console.error("[NETLIFY_DEBUG] Erro ao extrair texto com pdf.js:", pdfJSError);
+
+                            // Estratégia 2: Ir direto para OCR como fallback
+                            console.log("[NETLIFY_DEBUG] Tentando extração com OCR...");
+                            text = await extractTextWithOCR(buffer);
+                        }
+                    } else if (isImage) {
+                        // Para imagens, retornar sugestão de processamento no browser
+                        return NextResponse.json({
+                            status: 'browser_processing_required',
+                            message: "Processamento de imagens no servidor falhou ou não está disponível",
+                            suggestion: "Use o processamento OCR no navegador para esta imagem",
+                            detail: "O processamento no navegador oferece melhor precisão e desempenho para imagens"
+                        }, { status: 200 });
+                    } else {
+                        return NextResponse.json({
+                            error: 'Tipo de arquivo não suportado',
+                            details: 'Por favor, envie arquivos nos formatos PDF, DOCX ou imagens (JPG, JPEG, PNG, GIF)'
+                        }, { status: 400 });
+                    }
+                } else {
+                    return NextResponse.json({
+                        error: 'Arquivo não fornecido',
+                        details: 'Verifique se o campo "file" está presente no formulário'
+                    }, { status: 400 });
+                }
+            } catch (formDataError) {
+                console.error("[NETLIFY_DEBUG] Erro ao processar FormData:", formDataError);
+                return NextResponse.json({
+                    error: 'Falha no processamento do formulário',
+                    details: formDataError.message || 'Erro ao processar dados do formulário'
+                }, { status: 400 });
+            }
+        } else {
+            return NextResponse.json({
+                error: 'Tipo de conteúdo não suportado',
+                details: `Content-Type recebido: ${contentType}. Esperado: multipart/form-data ou application/json`
+            }, { status: 400 });
         }
 
         // Verificar se temos texto para processar

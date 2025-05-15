@@ -56,6 +56,7 @@ import { ptBR } from 'date-fns/locale';
 import FirebaseService from '../../../lib/firebaseService';
 import { useAuth } from '../authProvider';
 import ExamTable from "./examTable";
+import { createWorker } from 'tesseract.js';
 
 // Theme creation for defining colors, fonts, and formats
 const theme = createTheme({
@@ -416,6 +417,9 @@ const ExamDialog = ({
     const [showTips, setShowTips] = useState(false);
     const [showOcrTips, setShowOcrTips] = useState(false);
     const [errorMessage, setErrorMessage] = useState(null);
+    const [processingInBrowser, setProcessingInBrowser] = useState(false);
+    const [ocrProgress, setOcrProgress] = useState(0);
+    const [ocrStatus, setOcrStatus] = useState('');
 
     // Função para mostrar notificações
     const showNotification = (message, severity = 'success') => {
@@ -477,6 +481,110 @@ const ExamDialog = ({
         } catch (error) {
             console.error("Error formatting date:", error);
             return dateString;
+        }
+    };
+
+    const processImageInBrowser = async (file) => {
+        try {
+            setIsLoading(true);
+            setProcessingInBrowser(true);
+            setOcrStatus('Iniciando processamento OCR...');
+            setOcrProgress(0);
+
+            // Criar worker com configuração correta
+            const worker = await createWorker({
+                logger: (m) => {
+                    // Atualizar progresso com base nos logs
+                    if (m.status === 'recognizing text') {
+                        setOcrProgress(m.progress * 100);
+                    }
+                    setOcrStatus(m.status || 'Processando...');
+                },
+                langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+                gzip: true,
+            });
+
+            // Carregar e inicializar o idioma português
+            setOcrStatus('Carregando idioma...');
+            await worker.loadLanguage('por');
+            await worker.initialize('por');
+
+            // Configurar melhor precisão (não é obrigatório, mas ajuda)
+            await worker.setParameters({
+                tessedit_ocr_engine_mode: 2, // Modo mais preciso (LSTM)
+                preserve_interword_spaces: 1, // Preservar espaços entre palavras
+            });
+
+            // Processar a imagem
+            setOcrStatus('Extraindo texto da imagem...');
+            const { data } = await worker.recognize(file);
+
+            // Liberar recursos
+            await worker.terminate();
+
+            // Verificar se temos texto suficiente
+            if (data.text && data.text.length > 50) {
+                setOcrStatus('Enviando texto para processamento...');
+
+                // Enviar o texto extraído para o servidor processar
+                const response = await fetch('/api/exame', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: data.text,
+                        extractType: 'exam'
+                    })
+                });
+
+                const result = await response.json();
+
+                // Processar o resultado
+                if (result.success && result.data) {
+                    // Atualizar resultados no estado
+                    setExamResults(result.data);
+
+                    // Mostrar a tabela de resultados automaticamente
+                    setShowExamTable(true);
+
+                    // Atualizar título se necessário
+                    if (!title.trim()) {
+                        try {
+                            const category = examCategories.find(cat => cat.id === examCategory);
+                            const categoryName = category ? category.name : '';
+                            const formattedDate = formatDateDisplay(examDate);
+                            setTitle(`${categoryName} - ${formattedDate}`);
+                        } catch (titleError) {
+                            console.error("Erro ao gerar título:", titleError);
+                        }
+                    }
+
+                    // Adicionar observação sobre processamento
+                    if (!observations.includes('Processado automaticamente')) {
+                        setObservations(prev =>
+                            `${prev ? prev + '\n\n' : ''}Processado automaticamente pela IA em ${new Date().toLocaleString()}.`
+                        );
+                    }
+
+                    showNotification("Imagem processada com sucesso! Resultados extraídos.", "success");
+                    return true;
+                } else {
+                    showNotification(result.warning || "O processamento não encontrou resultados de exame", "warning");
+                    return false;
+                }
+            } else {
+                showNotification("Texto insuficiente extraído. Tente uma imagem com texto mais claro.", "warning");
+                return false;
+            }
+        } catch (error) {
+            console.error('Erro ao processar imagem no browser:', error);
+            showNotification(`Não foi possível processar a imagem: ${error.message}`, "error");
+            return false;
+        } finally {
+            setIsLoading(false);
+            setProcessingInBrowser(false);
+            setOcrStatus('');
         }
     };
 
@@ -669,7 +777,8 @@ const ExamDialog = ({
 
             // Feedback específico por tipo de arquivo
             if (isImage) {
-                setUploadProgress(`Processando imagem com OCR...`);
+                console.log("Processando imagem no browser com OCR");
+                return await processImageInBrowser(file);
             } else if (isPdf) {
                 setUploadProgress(`Processando PDF com IA...`);
             } else if (isDocx) {
@@ -2359,6 +2468,94 @@ const ExamDialog = ({
                         </Box>
                     </Box>
                 </DialogContent>
+
+                {processingInBrowser && (
+                    <Backdrop
+                        open={processingInBrowser}
+                        sx={{
+                            position: 'fixed',
+                            zIndex: 9999,
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 4,
+                                borderRadius: '16px',
+                                maxWidth: '500px',
+                                width: '90%',
+                                textAlign: 'center'
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: '50%',
+                                    backgroundColor: alpha(categoryColor.light, 0.3),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 20px'
+                                }}
+                            >
+                                <CameraAltOutlinedIcon
+                                    sx={{
+                                        fontSize: 40,
+                                        color: categoryColor.main,
+                                        animation: ocrProgress > 0 && ocrProgress < 100 ? 'pulse 1.5s infinite' : 'none'
+                                    }}
+                                />
+                            </Box>
+
+                            <Typography variant="h6" sx={{ mb: 1, fontWeight: 600, color: categoryColor.dark }}>
+                                Processando OCR no Navegador
+                            </Typography>
+
+                            <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
+                                {ocrStatus || "Extraindo texto da imagem..."}
+                            </Typography>
+
+                            <Box sx={{ width: '100%', mb: 2 }}>
+                                <LinearProgress
+                                    variant="determinate"
+                                    value={ocrProgress}
+                                    sx={{
+                                        height: 10,
+                                        borderRadius: 5,
+                                        backgroundColor: alpha(categoryColor.main, 0.2),
+                                        '& .MuiLinearProgress-bar': {
+                                            backgroundColor: categoryColor.main,
+                                            borderRadius: 5
+                                        }
+                                    }}
+                                />
+                            </Box>
+
+                            <Typography variant="body2" color="text.secondary">
+                                {ocrProgress > 0 ? `${Math.round(ocrProgress)}% - Texto sendo reconhecido` : 'Inicializando OCR...'}
+                            </Typography>
+
+                            <Button
+                                variant="outlined"
+                                color="inherit"
+                                onClick={() => {
+                                    setProcessingInBrowser(false);
+                                    setOcrProgress(0);
+                                    setOcrStatus('');
+                                }}
+                                sx={{ mt: 3 }}
+                            >
+                                Cancelar processamento
+                            </Button>
+                        </Paper>
+                    </Backdrop>
+                )}
 
                 {/* Notificações */}
                 <Snackbar
