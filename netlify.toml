@@ -1,10 +1,3 @@
-[build]
-command = "npm run build"
-publish = ".next"
-
-[[plugins]]
-package = "@netlify/plugin-nextjs"
-
 [build.environment]
 NEXT_USE_NETLIFY_EDGE = "true"
 NEXT_IGNORE_PRERENDER_ERRORS = "true"
@@ -13,4 +6,8 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 
 [functions]
 node_bundler = "esbuild"
-included_files = ["node_modules/tesseract.js-core/**/*"]
+included_files = [
+    "node_modules/tesseract.js-core/**/*",
+    "node_modules/sharp/**/*"
+]
+external_node_modules = ["sharp", "canvas"]

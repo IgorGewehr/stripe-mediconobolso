@@ -484,56 +484,43 @@ const ExamDialog = ({
         }
     };
 
+    // Substitua a função processImageInBrowser por esta versão otimizada
+    // Substitua a função processImageInBrowser por esta versão atualizada
     const processImageInBrowser = async (file) => {
         try {
             setIsLoading(true);
             setProcessingInBrowser(true);
-            setOcrStatus('Iniciando processamento OCR...');
-            setOcrProgress(0);
+            setOcrStatus('Preparando imagem para processamento...');
+            setOcrProgress(10);
 
-            console.log("Processing image in browser:", file);
+            console.log("Processing image:", file);
 
             // Prepare the image data
-            let imageData;
+            let blob;
 
             if (file instanceof File || file instanceof Blob) {
                 console.log("Using direct File/Blob object");
-                imageData = file;
+                blob = file;
             } else if (file.file instanceof File || file.file instanceof Blob) {
                 console.log("Using file.file property");
-                imageData = file.file;
-            } else if (typeof file === 'string') {
-                if (file.startsWith('data:')) {
-                    console.log("Processing data URL");
-                    imageData = file;
-                } else {
-                    console.log("Processing URL string", file);
-                    try {
-                        const response = await fetch(file);
-                        if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-                        imageData = await response.blob();
-                    } catch (fetchError) {
-                        console.error("Error fetching image:", fetchError);
-                        throw new Error("Não foi possível baixar a imagem: " + fetchError.message);
-                    }
-                }
+                blob = file.file;
             } else if (file && file.fileUrl) {
-                console.log("Processing from fileUrl:", file.fileUrl);
+                console.log("Fetching from fileUrl:", file.fileUrl);
                 try {
                     const response = await fetch(file.fileUrl);
                     if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-                    imageData = await response.blob();
+                    blob = await response.blob();
                 } catch (fetchError) {
                     console.error("Error fetching image from URL:", fetchError);
                     throw new Error("Não foi possível baixar a imagem da URL: " + fetchError.message);
                 }
             } else if (file && file.storagePath) {
-                console.log("Processing from storagePath:", file.storagePath);
+                console.log("Fetching from storagePath:", file.storagePath);
                 try {
                     const url = await FirebaseService.getStorageFileUrl(file.storagePath);
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-                    imageData = await response.blob();
+                    blob = await response.blob();
                 } catch (fetchError) {
                     console.error("Error fetching image from storage path:", fetchError);
                     throw new Error("Não foi possível baixar a imagem do Storage: " + fetchError.message);
@@ -543,78 +530,65 @@ const ExamDialog = ({
                 throw new Error("Formato de imagem não suportado");
             }
 
-            if (!imageData) {
+            if (!blob) {
                 throw new Error("Não foi possível obter dados da imagem");
             }
 
-            console.log("Image data ready for OCR processing");
+            // Criar um nome de arquivo para o FormData se não existir
+            const fileName = (file.fileName || file.name || `image_${Date.now()}.jpg`);
 
-            // Create worker with correct configuration
-            const worker = await createWorker({
-                logger: (m) => {
-                    console.log("OCR log:", m);
-                    // Update progress based on logs
-                    if (m.status === 'recognizing text') {
-                        setOcrProgress(m.progress * 100);
-                    }
-                    setOcrStatus(m.status || 'Processando...');
-                },
+            // Criar um objeto File a partir do Blob para garantir que tenha um nome de arquivo
+            const fileObject = new File([blob], fileName, {
+                type: blob.type || 'image/jpeg'
             });
 
-            // Load and initialize the Portuguese language
-            setOcrStatus('Carregando idioma português...');
-            await worker.loadLanguage('por');
-            await worker.initialize('por');
+            console.log("Sending image to server API for processing:", fileObject.name);
+            setOcrStatus('Enviando imagem para o servidor...');
+            setOcrProgress(30);
 
-            // Configure for better accuracy
-            await worker.setParameters({
-                tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:()%-+/<>=',
-                preserve_interword_spaces: 1,
-            });
+            // Criar FormData para envio
+            const formData = new FormData();
+            formData.append('file', fileObject);
+            formData.append('extractType', 'exam');
 
-            // Process the image
-            setOcrStatus('Extraindo texto da imagem...');
-            const { data } = await worker.recognize(imageData);
+            // Enviar para a API
+            setOcrStatus('Processando imagem no servidor...');
+            setOcrProgress(50);
 
-            // Release resources
-            await worker.terminate();
-
-            // Check if we have enough text
-            if (!data.text || data.text.length < 50) {
-                throw new Error("Texto insuficiente extraído da imagem. Tente uma imagem com melhor qualidade.");
-            }
-
-            console.log("OCR complete. Text length:", data.text.length);
-            setOcrStatus('Enviando texto para processamento...');
-
-            // Send the extracted text to the server for processing
             const response = await fetch('/api/exame', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    text: data.text,
-                    extractType: 'exam'
-                })
+                body: formData
             });
 
             if (!response.ok) {
-                throw new Error(`Erro na API: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.error || errorData.details || `Erro no servidor: ${response.status}`);
             }
 
+            setOcrProgress(90);
             const result = await response.json();
-            console.log("API response:", result);
+            setOcrProgress(100);
 
-            // Process the result
+            console.log("Server response:", result);
+
+            // Verificar se é erro específico de processamento de imagem
+            if (result.status === 'image_processing_failed') {
+                showNotification(
+                    `${result.message}. ${result.suggestion || 'Tente uma imagem com melhor qualidade.'}`,
+                    "warning"
+                );
+                return false;
+            }
+
+            // Processar o resultado
             if (result.success && result.data) {
-                // Update results in state
+                // Atualizar resultados
                 setExamResults(result.data);
 
-                // Show the results table automatically
+                // Mostrar tabela de resultados
                 setShowExamTable(true);
 
-                // Update title if needed
+                // Atualizar título se necessário
                 if (!title.trim()) {
                     try {
                         const category = examCategories.find(cat => cat.id === examCategory);
@@ -626,7 +600,7 @@ const ExamDialog = ({
                     }
                 }
 
-                // Add observation about processing
+                // Adicionar observação sobre processamento
                 if (!observations.includes('Processado automaticamente')) {
                     setObservations(prev =>
                         `${prev ? prev + '\n\n' : ''}Processado automaticamente pela IA em ${new Date().toLocaleString()}.`
@@ -635,18 +609,21 @@ const ExamDialog = ({
 
                 showNotification("Imagem processada com sucesso! Resultados extraídos.", "success");
                 return true;
-            } else {
-                showNotification(result.warning || "O processamento não encontrou resultados de exame", "warning");
+            } else if (result.warning) {
+                showNotification(result.warning, "warning");
                 return false;
+            } else {
+                throw new Error("Resposta do servidor não contém dados de resultado");
             }
         } catch (error) {
-            console.error('Erro ao processar imagem no browser:', error);
+            console.error('Erro ao processar imagem:', error);
             showNotification(`Não foi possível processar a imagem: ${error.message}`, "error");
             return false;
         } finally {
             setIsLoading(false);
             setProcessingInBrowser(false);
             setOcrStatus('');
+            setOcrProgress(0);
         }
     };
 
@@ -1151,7 +1128,6 @@ const ExamDialog = ({
         }
     };
 
-    // Função para processar anexo existente
     const handleProcessExistingAttachment = async (attachment) => {
         console.log("===== PROCESS ATTACHMENT STARTED =====");
         console.log("Attachment recebido:", attachment);
@@ -1169,15 +1145,7 @@ const ExamDialog = ({
         setCurrentProcessingFile(attachment.fileName || "arquivo");
 
         try {
-            // Verificar tipo de arquivo - LÓGICA APRIMORADA
-            const fileInfo = {
-                fileName: attachment.fileName || attachment.name || '',
-                fileType: attachment.fileType || attachment.type || '',
-                hasFile: !!attachment.file,
-                hasUrl: !!attachment.fileUrl || !!attachment.storagePath
-            };
-            console.log("Informações do arquivo:", fileInfo);
-
+            // Detectar tipo de arquivo de forma mais robusta
             const { isPdf, isDocx, isImage, isSupported } = detectFileType(attachment);
             console.log("Detecção de tipo:", { isPdf, isDocx, isImage, isSupported });
 
@@ -1190,68 +1158,147 @@ const ExamDialog = ({
                 return false;
             }
 
-            // FLUXO ESPECÍFICO PARA IMAGENS - MELHORADO
+            // Exibir feedback específico por tipo
             if (isImage) {
-                console.log("PROCESSANDO IMAGEM - Chamando processImageInBrowser");
-
-                // Mostrar feedback visual específico para OCR
-                setProcessingInBrowser(true);
-                setOcrStatus('Preparando para OCR...');
-                setOcrProgress(1); // Iniciar com 1% para mostrar que começou
-
-                try {
-                    const result = await processImageInBrowser(attachment);
-                    console.log("Resultado do processamento de imagem:", result);
-                    return result;
-                } catch (imgError) {
-                    console.error("Erro no processamento de imagem:", imgError);
-                    showNotification(`Falha no OCR: ${imgError.message}`, "error");
-                    return false;
-                }
+                showNotification("Processando imagem... Isso pode levar mais tempo.", "info");
+                setUploadProgress("Executando OCR na imagem...");
+            } else if (isPdf) {
+                setUploadProgress("Processando PDF com IA...");
+            } else if (isDocx) {
+                setUploadProgress("Processando DOCX com IA...");
             }
 
-            // Resto do código para PDF/DOCX (sem alterações)...
-            if (isPdf || isDocx) {
-                // Check if we already have a file object
-                if (attachment.file) {
-                    console.log("Using existing file object");
-                    return await processExamFile(attachment.file);
+            // Preparar o arquivo para envio
+            let fileObject = null;
+
+            // Obter o arquivo ou blob a partir do attachment
+            if (attachment.file) {
+                fileObject = attachment.file;
+            } else if (attachment.fileUrl || attachment.storagePath) {
+                // Obter a URL correta
+                let url = attachment.fileUrl;
+                if (!url && attachment.storagePath) {
+                    url = await FirebaseService.getStorageFileUrl(attachment.storagePath);
                 }
 
-                // If we don't have the file object directly but have URL
-                if (attachment.fileUrl) {
-                    // Código existente para processamento de fileUrl...
+                if (!url) {
+                    throw new Error("Não foi possível obter URL do arquivo");
                 }
-                else if (attachment.storagePath) {
-                    // Código existente para processamento de storagePath...
-                }
-                else {
-                    showNotification("Não foi possível acessar o conteúdo do arquivo", "error");
-                    setIsLoading(false);
-                    setUploadProgress(null);
-                    setCurrentProcessingFile(null);
-                    return false;
-                }
+
+                // Buscar o blob
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Erro ao buscar arquivo: ${response.status}`);
+                const blob = await response.blob();
+
+                // Criar File object a partir do blob
+                fileObject = new File(
+                    [blob],
+                    attachment.fileName || "arquivo",
+                    { type: attachment.fileType || blob.type }
+                );
             }
 
-            showNotification("Tipo de arquivo não suportado para processamento", "warning");
-            setIsLoading(false);
-            setUploadProgress(null);
-            setCurrentProcessingFile(null);
-            return false;
+            if (!fileObject) {
+                throw new Error("Não foi possível acessar os dados do arquivo");
+            }
+
+            // Criar FormData para envio
+            const formData = new FormData();
+            formData.append('file', fileObject);
+            formData.append('extractType', 'exam');
+
+            // Iniciar animação de progresso
+            setProcessingProgress(0);
+            const progressInterval = setInterval(() => {
+                setProcessingProgress(prev => {
+                    // Incrementar progressivamente até 90%
+                    const newProgress = prev + (Math.random() * 2);
+                    return newProgress >= 90 ? 90 : newProgress;
+                });
+            }, 300);
+
+            // Enviar para a API
+            setUploadProgress("Enviando para processamento...");
+
+            try {
+                const response = await fetch('/api/exame', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Limpeza do timer de progresso
+                clearInterval(progressInterval);
+                setProcessingProgress(100);
+
+                // Breve pausa para visualizar o 100%
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Processar resposta
+                const result = await response.json();
+                console.log("Resultado do servidor:", result);
+
+                // Verificar se é erro específico de processamento de imagem
+                if (result.status === 'image_processing_failed') {
+                    showNotification(
+                        `${result.message}. ${result.suggestion}`,
+                        "warning"
+                    );
+                    return false;
+                }
+
+                // Processar o resultado normal
+                if (result.success && result.data) {
+                    // Atualizar resultados
+                    setExamResults(result.data);
+
+                    // Mostrar tabela de resultados
+                    setShowExamTable(true);
+
+                    // Atualizar título se necessário
+                    if (!title.trim()) {
+                        try {
+                            const category = examCategories.find(cat => cat.id === examCategory);
+                            const categoryName = category ? category.name : '';
+                            const formattedDate = formatDateDisplay(examDate);
+                            setTitle(`${categoryName} - ${formattedDate}`);
+                        } catch (titleError) {
+                            console.error("Erro ao gerar título:", titleError);
+                        }
+                    }
+
+                    // Adicionar observação sobre processamento
+                    if (!observations.includes('Processado automaticamente')) {
+                        setObservations(prev =>
+                            `${prev ? prev + '\n\n' : ''}Processado automaticamente pela IA em ${new Date().toLocaleString()}.`
+                        );
+                    }
+
+                    showNotification("Arquivo processado com sucesso! Resultados extraídos.", "success");
+                    return true;
+                } else if (result.warning) {
+                    showNotification(result.warning, "warning");
+                    return false;
+                } else if (result.error) {
+                    throw new Error(result.error);
+                } else {
+                    throw new Error("Resposta do servidor inválida");
+                }
+            } catch (requestError) {
+                console.error("Erro na requisição:", requestError);
+                throw new Error(`Erro ao processar arquivo: ${requestError.message}`);
+            } finally {
+                if (progressInterval) clearInterval(progressInterval);
+            }
         } catch (error) {
             console.error("Erro inesperado ao processar anexo:", error);
-            showNotification("Ocorreu um erro ao processar o anexo. Tente novamente.", "error");
-
-            // Ensure state cleanup
+            showNotification("Ocorreu um erro ao processar o anexo: " + error.message, "error");
+            return false;
+        } finally {
+            // Garantir limpeza do estado em caso de erro
             setIsLoading(false);
             setUploadProgress(null);
             setCurrentProcessingFile(null);
-            setProcessingInBrowser(false);
-            setOcrStatus('');
-            setOcrProgress(0);
-
-            return false;
+            setProcessingProgress(0);
         }
     };
 
@@ -2445,16 +2492,31 @@ const ExamDialog = ({
                                                             variant="outlined"
                                                             startIcon={<AutoAwesomeIcon />}
                                                             onClick={() => {
-                                                                // Encontrar primeiro PDF/DOCX e processá-lo
-                                                                const pdfOrDocx = attachments.find(att =>
-                                                                    att.fileType === 'application/pdf' ||
-                                                                    att.fileName?.toLowerCase().endsWith('.pdf') ||
-                                                                    att.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                                                                    att.fileName?.toLowerCase().endsWith('.docx')
-                                                                );
+                                                                // Encontrar primeiro PDF/DOCX/Imagem e processá-lo
+                                                                const processableFile = attachments.find(att => {
+                                                                    // Verificar se é PDF
+                                                                    const isPdf = att.fileType === 'application/pdf' ||
+                                                                        att.fileName?.toLowerCase().endsWith('.pdf');
 
-                                                                if (pdfOrDocx) {
-                                                                    handleProcessExistingAttachment(pdfOrDocx);
+                                                                    // Verificar se é DOCX
+                                                                    const isDocx = att.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                                                                        att.fileName?.toLowerCase().endsWith('.docx') ||
+                                                                        att.fileName?.toLowerCase().endsWith('.doc');
+
+                                                                    // Verificar se é uma imagem
+                                                                    const isImage = att.fileType?.startsWith('image/') ||
+                                                                        ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].some(ext =>
+                                                                            att.fileName?.toLowerCase().endsWith('.' + ext)
+                                                                        );
+
+                                                                    // Retornar true se for qualquer um dos tipos suportados
+                                                                    return isPdf || isDocx || isImage;
+                                                                });
+
+                                                                if (processableFile) {
+                                                                    handleProcessExistingAttachment(processableFile);
+                                                                } else {
+                                                                    showNotification("Nenhum arquivo processável encontrado", "warning");
                                                                 }
                                                             }}
                                                             disabled={isLoading}
