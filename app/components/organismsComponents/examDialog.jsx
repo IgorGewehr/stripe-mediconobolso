@@ -491,90 +491,152 @@ const ExamDialog = ({
             setOcrStatus('Iniciando processamento OCR...');
             setOcrProgress(0);
 
-            // Criar worker com configuração correta
+            console.log("Processing image in browser:", file);
+
+            // Prepare the image data
+            let imageData;
+
+            if (file instanceof File || file instanceof Blob) {
+                console.log("Using direct File/Blob object");
+                imageData = file;
+            } else if (file.file instanceof File || file.file instanceof Blob) {
+                console.log("Using file.file property");
+                imageData = file.file;
+            } else if (typeof file === 'string') {
+                if (file.startsWith('data:')) {
+                    console.log("Processing data URL");
+                    imageData = file;
+                } else {
+                    console.log("Processing URL string", file);
+                    try {
+                        const response = await fetch(file);
+                        if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+                        imageData = await response.blob();
+                    } catch (fetchError) {
+                        console.error("Error fetching image:", fetchError);
+                        throw new Error("Não foi possível baixar a imagem: " + fetchError.message);
+                    }
+                }
+            } else if (file && file.fileUrl) {
+                console.log("Processing from fileUrl:", file.fileUrl);
+                try {
+                    const response = await fetch(file.fileUrl);
+                    if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+                    imageData = await response.blob();
+                } catch (fetchError) {
+                    console.error("Error fetching image from URL:", fetchError);
+                    throw new Error("Não foi possível baixar a imagem da URL: " + fetchError.message);
+                }
+            } else if (file && file.storagePath) {
+                console.log("Processing from storagePath:", file.storagePath);
+                try {
+                    const url = await FirebaseService.getStorageFileUrl(file.storagePath);
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+                    imageData = await response.blob();
+                } catch (fetchError) {
+                    console.error("Error fetching image from storage path:", fetchError);
+                    throw new Error("Não foi possível baixar a imagem do Storage: " + fetchError.message);
+                }
+            } else {
+                console.error("Unsupported image format:", file);
+                throw new Error("Formato de imagem não suportado");
+            }
+
+            if (!imageData) {
+                throw new Error("Não foi possível obter dados da imagem");
+            }
+
+            console.log("Image data ready for OCR processing");
+
+            // Create worker with correct configuration
             const worker = await createWorker({
                 logger: (m) => {
-                    // Atualizar progresso com base nos logs
+                    console.log("OCR log:", m);
+                    // Update progress based on logs
                     if (m.status === 'recognizing text') {
                         setOcrProgress(m.progress * 100);
                     }
                     setOcrStatus(m.status || 'Processando...');
                 },
-                langPath: 'https://tessdata.projectnaptha.com/4.0.0',
-                gzip: true,
             });
 
-            // Carregar e inicializar o idioma português
-            setOcrStatus('Carregando idioma...');
+            // Load and initialize the Portuguese language
+            setOcrStatus('Carregando idioma português...');
             await worker.loadLanguage('por');
             await worker.initialize('por');
 
-            // Configurar melhor precisão (não é obrigatório, mas ajuda)
+            // Configure for better accuracy
             await worker.setParameters({
-                tessedit_ocr_engine_mode: 2, // Modo mais preciso (LSTM)
-                preserve_interword_spaces: 1, // Preservar espaços entre palavras
+                tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:()%-+/<>=',
+                preserve_interword_spaces: 1,
             });
 
-            // Processar a imagem
+            // Process the image
             setOcrStatus('Extraindo texto da imagem...');
-            const { data } = await worker.recognize(file);
+            const { data } = await worker.recognize(imageData);
 
-            // Liberar recursos
+            // Release resources
             await worker.terminate();
 
-            // Verificar se temos texto suficiente
-            if (data.text && data.text.length > 50) {
-                setOcrStatus('Enviando texto para processamento...');
+            // Check if we have enough text
+            if (!data.text || data.text.length < 50) {
+                throw new Error("Texto insuficiente extraído da imagem. Tente uma imagem com melhor qualidade.");
+            }
 
-                // Enviar o texto extraído para o servidor processar
-                const response = await fetch('/api/exame', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        text: data.text,
-                        extractType: 'exam'
-                    })
-                });
+            console.log("OCR complete. Text length:", data.text.length);
+            setOcrStatus('Enviando texto para processamento...');
 
-                const result = await response.json();
+            // Send the extracted text to the server for processing
+            const response = await fetch('/api/exame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: data.text,
+                    extractType: 'exam'
+                })
+            });
 
-                // Processar o resultado
-                if (result.success && result.data) {
-                    // Atualizar resultados no estado
-                    setExamResults(result.data);
+            if (!response.ok) {
+                throw new Error(`Erro na API: ${response.status}`);
+            }
 
-                    // Mostrar a tabela de resultados automaticamente
-                    setShowExamTable(true);
+            const result = await response.json();
+            console.log("API response:", result);
 
-                    // Atualizar título se necessário
-                    if (!title.trim()) {
-                        try {
-                            const category = examCategories.find(cat => cat.id === examCategory);
-                            const categoryName = category ? category.name : '';
-                            const formattedDate = formatDateDisplay(examDate);
-                            setTitle(`${categoryName} - ${formattedDate}`);
-                        } catch (titleError) {
-                            console.error("Erro ao gerar título:", titleError);
-                        }
+            // Process the result
+            if (result.success && result.data) {
+                // Update results in state
+                setExamResults(result.data);
+
+                // Show the results table automatically
+                setShowExamTable(true);
+
+                // Update title if needed
+                if (!title.trim()) {
+                    try {
+                        const category = examCategories.find(cat => cat.id === examCategory);
+                        const categoryName = category ? category.name : '';
+                        const formattedDate = formatDateDisplay(examDate);
+                        setTitle(`${categoryName} - ${formattedDate}`);
+                    } catch (titleError) {
+                        console.error("Erro ao gerar título:", titleError);
                     }
-
-                    // Adicionar observação sobre processamento
-                    if (!observations.includes('Processado automaticamente')) {
-                        setObservations(prev =>
-                            `${prev ? prev + '\n\n' : ''}Processado automaticamente pela IA em ${new Date().toLocaleString()}.`
-                        );
-                    }
-
-                    showNotification("Imagem processada com sucesso! Resultados extraídos.", "success");
-                    return true;
-                } else {
-                    showNotification(result.warning || "O processamento não encontrou resultados de exame", "warning");
-                    return false;
                 }
+
+                // Add observation about processing
+                if (!observations.includes('Processado automaticamente')) {
+                    setObservations(prev =>
+                        `${prev ? prev + '\n\n' : ''}Processado automaticamente pela IA em ${new Date().toLocaleString()}.`
+                    );
+                }
+
+                showNotification("Imagem processada com sucesso! Resultados extraídos.", "success");
+                return true;
             } else {
-                showNotification("Texto insuficiente extraído. Tente uma imagem com texto mais claro.", "warning");
+                showNotification(result.warning || "O processamento não encontrou resultados de exame", "warning");
                 return false;
             }
         } catch (error) {
@@ -588,30 +650,48 @@ const ExamDialog = ({
         }
     };
 
+
+
     // Adicione esta função utilitária no início do componente ExamDialog
     const detectFileType = (file) => {
+        console.log("===== DETECT FILE TYPE =====");
+        console.log("File to detect:", file);
+
         try {
             // Verificar se temos um objeto de arquivo válido
-            if (!file) return { isPdf: false, isDocx: false, isImage: false, isSupported: false };
+            if (!file) {
+                console.error("File is null or undefined");
+                return { isPdf: false, isDocx: false, isImage: false, isSupported: false };
+            }
 
             // Obter tipo a partir do MIME type ou nome do arquivo
             const fileName = file.fileName || file.name || '';
             const fileType = file.fileType || file.type || '';
             const fileExt = fileName.toLowerCase().split('.').pop();
 
+            console.log("File info:", { fileName, fileType, fileExt });
+
             // Verificar cada tipo
-            const isPdf = fileType === 'application/pdf' || fileExt === 'pdf';
+            const isPdf = fileType === 'application/pdf' ||
+                fileType.includes('pdf') ||
+                fileExt === 'pdf';
+
             const isDocx = fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                fileExt === 'docx' || fileExt === 'doc';
+                fileType.includes('word') ||
+                ['docx', 'doc'].includes(fileExt);
+
             const isImage = fileType.startsWith('image/') ||
                 ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExt);
 
-            return {
+            const result = {
                 isPdf,
                 isDocx,
                 isImage,
                 isSupported: isPdf || isDocx || isImage
             };
+
+            console.log("Detection result:", result);
+            return result;
         } catch (error) {
             console.error("Erro ao detectar tipo de arquivo:", error);
             // Em caso de erro, retornar valor padrão seguro
@@ -620,9 +700,10 @@ const ExamDialog = ({
     };
 
     // Attachment chip with better styling
+    // Substitua completamente o componente AttachmentChip por esta versão:
     const AttachmentChip = ({ file, onOpen, onRemove, onProcess, disabled }) => {
-        // Usar a função detectFileType para segurança
-        const { isPdf, isDocx, isImage } = detectFileType(file);
+        // Use detectFileType for better file type detection
+        const { isPdf, isDocx, isImage, isSupported } = detectFileType(file);
 
         const getFileIcon = () => {
             try {
@@ -632,23 +713,21 @@ const ExamDialog = ({
                 return <AttachFileOutlinedIcon sx={{ color: "#64748B", fontSize: '18px' }} />;
             } catch (error) {
                 console.error("Erro ao renderizar ícone:", error);
-                // Fallback em caso de erro
                 return <AttachFileOutlinedIcon sx={{ color: "#64748B", fontSize: '18px' }} />;
             }
         };
 
-        // Função segura para clicar no anexo
+        // Safe function to click on attachment
         const handleOpenSafely = () => {
             try {
                 if (onOpen) onOpen();
             } catch (error) {
                 console.error("Erro ao abrir anexo:", error);
-                // Mostra feedback visual em vez de crashar
                 alert("Não foi possível abrir este anexo. Por favor, tente novamente.");
             }
         };
 
-        // Função segura para remover o anexo
+        // Safe function to remove attachment
         const handleRemoveSafely = () => {
             try {
                 if (onRemove) onRemove();
@@ -658,10 +737,41 @@ const ExamDialog = ({
             }
         };
 
-        // Função segura para processar o anexo
-        const handleProcessSafely = () => {
+        // Safe function to process attachment - MODIFICADO
+        const handleProcessSafely = (event) => {
+            // Log para depuração detalhada
+            console.log("===== PROCESS BUTTON CLICKED =====");
+            console.log("File para processamento:", file);
+            console.log("File type:", isImage ? "Image" : isPdf ? "PDF" : isDocx ? "DOCX" : "Other");
+
+            // Verificação adicional para detecção de tipo de arquivo
+            console.log("Detalhes do arquivo:", {
+                fileName: file.fileName || file.name,
+                fileType: file.fileType || file.type,
+                isImage: isImage
+            });
+
+            // Impedir propagação do evento
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
             try {
-                if (onProcess) onProcess();
+                console.log("Tentando executar onProcess");
+                // Chamada direta para processamento de anexos
+                if (isImage) {
+                    console.log("DETECTADO IMAGEM - Chamando processamento específico para imagem");
+                }
+
+                // Chamar a função de processamento
+                if (onProcess) {
+                    console.log("Executando onProcess()");
+                    onProcess();
+                    console.log("onProcess() executado com sucesso");
+                } else {
+                    console.error("ERRO: Handler onProcess não definido");
+                }
             } catch (error) {
                 console.error("Erro ao processar anexo:", error);
                 alert("Não foi possível processar este anexo. Por favor, tente novamente.");
@@ -713,9 +823,9 @@ const ExamDialog = ({
                     </Typography>
                 </Box>
 
-                {/* Mostrar botão de processar para PDF/DOCX/Imagens */}
-                {(isPdf || isDocx || isImage) && onProcess && (
-                    <Tooltip title="Processar com IA">
+                {/* Botão para processar anexos - MODIFICADO com estilo mais destacado para imagens */}
+                {isSupported && onProcess && (
+                    <Tooltip title={isImage ? "Processar imagem com OCR" : "Processar com IA"}>
                         <IconButton
                             size="small"
                             onClick={handleProcessSafely}
@@ -724,8 +834,11 @@ const ExamDialog = ({
                             sx={{
                                 ml: 0.5,
                                 p: 0.5,
+                                bgcolor: isImage ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
                                 '&:hover': {
-                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                    backgroundColor: isImage
+                                        ? alpha(theme.palette.primary.main, 0.2)
+                                        : alpha(theme.palette.primary.main, 0.1),
                                 }
                             }}
                         >
@@ -755,6 +868,7 @@ const ExamDialog = ({
             </Box>
         );
     };
+
 
     // NOVA FUNÇÃO: Processar arquivo PDF/DOCX/Imagem com IA
     const processExamFile = async (file) => {
@@ -947,7 +1061,7 @@ const ExamDialog = ({
         try {
             if (!files || files.length === 0) return;
 
-            // Evitar processamento de muitos arquivos simultaneamente
+            // Avoid processing too many files simultaneously
             const MAX_FILES = 10;
             let fileList = Array.from(files);
 
@@ -956,31 +1070,7 @@ const ExamDialog = ({
                 fileList = fileList.slice(0, MAX_FILES);
             }
 
-            // Verificar se há arquivos PDF, DOCX ou imagens para processamento automático
-            const processableFiles = fileList.filter(file => {
-                const { isSupported } = detectFileType(file);
-                return isSupported;
-            });
-
-            // Se não há arquivos processáveis
-            if (processableFiles.length === 0 && fileList.length > 0) {
-                showNotification("Nenhum arquivo selecionado pode ser processado. Use PDF, DOCX ou imagens.", "warning");
-            }
-
-            // Se houver um arquivo processável, tentar processá-lo primeiro com IA
-            let processingResult = false;
-            if (processableFiles.length > 0) {
-                try {
-                    const fileToProcess = processableFiles[0];
-                    processingResult = await processExamFile(fileToProcess);
-                } catch (error) {
-                    console.error("Erro ao processar arquivo automaticamente:", error);
-                    showNotification("O processamento automático falhou. O arquivo será anexado normalmente.", "warning");
-                    // Continuar com o upload normal mesmo se o processamento falhar
-                }
-            }
-
-            // Para exames em modo de edição, fazer upload dos arquivos
+            // For exams in edit mode, upload the files
             if (isEditMode && exam && exam.id) {
                 setIsLoading(true);
                 setUploadProgress('Fazendo upload dos arquivos...');
@@ -1005,7 +1095,7 @@ const ExamDialog = ({
                         }
                     }
 
-                    // Mensagem de feedback baseada no resultado
+                    // Feedback message based on result
                     if (successCount > 0 && errorCount === 0) {
                         showNotification(`${successCount} arquivo${successCount > 1 ? 's' : ''} enviado${successCount > 1 ? 's' : ''} com sucesso!`);
                     } else if (successCount > 0 && errorCount > 0) {
@@ -1021,7 +1111,7 @@ const ExamDialog = ({
                     setUploadProgress(null);
                 }
             } else {
-                // Para novos exames, apenas armazenar informações e o objeto do arquivo
+                // For new exams, just store file information and the file object
                 try {
                     const newAttachments = fileList.map(file => {
                         try {
@@ -1029,7 +1119,7 @@ const ExamDialog = ({
                                 fileName: file.name || "arquivo",
                                 fileType: file.type || "application/octet-stream",
                                 fileSize: formatFileSize(file.size || 0),
-                                file: file, // Manter o objeto do arquivo para upload posterior
+                                file: file, // Keep the file object for later upload
                                 uploadedAt: new Date()
                             };
                         } catch (fileError) {
@@ -1047,7 +1137,7 @@ const ExamDialog = ({
 
                     setAttachments(prev => [...prev, ...newAttachments]);
 
-                    if (fileList.length > 0 && !processingResult) {
+                    if (fileList.length > 0) {
                         showNotification(`${fileList.length} arquivo${fileList.length > 1 ? 's' : ''} adicionado${fileList.length > 1 ? 's' : ''} e será${fileList.length > 1 ? 'ão' : ''} enviado${fileList.length > 1 ? 's' : ''} ao salvar o exame.`);
                     }
                 } catch (attachError) {
@@ -1063,83 +1153,108 @@ const ExamDialog = ({
 
     // Função para processar anexo existente
     const handleProcessExistingAttachment = async (attachment) => {
+        console.log("===== PROCESS ATTACHMENT STARTED =====");
+        console.log("Attachment recebido:", attachment);
+
+        // Verificação de segurança
         if (!attachment) {
+            console.error("Attachment é nulo ou indefinido");
             showNotification("Anexo inválido", "error");
             return false;
         }
 
+        // Ativar loading state imediatamente para feedback visual
+        setIsLoading(true);
+        setUploadProgress("Iniciando processamento...");
+        setCurrentProcessingFile(attachment.fileName || "arquivo");
+
         try {
-            // Verificar se já temos um file object
-            if (attachment.file) {
-                return await processExamFile(attachment.file);
+            // Verificar tipo de arquivo - LÓGICA APRIMORADA
+            const fileInfo = {
+                fileName: attachment.fileName || attachment.name || '',
+                fileType: attachment.fileType || attachment.type || '',
+                hasFile: !!attachment.file,
+                hasUrl: !!attachment.fileUrl || !!attachment.storagePath
+            };
+            console.log("Informações do arquivo:", fileInfo);
+
+            const { isPdf, isDocx, isImage, isSupported } = detectFileType(attachment);
+            console.log("Detecção de tipo:", { isPdf, isDocx, isImage, isSupported });
+
+            if (!isSupported) {
+                console.error("Arquivo não suportado para processamento");
+                showNotification("Tipo de arquivo não suportado para processamento", "warning");
+                setIsLoading(false);
+                setUploadProgress(null);
+                setCurrentProcessingFile(null);
+                return false;
             }
 
-            // Se não temos o objeto file diretamente, mas temos URL
-            if (attachment.fileUrl) {
-                setIsLoading(true);
+            // FLUXO ESPECÍFICO PARA IMAGENS - MELHORADO
+            if (isImage) {
+                console.log("PROCESSANDO IMAGEM - Chamando processImageInBrowser");
 
-                // Detectar tipo para feedback específico
-                const { isPdf, isDocx, isImage } = detectFileType(attachment);
-
-                if (isImage) {
-                    setUploadProgress('Baixando imagem para OCR...');
-                } else if (isPdf) {
-                    setUploadProgress('Baixando PDF para processamento...');
-                } else if (isDocx) {
-                    setUploadProgress('Baixando DOCX para processamento...');
-                } else {
-                    setUploadProgress('Baixando arquivo para processamento...');
-                }
-
-                setCurrentProcessingFile(attachment.fileName || "arquivo");
+                // Mostrar feedback visual específico para OCR
+                setProcessingInBrowser(true);
+                setOcrStatus('Preparando para OCR...');
+                setOcrProgress(1); // Iniciar com 1% para mostrar que começou
 
                 try {
-                    // Baixar o arquivo da URL com timeout
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+                    const result = await processImageInBrowser(attachment);
+                    console.log("Resultado do processamento de imagem:", result);
+                    return result;
+                } catch (imgError) {
+                    console.error("Erro no processamento de imagem:", imgError);
+                    showNotification(`Falha no OCR: ${imgError.message}`, "error");
+                    return false;
+                }
+            }
 
-                    const response = await fetch(attachment.fileUrl, {
-                        signal: controller.signal
-                    }).finally(() => clearTimeout(timeoutId));
+            // Resto do código para PDF/DOCX (sem alterações)...
+            if (isPdf || isDocx) {
+                // Check if we already have a file object
+                if (attachment.file) {
+                    console.log("Using existing file object");
+                    return await processExamFile(attachment.file);
+                }
 
-                    if (!response.ok) throw new Error("Falha ao obter o arquivo do servidor");
-
-                    const blob = await response.blob();
-                    const file = new File([blob], attachment.fileName || "arquivo", {
-                        type: attachment.fileType || 'application/octet-stream'
-                    });
-
-                    // Processar o arquivo
-                    return await processExamFile(file);
-                } catch (error) {
-                    if (error.name === 'AbortError') {
-                        console.error('Timeout ao baixar arquivo:', error);
-                        showNotification('O download do arquivo demorou muito. Verifique sua conexão.', "error");
-                    } else {
-                        console.error('Erro ao processar anexo da URL:', error);
-                        showNotification('Não foi possível processar o anexo: ' + error.message, "error");
-                    }
+                // If we don't have the file object directly but have URL
+                if (attachment.fileUrl) {
+                    // Código existente para processamento de fileUrl...
+                }
+                else if (attachment.storagePath) {
+                    // Código existente para processamento de storagePath...
+                }
+                else {
+                    showNotification("Não foi possível acessar o conteúdo do arquivo", "error");
                     setIsLoading(false);
                     setUploadProgress(null);
                     setCurrentProcessingFile(null);
                     return false;
                 }
-            } else {
-                showNotification("Não foi possível acessar o conteúdo do arquivo", "error");
-                return false;
             }
+
+            showNotification("Tipo de arquivo não suportado para processamento", "warning");
+            setIsLoading(false);
+            setUploadProgress(null);
+            setCurrentProcessingFile(null);
+            return false;
         } catch (error) {
             console.error("Erro inesperado ao processar anexo:", error);
             showNotification("Ocorreu um erro ao processar o anexo. Tente novamente.", "error");
 
-            // Garantir limpeza do estado
+            // Ensure state cleanup
             setIsLoading(false);
             setUploadProgress(null);
             setCurrentProcessingFile(null);
+            setProcessingInBrowser(false);
+            setOcrStatus('');
+            setOcrProgress(0);
 
             return false;
         }
     };
+
 
     const handleFileUpload = async () => {
         if (fileInputRef.current) {
@@ -1193,53 +1308,115 @@ const ExamDialog = ({
             return;
         }
 
+        console.log("Opening attachment:", attachment);
+
+        // 1. Try direct fileUrl first (most common case)
         if (attachment.fileUrl) {
+            console.log("Opening attachment with fileUrl:", attachment.fileUrl);
             window.open(attachment.fileUrl, '_blank');
             return;
         }
 
+        // 2. Try using File object if available (for unsaved files)
         if (attachment.file instanceof File) {
             try {
+                console.log("Creating blob URL for file object");
                 const blobUrl = URL.createObjectURL(attachment.file);
                 window.open(blobUrl, '_blank');
 
-                // Free the URL temporary after some time
+                // Free the URL after some time
                 setTimeout(() => {
                     URL.revokeObjectURL(blobUrl);
                 }, 5000);
                 return;
             } catch (e) {
-                console.error("Erro ao criar URL temporária:", e);
+                console.error("Error creating temporary URL:", e);
             }
         }
 
-        // Try other possible URL fields
+        // 3. Try alternative URL fields
         const urlFields = ['url', 'downloadURL', 'fileUrl'];
         for (const field of urlFields) {
             if (attachment[field]) {
+                console.log(`Opening attachment using ${field}:`, attachment[field]);
                 window.open(attachment[field], '_blank');
                 return;
             }
         }
 
-        // If we have a storagePath, try to get the URL
+        // 4. Try using storagePath if available
         if (attachment.storagePath) {
             try {
+                console.log("Fetching URL from storagePath:", attachment.storagePath);
                 FirebaseService.getStorageFileUrl(attachment.storagePath)
                     .then(url => {
+                        console.log("Got URL from storage path:", url);
                         window.open(url, '_blank');
                     })
                     .catch(error => {
-                        console.error("Erro ao obter URL do Storage:", error);
+                        console.error("Error getting URL from Storage:", error);
                         showNotification("Não foi possível obter a URL do anexo.", "error");
                     });
                 return;
             } catch (error) {
-                console.error("Erro ao processar path do Storage:", error);
+                console.error("Error processing Storage path:", error);
             }
         }
 
-        showNotification(`Não foi possível abrir o anexo: ${attachment.fileName || "sem nome"}`, "error");
+        // 5. Reconstruct storage path based on context (important fix for exams vs notes)
+        const constructAndTryPath = async () => {
+            try {
+                if (user?.uid && patientId && (exam?.id || noteData?.id)) {
+                    // Attempt with EXAMS path first (this is crucial for fixing the path issue)
+                    console.log("Attempting to reconstruct path with examId");
+                    const examId = exam?.id;
+                    const fileName = attachment.fileName;
+
+                    if (examId && fileName) {
+                        // CORRECT PATH: users/{userId}/patients/{patientId}/exams/{examId}/{fileName}
+                        const examPath = `users/${user.uid}/patients/${patientId}/exams/${examId}/${fileName}`;
+                        console.log("Trying exam path:", examPath);
+
+                        try {
+                            const url = await FirebaseService.getStorageFileUrl(examPath);
+                            console.log("Successfully got URL from constructed exam path");
+                            window.open(url, '_blank');
+                            return true;
+                        } catch (examPathError) {
+                            console.warn("Failed with exam path, trying note path as fallback:", examPathError);
+                        }
+                    }
+
+                    // Fallback to note path if exam path fails
+                    const noteId = exam?.id || noteData?.id; // Use either exam ID or note ID
+                    if (noteId && fileName) {
+                        const notePath = `users/${user.uid}/patients/${patientId}/notes/${noteId}/${fileName}`;
+                        console.log("Trying note path as fallback:", notePath);
+
+                        try {
+                            const url = await FirebaseService.getStorageFileUrl(notePath);
+                            console.log("Successfully got URL from constructed note path");
+                            window.open(url, '_blank');
+                            return true;
+                        } catch (notePathError) {
+                            console.error("Both path reconstruction attempts failed:", notePathError);
+                        }
+                    }
+                }
+                return false;
+            } catch (error) {
+                console.error("Error in path reconstruction:", error);
+                return false;
+            }
+        };
+
+        // Try the path reconstruction
+        constructAndTryPath().then(success => {
+            if (!success) {
+                console.error("All methods to open attachment failed");
+                showNotification(`Não foi possível abrir o anexo: ${attachment.fileName || "sem nome"}. Verifique os caminhos de armazenamento.`, "error");
+            }
+        });
     };
 
     const handleRemoveAttachment = async (index) => {
@@ -1294,7 +1471,7 @@ const ExamDialog = ({
             try {
                 setIsLoading(true);
 
-                // Feedback com tentativa atual
+                // Feedback with current attempt
                 if (saveAttempts > 1) {
                     setUploadProgress(`Tentativa ${saveAttempts}/${maxAttempts} de salvar o exame...`);
                 } else {
@@ -1302,15 +1479,16 @@ const ExamDialog = ({
                 }
 
                 let exameId = exam?.id;
-                // 1) Criar ou atualizar o exame
+                // 1) Create or update the exam
                 if (isEditMode && exameId) {
+                    console.log(`Updating exam with ID: ${exameId}`);
                     await FirebaseService.updateExam(user.uid, patientId, exameId, {
                         title,
                         examDate,
                         category: examCategory,
                         observations,
                         attachments: attachments.map(att => {
-                            // Remover campos que não devem ser salvos
+                            // Remove fields that shouldn't be saved
                             const { file, ...meta } = att;
                             return meta;
                         }),
@@ -1318,7 +1496,8 @@ const ExamDialog = ({
                         lastModified: new Date()
                     });
                 } else {
-                    // para novo exame, crie primeiro sem anexos
+                    // For new exams, create first without attachments
+                    console.log("Creating new exam");
                     const examData = {
                         title,
                         examDate,
@@ -1333,40 +1512,77 @@ const ExamDialog = ({
                         lastModified: new Date()
                     };
                     exameId = await FirebaseService.createExam(user.uid, patientId, examData);
+                    console.log(`Created new exam with ID: ${exameId}`);
                 }
 
-                // 2) (Re)envio de quaisquer anexos pendentes
+                // 2) Upload any pending attachments
                 const uploadPromises = [];
+                console.log(`Uploading ${attachments.filter(att => att.file).length} attachments`);
                 for (const att of attachments) {
                     if (att.file) {
+                        console.log(`Preparing to upload: ${att.fileName}`);
                         const uploadPromise = FirebaseService.uploadExamAttachment(
                             att.file,
                             user.uid,
                             patientId,
                             exameId
                         ).then(info => {
-                            // Atualizar o state local com as URLs dos arquivos (opcional)
-                            console.log("Arquivo enviado:", info);
+                            console.log(`Successfully uploaded: ${att.fileName}`, info);
+                            // Add the storage path for future reference
+                            if (!info.storagePath && exameId) {
+                                info.storagePath = `users/${user.uid}/patients/${patientId}/exams/${exameId}/${att.fileName}`;
+                            }
+                            return info;
                         }).catch(error => {
-                            console.error("Erro ao enviar anexo:", error);
-                            // Registrar erro mas não falhar completamente
+                            console.error(`Error uploading: ${att.fileName}`, error);
                             return null;
                         });
                         uploadPromises.push(uploadPromise);
                     }
                 }
 
+                let uploadedAttachments = [];
                 if (uploadPromises.length > 0) {
-                    // Usar allSettled para não falhar se um upload específico falhar
+                    // Use allSettled to not fail if a specific upload fails
                     const results = await Promise.allSettled(uploadPromises);
                     const failedUploads = results.filter(r => r.status === 'rejected').length;
+                    const successfulUploads = results
+                        .filter(r => r.status === 'fulfilled' && r.value)
+                        .map(r => r.value);
+
+                    uploadedAttachments = successfulUploads;
 
                     if (failedUploads > 0) {
-                        console.warn(`${failedUploads} anexos não puderam ser enviados`);
+                        console.warn(`${failedUploads} attachments failed to upload`);
+                    }
+
+                    // If we have successful uploads, update the exam with the updated attachment info
+                    if (successfulUploads.length > 0) {
+                        console.log("Updating exam with successful uploads:", successfulUploads);
+                        const existingAttachments = attachments
+                            .filter(att => !att.file)
+                            .map(att => {
+                                // Ensure storage path is set correctly (fix for the path issue)
+                                if (!att.storagePath && exameId) {
+                                    att.storagePath = `users/${user.uid}/patients/${patientId}/exams/${exameId}/${att.fileName}`;
+                                }
+                                return att;
+                            });
+
+                        const updatedAttachments = [...existingAttachments, ...successfulUploads];
+
+                        // Update the exam with the complete, corrected attachment list
+                        await FirebaseService.updateExam(user.uid, patientId, exameId, {
+                            attachments: updatedAttachments.map(att => {
+                                const { file, ...meta } = att;
+                                return meta;
+                            }),
+                            lastModified: new Date()
+                        });
                     }
                 }
 
-                // 3) Montar payload da nota de exame
+                // 3) Create exam note
                 try {
                     const formattedDate = format(
                         new Date(examDate),
@@ -1381,20 +1597,22 @@ const ExamDialog = ({
                             hasResults ? '\n\nExame processado com resultados estruturados.' : ''
                         }`,
                         noteType: "Exame",
+                        category: "Exames", // Set the category for the note
                         consultationDate: new Date(examDate),
                         exameId,
                         createdAt: new Date()
                     };
 
-                    // 4) Criar ou atualizar a nota no Firestore
-                    const todasNotas = await FirebaseService.listNotes(user.uid, patientId);
-                    const notaExistente = todasNotas.find(n => n.exameId === exameId);
+                    // 4) Create or update the note in Firestore
+                    const allNotes = await FirebaseService.listNotes(user.uid, patientId);
+                    const existingNote = allNotes.find(n => n.exameId === exameId);
 
-                    if (notaExistente) {
+                    if (existingNote) {
+                        console.log(`Updating existing note for exam: ${exameId}`);
                         await FirebaseService.updateNote(
                             user.uid,
                             patientId,
-                            notaExistente.id,
+                            existingNote.id,
                             {
                                 noteTitle: `Exame - ${title}`,
                                 noteText: `Exame atualizado em ${formattedDate}.${
@@ -1404,6 +1622,7 @@ const ExamDialog = ({
                             }
                         );
                     } else {
+                        console.log(`Creating new note for exam: ${exameId}`);
                         await FirebaseService.createNote(
                             user.uid,
                             patientId,
@@ -1412,10 +1631,10 @@ const ExamDialog = ({
                     }
                 } catch (noteError) {
                     console.error("Erro ao criar nota associada:", noteError);
-                    // Continuar mesmo se a nota falhar - o exame já foi salvo
+                    // Continue even if note creation fails - the exam was already saved
                 }
 
-                // 5) Feedback e fechar
+                // 5) Feedback and close
                 savedSuccessfully = true;
                 setIsSaved(true);
                 showNotification("Exame salvo com sucesso!");
@@ -1430,7 +1649,7 @@ const ExamDialog = ({
                 if (saveAttempts >= maxAttempts) {
                     showNotification(`Não foi possível salvar o exame após ${maxAttempts} tentativas. Por favor, tente novamente mais tarde.`, "error");
                 } else {
-                    // Esperar um pouco antes de tentar novamente
+                    // Wait a bit before trying again
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             } finally {

@@ -507,6 +507,7 @@ export async function POST(req) {
                     sourceType = "browser-ocr";
                     text = body.text;
                     console.log(`[NETLIFY_DEBUG] Texto recebido via OCR browser: ${text.length} caracteres`);
+                    console.log(`[NETLIFY_DEBUG] Amostra do texto: ${text.substring(0, 200)}...`);
 
                     // Verificar tipo de extração no body
                     if (body.extractType) {
