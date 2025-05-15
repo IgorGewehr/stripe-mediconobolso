@@ -510,44 +510,6 @@ function InfoBasicasForm({ formData = {}, updateFormData, errors = {}, resetTrig
                 }
             `}</style>
 
-            {/* Cabeçalho com botão de extração */}
-            <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 3,
-                borderBottom: '1px solid rgba(17, 30, 90, 0.1)',
-                pb: 2
-            }}>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Tooltip title="Dicas para extração de dados">
-                        <Button
-                            variant="text"
-                            color={showTips ? "primary" : "inherit"}
-                            onClick={() => setShowTips(!showTips)}
-                            sx={{
-                                color: showTips ? '#1852FE' : '#475467',
-                                textTransform: 'none',
-                            }}
-                            startIcon={<TipsAndUpdatesOutlinedIcon />}
-                        >
-                            Dicas
-                        </Button>
-                    </Tooltip>
-
-                    <AIExtractButton
-                        onClick={handleStartExtraction}
-                        disabled={isExtracting}
-                        startIcon={
-                            isExtracting
-                                ? <CircularProgress size={20} color="inherit" />
-                                : <AutoAwesomeIcon />
-                        }
-                    >
-                        {isExtracting ? "Extraindo..." : "Extrair Dados com IA"}
-                    </AIExtractButton>
-                </Box>
-            </Box>
 
             {/* Mostrar dicas quando habilitado */}
             {showTips && (

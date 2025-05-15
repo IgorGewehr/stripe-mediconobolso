@@ -2459,13 +2459,13 @@ const PatientsListPage = ({onPatientClick}) => {
                                             // Cria um array de todas as datas de consulta futuras
                                             const futureDates = [];
 
-                                            if (nextConsultDate && isAfter(nextConsultDate, new Date())) {
+                                            if (nextConsultDate && (isToday(nextConsultDate) || isAfter(nextConsultDate, new Date()))) {
                                                 futureDates.push({
                                                     date: nextConsultDate
                                                 });
                                             }
 
-                                            if (lastConsultDate && isAfter(lastConsultDate, new Date())) {
+                                            if (lastConsultDate && (isToday(lastConsultDate) || isAfter(lastConsultDate, new Date()))) {
                                                 futureDates.push({
                                                     date: lastConsultDate
                                                 });
@@ -2980,14 +2980,14 @@ const PatientsListPage = ({onPatientClick}) => {
                                                 // Cria um array de todas as datas de consulta futuras
                                                 const futureDates = [];
 
-                                                if (nextConsultDate && isAfter(nextConsultDate, new Date())) {
+                                                if (nextConsultDate && (isToday(nextConsultDate) || isAfter(nextConsultDate, new Date()))) {
                                                     futureDates.push({
                                                         date: nextConsultDate,
                                                         isNext: true
                                                     });
                                                 }
 
-                                                if (lastConsultDate && isAfter(lastConsultDate, new Date())) {
+                                                if (lastConsultDate && (isToday(lastConsultDate) || isAfter(lastConsultDate, new Date()))) {
                                                     futureDates.push({
                                                         date: lastConsultDate,
                                                         isNext: false

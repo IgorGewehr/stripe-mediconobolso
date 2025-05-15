@@ -393,11 +393,12 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         const patientConsultsList = patientConsultations[patientId] || [];
         const now = new Date();
 
-        // Filtrar consultas futuras
+        // Filtrar consultas futuras, incluindo consultas de hoje
         const futureConsults = patientConsultsList
             .filter(consult => {
                 const consultDate = getDateValue(consult, 'consultationDate');
-                return consultDate && isAfter(consultDate, now);
+                // Incluir consultas que são hoje ou no futuro
+                return consultDate && (isToday(consultDate) || isAfter(consultDate, now));
             })
             .sort((a, b) => {
                 const dateA = getDateValue(a, 'consultationDate');
