@@ -13,4 +13,4 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 
 [functions]
 node_bundler = "esbuild"
-included_files = ["node_modules/tesseract.js-core/**/*", "node_modules/tesseract.js/**/*"]
+included_files = ["node_modules/tesseract.js-core/**/*"]

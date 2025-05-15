@@ -5,17 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-// Importar sharp com tratamento de erro para Netlify
-let sharp;
-try {
-    sharp = require('sharp');
-    console.log('[NETLIFY_DEBUG] Sharp importado com sucesso');
-} catch (sharpError) {
-    console.error('[NETLIFY_DEBUG] Erro ao importar Sharp:', sharpError);
-    // Estabelecer um mock para evitar erros
-    sharp = null;
-}
-
+let sharp = null; // Não tente usar Sharp no ambiente Netlify
+console.log('[NETLIFY_DEBUG] Sharp desabilitado para ambiente Netlify');
 // Configurações da rota API para Next.js 15
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,14 +31,9 @@ async function extractTextFromDOCX(buffer) {
     }
 }
 
-// Função otimizada para processar imagens com OCR no ambiente Netlify
 async function extractTextFromImage(buffer, fileName) {
     try {
         console.log(`[NETLIFY_IMAGE_DEBUG] Iniciando OCR para imagem: ${fileName}, tamanho: ${buffer.length} bytes`);
-
-        // Forçar detecção de Netlify para garantir comportamento correto
-        const isNetlify = true;
-        console.log(`[NETLIFY_IMAGE_DEBUG] Assumindo ambiente Netlify: Sim`);
 
         // Verificar buffer válido
         if (!buffer || buffer.length === 0) {
@@ -55,53 +41,70 @@ async function extractTextFromImage(buffer, fileName) {
         }
 
         try {
-            console.log('[NETLIFY_IMAGE_DEBUG] Tentando OCR com configurações para Netlify');
+            console.log('[NETLIFY_IMAGE_DEBUG] Configurando Tesseract.js para Netlify...');
 
-            // Importar tesseract.js
+            // Importar apenas o que precisamos
             const { createWorker } = await import('tesseract.js');
-            console.log('[NETLIFY_IMAGE_DEBUG] Tesseract.js importado com sucesso');
 
-            // SOLUÇÃO CRÍTICA: Configuração para evitar gravação no sistema de arquivos
-            const worker = await createWorker({
-                // Usar CDN remoto para modelos em vez de baixar localmente
-                langPath: 'https://tessdata.projectnaptha.com/4.0.0',
-                // Cache em diretório temporário
-                cachePath: '/tmp/tesseract-cache',
-                // Não tentar criar arquivos de log/cache
-                logger: m => console.log(`[TESSERACT] ${m.status} ${m.progress.toFixed(2)}`),
-                // Evitar recursos que exigem gravação
-                errorHandler: e => console.error('[TESSERACT_ERROR]', e)
+            console.log('[NETLIFY_IMAGE_DEBUG] Criando worker com configuração para ambiente serverless');
+
+            // Especial para Netlify: usar diretamente URLs remotas para dados
+            const remoteLangPath = 'https://raw.githubusercontent.com/naptha/tessdata/gh-pages/4.0.0';
+
+            // Worker com configurações específicas para ambiente serverless
+            const worker = createWorker({
+                // Especificar URL remota para evitar download local
+                langPath: remoteLangPath,
+                // Ativar cache em memória em vez de arquivo
+                cacheMethod: 'memory',
+                // Usar logger simplificado
+                logger: progress => {
+                    if (progress.status === 'recognizing text') {
+                        console.log(`[TESSERACT] Progresso OCR: ${(progress.progress * 100).toFixed(1)}%`);
+                    } else {
+                        console.log(`[TESSERACT] ${progress.status}`);
+                    }
+                }
             });
 
-            // Carregar idioma português diretamente da CDN
+            // Inicializar e carregar idioma português
+            console.log('[NETLIFY_IMAGE_DEBUG] Carregando idioma português remotamente');
+            await worker.load();
             await worker.loadLanguage('por');
             await worker.initialize('por');
 
-            // Configurações simplificadas
+            // Configurações básicas para evitar uso intensivo de recursos
+            console.log('[NETLIFY_IMAGE_DEBUG] Aplicando configurações seguras para Tesseract');
             await worker.setParameters({
                 tessjs_create_box: '0',
                 tessjs_create_hocr: '0',
                 tessjs_create_tsv: '0',
-                tessjs_create_unlv: '0',
+                tessjs_create_unlv: '0'
             });
 
-            console.log('[NETLIFY_IMAGE_DEBUG] Iniciando reconhecimento de texto');
+            // Executar OCR
+            console.log('[NETLIFY_IMAGE_DEBUG] Iniciando processo de OCR');
             const result = await worker.recognize(buffer);
             console.log(`[NETLIFY_IMAGE_DEBUG] OCR concluído: ${result.data.text.length} caracteres`);
 
-            // Terminar worker explicitamente
+            // Liberar recursos
             await worker.terminate();
 
-            return result.data.text;
-        } catch (tesseractError) {
-            console.error('[NETLIFY_IMAGE_DEBUG] Erro no OCR:', tesseractError);
+            // Verificar se extraímos texto suficiente
+            if (!result.data.text || result.data.text.trim().length < 50) {
+                console.log('[NETLIFY_IMAGE_DEBUG] Texto extraído insuficiente');
+                return "Texto extraído da imagem insuficiente. Para melhores resultados, envie o documento em formato PDF.";
+            }
 
-            // Retornar mensagem de fallback
-            return "Não foi possível processar o texto desta imagem no ambiente serverless. Recomendamos converter o documento para PDF antes de enviar para melhor compatibilidade.";
+            return result.data.text;
+
+        } catch (tesseractError) {
+            console.error('[NETLIFY_IMAGE_DEBUG] Erro no Tesseract:', tesseractError);
+            return `Não foi possível processar esta imagem no ambiente Netlify. Erro: ${tesseractError.message}. Recomendamos converter o documento para PDF antes de enviar.`;
         }
     } catch (error) {
         console.error('[NETLIFY_IMAGE_DEBUG] Erro crítico:', error);
-        return `[ERRO DE OCR: ${error.message}] Falha ao processar imagem.`;
+        return "Erro no processamento de imagem. Por favor, tente enviar o documento em formato PDF para melhor compatibilidade.";
     }
 }
 
@@ -466,6 +469,16 @@ async function processTextWithOpenAI(text) {
 }
 
 export async function POST(req) {
+
+    const isNetlifyEnv = Boolean(
+        process.env.NETLIFY ||
+        process.env.CONTEXT ||
+        process.env.NETLIFY_LOCAL ||
+        process.env.NETLIFY_DEV
+    );
+
+    console.log(`[NETLIFY_DEBUG] Ambiente: ${isNetlifyEnv ? 'Netlify' : 'Local/Desenvolvimento'}`);
+    console.log(`[NETLIFY_DEBUG] Node version: ${process.version}`);
     try {
         let text = "";
         let sourceType = "unknown";
