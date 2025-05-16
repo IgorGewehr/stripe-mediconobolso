@@ -1,5 +1,4 @@
 [build.environment]
-NEXT_USE_NETLIFY_EDGE = "true"
 NEXT_IGNORE_PRERENDER_ERRORS = "true"
 SKIP_STATIC_GENERATION_WITH_PRERENDER_ERRORS = "true"
 NODE_OPTIONS = "--max-old-space-size=4096"
