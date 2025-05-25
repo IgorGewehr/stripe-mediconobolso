@@ -29,7 +29,7 @@ async function extractTextFromDOCX(buffer) {
     }
 }
 
-// RESTAURADA: Função original para processar imagens com OCR
+// Função atualizada para processar imagens com OCR - com melhor handling do Sharp
 async function extractTextFromImage(buffer, fileName) {
     try {
         console.log(`[API_DEBUG] Iniciando OCR na imagem: ${fileName}...`);
@@ -41,25 +41,54 @@ async function extractTextFromImage(buffer, fileName) {
 
         // Melhorar qualidade da imagem antes do OCR com Sharp
         let enhancedImageBuffer = buffer;
+        let sharpAvailable = false;
 
-        try {
-            // Importação dinâmica do sharp, com fallback se não estiver disponível
-            const sharp = await import('sharp');
-            console.log("[API_DEBUG] Sharp importado com sucesso, pré-processando imagem");
+        // Verificar se estamos em produção
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
 
-            enhancedImageBuffer = await sharp.default(buffer)
-                .greyscale() // Converter para escala de cinza
-                .normalize() // Normalizar o contraste
-                .sharpen() // Melhorar a nitidez
-                .toBuffer();
+        if (!isProduction) {
+            // Tentar usar Sharp apenas em desenvolvimento
+            try {
+                const sharp = await import('sharp');
+                console.log("[API_DEBUG] Sharp importado com sucesso, pré-processando imagem");
 
-            console.log("[API_DEBUG] Imagem pré-processada com Sharp");
-        } catch (sharpError) {
-            console.warn("[API_DEBUG] Não foi possível usar o Sharp para pré-processar a imagem:", sharpError.message);
-            console.log("[API_DEBUG] Continuando com a imagem original");
+                enhancedImageBuffer = await sharp.default(buffer)
+                    .greyscale()
+                    .normalize()
+                    .sharpen()
+                    .toBuffer();
+
+                console.log("[API_DEBUG] Imagem pré-processada com Sharp");
+                sharpAvailable = true;
+            } catch (sharpError) {
+                console.warn("[API_DEBUG] Sharp não disponível:", sharpError.message);
+            }
+        } else {
+            console.log("[API_DEBUG] Ambiente de produção detectado, ignorando Sharp");
         }
 
-        // Salvar imagem (original ou pré-processada) para OCR
+        // Se Sharp não estiver disponível, tentar melhorar a imagem com alternativas
+        if (!sharpAvailable && !isProduction) {
+            try {
+                // Alternativa: usar jimp para processamento básico
+                const Jimp = await import('jimp');
+                const image = await Jimp.default.read(buffer);
+
+                // Aplicar filtros básicos
+                image
+                    .greyscale()
+                    .contrast(0.2)
+                    .normalize();
+
+                enhancedImageBuffer = await image.getBufferAsync(Jimp.MIME_PNG);
+                console.log("[API_DEBUG] Imagem processada com Jimp como alternativa");
+            } catch (jimpError) {
+                console.warn("[API_DEBUG] Processamento alternativo falhou:", jimpError.message);
+                console.log("[API_DEBUG] Continuando com a imagem original");
+            }
+        }
+
+        // Salvar imagem para OCR
         await fs.promises.writeFile(imagePath, enhancedImageBuffer);
         console.log("[API_DEBUG] Imagem salva em:", imagePath);
 
@@ -67,14 +96,25 @@ async function extractTextFromImage(buffer, fileName) {
         const { createWorker } = await import('tesseract.js');
         console.log("[API_DEBUG] Tesseract.js importado com sucesso");
 
-        // Configurar worker do Tesseract com português para melhorar reconhecimento de texto médico
-        const worker = await createWorker('por');
+        // Configurar worker do Tesseract
+        const worker = await createWorker('por', 1, {
+            // Adicionar configurações para melhorar performance em produção
+            workerPath: process.env.NODE_ENV === 'production'
+                ? 'https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/worker.min.js'
+                : undefined,
+            langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+            corePath: process.env.NODE_ENV === 'production'
+                ? 'https://cdn.jsdelivr.net/npm/tesseract.js-core@2/tesseract-core.wasm.js'
+                : undefined,
+        });
+
         console.log("[API_DEBUG] Worker Tesseract inicializado com idioma português");
 
-        // Configurar parâmetros de OCR para melhorar reconhecimento
+        // Configurar parâmetros de OCR
         await worker.setParameters({
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.:;%<>(){}[]+-=/*"\'´`~^ºª!?@#$&_\\|µΩ∞±≤≥÷×≠',
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789áàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ,.:;%<>(){}[]+-=/*"\'´`~^ºª!?@#$&_\\|µΩ∞±≤≥÷×≠ ',
             preserve_interword_spaces: '1',
+            tessedit_pageseg_mode: '3', // Fully automatic page segmentation
         });
         console.log("[API_DEBUG] Parâmetros de OCR configurados");
 
@@ -83,6 +123,7 @@ async function extractTextFromImage(buffer, fileName) {
         const { data } = await worker.recognize(imagePath);
         const extractedText = data.text;
         console.log(`[API_DEBUG] Texto extraído: ${extractedText.length} caracteres`);
+        console.log(`[API_DEBUG] Confiança média: ${data.confidence}%`);
 
         // Limpar recursos
         await worker.terminate();
@@ -95,6 +136,11 @@ async function extractTextFromImage(buffer, fileName) {
             console.log("[API_DEBUG] Arquivos temporários removidos");
         } catch (cleanupError) {
             console.error("[API_DEBUG] Erro ao limpar arquivos temporários:", cleanupError);
+        }
+
+        // Verificar qualidade do texto extraído
+        if (extractedText.length < 50 || data.confidence < 60) {
+            console.warn("[API_DEBUG] Qualidade do OCR baixa, texto pode estar incompleto");
         }
 
         return extractedText;
