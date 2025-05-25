@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "postinstall": "mkdir -p ./node_modules/pdf-parse/test/data && touch ./node_modules/pdf-parse/test/data/05-versions-space.pdf && npm rebuild sharp --platform=linux --arch=x64 --libc=glibc || true"
+    "start": "next start"
   },
   "dependencies": {
     "@date-io/date-fns": "^3.2.1",
@@ -35,19 +34,15 @@
     "nodemailer": "^7.0.2",
     "notion": "^0.0.1",
     "openai": "^4.98.0",
-    "pdf-img-convert": "^2.0.0",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
-    "pdf2pic": "^3.1.4",
     "pdfjs-dist": "^3.11.174",
-    "puppeteer": "^19.11.1",
     "react": "^19.0.0",
     "react-datepicker": "^8.2.1",
     "react-dom": "^19.0.0",
     "react-input-mask": "^2.0.4",
     "react-toastify": "^11.0.5",
     "recharts": "^2.15.1",
-    "sharp": "^0.30.7",
     "stripe": "^17.5.0",
     "tesseract.js": "^6.0.1"
   },
