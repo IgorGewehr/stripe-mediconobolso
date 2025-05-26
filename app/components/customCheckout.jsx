@@ -161,7 +161,7 @@ const brazilianStates = [
     { value: 'TO', label: 'Tocantins' }
 ];
 
-// Dados dos planos - ATUALIZADO COM PLANO GRATUITO
+// Dados dos planos - ATUALIZADO COM NOVAS FEATURES DO PLANO GRATUITO
 const plansData = {
     free: {
         id: 'free',
@@ -171,10 +171,10 @@ const plansData = {
         period: '/sempre',
         free: true,
         features: [
-            'Acesso a agenda e receitas',
-            'Até 250 pacientes',
-            'Suporte por email',
-            'Ferramentas de IA'
+            'Acesso a todas as funções exceto:',
+            '- função financeira e cadastro de pacientes limitada',
+            '- ferramentas de IA',
+            '- treinamento com chamada de vídeo'
         ]
     },
     monthly: {
@@ -209,14 +209,14 @@ const plansData = {
     }
 };
 
-// Componente de Cartão de Plano - ATUALIZADO PARA PLANO GRATUITO
+// Componente de Cartão de Plano
 const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
     const isFree = plan.free;
 
     return (
         <Paper
             sx={{
-                backgroundColor: isFree ? '#1B5E20' : '#1F1F1F', // Verde escuro para plano gratuito
+                backgroundColor: isFree ? '#1B5E20' : '#1F1F1F',
                 color: 'white',
                 borderRadius: 2,
                 overflow: 'hidden',
@@ -235,7 +235,6 @@ const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
                 },
                 fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
                 width: '100%',
-                // Gradient especial para plano gratuito
                 background: isFree ? 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 50%, #388E3C 100%)' : '#1F1F1F'
             }}
             onClick={onSelect}
@@ -285,26 +284,6 @@ const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
                 </Box>
             )}
 
-            {plan.savings && (
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        top: 15,
-                        right: 15,
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
-                        fontSize: '0.7rem',
-                        fontWeight: 'bold',
-                        py: 0.5,
-                        px: 1,
-                        borderRadius: 1,
-                        zIndex: 1
-                    }}
-                >
-                    ECONOMIZE {plan.savings}
-                </Box>
-            )}
-
             <Box sx={{ p: 2, flexGrow: 1, pt: (plan.popular || isFree) ? 4 : 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'baseline' }}>
                     {plan.price} <Typography variant="caption" sx={{ ml: 1, color: isFree ? '#A5D6A7' : 'grey.400' }}>{plan.period}</Typography>
@@ -345,10 +324,30 @@ const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
 
                 {plan.features.map((feature, idx) => (
                     <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
-                        <CheckIcon sx={{ fontSize: '0.9rem', color: isFree ? '#81C784' : '#F9B934', mr: 1, mt: 0.3 }} />
-                        <Typography variant="body2" sx={{ color: isFree ? '#E8F5E8' : 'grey.400', fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' } }}>
-                            {feature}
-                        </Typography>
+                        {feature.startsWith('Acesso a todas as funções exceto:') ? (
+                            <Typography variant="body2" sx={{
+                                color: isFree ? '#E8F5E8' : 'grey.400',
+                                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                                fontWeight: 'bold'
+                            }}>
+                                {feature}
+                            </Typography>
+                        ) : feature.startsWith('-') ? (
+                            <Typography variant="body2" sx={{
+                                color: isFree ? '#E8F5E8' : 'grey.400',
+                                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
+                                ml: 1
+                            }}>
+                                {feature}
+                            </Typography>
+                        ) : (
+                            <>
+                                <CheckIcon sx={{ fontSize: '0.9rem', color: isFree ? '#81C784' : '#F9B934', mr: 1, mt: 0.3 }} />
+                                <Typography variant="body2" sx={{ color: isFree ? '#E8F5E8' : 'grey.400', fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' } }}>
+                                    {feature}
+                                </Typography>
+                            </>
+                        )}
                     </Box>
                 ))}
             </Box>
@@ -377,12 +376,12 @@ const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
 PlanCard.displayName = 'PlanCard';
 
 // Componente principal de Checkout
-function CheckoutForm({ hasFreeTrialOffer }) {
+function CheckoutForm() {
     // Hooks e contexto de autenticação
     const stripe = useStripe();
     const elements = useElements();
     const router = useRouter();
-    const { user, loading: authLoading, logout, hasFreeTrialOffer: freeTrialFromAuth, referralSource } = useAuth();
+    const { user, loading: authLoading, logout, referralSource } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -390,7 +389,8 @@ function CheckoutForm({ hasFreeTrialOffer }) {
     const plans = useMemo(() => plansData, []);
 
     // Estados para controlar visibilidade das seções
-    const [personalInfoCompleted, setPersonalInfoCompleted] = useState(true);
+    const [showPersonalInfo, setShowPersonalInfo] = useState(false);
+    const [personalInfoCompleted, setPersonalInfoCompleted] = useState(false);
 
     // Estado para rastrear se o usuário já foi criado no Firebase
     const [userCreated, setUserCreated] = useState(false);
@@ -398,7 +398,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
     // Estado para mostrar formulário de pagamento
     const [showPaymentForm, setShowPaymentForm] = useState(false);
 
-    // Estados para formulário de cadastro e pagamento - CAMPOS MOVIDOS PARA CIMA
+    // Estados para formulário de cadastro e pagamento
     const [formData, setFormData] = useState({
         // Dados de cadastro
         fullName: "",
@@ -406,7 +406,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
         email: "",
         password: "",
 
-        // Dados pessoais (movidos para cima)
+        // Dados pessoais
         billingCpf: "",
         cep: "",
         street: "",
@@ -466,7 +466,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
     // Verificar se o usuário está logado e preencher os dados
     useEffect(() => {
         if (user) {
-            setPersonalInfoCompleted(true);
             setUserCreated(true);
             setFormData(prev => ({
                 ...prev,
@@ -478,7 +477,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
 
     // Polling para verificar o status da assinatura com tempo mínimo de exibição
     const pollUserSubscriptionStatus = useCallback(async (uid, maxAttempts = 15, interval = 2000, minLoadingTime = 12000) => {
-        // Only start polling if we have a user ID
         if (!uid) return;
 
         setIsProcessingWebhook(true);
@@ -491,51 +489,40 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             setPollingCount(attempts);
 
             try {
-                // Get fresh user data from Firebase
                 const userData = await firebaseService.getUserData(uid);
                 console.log(`Polling attempt ${attempts}: User subscription status:`, userData?.assinouPlano);
 
-                // If subscription status is now true, mark as active but don't redirect yet
                 if (userData && userData.assinouPlano === true) {
                     subscriptionActive = true;
                     setWebhookSuccess(true);
                     console.log("Subscription active! Will redirect after minimum loading time...");
                 }
 
-                // Calculate elapsed time
                 const elapsedTime = Date.now() - startTime;
 
-                // If we've been loading for at least minLoadingTime AND subscription is active, redirect
                 if (elapsedTime >= minLoadingTime && subscriptionActive) {
                     console.log(`Minimum loading time (${minLoadingTime}ms) reached and subscription active, redirecting to app...`);
-                    // Use a short timeout to ensure UI updates before redirect
                     setTimeout(() => {
                         router.push('/app');
                     }, 500);
                     return true;
                 }
 
-                // If we've been loading for at least minLoadingTime but subscription is NOT active
-                // and we've reached max attempts
                 if (elapsedTime >= minLoadingTime && attempts >= maxAttempts) {
                     console.log("Maximum polling attempts reached and minimum time elapsed");
                     setWebhookTimeout(true);
                     return false;
                 }
 
-                // If we haven't reached minimum loading time or max attempts yet, continue polling
                 setTimeout(checkStatus, interval);
 
             } catch (error) {
                 console.error("Error polling user status:", error);
-
-                // Continue polling despite errors if we haven't reached min time
                 const elapsedTime = Date.now() - startTime;
 
                 if (elapsedTime < minLoadingTime && attempts < maxAttempts) {
                     setTimeout(checkStatus, interval);
                 } else if (attempts >= maxAttempts || elapsedTime >= minLoadingTime) {
-                    // If we've reached max attempts or min time, show timeout
                     setWebhookTimeout(true);
                 } else {
                     setTimeout(checkStatus, interval);
@@ -543,9 +530,8 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             }
         };
 
-        // Start the polling process
         await checkStatus();
-    }, [router, selectedPlan, plans]);
+    }, [router]);
 
     // Handlers de input e navegação com useCallback para otimização
     const handleInputChange = useCallback((e) => {
@@ -555,12 +541,10 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             const formattedValue = formatPhone(value);
             setFormData(prev => ({ ...prev, [name]: formattedValue }));
         }
-        // Formatação especial para CPF
         else if (name === "billingCpf") {
             const formattedValue = formatCPF(value);
             setFormData(prev => ({ ...prev, [name]: formattedValue }));
         }
-        // Formatação para CEP
         else if (name === "cep") {
             const formattedValue = formatCEP(value);
             setFormData(prev => ({ ...prev, [name]: formattedValue }));
@@ -569,12 +553,10 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
 
-        // Limpar erros ao digitar
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: false }));
         }
 
-        // Limpar erro de autenticação
         if ((name === "email" || name === "password") && authError) {
             setAuthError("");
         }
@@ -584,7 +566,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
         const { name, checked } = e.target;
         setFormData(prev => ({ ...prev, [name]: checked }));
 
-        // Limpar erros ao marcar o checkbox
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: false }));
         }
@@ -593,8 +574,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
     const handleTogglePasswordVisibility = useCallback(() => {
         setShowPassword(prev => !prev);
     }, []);
-
-    const effectiveHasFreeTrialOffer = hasFreeTrialOffer || freeTrialFromAuth;
 
     // Função para mapear erros do Firebase para mensagens amigáveis
     const mapFirebaseError = useCallback((error) => {
@@ -631,7 +610,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
         }
     }, []);
 
-    // Validação das informações pessoais - SEMPRE INCLUI TODOS OS CAMPOS
+    // Validação das informações pessoais
     const validatePersonalInfo = useCallback(() => {
         const newErrors = {};
 
@@ -648,19 +627,17 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             if (!formData.password.trim()) newErrors.password = "Senha é obrigatória";
             else if (formData.password.length < 6) newErrors.password = "A senha deve ter pelo menos 6 caracteres";
         } else {
-            // Usuário já está logado, apenas verificações básicas
             if (!formData.fullName.trim()) newErrors.fullName = "Nome completo é obrigatório";
             if (!formData.email.trim()) newErrors.email = "Email é obrigatório";
         }
 
-        // Validações para campos pessoais (CPF e endereço) - SEMPRE VALIDAR
+        // Validações para campos pessoais (CPF e endereço)
         if (!formData.billingCpf.trim()) {
             newErrors.billingCpf = "CPF é obrigatório";
         } else if (!validateCPF(formData.billingCpf)) {
             newErrors.billingCpf = "CPF inválido";
         }
 
-        // Validar campos de endereço
         if (!formData.cep.trim()) {
             newErrors.cep = "CEP é obrigatório";
         } else if (formData.cep.replace(/\D/g, '').length !== 8) {
@@ -687,24 +664,41 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             newErrors.state = "Estado é obrigatório";
         }
 
+        // Para plano gratuito, validar termos
+        if (selectedPlan === 'free' && !formData.termsAccepted) {
+            newErrors.termsAccepted = "Você precisa aceitar os termos";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    }, [formData, user]);
+    }, [formData, user, selectedPlan]);
 
-    // Função para selecionar o plano - SIMPLIFICADA
+    // Função para selecionar o plano - ATUALIZADA
     const handlePlanSelect = useCallback(async (planId) => {
         setSelectedPlan(planId);
+        setShowPersonalInfo(true); // Mostrar dados pessoais após selecionar plano
 
-        // Para planos pagos, mostrar formulário de pagamento
+        // Para planos pagos, mostrar formulário de pagamento e criar conta se necessário
         if (planId !== 'free') {
             setShowPaymentForm(true);
 
             // Se o usuário não foi criado ainda, criar conta
             if (!userCreated && !user) {
                 try {
-                    // Validar informações pessoais antes de criar a conta
-                    if (!validatePersonalInfo()) {
-                        return; // Se a validação falhar, não prossegue
+                    // Validar apenas informações básicas (não os dados pessoais ainda)
+                    const basicErrors = {};
+
+                    if (!formData.fullName.trim()) basicErrors.fullName = "Nome completo é obrigatório";
+                    if (!formData.phone.trim()) basicErrors.phone = "Telefone é obrigatório";
+                    else if (formData.phone.replace(/\D/g, '').length < 10) basicErrors.phone = "Telefone inválido";
+                    if (!formData.email.trim()) basicErrors.email = "Email é obrigatório";
+                    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) basicErrors.email = "Email inválido";
+                    if (!formData.password.trim()) basicErrors.password = "Senha é obrigatória";
+                    else if (formData.password.length < 6) basicErrors.password = "A senha deve ter pelo menos 6 caracteres";
+
+                    if (Object.keys(basicErrors).length > 0) {
+                        setErrors(basicErrors);
+                        return;
                     }
 
                     setIsCreatingAccount(true);
@@ -719,13 +713,11 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                         checkoutStarted: true
                     };
 
-                    // Adicionar flag específica para enrico
                     if (referralSource === 'enrico') {
                         userData.enrico = true;
                         console.log('Cliente marcado como vindo através do Enrico');
                     }
 
-                    // Registrar usuário no Firebase
                     await firebaseService.signUp(
                         formData.email,
                         formData.password,
@@ -742,9 +734,10 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 }
             }
         }
-    }, [formData, userCreated, user, mapFirebaseError, validatePersonalInfo, referralSource]);
+        // Para plano gratuito, não criar conta ainda
+    }, [formData, userCreated, user, mapFirebaseError, referralSource]);
 
-    // Nova função para cadastro gratuito
+    // Nova função para cadastro gratuito - ATUALIZADA
     const handleFreeSignup = useCallback(async () => {
         try {
             // Validar informações completas para plano gratuito
@@ -759,12 +752,11 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 fullName: formData.fullName.trim(),
                 email: formData.email,
                 phone: formData.phone,
-                gratuito: true, // MARCAÇÃO ESPECIAL PARA PLANO GRATUITO
+                gratuito: true,
                 assinouPlano: false,
                 planType: 'free',
                 createdAt: new Date(),
                 checkoutCompleted: true,
-                // Incluir dados pessoais e endereço mesmo para plano gratuito
                 address: {
                     cep: formData.cep,
                     street: formData.street,
@@ -778,28 +770,24 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 cpf: formData.billingCpf
             };
 
-            // Adicionar flag específica para enrico
             if (referralSource === 'enrico') {
                 userData.enrico = true;
                 console.log('Cliente gratuito marcado como vindo através do Enrico');
             }
 
             if (!user) {
-                // Registrar usuário no Firebase
                 await firebaseService.signUp(
                     formData.email,
                     formData.password,
                     userData
                 );
             } else {
-                // Atualizar usuário existente
                 await firebaseService.editUserData(user.uid, userData);
             }
 
             setSuccess('Conta gratuita criada com sucesso! Redirecionando...');
             setUserCreated(true);
 
-            // Esperar um pouco e redirecionar para o app
             setTimeout(() => {
                 router.push('/app');
             }, 2000);
@@ -812,7 +800,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
         }
     }, [formData, user, mapFirebaseError, validatePersonalInfo, referralSource, router]);
 
-    // Validação dos dados de pagamento - SIMPLIFICADA
+    // Validação dos dados de pagamento
     const validatePaymentInfo = useCallback(() => {
         const newErrors = {};
 
@@ -824,12 +812,10 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             newErrors.termsAccepted = "Você precisa aceitar os termos";
         }
 
-        // Verificar se os elementos do Stripe estão disponíveis
         if (!stripe || !elements) {
             newErrors.card = "Aguarde o carregamento do formulário de pagamento";
         }
 
-        // Verificar se o elemento do cartão tem erros
         const cardElement = elements?.getElement(CardNumberElement);
         if (cardElement?._empty) {
             newErrors.card = "Preencha os dados do cartão";
@@ -911,11 +897,11 @@ function CheckoutForm({ hasFreeTrialOffer }) {
         </Box>
     );
 
-    // Função principal de submissão do pagamento (mantida igual)
+    // Função principal de submissão do pagamento
     const handleSubmitPayment = useCallback(async (e) => {
         e.preventDefault();
 
-        if (!validatePaymentInfo()) {
+        if (!validatePersonalInfo() || !validatePaymentInfo()) {
             return;
         }
 
@@ -934,7 +920,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
         setError('');
 
         try {
-            // Obter dados do usuário atual
             const currentUser = firebaseService.auth.currentUser;
 
             if (!currentUser) {
@@ -960,7 +945,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 fullName: formData.fullName
             };
 
-            // Adicionar flag específica para Enrico na atualização inicial
             if (referralSource === 'enrico') {
                 userData.enrico = true;
                 console.log('Cliente marcado como vindo através do Enrico (dados iniciais)');
@@ -979,7 +963,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                     email: currentUser.email || formData.email,
                     name: formData.fullName.trim(),
                     cpf: formData.billingCpf,
-                    includeTrial: effectiveHasFreeTrialOffer,
+                    includeTrial: false, // Removido teste gratuito
                     referralSource: referralSource
                 })
             });
@@ -990,12 +974,12 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             }
 
             const data = await response.json();
-            const { subscriptionId, clientSecret, status } = data;
+            const { subscriptionId, clientSecret } = data;
 
             // Verificar se há clientSecret antes de confirmar pagamento
             if (clientSecret) {
                 // 3) Confirmar o pagamento apenas se houver um clientSecret
-                const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(
+                const { error: paymentError } = await stripe.confirmCardPayment(
                     clientSecret,
                     {
                         payment_method: {
@@ -1032,7 +1016,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                 referralSource: referralSource
             };
 
-            // Adicionar flag específica para Enrico na finalização do pagamento
             if (referralSource === 'enrico') {
                 updateData.enrico = true;
                 console.log('Cliente marcado como vindo através do Enrico (finalização do pagamento)');
@@ -1051,7 +1034,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
             setIsProcessingPayment(false);
             setLoading(false);
         }
-    }, [validatePaymentInfo, selectedPlan, formData, stripe, elements, effectiveHasFreeTrialOffer, router, mapStripeError, pollUserSubscriptionStatus, plans, referralSource]);
+    }, [validatePersonalInfo, validatePaymentInfo, selectedPlan, formData, stripe, elements, router, mapStripeError, pollUserSubscriptionStatus, plans, referralSource]);
 
     // Complete return statement for the CheckoutForm component
     return (
@@ -1262,7 +1245,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                 </Button>
                             </Box>
 
-                            {/* Seção 1: INFORMAÇÕES PESSOAIS - AMPLIADA COM CAMPOS ADICIONAIS */}
+                            {/* Seção 1: INFORMAÇÕES BÁSICAS (sempre visível) */}
                             <Box sx={{ mb: 5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, pl: 0 }}>
                                     <Box sx={{
@@ -1279,11 +1262,11 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                         <PersonIcon />
                                     </Box>
                                     <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold', fontSize: '1.3rem' }}>
-                                        INFORMAÇÕES PESSOAIS
+                                        INFORMAÇÕES BÁSICAS
                                     </Typography>
                                 </Box>
 
-                                {/* Formulário de informações pessoais expandido */}
+                                {/* Formulário de informações básicas */}
                                 <Box sx={{ mb: 4, pl: 3 }}>
                                     <Typography variant="body2" sx={{ mb: 0.5 }}>
                                         Endereço de e-mail
@@ -1421,251 +1404,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                             />
                                         </>
                                     )}
-
-                                    {/* SEÇÃO DE CPF E ENDEREÇO - SEMPRE VISÍVEL */}
-                                    <Divider sx={{ my: 3, borderColor: '#3F3F3F' }} />
-
-                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                                        <Box sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            width: 24,
-                                            height: 24,
-                                            borderRadius: '50%',
-                                            bgcolor: '#F9B934',
-                                            color: 'black',
-                                            mr: 2
-                                        }}>
-                                            <LocationOnIcon sx={{ fontSize: '1rem' }} />
-                                        </Box>
-                                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                                            Dados Pessoais e Endereço
-                                        </Typography>
-                                    </Box>
-
-                                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                        CPF
-                                    </Typography>
-                                    <TextField
-                                        fullWidth
-                                        value={formData.billingCpf}
-                                        name="billingCpf"
-                                        onChange={handleInputChange}
-                                        placeholder="000.000.000-00"
-                                        variant="outlined"
-                                        error={Boolean(errors.billingCpf)}
-                                        helperText={errors.billingCpf || ""}
-                                        inputProps={{ maxLength: 14 }}
-                                        sx={{
-                                            mb: 2,
-                                            '& .MuiOutlinedInput-root': {
-                                                backgroundColor: '#1F1F1F',
-                                                color: 'white',
-                                                '& fieldset': {
-                                                    borderColor: '#3F3F3F',
-                                                }
-                                            }
-                                        }}
-                                    />
-
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={12} sm={6}>
-                                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                                CEP
-                                            </Typography>
-                                            <TextField
-                                                fullWidth
-                                                value={formData.cep}
-                                                name="cep"
-                                                onChange={handleInputChange}
-                                                placeholder="00000-000"
-                                                variant="outlined"
-                                                error={Boolean(errors.cep)}
-                                                helperText={errors.cep || ""}
-                                                inputProps={{ maxLength: 9 }}
-                                                sx={{
-                                                    mb: 2,
-                                                    '& .MuiOutlinedInput-root': {
-                                                        backgroundColor: '#1F1F1F',
-                                                        color: 'white',
-                                                        '& fieldset': {
-                                                            borderColor: '#3F3F3F',
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                        </Grid>
-
-                                        <Grid item xs={12} sm={6}>
-                                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                                Bairro
-                                            </Typography>
-                                            <TextField
-                                                fullWidth
-                                                value={formData.neighborhood}
-                                                name="neighborhood"
-                                                onChange={handleInputChange}
-                                                placeholder="Bairro"
-                                                variant="outlined"
-                                                error={Boolean(errors.neighborhood)}
-                                                helperText={errors.neighborhood || ""}
-                                                sx={{
-                                                    mb: 2,
-                                                    '& .MuiOutlinedInput-root': {
-                                                        backgroundColor: '#1F1F1F',
-                                                        color: 'white',
-                                                        '& fieldset': {
-                                                            borderColor: '#3F3F3F',
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                        </Grid>
-                                    </Grid>
-
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={12} sm={8}>
-                                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                                Rua
-                                            </Typography>
-                                            <TextField
-                                                fullWidth
-                                                value={formData.street}
-                                                name="street"
-                                                onChange={handleInputChange}
-                                                placeholder="Rua, Avenida, etc."
-                                                variant="outlined"
-                                                error={Boolean(errors.street)}
-                                                helperText={errors.street || ""}
-                                                sx={{
-                                                    mb: 2,
-                                                    '& .MuiOutlinedInput-root': {
-                                                        backgroundColor: '#1F1F1F',
-                                                        color: 'white',
-                                                        '& fieldset': {
-                                                            borderColor: '#3F3F3F',
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                        </Grid>
-
-                                        <Grid item xs={12} sm={4}>
-                                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                                Número
-                                            </Typography>
-                                            <TextField
-                                                fullWidth
-                                                value={formData.number}
-                                                name="number"
-                                                onChange={handleInputChange}
-                                                placeholder="Nº"
-                                                variant="outlined"
-                                                error={Boolean(errors.number)}
-                                                helperText={errors.number || ""}
-                                                sx={{
-                                                    mb: 2,
-                                                    '& .MuiOutlinedInput-root': {
-                                                        backgroundColor: '#1F1F1F',
-                                                        color: 'white',
-                                                        '& fieldset': {
-                                                            borderColor: '#3F3F3F',
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                        </Grid>
-                                    </Grid>
-
-                                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                        Complemento
-                                    </Typography>
-                                    <TextField
-                                        fullWidth
-                                        value={formData.complement}
-                                        name="complement"
-                                        onChange={handleInputChange}
-                                        placeholder="Apto, Bloco, etc. (opcional)"
-                                        variant="outlined"
-                                        sx={{
-                                            mb: 2,
-                                            '& .MuiOutlinedInput-root': {
-                                                backgroundColor: '#1F1F1F',
-                                                color: 'white',
-                                                '& fieldset': {
-                                                    borderColor: '#3F3F3F',
-                                                }
-                                            }
-                                        }}
-                                    />
-
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={12} sm={6}>
-                                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                                Cidade
-                                            </Typography>
-                                            <TextField
-                                                fullWidth
-                                                value={formData.city}
-                                                name="city"
-                                                onChange={handleInputChange}
-                                                placeholder="Cidade"
-                                                variant="outlined"
-                                                error={Boolean(errors.city)}
-                                                helperText={errors.city || ""}
-                                                sx={{
-                                                    mb: 2,
-                                                    '& .MuiOutlinedInput-root': {
-                                                        backgroundColor: '#1F1F1F',
-                                                        color: 'white',
-                                                        '& fieldset': {
-                                                            borderColor: '#3F3F3F',
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                        </Grid>
-
-                                        <Grid item xs={12} sm={6}>
-                                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                                Estado
-                                            </Typography>
-                                            <FormControl fullWidth variant="outlined" error={Boolean(errors.state)}>
-                                                <Select
-                                                    value={formData.state}
-                                                    name="state"
-                                                    onChange={handleInputChange}
-                                                    displayEmpty
-                                                    sx={{
-                                                        mb: 2,
-                                                        backgroundColor: '#1F1F1F',
-                                                        color: 'white',
-                                                        '& .MuiOutlinedInput-notchedOutline': {
-                                                            borderColor: '#3F3F3F',
-                                                        },
-                                                        '& .MuiSvgIcon-root': {
-                                                            color: 'white',
-                                                        }
-                                                    }}
-                                                >
-                                                    <MenuItem value="" disabled>
-                                                        <em>Selecione um estado</em>
-                                                    </MenuItem>
-                                                    {brazilianStates.map((state) => (
-                                                        <MenuItem key={state.value} value={state.value}>
-                                                            {state.value} - {state.label}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                                {errors.state && (
-                                                    <Typography variant="caption" color="#FF4747">
-                                                        {errors.state}
-                                                    </Typography>
-                                                )}
-                                            </FormControl>
-                                        </Grid>
-                                    </Grid>
                                 </Box>
 
                                 {authError && (
@@ -1675,7 +1413,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                 )}
                             </Box>
 
-                            {/* Seção 2: SELEÇÃO DE PLANO - ATUALIZADA COM PLANO GRATUITO */}
+                            {/* Seção 2: SELEÇÃO DE PLANO */}
                             <Box sx={{ mb: 5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, pl: 0 }}>
                                     <Box sx={{
@@ -1696,33 +1434,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                     </Typography>
                                 </Box>
 
-                                {effectiveHasFreeTrialOffer && selectedPlan !== 'free' && (
-                                    <Box sx={{
-                                        pl: 3,
-                                        mb: 3,
-                                        p: 2,
-                                        bgcolor: 'rgba(249, 185, 52, 0.08)',
-                                        border: '1px solid rgba(249, 185, 52, 0.3)',
-                                        borderRadius: 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                    }}>
-                                        <LockIcon sx={{ color: '#F9B934', mr: 1.5, flexShrink: 0 }} />
-                                        <Typography
-                                            variant="body1"
-                                            sx={{
-                                                color: 'white',
-                                                fontWeight: 'medium',
-                                                letterSpacing: '-0.01em',
-                                                whiteSpace: { sm: 'nowrap', xs: 'normal' },
-                                                fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' }
-                                            }}
-                                        >
-                                            Você receberá 24 horas de teste gratuito! A cobrança começará apenas após esse período.
-                                        </Typography>
-                                    </Box>
-                                )}
-
                                 <Grid container spacing={2} sx={{ pl: 3, width: '100%' }}>
                                     {Object.keys(plans).map((planKey) => (
                                         <Grid item xs={12} sm={6} md={4} key={planKey} sx={{ display: 'flex', width: '100%' }}>
@@ -1738,7 +1449,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                 </Grid>
 
                                 {/* Feedback de conta criada com sucesso */}
-                                {success && !isProcessingPayment && (
+                                {success && !isProcessingPayment && selectedPlan !== 'free' && (
                                     <Alert
                                         severity="success"
                                         sx={{ mt: 3, mb: 2, bgcolor: '#113828', color: 'white', ml: 3 }}
@@ -1747,95 +1458,393 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                     </Alert>
                                 )}
 
-                                {/* Loading para criação de conta gratuita */}
-                                {isCreatingAccount && (
+                                {/* Loading para criação de conta */}
+                                {isCreatingAccount && selectedPlan !== 'free' && (
                                     <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, ml: 3 }}>
-                                        <CircularProgress size={20} sx={{ color: '#4CAF50', mr: 2 }} />
+                                        <CircularProgress size={20} sx={{ color: '#F9B934', mr: 2 }} />
                                         <Typography variant="body2" sx={{ color: 'white' }}>
-                                            {selectedPlan === 'free' ? 'Criando sua conta gratuita...' : 'Criando conta...'}
-                                        </Typography>
-                                    </Box>
-                                )}
-
-                                {/* BOTÃO ESTILIZADO PARA PLANO GRATUITO */}
-                                {selectedPlan === 'free' && !success && (
-                                    <Box sx={{ mt: 4, pl: 3 }}>
-                                        <Button
-                                            onClick={handleFreeSignup}
-                                            variant="contained"
-                                            fullWidth
-                                            disabled={isCreatingAccount}
-                                            sx={{
-                                                background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 50%, #81C784 100%)',
-                                                color: 'white',
-                                                p: 2.5,
-                                                fontSize: '18px',
-                                                fontWeight: 'bold',
-                                                borderRadius: 2,
-                                                boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px',
-                                                position: 'relative',
-                                                overflow: 'hidden',
-                                                '&:hover': {
-                                                    background: 'linear-gradient(135deg, #43A047 0%, #5CB85C 50%, #7CB342 100%)',
-                                                    boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
-                                                    transform: 'translateY(-1px)',
-                                                },
-                                                '&:active': {
-                                                    transform: 'translateY(0px)',
-                                                },
-                                                '&.Mui-disabled': {
-                                                    background: '#616161',
-                                                    color: '#E0E0E0'
-                                                },
-                                                '&::before': {
-                                                    content: '""',
-                                                    position: 'absolute',
-                                                    top: 0,
-                                                    left: '-100%',
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-                                                    transition: 'left 0.5s',
-                                                },
-                                                '&:hover::before': {
-                                                    left: '100%',
-                                                },
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                            startIcon={isCreatingAccount ? <CircularProgress size={20} color="inherit" /> : null}
-                                        >
-                                            {isCreatingAccount ? 'CRIANDO CONTA...' : '🚀 COMECE AGORA GRÁTIS'}
-                                        </Button>
-
-                                        {/* Texto adicional para plano gratuito */}
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                color: '#81C784',
-                                                textAlign: 'center',
-                                                mt: 2,
-                                                fontWeight: 'medium',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
-                                        >
-                                            ✨ Sem cartão de crédito necessário • Acesso imediato
+                                            Criando conta...
                                         </Typography>
                                     </Box>
                                 )}
                             </Box>
 
-                            {/* Divider entre planos e formulário de pagamento */}
-                            {showPaymentForm && (
-                                <Divider sx={{ my: 3, borderColor: '#3F3F3F' }} />
-                            )}
+                            {/* Seção 3: DADOS PESSOAIS E ENDEREÇO (só aparece após selecionar plano) */}
+                            <Collapse in={showPersonalInfo}>
+                                <Box sx={{ mb: 5 }}>
+                                    <Divider sx={{ my: 3, borderColor: '#3F3F3F' }} />
 
-                            {/* Seção 3: FORMULÁRIO DE PAGAMENTO (apenas para planos pagos) */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, pl: 0 }}>
+                                        <Box sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: 32,
+                                            height: 32,
+                                            borderRadius: '50%',
+                                            bgcolor: '#F9B934',
+                                            color: 'black',
+                                            mr: 2
+                                        }}>
+                                            <LocationOnIcon />
+                                        </Box>
+                                        <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold', fontSize: '1.3rem' }}>
+                                            DADOS PESSOAIS E ENDEREÇO
+                                        </Typography>
+                                    </Box>
+
+                                    <Box sx={{ mb: 4, pl: 3 }}>
+                                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                            CPF
+                                        </Typography>
+                                        <TextField
+                                            fullWidth
+                                            value={formData.billingCpf}
+                                            name="billingCpf"
+                                            onChange={handleInputChange}
+                                            placeholder="000.000.000-00"
+                                            variant="outlined"
+                                            error={Boolean(errors.billingCpf)}
+                                            helperText={errors.billingCpf || ""}
+                                            inputProps={{ maxLength: 14 }}
+                                            sx={{
+                                                mb: 2,
+                                                '& .MuiOutlinedInput-root': {
+                                                    backgroundColor: '#1F1F1F',
+                                                    color: 'white',
+                                                    '& fieldset': {
+                                                        borderColor: '#3F3F3F',
+                                                    }
+                                                }
+                                            }}
+                                        />
+
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                                    CEP
+                                                </Typography>
+                                                <TextField
+                                                    fullWidth
+                                                    value={formData.cep}
+                                                    name="cep"
+                                                    onChange={handleInputChange}
+                                                    placeholder="00000-000"
+                                                    variant="outlined"
+                                                    error={Boolean(errors.cep)}
+                                                    helperText={errors.cep || ""}
+                                                    inputProps={{ maxLength: 9 }}
+                                                    sx={{
+                                                        mb: 2,
+                                                        '& .MuiOutlinedInput-root': {
+                                                            backgroundColor: '#1F1F1F',
+                                                            color: 'white',
+                                                            '& fieldset': {
+                                                                borderColor: '#3F3F3F',
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                            </Grid>
+
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                                    Bairro
+                                                </Typography>
+                                                <TextField
+                                                    fullWidth
+                                                    value={formData.neighborhood}
+                                                    name="neighborhood"
+                                                    onChange={handleInputChange}
+                                                    placeholder="Bairro"
+                                                    variant="outlined"
+                                                    error={Boolean(errors.neighborhood)}
+                                                    helperText={errors.neighborhood || ""}
+                                                    sx={{
+                                                        mb: 2,
+                                                        '& .MuiOutlinedInput-root': {
+                                                            backgroundColor: '#1F1F1F',
+                                                            color: 'white',
+                                                            '& fieldset': {
+                                                                borderColor: '#3F3F3F',
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                            </Grid>
+                                        </Grid>
+
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12} sm={8}>
+                                                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                                    Rua
+                                                </Typography>
+                                                <TextField
+                                                    fullWidth
+                                                    value={formData.street}
+                                                    name="street"
+                                                    onChange={handleInputChange}
+                                                    placeholder="Rua, Avenida, etc."
+                                                    variant="outlined"
+                                                    error={Boolean(errors.street)}
+                                                    helperText={errors.street || ""}
+                                                    sx={{
+                                                        mb: 2,
+                                                        '& .MuiOutlinedInput-root': {
+                                                            backgroundColor: '#1F1F1F',
+                                                            color: 'white',
+                                                            '& fieldset': {
+                                                                borderColor: '#3F3F3F',
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                            </Grid>
+
+                                            <Grid item xs={12} sm={4}>
+                                                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                                    Número
+                                                </Typography>
+                                                <TextField
+                                                    fullWidth
+                                                    value={formData.number}
+                                                    name="number"
+                                                    onChange={handleInputChange}
+                                                    placeholder="Nº"
+                                                    variant="outlined"
+                                                    error={Boolean(errors.number)}
+                                                    helperText={errors.number || ""}
+                                                    sx={{
+                                                        mb: 2,
+                                                        '& .MuiOutlinedInput-root': {
+                                                            backgroundColor: '#1F1F1F',
+                                                            color: 'white',
+                                                            '& fieldset': {
+                                                                borderColor: '#3F3F3F',
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                            </Grid>
+                                        </Grid>
+
+                                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                            Complemento
+                                        </Typography>
+                                        <TextField
+                                            fullWidth
+                                            value={formData.complement}
+                                            name="complement"
+                                            onChange={handleInputChange}
+                                            placeholder="Apto, Bloco, etc. (opcional)"
+                                            variant="outlined"
+                                            sx={{
+                                                mb: 2,
+                                                '& .MuiOutlinedInput-root': {
+                                                    backgroundColor: '#1F1F1F',
+                                                    color: 'white',
+                                                    '& fieldset': {
+                                                        borderColor: '#3F3F3F',
+                                                    }
+                                                }
+                                            }}
+                                        />
+
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                                    Cidade
+                                                </Typography>
+                                                <TextField
+                                                    fullWidth
+                                                    value={formData.city}
+                                                    name="city"
+                                                    onChange={handleInputChange}
+                                                    placeholder="Cidade"
+                                                    variant="outlined"
+                                                    error={Boolean(errors.city)}
+                                                    helperText={errors.city || ""}
+                                                    sx={{
+                                                        mb: 2,
+                                                        '& .MuiOutlinedInput-root': {
+                                                            backgroundColor: '#1F1F1F',
+                                                            color: 'white',
+                                                            '& fieldset': {
+                                                                borderColor: '#3F3F3F',
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                            </Grid>
+
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                                    Estado
+                                                </Typography>
+                                                <FormControl fullWidth variant="outlined" error={Boolean(errors.state)}>
+                                                    <Select
+                                                        value={formData.state}
+                                                        name="state"
+                                                        onChange={handleInputChange}
+                                                        displayEmpty
+                                                        sx={{
+                                                            mb: 2,
+                                                            backgroundColor: '#1F1F1F',
+                                                            color: 'white',
+                                                            '& .MuiOutlinedInput-notchedOutline': {
+                                                                borderColor: '#3F3F3F',
+                                                            },
+                                                            '& .MuiSvgIcon-root': {
+                                                                color: 'white',
+                                                            }
+                                                        }}
+                                                    >
+                                                        <MenuItem value="" disabled>
+                                                            <em>Selecione um estado</em>
+                                                        </MenuItem>
+                                                        {brazilianStates.map((state) => (
+                                                            <MenuItem key={state.value} value={state.value}>
+                                                                {state.value} - {state.label}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                    {errors.state && (
+                                                        <Typography variant="caption" color="#FF4747">
+                                                            {errors.state}
+                                                        </Typography>
+                                                    )}
+                                                </FormControl>
+                                            </Grid>
+                                        </Grid>
+
+                                        {/* Checkbox de termos para plano gratuito */}
+                                        {selectedPlan === 'free' && (
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={formData.termsAccepted}
+                                                        name="termsAccepted"
+                                                        onChange={handleCheckboxChange}
+                                                        sx={{
+                                                            color: 'grey.500',
+                                                            '&.Mui-checked': {
+                                                                color: '#4CAF50',
+                                                            },
+                                                        }}
+                                                    />
+                                                }
+                                                label={
+                                                    <Typography variant="body2" sx={{ color: 'grey.400' }}>
+                                                        Aceito os <span style={{ color: 'white', textDecoration: 'underline' }}>Termos e Condições</span> e <span style={{ color: 'white', textDecoration: 'underline' }}>Política de Privacidade</span>
+                                                    </Typography>
+                                                }
+                                                sx={{ mt: 2 }}
+                                            />
+                                        )}
+                                        {errors.termsAccepted && selectedPlan === 'free' && (
+                                            <Typography variant="caption" color="#FF4747" sx={{ display: 'block', mt: 1 }}>
+                                                {errors.termsAccepted}
+                                            </Typography>
+                                        )}
+                                    </Box>
+
+                                    {/* Loading para criação de conta gratuita */}
+                                    {isCreatingAccount && selectedPlan === 'free' && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, ml: 3 }}>
+                                            <CircularProgress size={20} sx={{ color: '#4CAF50', mr: 2 }} />
+                                            <Typography variant="body2" sx={{ color: 'white' }}>
+                                                Criando sua conta gratuita...
+                                            </Typography>
+                                        </Box>
+                                    )}
+
+                                    {/* Feedback de sucesso para plano gratuito */}
+                                    {success && selectedPlan === 'free' && (
+                                        <Alert
+                                            severity="success"
+                                            sx={{ mt: 3, mb: 2, bgcolor: '#113828', color: 'white', ml: 3 }}
+                                        >
+                                            {success}
+                                        </Alert>
+                                    )}
+
+                                    {/* BOTÃO ESTILIZADO PARA PLANO GRATUITO */}
+                                    {selectedPlan === 'free' && !success && (
+                                        <Box sx={{ mt: 4, pl: 3 }}>
+                                            <Button
+                                                onClick={handleFreeSignup}
+                                                variant="contained"
+                                                fullWidth
+                                                disabled={isCreatingAccount}
+                                                sx={{
+                                                    background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 50%, #81C784 100%)',
+                                                    color: 'white',
+                                                    p: 2.5,
+                                                    fontSize: '18px',
+                                                    fontWeight: 'bold',
+                                                    borderRadius: 2,
+                                                    boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px',
+                                                    position: 'relative',
+                                                    overflow: 'hidden',
+                                                    '&:hover': {
+                                                        background: 'linear-gradient(135deg, #43A047 0%, #5CB85C 50%, #7CB342 100%)',
+                                                        boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
+                                                        transform: 'translateY(-1px)',
+                                                    },
+                                                    '&:active': {
+                                                        transform: 'translateY(0px)',
+                                                    },
+                                                    '&.Mui-disabled': {
+                                                        background: '#616161',
+                                                        color: '#E0E0E0'
+                                                    },
+                                                    '&::before': {
+                                                        content: '""',
+                                                        position: 'absolute',
+                                                        top: 0,
+                                                        left: '-100%',
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                                                        transition: 'left 0.5s',
+                                                    },
+                                                    '&:hover::before': {
+                                                        left: '100%',
+                                                    },
+                                                    transition: 'all 0.3s ease'
+                                                }}
+                                                startIcon={isCreatingAccount ? <CircularProgress size={20} color="inherit" /> : null}
+                                            >
+                                                {isCreatingAccount ? 'CRIANDO CONTA...' : '🚀 COMECE AGORA GRÁTIS'}
+                                            </Button>
+
+                                            {/* Texto adicional para plano gratuito */}
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    color: '#81C784',
+                                                    textAlign: 'center',
+                                                    mt: 2,
+                                                    fontWeight: 'medium',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
+                                            >
+                                                ✨ Sem cartão de crédito necessário • Acesso imediato
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Box>
+                            </Collapse>
+
+                            {/* Seção 4: FORMULÁRIO DE PAGAMENTO (apenas para planos pagos) */}
                             {showPaymentForm && selectedPlan !== 'free' && (
                                 <Box component="form" onSubmit={handleSubmitPayment} sx={{ mb: 4 }}>
+                                    <Divider sx={{ my: 3, borderColor: '#3F3F3F' }} />
+
                                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, pl: 0 }}>
                                         <Box sx={{
                                             display: 'flex',
@@ -2002,24 +2011,6 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                         </Alert>
                                     )}
 
-                                    {effectiveHasFreeTrialOffer && (
-                                        <Alert
-                                            severity="info"
-                                            sx={{
-                                                mt: 2,
-                                                mb: 2,
-                                                bgcolor: '#1E3A5B',
-                                                color: 'white',
-                                                ml: 3,
-                                                border: '1px solid #F9B934',
-                                                fontWeight: 'medium'
-                                            }}
-                                            icon={<LockIcon sx={{ color: '#F9B934' }} />}
-                                        >
-                                            Você receberá 24 horas de teste gratuito! A cobrança começará apenas após esse período.
-                                        </Alert>
-                                    )}
-
                                     <Button
                                         type="submit"
                                         variant="contained"
@@ -2044,7 +2035,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
                                         }}
                                         startIcon={isProcessingPayment ? <CircularProgress size={20} color="inherit" /> : null}
                                     >
-                                        {isProcessingPayment ? 'PROCESSANDO...' : (effectiveHasFreeTrialOffer ? 'INICIAR TESTE' : 'FINALIZAR PAGAMENTO')}
+                                        {isProcessingPayment ? 'PROCESSANDO...' : 'FINALIZAR PAGAMENTO'}
                                     </Button>
                                 </Box>
                             )}
@@ -2070,7 +2061,7 @@ function CheckoutForm({ hasFreeTrialOffer }) {
 }
 
 // Componente wrapper com o provider do Stripe
-export default function CustomCheckout({ hasFreeTrialOffer: effectiveHasFreeTrialOffer }) {
+export default function CustomCheckout() {
     useEffect(() => {
         // Facebook Pixel Code
         if (typeof window !== 'undefined' && !document.getElementById('facebook-pixel-script')) {
@@ -2104,7 +2095,7 @@ export default function CustomCheckout({ hasFreeTrialOffer: effectiveHasFreeTria
 
     return (
         <Elements stripe={stripePromise}>
-            <CheckoutForm hasFreeTrialOffer={effectiveHasFreeTrialOffer} />
+            <CheckoutForm />
         </Elements>
     );
 }
