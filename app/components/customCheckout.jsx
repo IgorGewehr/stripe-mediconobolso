@@ -737,6 +737,38 @@ function CheckoutForm() {
         // Para plano gratuito, não criar conta ainda
     }, [formData, userCreated, user, mapFirebaseError, referralSource]);
 
+    const sendWelcomeEmails = async (email, name, appLink) => {
+        try {
+            console.log(`📧 Enviando emails de boas-vindas para: ${email}`);
+
+            const response = await fetch('/api/email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    name: name,
+                    type: 'both', // Enviar ambos os emails
+                    appLink: appLink
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                console.log('✅ Emails de boas-vindas enviados com sucesso!');
+                return { success: true, data: result.data };
+            } else {
+                console.error('❌ Falha ao enviar emails:', result.error);
+                return { success: false, error: result.error };
+            }
+        } catch (error) {
+            console.error('❌ Erro ao chamar API de email:', error);
+            return { success: false, error: error.message };
+        }
+    };
+
     // Nova função para cadastro gratuito - ATUALIZADA
     const handleFreeSignup = useCallback(async () => {
         try {
@@ -775,15 +807,40 @@ function CheckoutForm() {
                 console.log('Cliente gratuito marcado como vindo através do Enrico');
             }
 
+            let currentUser;
+
             if (!user) {
-                await firebaseService.signUp(
+                const userCredential = await firebaseService.signUp(
                     formData.email,
                     formData.password,
                     userData
                 );
+                currentUser = userCredential.user;
             } else {
                 await firebaseService.editUserData(user.uid, userData);
+                currentUser = user;
             }
+
+            // ✨ ENVIAR AMBOS OS EMAILS DE BOAS-VINDAS ✨
+            const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;
+            const welcomeName = formData.fullName.trim() || formData.email.split('@')[0];
+
+            console.log('📧 Iniciando envio dos emails de boas-vindas...');
+
+            // Enviar emails (não bloquear o fluxo se falhar)
+            sendWelcomeEmails(formData.email, welcomeName, appLink)
+                .then((emailResult) => {
+                    if (emailResult.success) {
+                        console.log('✅ Emails de boas-vindas enviados com sucesso!');
+                    } else {
+                        console.error('❌ Falha ao enviar emails de boas-vindas:', emailResult.error);
+                        // Não interrompe o fluxo, apenas loga o erro
+                    }
+                })
+                .catch((emailError) => {
+                    console.error('❌ Erro ao enviar emails de boas-vindas:', emailError);
+                    // Não interrompe o fluxo
+                });
 
             setSuccess('Conta gratuita criada com sucesso! Redirecionando...');
             setUserCreated(true);
