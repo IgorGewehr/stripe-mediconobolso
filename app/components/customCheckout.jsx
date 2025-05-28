@@ -770,6 +770,8 @@ function CheckoutForm() {
     };
 
     // Nova função para cadastro gratuito - ATUALIZADA
+    // Substitua a função handleFreeSignup no customCheckout.js por esta versão corrigida:
+
     const handleFreeSignup = useCallback(async () => {
         try {
             // Validar informações completas para plano gratuito
@@ -825,32 +827,71 @@ function CheckoutForm() {
             const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;
             const welcomeName = formData.fullName.trim() || formData.email.split('@')[0];
 
-            console.log('📧 Iniciando envio dos emails de boas-vindas...');
+            console.log('📧 [FREE-SIGNUP] Preparando envio dos emails de boas-vindas...');
+            console.log('📧 [FREE-SIGNUP] Dados:', {
+                email: formData.email,
+                name: welcomeName,
+                appLink: appLink
+            });
 
-            // Enviar emails (não bloquear o fluxo se falhar)
-            sendWelcomeEmails(formData.email, welcomeName, appLink)
-                .then((emailResult) => {
+            // Enviar emails de forma assíncrona mas com tratamento de erro melhorado
+            const sendEmailsInBackground = async () => {
+                try {
+                    console.log('📧 [FREE-SIGNUP] Chamando sendWelcomeEmails...');
+                    const emailResult = await sendWelcomeEmails(formData.email, welcomeName, appLink);
+
                     if (emailResult.success) {
-                        console.log('✅ Emails de boas-vindas enviados com sucesso!');
+                        console.log('✅ [FREE-SIGNUP] Emails de boas-vindas enviados com sucesso!');
+                        console.log('📧 [FREE-SIGNUP] Detalhes:', emailResult.data);
                     } else {
-                        console.error('❌ Falha ao enviar emails de boas-vindas:', emailResult.error);
-                        // Não interrompe o fluxo, apenas loga o erro
+                        console.error('❌ [FREE-SIGNUP] Falha ao enviar emails:', emailResult.error);
+
+                        // Log adicional para debug
+                        console.error('📧 [FREE-SIGNUP] Tentando enviar manualmente via fetch...');
+
+                        // Tentativa direta via fetch como backup
+                        try {
+                            const directResponse = await fetch('/api/email', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    email: formData.email,
+                                    name: welcomeName,
+                                    type: 'both',
+                                    appLink: appLink
+                                })
+                            });
+
+                            const directResult = await directResponse.json();
+                            console.log('📧 [FREE-SIGNUP] Resultado direto:', directResult);
+                        } catch (directError) {
+                            console.error('❌ [FREE-SIGNUP] Erro na tentativa direta:', directError);
+                        }
                     }
-                })
-                .catch((emailError) => {
-                    console.error('❌ Erro ao enviar emails de boas-vindas:', emailError);
-                    // Não interrompe o fluxo
-                });
+                } catch (emailError) {
+                    console.error('❌ [FREE-SIGNUP] Erro geral ao enviar emails:', emailError);
+                    console.error('Stack trace:', emailError.stack);
+                }
+            };
+
+            // Executar o envio de emails sem bloquear o fluxo principal
+            sendEmailsInBackground().catch(error => {
+                console.error('❌ [FREE-SIGNUP] Erro não tratado no envio de emails:', error);
+            });
 
             setSuccess('Conta gratuita criada com sucesso! Redirecionando...');
             setUserCreated(true);
 
+            // Aguardar um pouco antes de redirecionar para garantir que o envio foi iniciado
             setTimeout(() => {
+                console.log('🚀 [FREE-SIGNUP] Redirecionando para /app...');
                 router.push('/app');
             }, 2000);
 
         } catch (error) {
-            console.error("Erro no cadastro gratuito:", error);
+            console.error("❌ [FREE-SIGNUP] Erro no cadastro gratuito:", error);
             setAuthError(mapFirebaseError(error));
         } finally {
             setIsCreatingAccount(false);
