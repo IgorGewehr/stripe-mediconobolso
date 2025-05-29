@@ -36,16 +36,16 @@ export const AuthProvider = ({ children }) => {
         return null;
     };
 
-    // Detecção de rotas especiais e redirecionamentos
+    // Detecção de rotas especiais e redirecionamentos - EXECUTADO PRIMEIRO
     useEffect(() => {
-        console.log('Processing route:', pathname);
+        console.log('🔍 Processing route:', pathname);
         let shouldSetFreeTrial = false;
         let referrer = null;
         let shouldRedirect = false;
 
         // Caso especial: rota /pv1 simples - redirecionar para /checkout com trial
         if (pathname === '/pv1') {
-            console.log('PV1 route detected, setting free trial offer and redirecting');
+            console.log('✅ PV1 route detected, setting free trial offer and redirecting');
             shouldSetFreeTrial = true;
             shouldRedirect = true;
         }
@@ -57,64 +57,77 @@ export const AuthProvider = ({ children }) => {
 
                 // CUIDADO! Ativar trial APENAS se o caminho for /checkout/pv1 ou iniciar com /checkout/pv1/
                 if (pathname === '/checkout/pv1' || pathname.startsWith('/checkout/pv1/')) {
-                    console.log('PV1 trial path detected, offering free trial');
+                    console.log('✅ PV1 trial path detected, offering free trial');
                     shouldSetFreeTrial = true;
                 } else {
-                    console.log('Non-trial checkout path detected');
+                    console.log('🔗 Non-trial checkout path detected');
                 }
 
                 // Extrair referência do influenciador
                 referrer = extractReferralSource(pathname);
                 if (referrer) {
-                    console.log(`Referral source detected: ${referrer}`);
+                    console.log(`🎯 Referral source detected: ${referrer}`);
                 }
             }
         }
 
-        // Atualizar referência do influenciador se encontrado
+        // ⚠️ IMPORTANTE: Definir referralSource ANTES do redirecionamento
         if (referrer) {
+            console.log(`💾 Saving referral source to localStorage: ${referrer}`);
             localStorage.setItem('referralSource', referrer);
             setReferralSource(referrer);
         }
-        // Verificar localStorage para referralSource
+        // Verificar localStorage para referralSource se não foi encontrado na URL
         else if (!referralSource) {
             const storedReferrer = localStorage.getItem('referralSource');
             if (storedReferrer) {
-                console.log(`Referral source found in localStorage: ${storedReferrer}`);
+                console.log(`📦 Referral source found in localStorage: ${storedReferrer}`);
                 setReferralSource(storedReferrer);
             }
         }
 
         // Configurar trial se necessário
         if (shouldSetFreeTrial) {
+            console.log('🆓 Setting free trial offer');
             localStorage.setItem('hasFreeTrialOffer', 'true');
             setHasFreeTrialOffer(true);
         }
 
         // Redirecionar para a rota principal de checkout se necessário
         if (shouldRedirect) {
+            console.log(`🔄 Scheduling redirect from ${pathname} to /checkout`);
+            // Delay pequeno para garantir que o referralSource foi salvo
             setTimeout(() => {
                 if (pathname !== '/checkout') {
-                    console.log('Redirecting to main checkout page...');
+                    console.log('➡️ Redirecting to main checkout page...');
                     router.replace('/checkout');
                 }
-            }, 100);
+            }, 150); // Aumentei o delay para 150ms
         }
-    }, [pathname, router, referralSource]);
+    }, [pathname, router]); // Removido referralSource da dependência para evitar loops
+
+    // Inicializar referralSource do localStorage na montagem
+    useEffect(() => {
+        const storedReferrer = localStorage.getItem('referralSource');
+        if (storedReferrer && !referralSource) {
+            console.log(`🔧 Initializing referral source from localStorage: ${storedReferrer}`);
+            setReferralSource(storedReferrer);
+        }
+    }, []);
 
     // Handle other trial parameters and localStorage
     useEffect(() => {
         // Check for dct parameter
         const dctParam = searchParams.get('dct');
         if (dctParam === '1') {
-            console.log('DCT parameter detected, setting free trial offer');
+            console.log('🎁 DCT parameter detected, setting free trial offer');
             localStorage.setItem('hasFreeTrialOffer', 'true');
             setHasFreeTrialOffer(true);
         } else if (!hasFreeTrialOffer) {
             // Check localStorage as fallback for free trial
             const storedTrialOffer = localStorage.getItem('hasFreeTrialOffer');
             if (storedTrialOffer === 'true') {
-                console.log('Free trial found in localStorage');
+                console.log('🎁 Free trial found in localStorage');
                 setHasFreeTrialOffer(true);
             }
         }
@@ -122,7 +135,7 @@ export const AuthProvider = ({ children }) => {
 
     // Handle authentication state
     useEffect(() => {
-        console.log('Authentication state check running, pathname:', pathname);
+        console.log('🔐 Authentication state check running, pathname:', pathname);
         const unsubscribe = onAuthStateChanged(firebaseService.auth, async (authUser) => {
             if (authUser) {
                 try {
@@ -133,18 +146,18 @@ export const AuthProvider = ({ children }) => {
                     if (userData && userData.assinouPlano && pathname === '/checkout' &&
                         searchParams.get('dct') !== '1') { // Don't redirect if dct param exists
 
-                        console.log('User already has plan, redirecting to app');
+                        console.log('👤 User already has plan, redirecting to app');
                         router.push('/app');
                     }
                 } catch (error) {
-                    console.error("Erro ao buscar dados do usuário:", error);
+                    console.error("❌ Erro ao buscar dados do usuário:", error);
                     setUser({ uid: authUser.uid });
                 }
             } else {
                 setUser(null);
                 // Redirect to login ONLY if trying to access protected routes
                 if (pathname.startsWith('/app')) {
-                    console.log('Unauthenticated user trying to access protected route, redirecting to login');
+                    console.log('🚫 Unauthenticated user trying to access protected route, redirecting to login');
                     router.push('/');
                 }
             }
@@ -157,11 +170,20 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             await signOut(firebaseService.auth);
+            // Limpar referralSource ao fazer logout (opcional)
+            // localStorage.removeItem('referralSource');
             router.push('/');
         } catch (error) {
-            console.error("Erro ao fazer logout:", error);
+            console.error("❌ Erro ao fazer logout:", error);
         }
     };
+
+    // Log do estado atual para debug
+    useEffect(() => {
+        if (referralSource) {
+            console.log(`🎯 Current referral source: ${referralSource}`);
+        }
+    }, [referralSource]);
 
     return (
         <AuthContext.Provider value={{ user, loading, logout, hasFreeTrialOffer, referralSource }}>
