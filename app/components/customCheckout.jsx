@@ -675,8 +675,11 @@ function CheckoutForm() {
 
     // Função para selecionar o plano - ATUALIZADA
     const handlePlanSelect = useCallback(async (planId) => {
+        console.log(`🎯 Plan selected: ${planId}`);
+        console.log(`🔗 Current referral source: ${referralSource}`);
+
         setSelectedPlan(planId);
-        setShowPersonalInfo(true); // Mostrar dados pessoais após selecionar plano
+        setShowPersonalInfo(true);
 
         // Para planos pagos, mostrar formulário de pagamento e criar conta se necessário
         if (planId !== 'free') {
@@ -685,7 +688,7 @@ function CheckoutForm() {
             // Se o usuário não foi criado ainda, criar conta
             if (!userCreated && !user) {
                 try {
-                    // Validar apenas informações básicas (não os dados pessoais ainda)
+                    // Validar apenas informações básicas
                     const basicErrors = {};
 
                     if (!formData.fullName.trim()) basicErrors.fullName = "Nome completo é obrigatório";
@@ -713,10 +716,19 @@ function CheckoutForm() {
                         checkoutStarted: true
                     };
 
-                    if (referralSource === 'enrico') {
+                    // 🎯 MELHORADO: Verificar referralSource com mais robustez
+                    const currentReferralSource = referralSource || localStorage.getItem('referralSource');
+
+                    if (currentReferralSource === 'enrico') {
                         userData.enrico = true;
-                        console.log('Cliente marcado como vindo através do Enrico');
+                        console.log('✅ Cliente marcado como vindo através do Enrico (paid plan creation)');
+                        console.log('📝 UserData:', userData);
+                    } else if (currentReferralSource) {
+                        console.log(`🔗 Other referral source detected: ${currentReferralSource}`);
+                        userData.referralSource = currentReferralSource;
                     }
+
+                    console.log('🔄 Creating user account with data:', userData);
 
                     await firebaseService.signUp(
                         formData.email,
@@ -727,14 +739,13 @@ function CheckoutForm() {
                     setSuccess('Conta criada com sucesso!');
                     setUserCreated(true);
                 } catch (error) {
-                    console.error("Erro no cadastro:", error);
+                    console.error("❌ Erro no cadastro:", error);
                     setAuthError(mapFirebaseError(error));
                 } finally {
                     setIsCreatingAccount(false);
                 }
             }
         }
-        // Para plano gratuito, não criar conta ainda
     }, [formData, userCreated, user, mapFirebaseError, referralSource]);
 
     const sendWelcomeEmails = async (email, name, appLink) => {
@@ -774,8 +785,12 @@ function CheckoutForm() {
 
     const handleFreeSignup = useCallback(async () => {
         try {
+            console.log('🆓 Starting free signup process...');
+            console.log(`🔗 Current referral source: ${referralSource}`);
+
             // Validar informações completas para plano gratuito
             if (!validatePersonalInfo()) {
+                console.log('❌ Validation failed for personal info');
                 return;
             }
 
@@ -804,23 +819,34 @@ function CheckoutForm() {
                 cpf: formData.billingCpf
             };
 
-            if (referralSource === 'enrico') {
+            // 🎯 MELHORADO: Verificar referralSource com mais robustez
+            const currentReferralSource = referralSource || localStorage.getItem('referralSource');
+
+            if (currentReferralSource === 'enrico') {
                 userData.enrico = true;
-                console.log('Cliente gratuito marcado como vindo através do Enrico');
+                console.log('✅ Cliente GRATUITO marcado como vindo através do Enrico');
+                console.log('📝 UserData completo:', userData);
+            } else if (currentReferralSource) {
+                console.log(`🔗 Other referral source detected: ${currentReferralSource}`);
+                userData.referralSource = currentReferralSource;
             }
 
             let currentUser;
 
             if (!user) {
+                console.log('🔄 Creating new user account...');
                 const userCredential = await firebaseService.signUp(
                     formData.email,
                     formData.password,
                     userData
                 );
                 currentUser = userCredential.user;
+                console.log('✅ User account created successfully');
             } else {
+                console.log('🔄 Updating existing user data...');
                 await firebaseService.editUserData(user.uid, userData);
                 currentUser = user;
+                console.log('✅ User data updated successfully');
             }
 
             // ✨ ENVIAR AMBOS OS EMAILS DE BOAS-VINDAS ✨
@@ -831,10 +857,11 @@ function CheckoutForm() {
             console.log('📧 [FREE-SIGNUP] Dados:', {
                 email: formData.email,
                 name: welcomeName,
-                appLink: appLink
+                appLink: appLink,
+                referralSource: currentReferralSource
             });
 
-            // Enviar emails de forma assíncrona mas com tratamento de erro melhorado
+            // Enviar emails de forma assíncrona
             const sendEmailsInBackground = async () => {
                 try {
                     console.log('📧 [FREE-SIGNUP] Chamando sendWelcomeEmails...');
@@ -845,34 +872,9 @@ function CheckoutForm() {
                         console.log('📧 [FREE-SIGNUP] Detalhes:', emailResult.data);
                     } else {
                         console.error('❌ [FREE-SIGNUP] Falha ao enviar emails:', emailResult.error);
-
-                        // Log adicional para debug
-                        console.error('📧 [FREE-SIGNUP] Tentando enviar manualmente via fetch...');
-
-                        // Tentativa direta via fetch como backup
-                        try {
-                            const directResponse = await fetch('/api/email', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    email: formData.email,
-                                    name: welcomeName,
-                                    type: 'both',
-                                    appLink: appLink
-                                })
-                            });
-
-                            const directResult = await directResponse.json();
-                            console.log('📧 [FREE-SIGNUP] Resultado direto:', directResult);
-                        } catch (directError) {
-                            console.error('❌ [FREE-SIGNUP] Erro na tentativa direta:', directError);
-                        }
                     }
                 } catch (emailError) {
                     console.error('❌ [FREE-SIGNUP] Erro geral ao enviar emails:', emailError);
-                    console.error('Stack trace:', emailError.stack);
                 }
             };
 
@@ -884,7 +886,7 @@ function CheckoutForm() {
             setSuccess('Conta gratuita criada com sucesso! Redirecionando...');
             setUserCreated(true);
 
-            // Aguardar um pouco antes de redirecionar para garantir que o envio foi iniciado
+            // Aguardar antes de redirecionar
             setTimeout(() => {
                 console.log('🚀 [FREE-SIGNUP] Redirecionando para /app...');
                 router.push('/app');
