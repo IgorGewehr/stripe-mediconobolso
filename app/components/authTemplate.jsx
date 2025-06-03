@@ -1,42 +1,23 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { Box, CircularProgress } from '@mui/material';
-import { onAuthStateChanged } from 'firebase/auth';
-import AuthForms from './authForms';
-import ComingSoon from './comingSoon';
-import firebaseService from '../../lib/firebaseService';
+import React, { useEffect } from 'react';
+import { Box, CircularProgress, useMediaQuery, useTheme } from '@mui/material';
+import AuthForms from './organismsComponents/authForms';
+import { useAuth } from './authProvider';
 import { useRouter } from 'next/navigation';
+import { useResponsiveScale } from './useScale';
 
 const AuthTemplate = () => {
-    const [currentUser, setCurrentUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [assinouPlano, setAssinouPlano] = useState(false);
+    const { user, loading } = useAuth();
     const router = useRouter();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(firebaseService.auth, async (user) => {
-            if (user) {
-                setCurrentUser(user);
-                try {
-                    const userData = await firebaseService.getUserData(user.uid);
-                    setAssinouPlano(userData.assinouPlano);
-                    // Se o usuário está autenticado mas ainda não assinou, redireciona para "/checkout"
-                    if (!userData.assinouPlano) {
-                        router.push("/checkout");
-                    }
-                } catch (error) {
-                    console.error("Erro ao buscar dados do usuário:", error);
-                }
-            } else {
-                setCurrentUser(null);
-            }
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, [router]);
+    // Obter a escala responsiva
+    const { scaleStyle } = useResponsiveScale();
 
-    if (loading) {
+    // Enquanto o contexto de autenticação estiver carregando ou se usuário está logado
+    if (loading || user) {
         return (
             <Box
                 sx={{
@@ -44,6 +25,8 @@ const AuthTemplate = () => {
                     justifyContent: 'center',
                     alignItems: 'center',
                     height: '100vh',
+                    width: '100%',
+                    backgroundColor: 'white',
                 }}
             >
                 <CircularProgress color="primary" />
@@ -51,13 +34,7 @@ const AuthTemplate = () => {
         );
     }
 
-    let content;
-    if (!currentUser) {
-        content = <AuthForms />;
-    } else if (currentUser && assinouPlano) {
-        content = <ComingSoon />;
-    }
-
+    // Se não houver usuário autenticado, exibe os formulários de autenticação
     return (
         <Box
             sx={{
@@ -66,10 +43,13 @@ const AuthTemplate = () => {
                 height: '100vh',
                 overflow: 'hidden',
                 display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
                 m: 0,
                 p: 0,
+                backgroundColor: 'white',
             }}
         >
+            {/* Logo apenas */}
             <Box
                 component="img"
                 src="/logo.png"
@@ -92,24 +72,39 @@ const AuthTemplate = () => {
                     justifyContent: 'center',
                     m: 0,
                     p: 0,
-                    marginLeft: '40px',
+                    marginLeft: { md: '40px' },
+                    width: '100%',
+                    overflowX: 'hidden',
                 }}
             >
-                {content}
+                {/* Container com escala aplicada */}
+                <Box sx={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: { xs: 2, sm: 3 },
+                    ...scaleStyle
+                }}>
+                    <AuthForms />
+                </Box>
             </Box>
 
-            <Box
-                sx={{
-                    flex: 1,
-                    height: '100vh',
-                    m: 0,
-                    p: 0,
-                    backgroundImage: 'url("/fundo.jpg")',
-                    backgroundSize: 'contain',
-                    backgroundPosition: 'right bottom',
-                    backgroundRepeat: 'no-repeat',
-                }}
-            />
+            {!isMobile && (
+                <Box
+                    sx={{
+                        flex: 1,
+                        height: '100vh',
+                        m: 0,
+                        p: 0,
+                        display: { xs: 'none', md: 'block' },
+                        backgroundImage: 'url("/fundo.jpg")',
+                        backgroundSize: 'contain',
+                        backgroundPosition: 'right bottom',
+                        backgroundRepeat: 'no-repeat',
+                    }}
+                />
+            )}
         </Box>
     );
 };

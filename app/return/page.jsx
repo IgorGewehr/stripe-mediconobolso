@@ -1,9 +1,11 @@
-import { redirect } from 'next/navigation'
+// app/return/page.jsx
+export const dynamic = 'force-dynamic';  // <<< impede SSG/prerender neste route
 
+import { redirect } from 'next/navigation'
 import { stripe } from '../../lib/stripe'
 
 export default async function Return({ searchParams }) {
-  const { session_id } = await searchParams
+  const { session_id } = searchParams  // NÃO é uma Promise
 
   if (!session_id)
     throw new Error('Please provide a valid session_id (`cs_test_...`)')
@@ -21,13 +23,13 @@ export default async function Return({ searchParams }) {
 
   if (status === 'complete') {
     return (
-      <section id="success">
-        <p>
-          We appreciate your business! A confirmation email will be sent to{' '}
-          {customerEmail}. If you have any questions, please email{' '}
-        </p>
-        <a href="mailto:orders@example.com">orders@example.com</a>.
-      </section>
+        <section id="success">
+          <p>
+            We appreciate your business! A confirmation email will be sent to{' '}
+            {customerEmail}. If you have any questions, please email{' '}
+          </p>
+          <a href="mailto:orders@example.com">orders@example.com</a>.
+        </section>
     )
   }
 }

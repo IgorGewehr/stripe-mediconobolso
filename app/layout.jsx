@@ -1,6 +1,7 @@
-// RootLayout.jsx
+export const dynamic = 'force-dynamic';
+
 import '../styles/global.css';
-import ThemeProvider from "./components/themeProvider";
+import ClientProviders from './components/ClientProviders';
 
 export default function RootLayout({ children }) {
     return (
@@ -11,9 +12,10 @@ export default function RootLayout({ children }) {
             <meta name="description" content="Médico no Bolso" />
         </head>
         <body>
-        <ThemeProvider>
+        {/* Tudo que precisar de hooks (Auth, Theme) fica dentro deste client component */}
+        <ClientProviders>
             {children}
-        </ThemeProvider>
+        </ClientProviders>
         </body>
         </html>
     );

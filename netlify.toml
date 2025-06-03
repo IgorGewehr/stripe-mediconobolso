@@ -1,0 +1,10 @@
+[build.environment]
+NEXT_IGNORE_PRERENDER_ERRORS = "true"
+SKIP_STATIC_GENERATION_WITH_PRERENDER_ERRORS = "true"
+NODE_OPTIONS = "--max-old-space-size=4096"
+
+[functions]
+node_bundler = "esbuild"
+included_files = [
+    "node_modules/tesseract.js-core/**/*"
+]
