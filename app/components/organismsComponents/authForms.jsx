@@ -37,7 +37,8 @@ export const AuthForms = () => {
     const router = useRouter();
     const { setUserId } = useAuth();
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     // Handlers do formulário
     const handleInputChange = (e) => {
@@ -112,17 +113,18 @@ export const AuthForms = () => {
             flexDirection="column"
             alignItems="center"
             justifyContent="center"
-            gap={2}
+            gap={{ xs: 1.5, sm: 2 }}
             sx={{
                 width: "100%",
-                maxWidth: { xs: "100%", sm: 400 },
+                maxWidth: { xs: "100%", sm: 450, md: 400 },
                 mx: "auto",
-                p: { xs: 2, sm: 0 },
+                p: { xs: 3, sm: 4, md: 0 },
                 backgroundColor: "white",
-                borderRadius: { xs: 0, sm: 2 },
-                boxShadow: 0,
-                border: "none",
-                py: { xs: 3, sm: 4 }
+                borderRadius: { xs: 3, sm: 2, md: 0 },
+                boxShadow: { xs: '0 4px 20px rgba(0,0,0,0.08)', md: 0 },
+                border: { xs: '1px solid #f0f0f0', md: "none" },
+                py: { xs: 4, sm: 5, md: 4 },
+                position: 'relative'
             }}
         >
             <Snackbar
@@ -136,11 +138,29 @@ export const AuthForms = () => {
                 </Alert>
             </Snackbar>
 
+            {/* Logo apenas no mobile */}
+            {isMobile && (
+                <Box
+                    component="img"
+                    src="/logo.png"
+                    alt="Logo"
+                    sx={{
+                        width: { xs: 50, sm: 60 },
+                        height: 'auto',
+                        mb: { xs: 2, sm: 3 },
+                        cursor: 'pointer'
+                    }}
+                    onClick={() => window.open('https://mediconobolso.com', '_blank')}
+                />
+            )}
+
             <Slide direction="down" in={true} mountOnEnter unmountOnExit timeout={500}>
                 <Box display="flex" flexDirection="column" alignItems="center" gap={1} width="100%">
                     <Typography variant="h4" component="h1" sx={{
                         color: "primary.main",
-                        fontSize: { xs: '1.75rem', sm: '2rem' }
+                        fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                        fontWeight: { xs: 600, md: 'normal' },
+                        textAlign: 'center'
                     }}>
                         Entrar
                     </Typography>
@@ -149,8 +169,10 @@ export const AuthForms = () => {
                         color="text.secondary"
                         sx={{
                             textAlign: 'center',
-                            px: 2,
-                            fontSize: { xs: '0.875rem', sm: '1rem' }
+                            px: { xs: 1, sm: 2 },
+                            fontSize: { xs: '0.8rem', sm: '0.875rem', md: '1rem' },
+                            lineHeight: 1.4,
+                            mb: { xs: 1, sm: 0 }
                         }}
                     >
                         Tudo que um médico precisa num só lugar!
@@ -159,12 +181,16 @@ export const AuthForms = () => {
             </Slide>
 
             {authError && (
-                <Alert severity="error" sx={{ width: "100%" }}>
+                <Alert severity="error" sx={{
+                    width: "100%",
+                    fontSize: { xs: '0.875rem', md: '1rem' },
+                    borderRadius: { xs: 2, md: 1 }
+                }}>
                     {authError}
                 </Alert>
             )}
 
-            <Stack spacing={1.5} width="100%">
+            <Stack spacing={{ xs: 2, sm: 2.5, md: 1.5 }} width="100%" sx={{ mt: { xs: 1, md: 0 } }}>
                 <TextField
                     label="E-mail"
                     variant="outlined"
@@ -175,7 +201,16 @@ export const AuthForms = () => {
                     error={Boolean(errors.email) || authError.includes("Email")}
                     helperText={errors.email ? (typeof errors.email === "string" ? errors.email : "Campo obrigatório") : ""}
                     color={(Boolean(errors.email) || authError.includes("Email")) ? "error" : "primary"}
-                    size={isMobile ? "small" : "medium"}
+                    size={isSmallMobile ? "small" : "medium"}
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: { xs: 2, md: 1 },
+                            fontSize: { xs: '1rem', md: 'inherit' }
+                        },
+                        '& .MuiInputLabel-root': {
+                            fontSize: { xs: '1rem', md: 'inherit' }
+                        }
+                    }}
                 />
                 <TextField
                     label="Senha"
@@ -188,7 +223,16 @@ export const AuthForms = () => {
                     error={Boolean(errors.password) || authError.includes("senha")}
                     helperText={errors.password ? "Campo obrigatório" : ""}
                     color={(Boolean(errors.password) || authError.includes("senha")) ? "error" : "primary"}
-                    size={isMobile ? "small" : "medium"}
+                    size={isSmallMobile ? "small" : "medium"}
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: { xs: 2, md: 1 },
+                            fontSize: { xs: '1rem', md: 'inherit' }
+                        },
+                        '& .MuiInputLabel-root': {
+                            fontSize: { xs: '1rem', md: 'inherit' }
+                        }
+                    }}
                     InputProps={{
                         endAdornment: (
                             <InputAdornment position="end">
@@ -196,6 +240,7 @@ export const AuthForms = () => {
                                     aria-label="toggle password visibility"
                                     onClick={handleTogglePasswordVisibility}
                                     edge="end"
+                                    size={isSmallMobile ? "small" : "medium"}
                                 >
                                     {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
                                 </IconButton>
@@ -210,9 +255,12 @@ export const AuthForms = () => {
                     fullWidth
                     onClick={handleLogin}
                     sx={{
-                        borderRadius: { xs: 4, sm: 8 },
-                        py: { xs: 1, sm: 1.5 },
-                        mt: 1
+                        borderRadius: { xs: 2, sm: 8, md: 8 },
+                        py: { xs: 1.2, sm: 1.5, md: 1.5 },
+                        mt: { xs: 2, md: 1 },
+                        fontSize: { xs: '1rem', md: 'inherit' },
+                        fontWeight: { xs: 600, md: 'normal' },
+                        textTransform: { xs: 'none', md: 'uppercase' }
                     }}
                 >
                     Entrar
@@ -223,15 +271,18 @@ export const AuthForms = () => {
                 display="flex"
                 flexDirection="column"
                 alignItems="center"
-                gap={1}
-                sx={{ mt: 1 }}
+                gap={{ xs: 1.5, md: 1 }}
+                sx={{ mt: { xs: 2, md: 1 } }}
             >
                 <Link
                     href="#"
                     color="secondary"
                     underline="hover"
                     onClick={handlePasswordReset}
-                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                    sx={{
+                        fontSize: { xs: '0.9rem', sm: '0.875rem', md: '1rem' },
+                        fontWeight: { xs: 500, md: 'normal' }
+                    }}
                 >
                     Esqueceu sua senha?
                 </Link>
@@ -241,10 +292,14 @@ export const AuthForms = () => {
                     gap={0.5}
                     flexWrap="wrap"
                     justifyContent="center"
+                    sx={{ px: { xs: 2, md: 0 } }}
                 >
                     <Typography
                         variant="body2"
-                        sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                        sx={{
+                            fontSize: { xs: '0.85rem', sm: '0.8rem', md: '0.875rem' },
+                            textAlign: 'center'
+                        }}
                     >
                         Não tem uma conta?
                     </Typography>
@@ -253,7 +308,10 @@ export const AuthForms = () => {
                         color="primary"
                         underline="hover"
                         onClick={handleRegisterRedirect}
-                        sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                        sx={{
+                            fontSize: { xs: '0.85rem', sm: '0.8rem', md: '0.875rem' },
+                            fontWeight: { xs: 600, md: 'normal' }
+                        }}
                     >
                         Registre-se
                     </Link>
