@@ -16,184 +16,217 @@ export const AuthProvider = ({ children }) => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Definir rotas protegidas e públicas
-    const protectedRoutes = ["/app"];
-    const publicRoutes = ["/", "/login", "/free", "/checkout"];
-
-    // Auxiliar para extrair “referral” na URL
+    // Função auxiliar para extrair referência de influenciador do pathname
     const extractReferralSource = (path) => {
-        if (path.startsWith("/checkout/") || path.startsWith("/free/")) {
-            const parts = path.split("/").filter(Boolean);
+        // Padrão: /checkout/INFLUENCER/ ou /free/INFLUENCER/
+        if (path.startsWith('/checkout/') || path.startsWith('/free/')) {
+            const parts = path.split('/').filter(Boolean);
 
-            if (parts.length === 3 && parts[1] === "pv1") {
+            // Se for /checkout/pv1/INFLUENCER/ ou /free/pv1/INFLUENCER/
+            if (parts.length === 3 && parts[1] === 'pv1') {
                 return parts[2];
             }
-            if (parts.length === 2 && parts[1] !== "pv1") {
+
+            // Se for /checkout/INFLUENCER/ ou /free/INFLUENCER/ (mas não pv1)
+            if (parts.length === 2 && parts[1] !== 'pv1') {
                 return parts[1];
             }
         }
+
         return null;
     };
 
-    // Detecção de rotas especiais (checkout/free/pv1)
+    // Detecção de rotas especiais e redirecionamentos - EXECUTADO PRIMEIRO
     useEffect(() => {
-        console.log("🔍 Processing route:", pathname);
+        console.log('🔍 Processing route:', pathname);
         let shouldSetFreeTrial = false;
         let referrer = null;
         let shouldRedirect = false;
         let redirectTarget = null;
 
-        if (pathname === "/pv1") {
+        // Caso especial: rota /pv1 simples - redirecionar para /checkout com trial
+        if (pathname === '/pv1') {
+            console.log('✅ PV1 route detected, setting free trial offer and redirecting');
             shouldSetFreeTrial = true;
             shouldRedirect = true;
-            redirectTarget = "/checkout";
-        } else if (pathname.startsWith("/checkout/")) {
-            if (pathname !== "/checkout") {
+            redirectTarget = '/checkout';
+        }
+        // Para rotas com prefixo /checkout/
+        else if (pathname.startsWith('/checkout/')) {
+            // Se não for exatamente /checkout
+            if (pathname !== '/checkout') {
                 shouldRedirect = true;
-                redirectTarget = "/checkout";
+                redirectTarget = '/checkout';
 
-                if (
-                    pathname === "/checkout/pv1" ||
-                    pathname.startsWith("/checkout/pv1/")
-                ) {
+                // CUIDADO! Ativar trial APENAS se o caminho for /checkout/pv1 ou iniciar com /checkout/pv1/
+                if (pathname === '/checkout/pv1' || pathname.startsWith('/checkout/pv1/')) {
+                    console.log('✅ PV1 trial path detected, offering free trial');
                     shouldSetFreeTrial = true;
                 } else {
-                    console.log("🔗 Non-trial checkout path detected");
+                    console.log('🔗 Non-trial checkout path detected');
                 }
 
+                // Extrair referência do influenciador
                 referrer = extractReferralSource(pathname);
-                if (referrer) console.log(`🎯 Referral source: ${referrer}`);
+                if (referrer) {
+                    console.log(`🎯 Referral source detected: ${referrer}`);
+                }
             }
-        } else if (pathname.startsWith("/free/")) {
-            if (pathname !== "/free") {
+        }
+        // Para rotas com prefixo /free/
+        else if (pathname.startsWith('/free/')) {
+            // Se não for exatamente /free
+            if (pathname !== '/free') {
                 shouldRedirect = true;
-                redirectTarget = "/free";
+                redirectTarget = '/free';
 
+                // Extrair referência do influenciador
                 referrer = extractReferralSource(pathname);
-                if (referrer)
-                    console.log(
-                        `🎯 Referral source detected for free signup: ${referrer}`
-                    );
+                if (referrer) {
+                    console.log(`🎯 Referral source detected for free signup: ${referrer}`);
+                }
             }
         }
 
+        // ⚠️ IMPORTANTE: Definir referralSource ANTES do redirecionamento
         if (referrer) {
-            localStorage.setItem("referralSource", referrer);
+            console.log(`💾 Saving referral source to localStorage: ${referrer}`);
+            localStorage.setItem('referralSource', referrer);
             setReferralSource(referrer);
-        } else if (!referralSource) {
-            const stored = localStorage.getItem("referralSource");
-            if (stored) {
-                setReferralSource(stored);
+        }
+        // Verificar localStorage para referralSource se não foi encontrado na URL
+        else if (!referralSource) {
+            const storedReferrer = localStorage.getItem('referralSource');
+            if (storedReferrer) {
+                console.log(`📦 Referral source found in localStorage: ${storedReferrer}`);
+                setReferralSource(storedReferrer);
             }
         }
 
+        // Configurar trial se necessário
         if (shouldSetFreeTrial) {
-            localStorage.setItem("hasFreeTrialOffer", "true");
+            console.log('🆓 Setting free trial offer');
+            localStorage.setItem('hasFreeTrialOffer', 'true');
             setHasFreeTrialOffer(true);
         }
 
+        // Redirecionar para a rota principal se necessário
         if (shouldRedirect && redirectTarget) {
+            console.log(`🔄 Scheduling redirect from ${pathname} to ${redirectTarget}`);
+            // Delay pequeno para garantir que o referralSource foi salvo
             setTimeout(() => {
                 if (pathname !== redirectTarget) {
+                    console.log(`➡️ Redirecting to ${redirectTarget}...`);
                     router.replace(redirectTarget);
                 }
             }, 150);
         }
-    }, [pathname, router]);
+    }, [pathname, router]); // Removido referralSource da dependência para evitar loops
 
-    // Init referralSource do localStorage
+    // Inicializar referralSource do localStorage na montagem
     useEffect(() => {
-        const stored = localStorage.getItem("referralSource");
-        if (stored && !referralSource) {
-            setReferralSource(stored);
+        const storedReferrer = localStorage.getItem('referralSource');
+        if (storedReferrer && !referralSource) {
+            console.log(`🔧 Initializing referral source from localStorage: ${storedReferrer}`);
+            setReferralSource(storedReferrer);
         }
     }, []);
 
-    // Handle parâmetro dct na URL
+    // Handle other trial parameters and localStorage
     useEffect(() => {
-        const dctParam = searchParams.get("dct");
-        if (dctParam === "1") {
-            localStorage.setItem("hasFreeTrialOffer", "true");
+        // Check for dct parameter
+        const dctParam = searchParams.get('dct');
+        if (dctParam === '1') {
+            console.log('🎁 DCT parameter detected, setting free trial offer');
+            localStorage.setItem('hasFreeTrialOffer', 'true');
             setHasFreeTrialOffer(true);
         } else if (!hasFreeTrialOffer) {
-            const stored = localStorage.getItem("hasFreeTrialOffer");
-            if (stored === "true") {
+            // Check localStorage as fallback for free trial
+            const storedTrialOffer = localStorage.getItem('hasFreeTrialOffer');
+            if (storedTrialOffer === 'true') {
+                console.log('🎁 Free trial found in localStorage');
                 setHasFreeTrialOffer(true);
             }
         }
     }, [searchParams, hasFreeTrialOffer]);
 
-    // ========= AQUI ENTRA A DETECÇÃO DE “MOBILE” =========
-    const isMobileDevice = () => {
-        if (typeof navigator === "undefined") return false;
-        return /Mobi|Android|iPhone/i.test(navigator.userAgent);
-    };
-    // =====================================================
-
-    // Handle estado de autenticação
+    // Handle authentication state
     useEffect(() => {
-        console.log("🔐 Authentication state check running, pathname:", pathname);
+        console.log('🔐 Authentication state check running, pathname:', pathname);
+        const unsubscribe = onAuthStateChanged(firebaseService.auth, async (authUser) => {
+            if (authUser) {
+                try {
+                    const userData = await firebaseService.getUserData(authUser.uid);
+                    setUser({ uid: authUser.uid, ...userData });
 
-        const unsubscribe = onAuthStateChanged(
-            firebaseService.auth,
-            async (authUser) => {
-                if (authUser) {
-                    try {
-                        const userData = await firebaseService.getUserData(authUser.uid);
-                        setUser({ uid: authUser.uid, ...userData });
+                    // Se o usuário tem plano ou é gratuito E está em páginas públicas, redirecionar para /app
+                    if ((userData.assinouPlano || userData.gratuito) &&
+                        ['/', '/checkout', '/free', '/login'].includes(pathname) &&
+                        searchParams.get('dct') !== '1') { // Don't redirect if dct param exists
 
-                        // Se o usuário tiver plano ou for “gratuito”
-                        if (userData.assinouPlano || userData.gratuito) {
-                            // Não redirecionar se estiver em páginas públicas e dct=1
-                            if (
-                                ["/login", "/free", "/checkout"].includes(pathname) &&
-                                searchParams.get("dct") !== "1"
-                            ) {
-                                const destino = isMobileDevice() ? "/mobile" : "/app"; // 👉 decide rota conforme dispositivo
-                                console.log(
-                                    `👤 User já tem acesso, redirecionando para ${destino}`
-                                );
-                                router.push(destino);
-                            }
-                        }
-                        // Se não tem plano nem gratuito e tenta /app, mandar para /checkout
-                        else if (
-                            !userData.assinouPlano &&
-                            !userData.gratuito &&
-                            pathname.startsWith("/app")
-                        ) {
-                            router.push("/checkout");
-                        }
-                    } catch (error) {
-                        console.error("❌ Erro ao buscar dados do usuário:", error);
-                        setUser({ uid: authUser.uid });
+                        console.log('👤 User já tem acesso, redirecionando para /app');
+                        router.push('/app');
                     }
-                } else {
-                    setUser(null);
-                    // Se não autenticado e acessar rota protegida, manda pro login
-                    if (
-                        protectedRoutes.some((route) => pathname.startsWith(route))
-                    ) {
-                        router.push("/login");
+                    // Se não tem acesso e tenta acessar áreas protegidas, redirecionar para checkout
+                    else if (!userData.assinouPlano && !userData.gratuito &&
+                        (pathname.startsWith('/app') || pathname.startsWith('/mobile'))) {
+                        console.log('❌ User sem acesso tentando acessar área protegida, redirecionando para /checkout');
+                        router.push('/checkout');
                     }
+                } catch (error) {
+                    console.error("❌ Erro ao buscar dados do usuário:", error);
+                    setUser({ uid: authUser.uid });
                 }
-                setLoading(false);
+            } else {
+                setUser(null);
+                // Redirect to login ONLY if trying to access protected routes
+                if (pathname.startsWith('/app') || pathname.startsWith('/mobile')) {
+                    console.log('🚫 Unauthenticated user trying to access protected route, redirecting to login');
+                    router.push('/');
+                }
             }
-        );
+            setLoading(false);
+        });
 
         return () => unsubscribe();
     }, [pathname, router, searchParams]);
 
+    // Verificação de tamanho de tela quando estiver em /app (SÓ EXECUTA APÓS AUTENTICAÇÃO)
+    useEffect(() => {
+        // Só executar se usuário está autenticado, tem acesso e está em /app
+        if (!user || loading || pathname !== '/app') return;
+        if (!user.assinouPlano && !user.gratuito) return;
+
+        const checkScreenSize = () => {
+            if (typeof window !== "undefined" && window.innerWidth < 900) {
+                console.log(`📱 Tela pequena detectada (${window.innerWidth}px), redirecionando para /mobile`);
+                router.push("/mobile");
+            }
+        };
+
+        // Verificar imediatamente
+        checkScreenSize();
+
+        // Verificar quando a tela for redimensionada
+        window.addEventListener('resize', checkScreenSize);
+
+        return () => {
+            window.removeEventListener('resize', checkScreenSize);
+        };
+    }, [user, loading, pathname, router]);
+
     const logout = async () => {
         try {
             await signOut(firebaseService.auth);
-            router.push("/login");
+            // Limpar referralSource ao fazer logout (opcional)
+            // localStorage.removeItem('referralSource');
+            router.push('/');
         } catch (error) {
             console.error("❌ Erro ao fazer logout:", error);
         }
     };
 
-    // Debug referralSource
+    // Log do estado atual para debug
     useEffect(() => {
         if (referralSource) {
             console.log(`🎯 Current referral source: ${referralSource}`);
@@ -201,27 +234,25 @@ export const AuthProvider = ({ children }) => {
     }, [referralSource]);
 
     const isProtectedRoute = (path) => {
-        return protectedRoutes.some((route) => path.startsWith(route));
+        return path.startsWith('/app') || path.startsWith('/mobile');
     };
 
     const isPublicRoute = (path) => {
-        return (
-            publicRoutes.some((route) => path === route || path.startsWith(route + "/"))
+        return ['/', '/login', '/free', '/checkout'].some(route =>
+            path === route || path.startsWith(route + '/')
         );
     };
 
     return (
-        <AuthContext.Provider
-            value={{
-                user,
-                loading,
-                logout,
-                hasFreeTrialOffer,
-                referralSource,
-                isProtectedRoute,
-                isPublicRoute,
-            }}
-        >
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            logout,
+            hasFreeTrialOffer,
+            referralSource,
+            isProtectedRoute,
+            isPublicRoute
+        }}>
             {!loading && children}
         </AuthContext.Provider>
     );
