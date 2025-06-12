@@ -1,4 +1,4 @@
-// lib/modules/moduleService.js
+// lib/moduleService.js
 
 import firebaseService from './firebaseService';
 import {

@@ -1035,7 +1035,7 @@ function CheckoutForm() {
                 phone: formData.phone,
                 checkoutStarted: true,
                 fullName: formData.fullName,
-                paymentMethod: paymentMethod // 🆕 ADICIONAR MÉTODO DE PAGAMENTO
+                paymentMethod: paymentMethod
             };
 
             // Adicionar nome do titular do cartão apenas se for cartão
@@ -1060,8 +1060,8 @@ function CheckoutForm() {
                 cpf: formData.billingCpf,
                 includeTrial: false,
                 referralSource: referralSource,
-                paymentMethod: paymentMethod, // 🆕 ENVIAR MÉTODO DE PAGAMENTO
-                address: { // 🆕 ENVIAR ENDEREÇO PARA BOLETO
+                paymentMethod: paymentMethod,
+                address: {
                     street: formData.street,
                     number: formData.number,
                     complement: formData.complement,
@@ -1086,23 +1086,35 @@ function CheckoutForm() {
             }
 
             const data = await response.json();
-            const { subscriptionId, clientSecret } = data;
+            const { subscriptionId, clientSecret, boletoUrl } = data;
 
             console.log('✅ Subscription created:', data);
 
             // 3) Processar pagamento baseado no método
             if (paymentMethod === 'boleto') {
-                console.log('📄 Boleto criado, processando...');
+                console.log('📄 Processando boleto...');
 
-                // 🆕 CRITICAL: Verificar se recebemos a URL do boleto
-                if (data.boletoUrl) {
-                    console.log('📄 URL do boleto recebida:', data.boletoUrl);
+                // 🆕 MELHOR TRATAMENTO DO BOLETO
+                if (boletoUrl) {
+                    console.log('📄 URL do boleto recebida:', boletoUrl);
 
-                    // Abrir boleto em nova aba
-                    window.open(data.boletoUrl, '_blank');
+                    // Mostrar mensagem de sucesso primeiro
+                    setSuccess('Boleto gerado com sucesso! Abrindo o boleto em nova aba...');
 
-                    // Mostrar mensagem de sucesso
-                    setSuccess('Boleto gerado com sucesso! Uma nova aba foi aberta com seu boleto. Você também receberá um email com as instruções.');
+                    // 🔧 CORREÇÃO: Usar setTimeout para garantir que a mensagem apareça
+                    setTimeout(() => {
+                        try {
+                            window.open(boletoUrl, '_blank');
+                        } catch (openError) {
+                            console.warn('Erro ao abrir boleto:', openError);
+                            // Fallback: copiar URL para clipboard
+                            navigator.clipboard.writeText(boletoUrl).then(() => {
+                                setSuccess('Boleto gerado! URL copiada para área de transferência. Cole no navegador para acessar.');
+                            }).catch(() => {
+                                setSuccess(`Boleto gerado! Acesse: ${boletoUrl}`);
+                            });
+                        }
+                    }, 1000);
 
                     // 🆕 ENVIAR EMAIL COM INSTRUÇÕES DO BOLETO
                     try {
@@ -1112,7 +1124,7 @@ function CheckoutForm() {
                             body: JSON.stringify({
                                 email: currentUser.email || formData.email,
                                 name: formData.fullName.trim(),
-                                boletoUrl: data.boletoUrl,
+                                boletoUrl: boletoUrl,
                                 plan: selectedPlan,
                                 amount: plans[selectedPlan]?.price
                             })
@@ -1122,12 +1134,38 @@ function CheckoutForm() {
                         // Não bloqueia o fluxo se o email falhar
                     }
 
-                } else {
-                    setSuccess('Boleto está sendo processado. Você receberá um email com as instruções de pagamento em breve.');
-                }
+                    // 🔧 CORREÇÃO: Para boleto, não fazer polling imediatamente
+                    // Boleto pode demorar dias para ser pago, então só mostrar instrucoes
+                    setTimeout(() => {
+                        setSuccess('Boleto enviado por email! Após o pagamento, sua conta será ativada automaticamente.');
+                        setIsProcessingPayment(false);
+                        setLoading(false);
+                    }, 3000);
 
-                // Para boleto, fazer polling para verificar pagamento
-                pollUserSubscriptionStatus(currentUser.uid);
+                } else {
+                    // Se não tem URL, significa que está sendo processado
+                    setSuccess('Boleto está sendo processado. Você receberá um email com as instruções de pagamento em breve.');
+
+                    // Aguardar um pouco para ver se a URL aparece
+                    setTimeout(async () => {
+                        try {
+                            // Tentar buscar novamente os dados da subscription
+                            const checkResponse = await fetch(`/api/check-subscription-status?subscriptionId=${subscriptionId}`);
+                            if (checkResponse.ok) {
+                                const checkData = await checkResponse.json();
+                                if (checkData.boletoUrl) {
+                                    window.open(checkData.boletoUrl, '_blank');
+                                    setSuccess('Boleto disponível! Aberto em nova aba.');
+                                }
+                            }
+                        } catch (checkError) {
+                            console.warn('Erro ao verificar status da subscription:', checkError);
+                        }
+
+                        setIsProcessingPayment(false);
+                        setLoading(false);
+                    }, 5000);
+                }
 
             } else if (clientSecret) {
                 // Para cartão, confirmar pagamento via Stripe Elements
@@ -1168,7 +1206,7 @@ function CheckoutForm() {
 
             // 4) Atualizar dados adicionais no Firestore após confirmação
             const updateData = {
-                assinouPlano: false, // Mantenha como false até confirmação do webhook
+                assinouPlano: paymentMethod === 'boleto' ? false : false, // Sempre false até confirmação do webhook
                 planType: selectedPlan,
                 subscriptionId,
                 checkoutCompleted: true,

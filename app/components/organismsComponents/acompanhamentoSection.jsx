@@ -30,6 +30,7 @@ import FirebaseService from "../../../lib/firebaseService";
 import useModuleAccess from '../useModuleAccess';
 import ModuleProtection from '../ModuleProtection';
 import AccessDeniedDialog from '../organismsComponents/accessDeniedDialog';
+import {useAuth} from "../authProvider";
 
 // Paleta de cores refinada
 const themeColors = {
@@ -47,15 +48,16 @@ const themeColors = {
 };
 
 // Card melhorado de Relatório Clínico com proteção de módulos (MANTÉM CONTROLE DE ACESSO)
+// Card melhorado de Relatório Clínico com controle de acesso SIMPLIFICADO
 function RelatorioCard({ onClick, isLoading }) {
-    const { hasAccess, MODULES } = useModuleAccess();
+    const { isFreeUser } = useAuth(); // Usar apenas isFreeUser do contexto
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
-    // Verificar se tem acesso aos módulos de IA
-    const canUseAI = hasAccess(MODULES.AI_ANALYSIS);
+    // Verificar se tem acesso - SIMPLIFICADO: apenas verificar se não é usuário gratuito
+    const canUseAI = !isFreeUser;
 
     const handleClick = () => {
-        if (!canUseAI) {
+        if (isFreeUser) {
             setUpgradeDialogOpen(true);
             return;
         }
@@ -64,7 +66,7 @@ function RelatorioCard({ onClick, isLoading }) {
 
     const handleAIClick = (e) => {
         e.stopPropagation();
-        if (!canUseAI) {
+        if (isFreeUser) {
             setUpgradeDialogOpen(true);
             return;
         }
@@ -255,7 +257,6 @@ function RelatorioCard({ onClick, isLoading }) {
         </>
     );
 }
-
 // Card de acompanhamento SEM controle de acesso (REMOVIDO CONTROLE DE ACESSO)
 function AcompanhamentoCard({ tipo, icone, onClick, variant = "default" }) {
     // Variante especial para o card de Resumo Clínico
@@ -267,6 +268,8 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default" }) {
     const iconHoverColor = isInsightVariant ? "#7C3AED" : "#0d47e0";
     const shadowBase = isInsightVariant ? themeColors.cardInsightShadow : themeColors.cardShadow;
     const shadowHover = isInsightVariant ? themeColors.cardInsightShadowHover : themeColors.cardShadowHover;
+
+    const { user, isFreeUser } = useAuth();
 
     return (
         <Card
@@ -429,7 +432,7 @@ const formatDateString = (dateValue) => {
 // Componente principal aprimorado
 export default function AcompanhamentoSection({ pacienteId, doctorId, patientData = null, onNotaUpdated, forceUpdateNotas }) {
     const theme = useTheme();
-    const { hasAccess, MODULES } = useModuleAccess();
+
     const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
     const [openReceitaDialog, setOpenReceitaDialog] = useState(false);
     const [openExamDialog, setOpenExamDialog] = useState(false);
@@ -446,6 +449,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [currentProcessingFile, setCurrentProcessingFile] = useState(null);
     const [processingProgress, setProcessingProgress] = useState(0);
+    const { user, isFreeUser } = useAuth();
 
     // Referência para controlar as etapas de carregamento no indicador
     const [loadingStage, setLoadingStage] = useState(0);
@@ -457,15 +461,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
         "Gerando insights clínicos..."
     ];
 
-    // Verificar se tem acesso aos módulos de IA (APENAS PARA RELATÓRIO)
-    const canUseAI = hasAccess(MODULES.AI_ANALYSIS);
 
-    console.log("🔐 Debug acesso IA no AcompanhamentoSection:", {
-        canUseAI,
-        hasAIAnalysis: hasAccess(MODULES.AI_ANALYSIS),
-        hasExamProcessing: hasAccess(MODULES.EXAM_PROCESSING),
-        modules: MODULES
-    });
 
     // Buscar dados do paciente se não forem fornecidos como prop
     useEffect(() => {
@@ -846,11 +842,10 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
 
     // Handler for opening relatório dialog with improved user feedback (COM CONTROLE DE ACESSO)
     const handleRelatorioClick = async (isGenerate) => {
-        console.log("🔐 Tentando acessar relatório clínico. Tem acesso à IA?", canUseAI);
+        console.log("🔐 Tentando acessar relatório clínico. É usuário gratuito?", isFreeUser);
 
-        // Verificar acesso aos módulos de IA primeiro
-        if (!canUseAI) {
-            console.log("❌ Acesso negado aos módulos de IA");
+        // LÓGICA SIMPLIFICADA: apenas verificar se é usuário gratuito
+        if (isFreeUser) {
             setUpgradeDialogOpen(true);
             return;
         }
@@ -882,9 +877,9 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
 
     // Função otimizada para gerar o relatório com feedback visual aprimorado
     const generateRelatorio = async () => {
-        // Verificação adicional antes de gerar
-        if (!canUseAI) {
-            console.log("❌ Tentativa de gerar relatório sem acesso aos módulos de IA");
+        // Verificação SIMPLIFICADA antes de gerar
+        if (isFreeUser) {
+            console.log("❌ Tentativa de gerar relatório sendo usuário gratuito");
             setUpgradeDialogOpen(true);
             return;
         }

@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../authProvider";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import GoogleButton, { GoogleButtonWithDivider } from './GoogleButton';
+import GoogleButton from './googleButton';
 
 export const AuthForms = () => {
     const [showPassword, setShowPassword] = useState(false);
@@ -106,64 +106,38 @@ export const AuthForms = () => {
     };
 
     // Handler para login/signup com Google CORRIGIDO
+    // components/AuthForms.jsx (só a função interna)
     const handleGoogleLogin = async () => {
         setGoogleLoading(true);
         setAuthError("");
 
         try {
             console.log('🔄 Iniciando login/signup com Google...');
+            const { user, isNewUser } = await firebaseService.loginWithGoogle();
 
-            // Primeiro, tentar login normal para verificar se usuário já existe
-            const result = await firebaseService.loginWithGoogle();
-            const { user, isNewUser, userData } = result;
-
-            if (isNewUser) {
-                console.log('🆕 Novo usuário Google detectado – criando conta gratuita...');
-
-                // ✅ CORREÇÃO: Usar o método signUpFreeWithGoogle que já funciona corretamente
-                const signupResult = await firebaseService.signUpFreeWithGoogle();
-
-                console.log('✅ Conta gratuita Google criada com sucesso');
-
-                // Enviar emails de boas-vindas em background
-                firebaseService.sendGoogleWelcomeEmails(
-                    user.email,
-                    user.displayName || user.email.split('@')[0]
-                ).catch(error => {
-                    console.error('❌ Erro ao enviar emails de boas-vindas:', error);
-                    // Não bloquear o fluxo se o email falhar
-                });
-            } else {
-                console.log('✅ Login com Google concluído – usuário existente');
-            }
-
-            // O AuthProvider vai capturar a mudança e redirecionar automaticamente
-
+            console.log(
+                isNewUser
+                    ? '🆕 Conta Google criada e Firestore inicializado'
+                    : '✅ Login com Google concluído – usuário existente'
+            );
+            // o AuthProvider observa a mudança e faz redirect automaticamente
         } catch (error) {
             console.error('❌ Erro no login/signup com Google:', error);
-
-            // Mapear erros específicos do Google Auth
-            if (error.message === 'Login cancelado pelo usuário') {
-                setAuthError("Login cancelado.");
-            } else if (error.message === 'Pop-up bloqueado pelo navegador') {
-                setAuthError("Pop-up bloqueado. Permita pop-ups para este site e tente novamente.");
-            } else if (error.code === 'auth/popup-closed-by-user') {
-                setAuthError("Você fechou o popup antes de concluir. Tente novamente.");
-            } else if (error.code === 'auth/cancelled-popup-request') {
-                setAuthError("Solicitação de login cancelada.");
-            } else if (error.code === 'auth/network-request-failed') {
-                setAuthError("Erro de conexão. Verifique sua internet.");
-            } else if (error.code === 'auth/internal-error') {
-                setAuthError("Erro interno. Tente novamente.");
-            } else if (error.code === 'auth/account-exists-with-different-credential') {
-                setAuthError("Já existe uma conta com este email usando outro método de login.");
-            } else {
-                setAuthError("Erro no login com Google. Tente novamente.");
+            switch (error.code) {
+                case 'auth/popup-closed-by-user':
+                    setAuthError("Você fechou o popup antes de concluir. Tente novamente.");
+                    break;
+                case 'auth/popup-blocked':
+                    setAuthError("Pop-up bloqueado. Permita pop-ups e tente de novo.");
+                    break;
+                default:
+                    setAuthError(error.message || "Erro no login com Google. Tente novamente.");
             }
         } finally {
             setGoogleLoading(false);
         }
     };
+
 
     const handleRegisterRedirect = () => {
         router.push("/free");

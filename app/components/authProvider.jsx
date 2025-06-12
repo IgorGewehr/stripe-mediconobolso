@@ -17,6 +17,8 @@ export const AuthProvider = ({ children }) => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
+    const isFreeUser = Boolean(user?.gratuito);
+
     // 🔧 FUNÇÃO AUXILIAR PARA EXTRAIR REFERÊNCIA
     const extractReferralSource = (path) => {
         if (path.startsWith('/checkout/') || path.startsWith('/free/')) {
@@ -515,6 +517,7 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{
             user,
             loading,
+            isFreeUser,
             logout,
             hasFreeTrialOffer,
             referralSource,

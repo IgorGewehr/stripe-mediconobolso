@@ -478,6 +478,34 @@ async function processEvent(event) {
         break;
       }
 
+      case 'checkout.session.async_payment_succeeded': {
+        // Aqui o boleto foi pago
+        const session = event.data.object;
+        const uid = session.metadata.uid;
+        console.log(`📄✅ Boleto confirmado via async_payment: session ${session.id}`);
+        await updateUserWithRetry(uid, {
+          assinouPlano: true,
+          paymentConfirmedAt: new Date(),
+          boletoPaymentConfirmed: true,
+          awaitingBoletoPayment: false
+        });
+        await sendWelcomeEmailIfNeeded(uid, session.customer_email, session.customer_details?.name);
+        break;
+      }
+
+      case 'checkout.session.async_payment_failed': {
+        // Aqui o boleto expirou / falhou
+        const session = event.data.object;
+        const uid = session.metadata.uid;
+        console.log(`📄❌ Boleto expirado via async_payment: session ${session.id}`);
+        await updateUserWithRetry(uid, {
+          paymentIssue: true,
+          boletoExpired: true,
+          awaitingBoletoPayment: false
+        });
+        break;
+      }
+
       default:
         console.log(`⏭️ Evento não tratado: ${event.type}`);
         break;
@@ -525,6 +553,8 @@ export async function POST(req) {
   const permittedEvents = [
     'checkout.session.completed',
     'customer.subscription.deleted',
+    'checkout.session.async_payment_failed',
+    'checkout.session.async_payment_succeeded',
     'invoice.payment_failed',
     'customer.subscription.created',
     'customer.subscription.updated',

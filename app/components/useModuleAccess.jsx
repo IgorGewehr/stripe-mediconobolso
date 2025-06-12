@@ -28,9 +28,10 @@ export const useModuleAccess = () => {
         // 1. Não tem campo 'modules' E não tem 'customModules'
         // 2. Não tem campo 'planType'
         // 3. Mas TEM 'assinouPlano' ou 'gratuito' (campos antigos)
-        const hasOldFields = user.hasOwnProperty('assinouPlano') || user.hasOwnProperty('gratuito');
-        const hasNewFields = user.hasOwnProperty('modules') || user.hasOwnProperty('customModules') || user.hasOwnProperty('planType');
-
+        const hasOldFields = user.hasOwnProperty('assinouPlano');            // só quem já assinou plano era “antigo”
+        const hasNewFields = user.hasOwnProperty('modules')
+            || user.hasOwnProperty('customModules')
+            || user.hasOwnProperty('planType');
         const isLegacy = hasOldFields && !hasNewFields;
 
         if (isLegacy) {
