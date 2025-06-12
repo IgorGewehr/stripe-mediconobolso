@@ -21,11 +21,15 @@ import AddIcon from "@mui/icons-material/Add";
 import PsychologyAltIcon from '@mui/icons-material/PsychologyAlt';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckIcon from '@mui/icons-material/Check';
+import LockIcon from '@mui/icons-material/Lock';
 import AnamneseDialog from "./anamneseDialog";
 import ReceitaDialog from "./receitasDialog";
 import ExamDialog from "./examDialog";
 import RelatorioDialog from "./relatorioDialog";
 import FirebaseService from "../../../lib/firebaseService";
+import useModuleAccess from '../useModuleAccess';
+import ModuleProtection from '../ModuleProtection';
+import AccessDeniedDialog from '../organismsComponents/accessDeniedDialog';
 
 // Paleta de cores refinada
 const themeColors = {
@@ -42,168 +46,217 @@ const themeColors = {
     cardInsightShadowHover: "0px 12px 28px 0px rgba(139, 92, 246, 0.25)"
 };
 
-// Card melhorado de Relatório Clínico
+// Card melhorado de Relatório Clínico com proteção de módulos (MANTÉM CONTROLE DE ACESSO)
 function RelatorioCard({ onClick, isLoading }) {
+    const { hasAccess, MODULES } = useModuleAccess();
+    const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+
+    // Verificar se tem acesso aos módulos de IA
+    const canUseAI = hasAccess(MODULES.AI_ANALYSIS);
+
+    const handleClick = () => {
+        if (!canUseAI) {
+            setUpgradeDialogOpen(true);
+            return;
+        }
+        if (onClick && !isLoading) onClick();
+    };
+
+    const handleAIClick = (e) => {
+        e.stopPropagation();
+        if (!canUseAI) {
+            setUpgradeDialogOpen(true);
+            return;
+        }
+        if (onClick && !isLoading) onClick(true);
+    };
+
+    const handleUpgrade = () => {
+        setUpgradeDialogOpen(false);
+        window.location.href = '/checkout';
+    };
+
     return (
-        <Card
-            sx={{
-                width: "100%",
-                maxWidth: "200px",
-                height: "200px",
-                borderRadius: "20px",
-                boxShadow: themeColors.cardInsightShadow,
-                position: "relative",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                p: 2,
-                cursor: "pointer",
-                backgroundColor: themeColors.insightLight,
-                overflow: "hidden",
-                transition: "all 0.3s ease-in-out",
-                "&:hover": {
-                    boxShadow: themeColors.cardInsightShadowHover,
-                    transform: "translateY(-4px)",
-                },
-                "&::before": {
-                    content: '""',
-                    position: 'absolute',
-                    top: '-30px',
-                    right: '-30px',
-                    width: '100px',
-                    height: '100px',
-                    borderRadius: '50%',
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    zIndex: 0
-                },
-                "&::after": {
-                    content: '""',
-                    position: 'absolute',
-                    bottom: '-20px',
-                    left: '-20px',
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    zIndex: 0
-                }
-            }}
-            onClick={isLoading ? null : onClick}
-        >
-            <CardContent
+        <>
+            <Card
                 sx={{
                     width: "100%",
+                    maxWidth: "200px",
+                    height: "200px",
+                    borderRadius: "20px",
+                    boxShadow: canUseAI ? themeColors.cardInsightShadow : themeColors.cardShadow,
+                    position: "relative",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    p: 0,
-                    zIndex: 1
+                    p: 2,
+                    cursor: "pointer",
+                    backgroundColor: canUseAI ? themeColors.insightLight : "#f5f5f5",
+                    overflow: "hidden",
+                    transition: "all 0.3s ease-in-out",
+                    "&:hover": {
+                        boxShadow: canUseAI ? themeColors.cardInsightShadowHover : themeColors.cardShadowHover,
+                        transform: "translateY(-4px)",
+                    },
+                    "&::before": {
+                        content: '""',
+                        position: 'absolute',
+                        top: '-30px',
+                        right: '-30px',
+                        width: '100px',
+                        height: '100px',
+                        borderRadius: '50%',
+                        backgroundColor: canUseAI ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                        zIndex: 0
+                    },
+                    "&::after": {
+                        content: '""',
+                        position: 'absolute',
+                        bottom: '-20px',
+                        left: '-20px',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        backgroundColor: canUseAI ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                        zIndex: 0
+                    }
                 }}
+                onClick={handleClick}
             >
-                {/* Ícone central com animação suave */}
-                <Box
+                <CardContent
                     sx={{
-                        mt: "10px",
-                        width: 100,
-                        height: 100,
-                        mb: 1,
+                        width: "100%",
                         display: "flex",
+                        flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: themeColors.insight,
-                        fontSize: 80,
-                        position: "relative",
-                        "&::after": {
-                            content: '""',
-                            position: 'absolute',
-                            width: '70px',
-                            height: '70px',
-                            borderRadius: '50%',
-                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                            zIndex: -1,
-                            animation: 'pulse 2s infinite ease-in-out'
-                        },
-                        "@keyframes pulse": {
-                            "0%": {
-                                transform: "scale(0.95)",
-                                boxShadow: "0 0 0 0 rgba(139, 92, 246, 0.3)"
-                            },
-                            "70%": {
-                                transform: "scale(1.1)",
-                                boxShadow: "0 0 0 10px rgba(139, 92, 246, 0)"
-                            },
-                            "100%": {
-                                transform: "scale(0.95)",
-                                boxShadow: "0 0 0 0 rgba(139, 92, 246, 0)"
-                            }
-                        }
+                        p: 0,
+                        zIndex: 1
                     }}
                 >
-                    {isLoading ? (
-                        <CircularProgress size={50} color="secondary" />
-                    ) : (
-                        <PsychologyAltIcon sx={{ fontSize: 60 }} />
-                    )}
-                </Box>
-
-                <Box
-                    sx={{
-                        display: "flex",
-                        flexDirection: "row",
-                        gap: 1,
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        width: "100%",
-                        pl: "10px",
-                        pr: "10px",
-                    }}
-                >
-                    <Typography
-                        variant="h6"
+                    {/* Ícone central com animação suave */}
+                    <Box
                         sx={{
-                            color: themeColors.insight,
-                            fontFamily: "Gellix",
-                            fontSize: 22,
-                            fontWeight: 600,
-                            textAlign: "start",
-                            flexGrow: 1,
+                            mt: "10px",
+                            width: 100,
+                            height: 100,
+                            mb: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: canUseAI ? themeColors.insight : "#9e9e9e",
+                            fontSize: 80,
+                            position: "relative",
+                            "&::after": canUseAI ? {
+                                content: '""',
+                                position: 'absolute',
+                                width: '70px',
+                                height: '70px',
+                                borderRadius: '50%',
+                                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                zIndex: -1,
+                                animation: 'pulse 2s infinite ease-in-out'
+                            } : {},
+                            "@keyframes pulse": {
+                                "0%": {
+                                    transform: "scale(0.95)",
+                                    boxShadow: "0 0 0 0 rgba(139, 92, 246, 0.3)"
+                                },
+                                "70%": {
+                                    transform: "scale(1.1)",
+                                    boxShadow: "0 0 0 10px rgba(139, 92, 246, 0)"
+                                },
+                                "100%": {
+                                    transform: "scale(0.95)",
+                                    boxShadow: "0 0 0 0 rgba(139, 92, 246, 0)"
+                                }
+                            }
                         }}
                     >
-                        Resumo Clínico
-                    </Typography>
+                        {isLoading ? (
+                            <CircularProgress size={50} color="secondary" />
+                        ) : canUseAI ? (
+                            <PsychologyAltIcon sx={{ fontSize: 60 }} />
+                        ) : (
+                            <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <PsychologyAltIcon sx={{ fontSize: 60, opacity: 0.5 }} />
+                                <LockIcon
+                                    sx={{
+                                        position: 'absolute',
+                                        fontSize: 24,
+                                        color: '#f59e0b',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)'
+                                    }}
+                                />
+                            </Box>
+                        )}
+                    </Box>
 
-                    <Tooltip title="Gerar relatório com IA">
-                        <IconButton
+                    <Box
+                        sx={{
+                            display: "flex",
+                            flexDirection: "row",
+                            gap: 1,
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            width: "100%",
+                            pl: "10px",
+                            pr: "10px",
+                        }}
+                    >
+                        <Typography
+                            variant="h6"
                             sx={{
-                                width: 28,
-                                height: 28,
-                                backgroundColor: themeColors.insight,
-                                color: "#FFF",
-                                "&:hover": {
-                                    backgroundColor: "#7C3AED",
-                                },
-                                "&:disabled": {
-                                    backgroundColor: "rgba(139, 92, 246, 0.5)",
-                                }
+                                color: canUseAI ? themeColors.insight : "#9e9e9e",
+                                fontFamily: "Gellix",
+                                fontSize: 22,
+                                fontWeight: 600,
+                                textAlign: "start",
+                                flexGrow: 1,
                             }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (onClick && !isLoading) onClick(true);
-                            }}
-                            disabled={isLoading}
                         >
-                            <AutoAwesomeIcon />
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-            </CardContent>
-        </Card>
+                            Resumo Clínico
+                        </Typography>
+
+                        <Tooltip title={canUseAI ? "Gerar relatório com IA" : "Funcionalidade Premium - Faça upgrade"}>
+                            <IconButton
+                                sx={{
+                                    width: 28,
+                                    height: 28,
+                                    backgroundColor: canUseAI ? themeColors.insight : "#f59e0b",
+                                    color: "#FFF",
+                                    "&:hover": {
+                                        backgroundColor: canUseAI ? "#7C3AED" : "#d97706",
+                                    },
+                                    "&:disabled": {
+                                        backgroundColor: "rgba(139, 92, 246, 0.5)",
+                                    }
+                                }}
+                                onClick={handleAIClick}
+                                disabled={isLoading}
+                            >
+                                {canUseAI ? <AutoAwesomeIcon /> : <LockIcon />}
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+                </CardContent>
+            </Card>
+
+            <AccessDeniedDialog
+                open={upgradeDialogOpen}
+                onClose={() => setUpgradeDialogOpen(false)}
+                moduleName="ai_analysis"
+                onUpgrade={handleUpgrade}
+                title="Funcionalidade Premium"
+            />
+        </>
     );
 }
 
-// Card de acompanhamento aprimorado
+// Card de acompanhamento SEM controle de acesso (REMOVIDO CONTROLE DE ACESSO)
 function AcompanhamentoCard({ tipo, icone, onClick, variant = "default" }) {
     // Variante especial para o card de Resumo Clínico
     const isInsightVariant = variant === "insight";
@@ -376,10 +429,12 @@ const formatDateString = (dateValue) => {
 // Componente principal aprimorado
 export default function AcompanhamentoSection({ pacienteId, doctorId, patientData = null, onNotaUpdated, forceUpdateNotas }) {
     const theme = useTheme();
+    const { hasAccess, MODULES } = useModuleAccess();
     const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
     const [openReceitaDialog, setOpenReceitaDialog] = useState(false);
     const [openExamDialog, setOpenExamDialog] = useState(false);
     const [openRelatorioDialog, setOpenRelatorioDialog] = useState(false);
+    const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
     const [isLoadingRelatorio, setIsLoadingRelatorio] = useState(false);
     const [relatorioData, setRelatorioData] = useState(null);
     const [allExams, setAllExams] = useState([]);
@@ -401,6 +456,16 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
         "Avaliando medicações e tratamentos...",
         "Gerando insights clínicos..."
     ];
+
+    // Verificar se tem acesso aos módulos de IA (APENAS PARA RELATÓRIO)
+    const canUseAI = hasAccess(MODULES.AI_ANALYSIS);
+
+    console.log("🔐 Debug acesso IA no AcompanhamentoSection:", {
+        canUseAI,
+        hasAIAnalysis: hasAccess(MODULES.AI_ANALYSIS),
+        hasExamProcessing: hasAccess(MODULES.EXAM_PROCESSING),
+        modules: MODULES
+    });
 
     // Buscar dados do paciente se não forem fornecidos como prop
     useEffect(() => {
@@ -500,6 +565,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
         setSnackbarOpen(true);
     };
 
+    // HANDLERS SEM CONTROLE DE ACESSO (REMOVIDO)
     const handleAnamneseClick = (isAdd) => {
         setOpenAnamneseDialog(true);
     };
@@ -510,6 +576,11 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
 
     const handleExamesClick = (isAdd) => {
         setOpenExamDialog(true);
+    };
+
+    const handleUpgrade = () => {
+        setUpgradeDialogOpen(false);
+        window.location.href = '/checkout';
     };
 
     // Função para preparar os dados do paciente para a IA
@@ -773,8 +844,17 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
         return text.substring(0, maxLength) + "...";
     };
 
-    // Handler for opening relatório dialog with improved user feedback
+    // Handler for opening relatório dialog with improved user feedback (COM CONTROLE DE ACESSO)
     const handleRelatorioClick = async (isGenerate) => {
+        console.log("🔐 Tentando acessar relatório clínico. Tem acesso à IA?", canUseAI);
+
+        // Verificar acesso aos módulos de IA primeiro
+        if (!canUseAI) {
+            console.log("❌ Acesso negado aos módulos de IA");
+            setUpgradeDialogOpen(true);
+            return;
+        }
+
         // Verificar se temos dados do paciente antes de prosseguir
         if (!localPatientData) {
             showSnackbar("Dados do paciente não disponíveis. Aguarde o carregamento ou atualize a página.", "error");
@@ -802,6 +882,13 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
 
     // Função otimizada para gerar o relatório com feedback visual aprimorado
     const generateRelatorio = async () => {
+        // Verificação adicional antes de gerar
+        if (!canUseAI) {
+            console.log("❌ Tentativa de gerar relatório sem acesso aos módulos de IA");
+            setUpgradeDialogOpen(true);
+            return;
+        }
+
         setIsLoadingRelatorio(true);
         setCurrentProcessingFile("dados do paciente");
         setProcessingProgress(0);

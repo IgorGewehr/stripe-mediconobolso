@@ -29,6 +29,7 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import GoogleButton from '../organismsComponents/googleButton';
 
 // Lista de estados brasileiros
 const brazilianStates = [
@@ -67,11 +68,13 @@ const FreeSignupForm = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+    const isSmallScreen = useMediaQuery('(max-height: 700px)');
 
     // Estados do formulário
     const [step, setStep] = useState(1); // 1 = básico, 2 = endereço
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
     // Estados dos dados
@@ -266,6 +269,47 @@ const FreeSignupForm = () => {
         }
     };
 
+    // Handler para cadastro com Google
+    const handleGoogleSignup = async () => {
+        setGoogleLoading(true);
+        setGlobalError('');
+
+        try {
+            console.log('🆓 Iniciando cadastro gratuito com Google...');
+
+            const result = await firebaseService.signUpFreeWithGoogle();
+            const { user, userData } = result;
+
+            console.log('✅ Cadastro gratuito com Google concluído');
+
+            // Enviar emails de boas-vindas
+            firebaseService.sendGoogleWelcomeEmails(
+                user.email,
+                user.displayName || user.email.split('@')[0]
+            ).catch(console.error);
+
+            setSuccess(true);
+
+            // Aguardar antes de redirecionar
+            setTimeout(() => {
+                router.push('/app');
+            }, 2000);
+
+        } catch (error) {
+            console.error("❌ Erro no cadastro gratuito com Google:", error);
+
+            if (error.message === 'Login cancelado pelo usuário') {
+                setGlobalError("Cadastro cancelado.");
+            } else if (error.message === 'Pop-up bloqueado pelo navegador') {
+                setGlobalError("Pop-up bloqueado. Permita pop-ups para este site e tente novamente.");
+            } else {
+                setGlobalError("Erro no cadastro com Google. Tente novamente.");
+            }
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
+
     // Registrar usuário gratuito
     const handleRegister = async () => {
         if (!validateStep2()) {
@@ -403,7 +447,8 @@ const FreeSignupForm = () => {
             minHeight: '100vh',
             backgroundColor: '#fafafa',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            overflowY: 'auto',
         }}>
             {/* Header responsivo */}
             <Box sx={{
@@ -412,7 +457,11 @@ const FreeSignupForm = () => {
                 alignItems: 'center',
                 p: { xs: 2, sm: 3 },
                 backgroundColor: 'white',
-                borderBottom: '1px solid #f0f0f0'
+                borderBottom: '1px solid #f0f0f0',
+                // 🔧 CORREÇÃO: Header fixo apenas em telas grandes
+                position: { xs: 'static', md: 'sticky' },
+                top: 0,
+                zIndex: 10
             }}>
                 <Box
                     component="img"
@@ -425,7 +474,7 @@ const FreeSignupForm = () => {
                 />
                 <Button
                     variant="outlined"
-                    onClick={() => router.push('/login')}
+                    onClick={() => router.push('/')}
                     size={isMobile ? "small" : "medium"}
                     sx={{
                         borderRadius: 2,
@@ -441,9 +490,9 @@ const FreeSignupForm = () => {
             <Box sx={{
                 flex: 1,
                 display: 'flex',
-                alignItems: 'center',
                 justifyContent: 'center',
-                p: { xs: 2, sm: 3 }
+                p: { xs: 2, sm: 3 },
+                flexDirection: 'column',
             }}>
                 <Container maxWidth="sm">
                     <Box sx={{
@@ -451,7 +500,13 @@ const FreeSignupForm = () => {
                         borderRadius: 3,
                         p: { xs: 3, sm: 4 },
                         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                        border: '1px solid #f0f0f0'
+                        border: '1px solid #f0f0f0',
+                        // 🔧 CORREÇÃO: Largura máxima em telas pequenas
+                        width: '100%',
+                        maxWidth: { xs: '100%', sm: '500px' },
+                        mx: 'auto',
+                        // 🔧 CORREÇÃO: Margem inferior em telas pequenas
+                        mb: { xs: 2, md: 0 }
                     }}>
                         <Slide direction="down" in={true} mountOnEnter unmountOnExit timeout={500}>
                             <Box sx={{
@@ -459,7 +514,7 @@ const FreeSignupForm = () => {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 gap: 0.5,
-                                mb: { xs: 3, sm: 4 }
+                                mb: { xs: 2, sm: 3, md: 4 }
                             }}>
                                 <Typography
                                     variant={isMobile ? "h5" : "h4"}
@@ -467,7 +522,8 @@ const FreeSignupForm = () => {
                                     sx={{
                                         color: "primary.main",
                                         fontWeight: 700,
-                                        textAlign: 'center'
+                                        textAlign: 'center',
+                                        fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
                                     }}
                                 >
                                     Conta Gratuita
@@ -475,12 +531,58 @@ const FreeSignupForm = () => {
                                 <Typography
                                     variant={isMobile ? "body2" : "subtitle1"}
                                     color="text.secondary"
-                                    sx={{ textAlign: 'center' }}
+                                    sx={{
+                                        textAlign: 'center',
+                                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                                    }}
                                 >
                                     Acesso completo sem custo algum!
                                 </Typography>
                             </Box>
                         </Slide>
+
+                        {/* Botão Google Auth Profissional */}
+                        <Box sx={{ width: '100%', mb: 3 }}>
+                            <GoogleButton
+                                onClick={handleGoogleSignup}
+                                loading={googleLoading}
+                                type="signup"
+                                size={isMobile ? "medium" : "medium"}
+                                fullWidth
+                            />
+                        </Box>
+
+                        {/* Divisor "ou" */}
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            width: '100%',
+                            my: { xs: 2, md: 3 },
+                            gap: 2
+                        }}>
+                            <Box sx={{
+                                flex: 1,
+                                height: '1px',
+                                backgroundColor: '#e0e0e0'
+                            }} />
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: 'text.secondary',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 500,
+                                    px: 1,
+                                    fontFamily: 'Roboto, Arial, sans-serif'
+                                }}
+                            >
+                                ou
+                            </Typography>
+                            <Box sx={{
+                                flex: 1,
+                                height: '1px',
+                                backgroundColor: '#e0e0e0'
+                            }} />
+                        </Box>
 
                         {step === 1 ? (
                             // Step 1: Informações Básicas

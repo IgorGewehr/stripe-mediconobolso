@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { Box, Button, Typography, Avatar } from "@mui/material";
+import React, { useState, useMemo } from "react";
+import { Box, Button, Typography, Avatar, Tooltip } from "@mui/material";
 import { useResponsiveScale } from "./useScale";
 import { useAuth } from "./authProvider";
+import useModuleAccess from "./useModuleAccess";
+import ModuleProtection from "./ModuleProtection";
 import LockIcon from "@mui/icons-material/Lock";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import { MODULES } from "../../lib/moduleConfig";
 
 const Sidebar = ({
                      initialSelected = "Dashboard",
@@ -17,34 +20,122 @@ const Sidebar = ({
                  }) => {
     const [selected, setSelected] = useState(initialSelected);
     const { user } = useAuth();
+    const { hasAccess, isAdmin, getUnavailableModules, isLegacyUser } = useModuleAccess();
     const { scaleStyle } = useResponsiveScale();
 
-    const isAdmin = user && user.administrador === true;
+    // Definir itens do menu com lógica híbrida
+    const menuItems = useMemo(() => ({
+        principal: [
+            {
+                label: "Dashboard",
+                icon: "/dashboardico.svg",
+                moduleId: MODULES.DASHBOARD
+            },
+            {
+                label: "Pacientes",
+                icon: "/pacientes.svg",
+                moduleId: MODULES.PATIENTS
+            },
+            {
+                label: "Receitas",
+                icon: "/receitas.svg",
+                moduleId: MODULES.PRESCRIPTIONS
+            },
+            {
+                label: "Agenda",
+                icon: "/agenda.svg",
+                moduleId: MODULES.APPOINTMENTS
+            },
+            // ✨ LÓGICA HÍBRIDA: Estes ainda são hardcoded disabled
+            {
+                label: "Métricas",
+                icon: "/metricas.svg",
+                disabled: true, // 🔒 Hardcoded - ainda não liberado para ninguém
+                moduleId: null // Não usa sistema de módulos ainda
+            },
+            {
+                label: "Financeiro",
+                icon: "/financeiro.svg",
+                disabled: true, // 🔒 Hardcoded - ainda não liberado para ninguém
+                moduleId: null // Não usa sistema de módulos ainda
+            }
+        ],
+        admin: [
+            // ✨ LÓGICA ANTERIOR: Só mostra para admin (não usa sistema de módulos)
+            ...(user && user.administrador === true ? [{
+                label: "Dados",
+                iconComponent: AdminPanelSettingsIcon,
+                moduleId: null // Não usa sistema de módulos
+            }] : [])
+        ],
+        suporte: [
+            {
+                label: "Central de Ajuda",
+                icon: "/centralajuda.svg",
+                moduleId: null // Sempre disponível
+            },
+            {
+                label: "Reportar",
+                icon: "/reportar.svg",
+                moduleId: null // Sempre disponível
+            }
+        ]
+    }), [user]);
 
-    const principalItems = [
-        { label: "Dashboard", icon: "/dashboardico.svg" },
-        { label: "Pacientes", icon: "/pacientes.svg" },
-        { label: "Receitas", icon: "/receitas.svg" },
-        { label: "Agenda", icon: "/agenda.svg" },
-        { label: "Métricas", icon: "/metricas.svg", disabled: true },
-        { label: "Financeiro", icon: "/financeiro.svg", disabled: true },
-        // Só adiciona se for admin
-        ...(isAdmin
-            ? [{ label: "Dados", iconComponent: AdminPanelSettingsIcon }]
-            : []),
-    ];
+    // Filtrar itens baseado no acesso (híbrido)
+    const visibleItems = useMemo(() => {
+        const filterItems = (items) => items.map(item => {
+            // Se tem disabled hardcoded, usar isso
+            if (item.hasOwnProperty('disabled')) {
+                return {
+                    ...item,
+                    hasAccess: !item.disabled,
+                    disabled: item.disabled
+                };
+            }
 
-    const suporteItems = [
-        { label: "Central de Ajuda", icon: "/centralajuda.svg" },
-        { label: "Reportar", icon: "/reportar.svg" },
-    ];
+            // Se não tem moduleId, é sempre acessível (suporte, admin)
+            if (!item.moduleId) {
+                return {
+                    ...item,
+                    hasAccess: true,
+                    disabled: false
+                };
+            }
 
-    const handleMenuClick = (label, isLogout = false, disabled = false) => {
-        if (disabled) return;
+            // Usar sistema de módulos
+            return {
+                ...item,
+                hasAccess: hasAccess(item.moduleId),
+                disabled: !hasAccess(item.moduleId)
+            };
+        });
+
+        return {
+            principal: filterItems(menuItems.principal),
+            admin: filterItems(menuItems.admin),
+            suporte: filterItems(menuItems.suporte)
+        };
+    }, [menuItems, hasAccess]);
+
+    // Obter módulos indisponíveis para mostrar opções de upgrade (só se não for legacy)
+    const unavailableModules = isLegacyUser ? [] : getUnavailableModules();
+
+    const handleMenuClick = (label, isLogout = false, disabled = false, moduleId = null) => {
+        if (disabled) {
+            // Para itens disabled hardcoded, não fazer nada
+            if (label === "Métricas" || label === "Financeiro") {
+                return; // Silenciosamente ignora cliques em itens ainda não liberados
+            }
+            // Para outros itens desabilitados, o ModuleProtection cuidará do diálogo
+            return;
+        }
+
         if (isLogout && onLogout) {
             onLogout();
             return;
         }
+
         setSelected(label);
         onMenuSelect?.(label);
     };
@@ -52,6 +143,11 @@ const Sidebar = ({
     const handleProfileClick = () => {
         if (onProfileClick) onProfileClick();
         else onMenuSelect?.("Meu Perfil");
+    };
+
+    const handleUpgrade = (moduleId) => {
+        // Redirecionar para página de upgrade/checkout
+        window.location.href = '/checkout';
     };
 
     const buttonStyles = (isSelected, label, isLogout, disabled) => ({
@@ -76,7 +172,7 @@ const Sidebar = ({
                 : isLogout
                     ? "#DB4437"
                     : "#111E5A",
-        backgroundColor: isSelected ? "#4285F4" : "transparent",
+        backgroundColor: isSelected && !disabled ? "#4285F4" : "transparent",
         opacity: disabled ? 0.6 : isSelected ? 0.77 : 1,
         cursor: disabled ? "default" : "pointer",
         "&:hover": {
@@ -100,6 +196,124 @@ const Sidebar = ({
         mb: 0.8,
         mt: 2.5,
         ml: 1.5,
+    };
+
+    // Renderizar item do menu com lógica híbrida
+    const renderMenuItem = (item) => {
+        const isSelected = selected === item.label;
+
+        // Se é item hardcoded disabled (Métricas/Financeiro), renderizar simples
+        if (item.hasOwnProperty('disabled') && item.disabled) {
+            return (
+                <Button
+                    key={item.label}
+                    onClick={() => handleMenuClick(item.label, false, true)}
+                    variant="text"
+                    sx={buttonStyles(false, item.label, false, true)}
+                    startIcon={
+                        item.iconComponent ? (
+                            <item.iconComponent sx={iconStyles} />
+                        ) : (
+                            <Box
+                                component="img"
+                                src={item.icon}
+                                alt={item.label}
+                                sx={iconStyles}
+                            />
+                        )
+                    }
+                    disableRipple
+                >
+                    {item.label}
+                    <LockIcon sx={lockIconStyles} />
+                </Button>
+            );
+        }
+
+        // Se é item sem moduleId (admin, suporte), renderizar simples
+        if (!item.moduleId) {
+            return (
+                <Button
+                    key={item.label}
+                    onClick={() => handleMenuClick(item.label, false, false)}
+                    variant="text"
+                    sx={buttonStyles(isSelected, item.label, false, false)}
+                    startIcon={
+                        item.iconComponent ? (
+                            <item.iconComponent sx={iconStyles} />
+                        ) : (
+                            <Box
+                                component="img"
+                                src={item.icon}
+                                alt={item.label}
+                                sx={iconStyles}
+                            />
+                        )
+                    }
+                >
+                    {item.label}
+                </Button>
+            );
+        }
+
+        // Se é item com sistema de módulos e está desabilitado
+        if (item.disabled && item.moduleId) {
+            return (
+                <ModuleProtection
+                    key={item.label}
+                    moduleId={item.moduleId}
+                    showTooltip={true}
+                    showDialog={true}
+                    onUpgrade={handleUpgrade}
+                >
+                    <Button
+                        variant="text"
+                        sx={buttonStyles(false, item.label, false, true)}
+                        startIcon={
+                            item.iconComponent ? (
+                                <item.iconComponent sx={iconStyles} />
+                            ) : (
+                                <Box
+                                    component="img"
+                                    src={item.icon}
+                                    alt={item.label}
+                                    sx={iconStyles}
+                                />
+                            )
+                        }
+                        disableRipple
+                    >
+                        {item.label}
+                        <LockIcon sx={lockIconStyles} />
+                    </Button>
+                </ModuleProtection>
+            );
+        }
+
+        // Item normal (habilitado com sistema de módulos)
+        return (
+            <Button
+                key={item.label}
+                onClick={() => handleMenuClick(item.label, false, item.disabled, item.moduleId)}
+                variant="text"
+                sx={buttonStyles(isSelected, item.label, false, item.disabled)}
+                startIcon={
+                    item.iconComponent ? (
+                        <item.iconComponent sx={iconStyles} />
+                    ) : (
+                        <Box
+                            component="img"
+                            src={item.icon}
+                            alt={item.label}
+                            sx={iconStyles}
+                        />
+                    )
+                }
+                disableRipple={item.disabled}
+            >
+                {item.label}
+            </Button>
+        );
     };
 
     return (
@@ -129,7 +343,7 @@ const Sidebar = ({
                 {/* Logo */}
                 <Box
                     onClick={() => handleMenuClick("Dashboard")}
-                    sx={{ display: "flex", alignItems: "center", mb: 4, flexShrink: 0 }}
+                    sx={{ display: "flex", alignItems: "center", mb: 4, flexShrink: 0, cursor: "pointer" }}
                 >
                     <Box
                         component="img"
@@ -177,61 +391,25 @@ const Sidebar = ({
                 <Box sx={{ flex: 1, overflowY: "auto" }}>
                     <Typography sx={categoryLabelStyle}>Principal</Typography>
                     <Box>
-                        {principalItems.map((item) => {
-                            const isSelected = selected === item.label && !item.disabled;
-                            return (
-                                <Button
-                                    key={item.label}
-                                    onClick={() =>
-                                        handleMenuClick(item.label, false, item.disabled)
-                                    }
-                                    variant="text"
-                                    sx={buttonStyles(isSelected, item.label, false, item.disabled)}
-                                    startIcon={
-                                        item.iconComponent ? (
-                                            <item.iconComponent sx={iconStyles} />
-                                        ) : (
-                                            <Box
-                                                component="img"
-                                                src={item.icon}
-                                                alt={item.label}
-                                                sx={iconStyles}
-                                            />
-                                        )
-                                    }
-                                    disableRipple={item.disabled}
-                                >
-                                    {item.label}
-                                    {item.disabled && <LockIcon sx={lockIconStyles} />}
-                                </Button>
-                            );
-                        })}
+                        {visibleItems.principal.map(renderMenuItem)}
                     </Box>
+
+                    {/* Seção Admin (só aparece se tiver itens) */}
+                    {visibleItems.admin.length > 0 && (
+                        <>
+                            <Typography sx={categoryLabelStyle}>Administração</Typography>
+                            <Box>
+                                {visibleItems.admin.map(renderMenuItem)}
+                            </Box>
+                        </>
+                    )}
 
                     <Typography sx={categoryLabelStyle}>Suporte</Typography>
                     <Box>
-                        {suporteItems.map((item) => {
-                            const isSelected = selected === item.label;
-                            return (
-                                <Button
-                                    key={item.label}
-                                    onClick={() => handleMenuClick(item.label)}
-                                    variant="text"
-                                    sx={buttonStyles(isSelected, item.label)}
-                                    startIcon={
-                                        <Box
-                                            component="img"
-                                            src={item.icon}
-                                            alt={item.label}
-                                            sx={iconStyles}
-                                        />
-                                    }
-                                >
-                                    {item.label}
-                                </Button>
-                            );
-                        })}
+                        {visibleItems.suporte.map(renderMenuItem)}
                     </Box>
+
+
                 </Box>
 
                 {/* Meu Perfil */}

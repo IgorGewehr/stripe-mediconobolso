@@ -57,6 +57,9 @@ import FirebaseService from '../../../lib/firebaseService';
 import { useAuth } from '../authProvider';
 import ExamTable from "./examTable";
 import { createWorker } from 'tesseract.js';
+import useModuleAccess from '../useModuleAccess';
+import ModuleProtection from '../ModuleProtection';
+import AccessDeniedDialog from '../organismsComponents/accessDeniedDialog';
 
 // Theme creation for defining colors, fonts, and formats
 const theme = createTheme({
@@ -420,6 +423,41 @@ const ExamDialog = ({
     const [processingInBrowser, setProcessingInBrowser] = useState(false);
     const [ocrProgress, setOcrProgress] = useState(0);
     const [ocrStatus, setOcrStatus] = useState('');
+    const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+
+    const checkAIAccess = () => {
+        return hasAccess(MODULES.AI_ANALYSIS) && hasAccess(MODULES.EXAM_PROCESSING);
+    };
+
+
+    const handleAIProcessWithCheck = (attachment = null) => {
+        if (!checkAIAccess()) {
+            setUpgradeDialogOpen(true);
+            return;
+        }
+
+        // Prosseguir com processamento normal
+        if (attachment) {
+            handleProcessExistingAttachment(attachment);
+        } else {
+            // Processar primeiro arquivo processável
+            const processableFile = attachments.find(att => {
+                const { isSupported } = detectFileType(att);
+                return isSupported;
+            });
+            if (processableFile) {
+                handleProcessExistingAttachment(processableFile);
+            }
+        }
+    };
+
+
+    const handleUpgrade = () => {
+        setUpgradeDialogOpen(false);
+        // Redirecionar para checkout mantendo dados do usuário
+        window.location.href = '/checkout';
+    };
+
 
     // Função para mostrar notificações
     const showNotification = (message, severity = 'success') => {
@@ -800,6 +838,47 @@ const ExamDialog = ({
                     </Typography>
                 </Box>
 
+                {/* ✅ Botão para processar anexos com verificação */}
+                {isSupported && onProcess && (
+                    <ModuleProtection
+                        moduleId={MODULES.AI_ANALYSIS}
+                        showTooltip={false}
+                        showDialog={false}
+                        onAccessDenied={() => setUpgradeDialogOpen(true)}
+                    >
+                        <Tooltip title={isImage ? "Processar imagem com OCR" : "Processar com IA"}>
+                            <IconButton
+                                size="small"
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+
+                                    if (!checkAIAccess()) {
+                                        setUpgradeDialogOpen(true);
+                                        return;
+                                    }
+
+                                    onProcess();
+                                }}
+                                disabled={disabled}
+                                color="primary"
+                                sx={{
+                                    ml: 0.5,
+                                    p: 0.5,
+                                    bgcolor: isImage ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                                    '&:hover': {
+                                        backgroundColor: isImage
+                                            ? alpha(theme.palette.primary.main, 0.2)
+                                            : alpha(theme.palette.primary.main, 0.1),
+                                    }
+                                }}
+                            >
+                                <AutoAwesomeIcon fontSize="small" sx={{ fontSize: '16px' }} />
+                            </IconButton>
+                        </Tooltip>
+                    </ModuleProtection>
+                )}
+
                 {/* Botão para processar anexos - MODIFICADO com estilo mais destacado para imagens */}
                 {isSupported && onProcess && (
                     <Tooltip title={isImage ? "Processar imagem com OCR" : "Processar com IA"}>
@@ -843,6 +922,8 @@ const ExamDialog = ({
                     </IconButton>
                 </Tooltip>
             </Box>
+
+
         );
     };
 
@@ -2488,50 +2569,30 @@ const ExamDialog = ({
                                                 <Box sx={{ display: 'flex', gap: 2 }}>
                                                     {/* Botão para processar com IA - mostrado somente quando há anexos processáveis */}
                                                     {hasProcessableAttachments && (
-                                                        <Button
-                                                            variant="outlined"
-                                                            startIcon={<AutoAwesomeIcon />}
-                                                            onClick={() => {
-                                                                // Encontrar primeiro PDF/DOCX/Imagem e processá-lo
-                                                                const processableFile = attachments.find(att => {
-                                                                    // Verificar se é PDF
-                                                                    const isPdf = att.fileType === 'application/pdf' ||
-                                                                        att.fileName?.toLowerCase().endsWith('.pdf');
-
-                                                                    // Verificar se é DOCX
-                                                                    const isDocx = att.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                                                                        att.fileName?.toLowerCase().endsWith('.docx') ||
-                                                                        att.fileName?.toLowerCase().endsWith('.doc');
-
-                                                                    // Verificar se é uma imagem
-                                                                    const isImage = att.fileType?.startsWith('image/') ||
-                                                                        ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].some(ext =>
-                                                                            att.fileName?.toLowerCase().endsWith('.' + ext)
-                                                                        );
-
-                                                                    // Retornar true se for qualquer um dos tipos suportados
-                                                                    return isPdf || isDocx || isImage;
-                                                                });
-
-                                                                if (processableFile) {
-                                                                    handleProcessExistingAttachment(processableFile);
-                                                                } else {
-                                                                    showNotification("Nenhum arquivo processável encontrado", "warning");
-                                                                }
-                                                            }}
-                                                            disabled={isLoading}
-                                                            sx={{
-                                                                height: 36,
-                                                                color: categoryColor.main,
-                                                                borderColor: categoryColor.main,
-                                                                '&:hover': {
-                                                                    backgroundColor: alpha(categoryColor.light, 0.3),
-                                                                    borderColor: categoryColor.dark
-                                                                }
-                                                            }}
+                                                        <ModuleProtection
+                                                            moduleId={MODULES.AI_ANALYSIS}
+                                                            showTooltip={false}
+                                                            showDialog={false}
+                                                            onAccessDenied={() => setUpgradeDialogOpen(true)}
                                                         >
-                                                            Processar com IA
-                                                        </Button>
+                                                            <Button
+                                                                variant="outlined"
+                                                                startIcon={<AutoAwesomeIcon />}
+                                                                onClick={() => handleAIProcessWithCheck()}
+                                                                disabled={isLoading}
+                                                                sx={{
+                                                                    height: 36,
+                                                                    color: categoryColor.main,
+                                                                    borderColor: categoryColor.main,
+                                                                    '&:hover': {
+                                                                        backgroundColor: alpha(categoryColor.light, 0.3),
+                                                                        borderColor: categoryColor.dark
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Processar com IA
+                                                            </Button>
+                                                        </ModuleProtection>
                                                     )}
 
                                                     <Button
@@ -2861,6 +2922,14 @@ const ExamDialog = ({
                 </Snackbar>
             </StyledDialog>
             <OcrTipsDialog open={showOcrTips} onClose={() => setShowOcrTips(false)} />
+
+            <AccessDeniedDialog
+                open={upgradeDialogOpen}
+                onClose={() => setUpgradeDialogOpen(false)}
+                moduleName="ai_analysis"
+                onUpgrade={handleUpgrade}
+                title="Funcionalidade Premium"
+            />
         </ThemeProvider>
     );
 };

@@ -1,11 +1,10 @@
-// app/api/create-subscription/route.js
+// app/api/create-subscription/route.js - VERSÃO COM BOLETO
 import { NextResponse } from 'next/server';
 import { stripe } from '../../../lib/stripe';
 import { headers } from 'next/headers';
 
 export async function POST(req) {
     try {
-        // Extrair dados da requisição com tratamento de erros
         let requestData;
         try {
             requestData = await req.json();
@@ -23,21 +22,21 @@ export async function POST(req) {
             email,
             name,
             cpf,
-            includeTrial = false
+            includeTrial = false,
+            paymentMethod = 'card', // 🆕 NOVO CAMPO
+            address = null // 🆕 OBRIGATÓRIO PARA BOLETO
         } = requestData;
 
-        // Tratamento seguro do referralSource para evitar erro em metadados
+        // Tratamento seguro do referralSource
         let referralSource = null;
         try {
             referralSource = requestData.referralSource;
-            // Garantir que referralSource seja uma string válida e não muito longa
             if (referralSource && (typeof referralSource !== 'string' || referralSource.length > 100)) {
                 console.warn(`referralSource inválido, formato: ${typeof referralSource}, comprimento: ${referralSource?.length}`);
                 referralSource = null;
             }
         } catch (refError) {
             console.error('Erro ao processar referralSource:', refError);
-            // Definimos como null em caso de erro, não interrompendo o fluxo principal
             referralSource = null;
         }
 
@@ -59,19 +58,46 @@ export async function POST(req) {
             );
         }
 
-        console.log(`Iniciando criação de assinatura: UID=${uid}, Email=${email}, Plano=${plan}, Trial=${includeTrial}, Referência=${referralSource || 'Nenhuma'}`);
+        // 🆕 VALIDAÇÃO ESPECÍFICA PARA BOLETO
+        if (paymentMethod === 'boleto') {
+            // Para boleto, CPF é obrigatório
+            if (!cpf || cpf.replace(/\D/g, '').length !== 11) {
+                return NextResponse.json(
+                    { message: 'CPF é obrigatório e deve ser válido para pagamento por boleto.' },
+                    { status: 400 }
+                );
+            }
+
+            // Para boleto, endereço completo é obrigatório
+            if (!address || !address.street || !address.city || !address.state || !address.cep) {
+                return NextResponse.json(
+                    { message: 'Endereço completo é obrigatório para pagamento por boleto.' },
+                    { status: 400 }
+                );
+            }
+
+            // Nome completo é obrigatório para boleto
+            if (!name || name.trim().split(' ').length < 2) {
+                return NextResponse.json(
+                    { message: 'Nome completo é obrigatório para pagamento por boleto.' },
+                    { status: 400 }
+                );
+            }
+        }
+
+        console.log(`Iniciando criação de assinatura: UID=${uid}, Email=${email}, Plano=${plan}, Método=${paymentMethod}, Trial=${includeTrial}`);
 
         // Define o priceId conforme o plano
         let priceId;
         if (plan === "annual") {
-            priceId = "price_1QyKwWI2qmEooUtqOJ9lCFBl"; // Plano anual
+            priceId = "price_1QyKwWI2qmEooUtqOJ9lCFBl";
         } else if (plan === "quarterly") {
-            priceId = "price_1RIH5eI2qmEooUtqsdXyxnEP"; // Plano trimestral
+            priceId = "price_1RIH5eI2qmEooUtqsdXyxnEP";
         } else {
-            priceId = "price_1QyKrNI2qmEooUtqKfgYIemz"; // Plano mensal (padrão)
+            priceId = "price_1QyKrNI2qmEooUtqKfgYIemz";
         }
 
-        // Verificar se o price realmente existe
+        // Verificar se o price existe
         try {
             await stripe.prices.retrieve(priceId);
         } catch (priceError) {
@@ -82,12 +108,22 @@ export async function POST(req) {
             );
         }
 
-        // Preparar metadados com tratamento de erros
-        let customerMetadata = { uid, checkoutVersion: '2.0' };
-        let subscriptionMetadata = { uid, plan, hasTrial: includeTrial ? 'true' : 'false', checkoutVersion: '2.0' };
+        // Preparar metadados
+        let customerMetadata = {
+            uid,
+            checkoutVersion: '2.0',
+            paymentMethod: paymentMethod // 🆕 ADICIONAR MÉTODO DE PAGAMENTO
+        };
+        let subscriptionMetadata = {
+            uid,
+            plan,
+            paymentMethod: paymentMethod, // 🆕 ADICIONAR MÉTODO DE PAGAMENTO
+            hasTrial: includeTrial ? 'true' : 'false',
+            checkoutVersion: '2.0'
+        };
 
         try {
-            // Adicionar CPF aos metadados com tratamento de erro
+            // Adicionar CPF aos metadados
             if (cpf) {
                 const sanitizedCpf = typeof cpf === 'string' ? cpf.replace(/\D/g, '') : '';
                 if (sanitizedCpf) {
@@ -95,17 +131,29 @@ export async function POST(req) {
                 }
             }
 
-            // Adicionar referralSource com tratamento de erro
+            // Adicionar referralSource
             if (referralSource) {
                 customerMetadata.referral_source = referralSource;
                 subscriptionMetadata.referral_source = referralSource;
             }
         } catch (metadataError) {
             console.error('Erro ao processar campos de metadados opcionais:', metadataError);
-            // Continua o fluxo mesmo com erro nos metadados opcionais
         }
 
-        // Buscar ou criar cliente no Stripe com tratamento de erros robustos
+        // 🆕 PREPARAR ENDEREÇO PARA STRIPE (OBRIGATÓRIO PARA BOLETO)
+        let stripeAddress = null;
+        if (address && paymentMethod === 'boleto') {
+            stripeAddress = {
+                line1: `${address.street}, ${address.number}`,
+                line2: address.complement || null,
+                city: address.city,
+                state: address.state,
+                postal_code: address.cep.replace(/\D/g, ''),
+                country: 'BR'
+            };
+        }
+
+        // Buscar ou criar cliente no Stripe
         let customer;
         try {
             const existingCustomers = await stripe.customers.list({
@@ -113,84 +161,103 @@ export async function POST(req) {
                 limit: 1
             });
 
+            const customerData = {
+                email,
+                metadata: customerMetadata,
+                name: name || ''
+            };
+
+            // 🆕 ADICIONAR ENDEREÇO PARA BOLETO
+            if (stripeAddress && paymentMethod === 'boleto') {
+                customerData.address = stripeAddress;
+            }
+
             if (existingCustomers.data.length > 0) {
                 customer = existingCustomers.data[0];
-                // Atualiza os metadados e nome do cliente existente
-                await stripe.customers.update(customer.id, {
-                    metadata: customerMetadata,
-                    name: name || ''
-                });
-                console.log(`Cliente existente atualizado: ID=${customer.id}, Nome=${name || 'N/A'}, Referência=${referralSource || 'Nenhuma'}`);
+                await stripe.customers.update(customer.id, customerData);
+                console.log(`Cliente existente atualizado: ID=${customer.id}, Método=${paymentMethod}`);
             } else {
-                // Cria um novo cliente
-                customer = await stripe.customers.create({
-                    email,
-                    metadata: customerMetadata,
-                    name: name || ''
-                });
-                console.log(`Novo cliente criado: ID=${customer.id}, Nome=${name || 'N/A'}, Referência=${referralSource || 'Nenhuma'}`);
+                customer = await stripe.customers.create(customerData);
+                console.log(`Novo cliente criado: ID=${customer.id}, Método=${paymentMethod}`);
             }
         } catch (customerError) {
             console.error('Erro ao criar/atualizar cliente:', customerError);
 
-            // Verifica se o erro ocorreu por causa dos metadados
             if (customerError.message && customerError.message.includes('metadata')) {
                 console.warn('Erro nos metadados do cliente, tentando sem metadados opcionais');
+                const basicMetadata = { uid, checkoutVersion: '2.0', paymentMethod: paymentMethod };
 
-                // Tenta novamente só com os metadados essenciais
-                const basicMetadata = { uid, checkoutVersion: '2.0' };
+                const basicCustomerData = {
+                    email,
+                    metadata: basicMetadata,
+                    name: name || ''
+                };
+
+                if (stripeAddress && paymentMethod === 'boleto') {
+                    basicCustomerData.address = stripeAddress;
+                }
 
                 if (existingCustomers && existingCustomers.data && existingCustomers.data.length > 0) {
                     customer = existingCustomers.data[0];
-                    await stripe.customers.update(customer.id, {
-                        metadata: basicMetadata,
-                        name: name || ''
-                    });
+                    await stripe.customers.update(customer.id, basicCustomerData);
                 } else {
-                    customer = await stripe.customers.create({
-                        email,
-                        metadata: basicMetadata,
-                        name: name || ''
-                    });
+                    customer = await stripe.customers.create(basicCustomerData);
                 }
             } else {
-                // Se foi outro erro, repassamos para o tratamento geral
                 throw customerError;
             }
         }
 
-        // Preparar os dados da assinatura
+        // 🆕 CONFIGURAR DADOS DA ASSINATURA BASEADO NO MÉTODO DE PAGAMENTO
         const subscriptionData = {
             customer: customer.id,
             items: [{ price: priceId }],
-            payment_behavior: 'default_incomplete',
-            payment_settings: {
-                save_default_payment_method: 'on_subscription',
-                payment_method_types: ['card']
-            },
-            expand: ['latest_invoice.payment_intent'],
             metadata: subscriptionMetadata
         };
 
-        // Adicionar trial de 1 dia (24 horas) se solicitado
+        // 🆕 CONFIGURAÇÃO ESPECÍFICA POR MÉTODO DE PAGAMENTO
+        if (paymentMethod === 'boleto') {
+            // Configuração para boleto
+            subscriptionData.payment_behavior = 'default_incomplete';
+            subscriptionData.payment_settings = {
+                payment_method_types: ['boleto'],
+                save_default_payment_method: 'off' // Boleto não salva método
+            };
+            subscriptionData.expand = ['latest_invoice.payment_intent'];
+
+            // 🆕 CONFIGURAÇÕES ESPECÍFICAS DO BOLETO BRASILEIRO
+            subscriptionData.automatic_tax = { enabled: false };
+
+            console.log(`📄 Configurando assinatura para BOLETO`);
+        } else {
+            // Configuração para cartão (mantida como estava)
+            subscriptionData.payment_behavior = 'default_incomplete';
+            subscriptionData.payment_settings = {
+                save_default_payment_method: 'on_subscription',
+                payment_method_types: ['card']
+            };
+            subscriptionData.expand = ['latest_invoice.payment_intent'];
+
+            console.log(`💳 Configurando assinatura para CARTÃO`);
+        }
+
+        // Adicionar trial se solicitado
         if (includeTrial) {
             subscriptionData.trial_period_days = 1;
         }
 
-        // Criar a assinatura com tratamento de erros específicos para metadados
+        // Criar a assinatura
         let subscription;
         try {
-            console.log(`Criando assinatura para cliente: ${customer.id}`);
+            console.log(`Criando assinatura para cliente: ${customer.id} (${paymentMethod})`);
             subscription = await stripe.subscriptions.create(subscriptionData);
         } catch (subscriptionError) {
-            // Verifica se o erro é devido aos metadados
             if (subscriptionError.message && subscriptionError.message.includes('metadata')) {
                 console.warn('Erro nos metadados da assinatura, tentando sem metadados opcionais');
-
-                // Remove os metadados opcionais e tenta novamente
                 const basicMetadata = {
                     uid,
                     plan,
+                    paymentMethod: paymentMethod,
                     hasTrial: includeTrial ? 'true' : 'false',
                     checkoutVersion: '2.0'
                 };
@@ -198,49 +265,79 @@ export async function POST(req) {
                 subscriptionData.metadata = basicMetadata;
                 subscription = await stripe.subscriptions.create(subscriptionData);
             } else {
-                // Se foi outro erro, repassamos para o tratamento geral
                 throw subscriptionError;
             }
         }
 
         console.log(`Assinatura criada: ID=${subscription.id}, Status=${subscription.status}`);
 
-        // Extrair o Payment Intent da fatura mais recente com verificação de segurança
+        // Extrair o Payment Intent da fatura mais recente
         let paymentIntent = null;
+        let clientSecret = null;
 
         try {
             const invoice = subscription.latest_invoice;
             paymentIntent = invoice && invoice.payment_intent;
+
+            if (paymentIntent) {
+                clientSecret = paymentIntent.client_secret;
+                console.log(`Payment Intent: ID=${paymentIntent.id}, Status=${paymentIntent.status}, Método=${paymentMethod}`);
+            }
         } catch (invoiceError) {
             console.error('Erro ao acessar invoice ou payment intent:', invoiceError);
-            // Continua sem o payment intent se houver erro
         }
 
-        if (paymentIntent) {
-            // Se existir um payment intent
-            console.log(`Payment Intent: ID=${paymentIntent.id}, Status=${paymentIntent.status}`);
+        if (paymentMethod === 'boleto') {
+            // 🆕 CONFIGURAÇÃO CORRIGIDA PARA BOLETO
+            subscriptionData.payment_behavior = 'default_incomplete';
+            subscriptionData.payment_settings = {
+                payment_method_types: ['boleto'],
+                save_default_payment_method: 'off'
+            };
+            subscriptionData.expand = ['latest_invoice.payment_intent'];
 
-            return NextResponse.json({
-                subscriptionId: subscription.id,
-                clientSecret: paymentIntent.client_secret,
-                status: subscription.status
-            });
+            // 🔧 ADICIONAR: Configurações específicas do boleto brasileiro
+            subscriptionData.automatic_tax = { enabled: false };
+
+            // 🆕 CRITICAL: Configure o payment_intent com boleto
+            subscriptionData.payment_settings.payment_method_options = {
+                boleto: {
+                    expires_after_days: 3 // Boleto expira em 3 dias
+                }
+            };
+
+            console.log(`📄 Configurando assinatura para BOLETO com expiração em 3 dias`);
         } else {
-            // Se não existir payment intent (como em assinaturas trial)
-            console.log('Sem payment intent para esta assinatura (possivelmente um trial)');
+            // Configuração para cartão (mantida como estava)
+            subscriptionData.payment_behavior = 'default_incomplete';
+            subscriptionData.payment_settings = {
+                save_default_payment_method: 'on_subscription',
+                payment_method_types: ['card']
+            };
+            subscriptionData.expand = ['latest_invoice.payment_intent'];
+        }
 
-            return NextResponse.json({
-                subscriptionId: subscription.id,
-                status: subscription.status,
-                success: true
-            });
+// 🆕 ADICIONAR: Depois de criar a subscription, buscar o boleto
+        if (paymentMethod === 'boleto' && subscription && subscription.latest_invoice?.payment_intent) {
+            const paymentIntent = subscription.latest_invoice.payment_intent;
+
+            // Buscar o método de pagamento para obter a URL do boleto
+            if (paymentIntent.next_action?.boleto_display_details?.hosted_voucher_url) {
+                return NextResponse.json({
+                    subscriptionId: subscription.id,
+                    clientSecret: paymentIntent.client_secret,
+                    status: subscription.status,
+                    paymentMethod: 'boleto',
+                    paymentIntentId: paymentIntent.id,
+                    boletoUrl: paymentIntent.next_action.boleto_display_details.hosted_voucher_url,
+                    message: 'Boleto gerado com sucesso'
+                });
+            }
         }
 
     } catch (error) {
-        // Log detalhado do erro para depuração
         console.error('Erro ao criar assinatura:', error);
 
-        // Determinar mensagem de erro mais específica para o cliente
         let errorMessage = 'Erro ao configurar a assinatura. Por favor, tente novamente.';
         let statusCode = 500;
 
@@ -279,7 +376,7 @@ export async function POST(req) {
                     statusCode = 429;
                     break;
                 case 'authentication_required':
-                    errorMessage = 'Autenticação adicional necessária para este cartão. Por favor, tente novamente ou use outro cartão.';
+                    errorMessage = 'Autenticação adicional necessária. Por favor, tente novamente ou use outro método de pagamento.';
                     statusCode = 402;
                     break;
                 case 'card_declined':

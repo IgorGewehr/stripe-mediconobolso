@@ -21,9 +21,11 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../authProvider";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import GoogleButton, { GoogleButtonWithDivider } from './GoogleButton';
 
 export const AuthForms = () => {
     const [showPassword, setShowPassword] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
 
     const initialFormData = {
         email: "",
@@ -35,7 +37,7 @@ export const AuthForms = () => {
     const [authError, setAuthError] = useState("");
     const [passwordResetSent, setPasswordResetSent] = useState(false);
     const router = useRouter();
-    const { setUserId } = useAuth();
+    const { setUserId, referralSource } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -100,6 +102,66 @@ export const AuthForms = () => {
             } else {
                 setAuthError("Erro na autenticação. Tente novamente.");
             }
+        }
+    };
+
+    // Handler para login/signup com Google CORRIGIDO
+    const handleGoogleLogin = async () => {
+        setGoogleLoading(true);
+        setAuthError("");
+
+        try {
+            console.log('🔄 Iniciando login/signup com Google...');
+
+            // Primeiro, tentar login normal para verificar se usuário já existe
+            const result = await firebaseService.loginWithGoogle();
+            const { user, isNewUser, userData } = result;
+
+            if (isNewUser) {
+                console.log('🆕 Novo usuário Google detectado – criando conta gratuita...');
+
+                // ✅ CORREÇÃO: Usar o método signUpFreeWithGoogle que já funciona corretamente
+                const signupResult = await firebaseService.signUpFreeWithGoogle();
+
+                console.log('✅ Conta gratuita Google criada com sucesso');
+
+                // Enviar emails de boas-vindas em background
+                firebaseService.sendGoogleWelcomeEmails(
+                    user.email,
+                    user.displayName || user.email.split('@')[0]
+                ).catch(error => {
+                    console.error('❌ Erro ao enviar emails de boas-vindas:', error);
+                    // Não bloquear o fluxo se o email falhar
+                });
+            } else {
+                console.log('✅ Login com Google concluído – usuário existente');
+            }
+
+            // O AuthProvider vai capturar a mudança e redirecionar automaticamente
+
+        } catch (error) {
+            console.error('❌ Erro no login/signup com Google:', error);
+
+            // Mapear erros específicos do Google Auth
+            if (error.message === 'Login cancelado pelo usuário') {
+                setAuthError("Login cancelado.");
+            } else if (error.message === 'Pop-up bloqueado pelo navegador') {
+                setAuthError("Pop-up bloqueado. Permita pop-ups para este site e tente novamente.");
+            } else if (error.code === 'auth/popup-closed-by-user') {
+                setAuthError("Você fechou o popup antes de concluir. Tente novamente.");
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                setAuthError("Solicitação de login cancelada.");
+            } else if (error.code === 'auth/network-request-failed') {
+                setAuthError("Erro de conexão. Verifique sua internet.");
+            } else if (error.code === 'auth/internal-error') {
+                setAuthError("Erro interno. Tente novamente.");
+            } else if (error.code === 'auth/account-exists-with-different-credential') {
+                setAuthError("Já existe uma conta com este email usando outro método de login.");
+            } else {
+                setAuthError("Erro no login com Google. Tente novamente.");
+            }
+        } finally {
+            setGoogleLoading(false);
         }
     };
 
@@ -180,6 +242,49 @@ export const AuthForms = () => {
                 </Box>
             </Slide>
 
+            {/* Botão Google Auth Profissional */}
+            <Box sx={{ width: '100%', mt: { xs: 1, md: 0 } }}>
+                <GoogleButton
+                    onClick={handleGoogleLogin}
+                    loading={googleLoading}
+                    type="signin"
+                    size={isSmallMobile ? "medium" : "medium"}
+                    fullWidth
+                />
+            </Box>
+
+            {/* Divisor "ou" */}
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                my: { xs: 2, md: 2 },
+                gap: 2
+            }}>
+                <Box sx={{
+                    flex: 1,
+                    height: '1px',
+                    backgroundColor: '#e0e0e0'
+                }} />
+                <Typography
+                    variant="body2"
+                    sx={{
+                        color: 'text.secondary',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        px: 1,
+                        fontFamily: 'Roboto, Arial, sans-serif'
+                    }}
+                >
+                    ou
+                </Typography>
+                <Box sx={{
+                    flex: 1,
+                    height: '1px',
+                    backgroundColor: '#e0e0e0'
+                }} />
+            </Box>
+
             {authError && (
                 <Alert severity="error" sx={{
                     width: "100%",
@@ -190,7 +295,7 @@ export const AuthForms = () => {
                 </Alert>
             )}
 
-            <Stack spacing={{ xs: 2, sm: 2.5, md: 1.5 }} width="100%" sx={{ mt: { xs: 1, md: 0 } }}>
+            <Stack spacing={{ xs: 2, sm: 2.5, md: 1.5 }} width="100%">
                 <TextField
                     label="E-mail"
                     variant="outlined"

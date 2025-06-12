@@ -1,4 +1,4 @@
-// app/api/webhook/route.js
+// app/api/webhook/route.js - VERSÃO COMPLETA COM SUPORTE A BOLETO
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '../../../lib/stripe';
@@ -13,15 +13,12 @@ async function updateUserWithRetry(uid, userData, maxRetries = 3) {
 
   while (attempt < maxRetries) {
     try {
-      // Verificar se o documento existe antes de tentar atualizar
       const userRef = doc(firestore, "users", uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        // Se existir, usar updateDoc
         await updateDoc(userRef, userData);
       } else {
-        // Se não existir, usar setDoc com merge: true para criar
         await setDoc(userRef, userData, { merge: true });
       }
 
@@ -32,7 +29,6 @@ async function updateUserWithRetry(uid, userData, maxRetries = 3) {
       console.error(`❌ Tentativa ${attempt} falhou: ${error.message}`);
 
       if (attempt >= maxRetries) {
-        // Última alternativa: tentar via firebaseService
         try {
           await firebaseService.editUserData(uid, userData);
           console.log(`✅ Usuário ${uid} atualizado via firebaseService após ${maxRetries} falhas diretas`);
@@ -43,9 +39,41 @@ async function updateUserWithRetry(uid, userData, maxRetries = 3) {
         }
       }
 
-      // Esperar antes de tentar novamente
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
+  }
+}
+
+// Função para enviar emails de boas-vindas se necessário
+async function sendWelcomeEmailIfNeeded(uid, customerEmail, customerName) {
+  if (!customerEmail) {
+    console.log('📧 Email não fornecido, não é possível enviar boas-vindas');
+    return;
+  }
+
+  try {
+    // Verificar se já enviamos email para este usuário
+    const userData = await firebaseService.getUserData(uid);
+    if (userData.welcomeEmailSent) {
+      console.log(`📧 Email de boas-vindas já enviado para ${customerEmail}`);
+      return;
+    }
+
+    console.log('📧 Enviando email de boas-vindas para:', customerEmail);
+    const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;
+    const welcomeName = customerName || customerEmail.split('@')[0];
+
+    const emailResult = await sendWelcomeEmail(customerEmail, welcomeName, appLink);
+
+    if (emailResult.success) {
+      console.log('✅ Email de boas-vindas enviado com sucesso!');
+      // Marcar como enviado
+      await updateUserWithRetry(uid, { welcomeEmailSent: true });
+    } else {
+      console.error('❌ Falha ao enviar email de boas-vindas:', emailResult.error);
+    }
+  } catch (error) {
+    console.error('❌ Erro ao processar envio de email:', error);
   }
 }
 
@@ -59,7 +87,7 @@ async function processEventWithTimeout(event, timeoutMs = 25000) {
   ]);
 }
 
-// Função principal para processar o evento
+// Função principal para processar o evento - VERSÃO COMPLETA COM BOLETO
 async function processEvent(event) {
   console.log(`🔔 Processando evento Stripe: ${event.type}`);
 
@@ -70,8 +98,9 @@ async function processEvent(event) {
         console.log(`✅ Checkout session completed, status: ${session.payment_status}`);
         console.log('📋 SESSÃO ID:', session.id);
         console.log('🔑 METADADOS:', JSON.stringify(session.metadata));
+        console.log('💳 MÉTODO DE PAGAMENTO:', session.payment_method_types);
 
-        // Verificar idempotência - evitar processamento duplicado
+        // Verificar idempotência
         if (session.metadata && session.metadata.processed === 'true') {
           console.log(`⏭️ Evento já processado anteriormente: ${session.id}`);
           return { success: true, message: 'Já processado' };
@@ -81,7 +110,6 @@ async function processEvent(event) {
         let customerEmail = session.customer_email;
         let customerName = session.customer_details?.name;
 
-        // Se não tiver o email na sessão, buscar do customer
         if (!customerEmail && session.customer) {
           try {
             const customer = await stripe.customers.retrieve(session.customer);
@@ -92,7 +120,6 @@ async function processEvent(event) {
           }
         }
 
-        // Atualiza o status de assinatura e dados do usuário
         if (session.metadata && session.metadata.uid) {
           const uid = session.metadata.uid;
           console.log(`🔄 Atualizando usuário ${uid} com dados do checkout`);
@@ -102,7 +129,6 @@ async function processEvent(event) {
           console.log('🏠 ENDEREÇO ENCONTRADO:', JSON.stringify(address));
 
           // Extrair CPF do campo personalizado
-          console.log('🔑 CAMPOS PERSONALIZADOS:', JSON.stringify(session.custom_fields));
           let cpf = '';
           try {
             if (session.custom_fields && Array.isArray(session.custom_fields)) {
@@ -114,9 +140,14 @@ async function processEvent(event) {
             console.error('❌ Erro ao extrair CPF:', cpfError);
           }
 
-          // Preparar objeto de dados para atualização
-          const userData = {
-            assinouPlano: true,
+          // 🆕 DETECTAR TIPO DE PAGAMENTO
+          const isCardPayment = session.payment_method_types?.includes('card');
+          const isBoletoPayment = session.payment_method_types?.includes('boleto');
+
+          console.log(`💳 Tipo de pagamento: ${isCardPayment ? 'CARTÃO' : ''} ${isBoletoPayment ? 'BOLETO' : ''}`);
+
+          // Preparar dados baseado no status do pagamento
+          let userData = {
             planType: session.metadata.plan || 'monthly',
             address: {
               street: address.line1 || '',
@@ -127,36 +158,45 @@ async function processEvent(event) {
               country: address.country || 'BR',
             },
             cpf: cpf,
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            paymentMethod: isBoletoPayment ? 'boleto' : 'card'
           };
+
+          // 🆕 LÓGICA ESPECÍFICA PARA CADA TIPO DE PAGAMENTO
+          if (session.payment_status === 'paid') {
+            // Pagamento confirmado (cartão ou boleto pago)
+            userData.assinouPlano = true;
+            userData.paymentConfirmedAt = new Date();
+
+            console.log(`✅ Pagamento confirmado para usuário ${uid}`);
+
+            // 🔧 CORREÇÃO: Só enviar email de boas-vindas se pagamento foi confirmado
+            await sendWelcomeEmailIfNeeded(uid, customerEmail, customerName);
+
+          } else if (session.payment_status === 'unpaid' && isBoletoPayment) {
+            // Boleto gerado mas não pago ainda
+            userData.assinouPlano = false;
+            userData.boletoGenerated = true;
+            userData.boletoGeneratedAt = new Date();
+            userData.awaitingBoletoPayment = true;
+
+            console.log(`📄 Boleto gerado para usuário ${uid}, aguardando pagamento`);
+
+            // ❌ NÃO enviar email de boas-vindas aqui para boleto não pago
+
+          } else {
+            // Outros status
+            userData.assinouPlano = false;
+            userData.checkoutStatus = session.payment_status;
+            console.log(`⏳ Status de pagamento: ${session.payment_status} para usuário ${uid}`);
+          }
 
           console.log('📊 DADOS PARA ATUALIZAÇÃO:', JSON.stringify(userData));
 
-          // Tenta atualizar com retry
           try {
             await updateUserWithRetry(uid, userData);
 
-            // ✨ ENVIAR EMAIL DE BOAS-VINDAS ✨
-            if (customerEmail) {
-              console.log('📧 Enviando email de boas-vindas para:', customerEmail);
-              const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/dashboard`;
-
-              // Usar o nome encontrado ou um fallback baseado no email
-              const welcomeName = customerName || customerEmail.split('@')[0];
-
-              const emailResult = await sendWelcomeEmail(customerEmail, welcomeName, appLink);
-
-              if (emailResult.success) {
-                console.log('✅ Email de boas-vindas enviado com sucesso!');
-              } else {
-                console.error('❌ Falha ao enviar email de boas-vindas:', emailResult.error);
-                // Não interrompe o processamento se o email falhar
-              }
-            } else {
-              console.warn('⚠️ Email do cliente não encontrado para envio de boas-vindas');
-            }
-
-            // Marcar como processado para garantir idempotência
+            // Marcar como processado
             try {
               await stripe.checkout.sessions.update(session.id, {
                 metadata: { ...session.metadata, processed: 'true' }
@@ -165,179 +205,103 @@ async function processEvent(event) {
               console.error('⚠️ Erro ao marcar sessão como processada:', markError);
             }
           } catch (updateError) {
-            console.error('❌ Falha em todas as tentativas de atualização:', updateError);
-            // Tentar pelo menos atualizar o status de assinatura
-            try {
-              await updateUserWithRetry(uid, { assinouPlano: true });
-              console.log('⚠️ Apenas status de assinatura atualizado após falhas');
-            } catch (finalError) {
-              console.error('❌❌❌ Falha completa em atualizar o usuário:', finalError);
-              throw finalError;
-            }
+            console.error('❌ Falha ao atualizar usuário:', updateError);
+            throw updateError;
           }
         } else {
           console.error('❌ UID não encontrado nos metadados da sessão!');
-          console.log('🔍 Metadados completos:', JSON.stringify(session.metadata));
           throw new Error('UID não encontrado nos metadados da sessão');
         }
         break;
       }
 
-      case 'customer.subscription.created': {
-        const subscription = event.data.object;
-        console.log(`✨ Subscription created for customer: ${subscription.customer}`);
-        console.log('📋 Subscription metadata:', JSON.stringify(subscription.metadata));
-
-        // Obter email e nome do cliente
-        let customerEmail = '';
-        let customerName = '';
-        let uid = '';
-
-        // Tentativa 1: Verificar metadados da subscription
-        if (subscription.metadata && subscription.metadata.uid) {
-          uid = subscription.metadata.uid;
-        }
-        // Tentativa 2: Buscar cliente no Stripe
-        else {
-          console.log('🔍 Buscando cliente no Stripe:', subscription.customer);
-          try {
-            const customer = await stripe.customers.retrieve(subscription.customer);
-            customerEmail = customer.email;
-            customerName = customer.name;
-
-            if (customer && customer.metadata && customer.metadata.uid) {
-              uid = customer.metadata.uid;
-            } else {
-              console.log('❓ Não foi possível encontrar o UID nos metadados do customer');
-              throw new Error('UID não encontrado para nova assinatura');
-            }
-          } catch (err) {
-            console.error('❌ Erro ao buscar cliente no Stripe:', err);
-            throw err;
-          }
-        }
-
-        // Se temos UID, processar
-        if (uid) {
-          const subscriptionData = {
-            assinouPlano: true,
-            subscriptionCreatedAt: new Date(),
-            subscriptionId: subscription.id,
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-            planType: subscription.metadata.plan || 'monthly'
-          };
-
-          await updateUserWithRetry(uid, subscriptionData);
-          console.log(`✅ Assinatura criada para usuário ${uid}`);
-
-          // ✨ ENVIAR EMAIL DE BOAS-VINDAS (se ainda não foi enviado no checkout.session.completed) ✨
-          if (customerEmail) {
-            console.log('📧 Enviando email de boas-vindas para:', customerEmail);
-            const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/dashboard`;
-
-            // Usar o nome encontrado ou um fallback baseado no email
-            const welcomeName = customerName || customerEmail.split('@')[0];
-
-            const emailResult = await sendWelcomeEmail(customerEmail, welcomeName, appLink);
-
-            if (emailResult.success) {
-              console.log('✅ Email de boas-vindas enviado com sucesso!');
-            } else {
-              console.error('❌ Falha ao enviar email de boas-vindas:', emailResult.error);
-              // Não interrompe o processamento se o email falhar
-            }
-          }
-        }
-        break;
-      }
-
-      case 'invoice.paid': {
+        // 🆕 EVENTO ESPECÍFICO PARA PAGAMENTO DE BOLETO
+      case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
         console.log(`💰 Invoice paid for customer: ${invoice.customer}, amount: ${invoice.amount_paid}`);
 
-        // Obter assinatura associada à fatura
+        // Verificar se é pagamento de boleto
+        let paymentMethod = null;
+        if (invoice.charge) {
+          try {
+            const charge = await stripe.charges.retrieve(invoice.charge);
+            paymentMethod = charge.payment_method_details?.type;
+            console.log(`💳 Método de pagamento da invoice: ${paymentMethod}`);
+          } catch (chargeError) {
+            console.warn('Erro ao buscar detalhes do charge:', chargeError);
+          }
+        }
+
         const subscriptionId = invoice.subscription;
 
         if (subscriptionId) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-          // Tentar obter UID dos metadados da assinatura
           if (subscription.metadata && subscription.metadata.uid) {
             const uid = subscription.metadata.uid;
 
-            // Atualizar dados do usuário
-            await updateUserWithRetry(uid, {
+            const paymentData = {
               assinouPlano: true,
               lastPaymentDate: new Date(),
-              lastInvoiceId: invoice.id
-            });
+              lastInvoiceId: invoice.id,
+              paymentConfirmedAt: new Date()
+            };
 
+            // 🆕 Se foi boleto, marcar especificamente
+            if (paymentMethod === 'boleto') {
+              paymentData.boletoPaymentConfirmed = true;
+              paymentData.awaitingBoletoPayment = false;
+              console.log(`📄✅ Boleto pago confirmado para usuário ${uid}`);
+
+              // 🆕 CRITICAL: Enviar email de boas-vindas quando boleto é pago
+              try {
+                const userData = await firebaseService.getUserData(uid);
+                await sendWelcomeEmailIfNeeded(uid, userData.email, userData.fullName);
+              } catch (userError) {
+                console.warn('Erro ao buscar dados do usuário para email:', userError);
+              }
+            }
+
+            await updateUserWithRetry(uid, paymentData);
             console.log(`✅ Pagamento registrado para usuário ${uid}`);
           } else {
-            // Se não encontrou nos metadados da assinatura, buscar no cliente
+            // Tentar via customer
             const customer = await stripe.customers.retrieve(invoice.customer);
             if (customer && customer.metadata && customer.metadata.uid) {
               const uid = customer.metadata.uid;
 
-              await updateUserWithRetry(uid, {
+              const paymentData = {
                 assinouPlano: true,
                 lastPaymentDate: new Date(),
-                lastInvoiceId: invoice.id
-              });
+                lastInvoiceId: invoice.id,
+                paymentConfirmedAt: new Date()
+              };
 
+              if (paymentMethod === 'boleto') {
+                paymentData.boletoPaymentConfirmed = true;
+                paymentData.awaitingBoletoPayment = false;
+
+                // Enviar email de boas-vindas
+                try {
+                  await sendWelcomeEmailIfNeeded(uid, customer.email, customer.name);
+                } catch (userError) {
+                  console.warn('Erro ao enviar email via customer:', userError);
+                }
+              }
+
+              await updateUserWithRetry(uid, paymentData);
               console.log(`✅ Pagamento registrado para usuário ${uid} (via customer)`);
-            } else {
-              console.log('❓ Não foi possível encontrar o UID para registrar pagamento');
             }
           }
         }
         break;
       }
 
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object;
-        console.log(`⛔ Subscription canceled for customer: ${subscription.customer}`);
-
-        // Tentativa 1: Verificar metadados da subscription
-        if (subscription.metadata && subscription.metadata.uid) {
-          const uid = subscription.metadata.uid;
-          await updateUserWithRetry(uid, {
-            assinouPlano: false,
-            canceledAt: new Date(),
-            cancellationReason: subscription.cancellation_details?.reason || 'unknown'
-          });
-          console.log(`✅ Assinatura cancelada para usuário ${uid}`);
-        }
-        // Tentativa 2: Buscar cliente no Stripe
-        else {
-          console.log('🔍 Buscando cliente no Stripe:', subscription.customer);
-          try {
-            const customer = await stripe.customers.retrieve(subscription.customer);
-            if (customer && customer.metadata && customer.metadata.uid) {
-              const uid = customer.metadata.uid;
-              await updateUserWithRetry(uid, {
-                assinouPlano: false,
-                canceledAt: new Date(),
-                cancellationReason: subscription.cancellation_details?.reason || 'unknown'
-              });
-              console.log(`✅ Assinatura cancelada para usuário ${uid} (via customer)`);
-            } else {
-              console.log('❓ Não foi possível encontrar o UID nos metadados do customer');
-              throw new Error('UID não encontrado para cancelamento');
-            }
-          } catch (err) {
-            console.error('❌ Erro ao buscar cliente no Stripe:', err);
-            throw err;
-          }
-        }
-        break;
-      }
-
+        // 🆕 EVENTO PARA FALHA DE PAGAMENTO DE BOLETO
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
         console.log(`⚠️ Payment failed for customer: ${invoice.customer}, attempt: ${invoice.attempt_count}`);
 
-        // Buscar cliente ou assinatura para atualizar o status
         const subscriptionId = invoice.subscription;
 
         if (subscriptionId) {
@@ -346,21 +310,42 @@ async function processEvent(event) {
 
             if (subscription.metadata && subscription.metadata.uid) {
               const uid = subscription.metadata.uid;
-              await updateUserWithRetry(uid, {
+
+              const failureData = {
                 paymentIssue: true,
                 lastFailedPayment: new Date(),
                 paymentAttemptCount: invoice.attempt_count
-              });
+              };
+
+              // Se era boleto, marcar especificamente
+              if (invoice.payment_intent) {
+                try {
+                  const paymentIntent = await stripe.paymentIntents.retrieve(invoice.payment_intent);
+                  if (paymentIntent.payment_method_types?.includes('boleto')) {
+                    failureData.boletoExpired = true;
+                    failureData.awaitingBoletoPayment = false;
+                    console.log(`📄❌ Boleto expirado para usuário ${uid}`);
+                  }
+                } catch (piError) {
+                  console.warn('Erro ao verificar payment intent:', piError);
+                }
+              }
+
+              await updateUserWithRetry(uid, failureData);
               console.log(`⚠️ Falha de pagamento registrada para usuário ${uid}`);
             } else {
+              // Tentar via customer
               const customer = await stripe.customers.retrieve(invoice.customer);
               if (customer && customer.metadata && customer.metadata.uid) {
                 const uid = customer.metadata.uid;
-                await updateUserWithRetry(uid, {
+
+                const failureData = {
                   paymentIssue: true,
                   lastFailedPayment: new Date(),
                   paymentAttemptCount: invoice.attempt_count
-                });
+                };
+
+                await updateUserWithRetry(uid, failureData);
                 console.log(`⚠️ Falha de pagamento registrada para usuário ${uid} (via customer)`);
               }
             }
@@ -372,17 +357,81 @@ async function processEvent(event) {
         break;
       }
 
+      case 'customer.subscription.created': {
+        const subscription = event.data.object;
+        console.log(`✨ Subscription created for customer: ${subscription.customer}`);
+
+        let customerEmail = '';
+        let customerName = '';
+        let uid = '';
+
+        if (subscription.metadata && subscription.metadata.uid) {
+          uid = subscription.metadata.uid;
+        } else {
+          const customer = await stripe.customers.retrieve(subscription.customer);
+          customerEmail = customer.email;
+          customerName = customer.name;
+
+          if (customer && customer.metadata && customer.metadata.uid) {
+            uid = customer.metadata.uid;
+          } else {
+            throw new Error('UID não encontrado para nova assinatura');
+          }
+        }
+
+        if (uid) {
+          const subscriptionData = {
+            subscriptionCreatedAt: new Date(),
+            subscriptionId: subscription.id,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            planType: subscription.metadata.plan || 'monthly'
+          };
+
+          // ⚠️ NÃO marcar como assinouPlano=true aqui para boleto
+          // Só marcar quando o pagamento for confirmado
+
+          await updateUserWithRetry(uid, subscriptionData);
+          console.log(`✅ Assinatura criada para usuário ${uid}`);
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        console.log(`⛔ Subscription canceled for customer: ${subscription.customer}`);
+
+        if (subscription.metadata && subscription.metadata.uid) {
+          const uid = subscription.metadata.uid;
+          await updateUserWithRetry(uid, {
+            assinouPlano: false,
+            canceledAt: new Date(),
+            cancellationReason: subscription.cancellation_details?.reason || 'unknown'
+          });
+          console.log(`✅ Assinatura cancelada para usuário ${uid}`);
+        } else {
+          const customer = await stripe.customers.retrieve(subscription.customer);
+          if (customer && customer.metadata && customer.metadata.uid) {
+            const uid = customer.metadata.uid;
+            await updateUserWithRetry(uid, {
+              assinouPlano: false,
+              canceledAt: new Date(),
+              cancellationReason: subscription.cancellation_details?.reason || 'unknown'
+            });
+            console.log(`✅ Assinatura cancelada para usuário ${uid} (via customer)`);
+          }
+        }
+        break;
+      }
+
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
         console.log(`🔄 Subscription updated for customer: ${subscription.customer}`);
 
-        // Dados atualizados da assinatura
         const updatedData = {
           currentPeriodEnd: new Date(subscription.current_period_end * 1000),
           status: subscription.status
         };
 
-        // Verificar se o plano foi alterado
         if (subscription.items && subscription.items.data.length > 0) {
           const price = subscription.items.data[0].price;
           if (price && price.metadata && price.metadata.plan) {
@@ -390,27 +439,41 @@ async function processEvent(event) {
           }
         }
 
-        // Tentativa 1: Verificar metadados da subscription
         if (subscription.metadata && subscription.metadata.uid) {
           const uid = subscription.metadata.uid;
           await updateUserWithRetry(uid, updatedData);
           console.log(`✅ Assinatura atualizada para usuário ${uid}`);
-        }
-        // Tentativa 2: Buscar cliente no Stripe
-        else {
-          try {
-            const customer = await stripe.customers.retrieve(subscription.customer);
-            if (customer && customer.metadata && customer.metadata.uid) {
-              const uid = customer.metadata.uid;
-              await updateUserWithRetry(uid, updatedData);
-              console.log(`✅ Assinatura atualizada para usuário ${uid} (via customer)`);
-            } else {
-              console.log('❓ Não foi possível encontrar o UID nos metadados do customer');
-            }
-          } catch (err) {
-            console.error('❌ Erro ao buscar cliente no Stripe:', err);
-            throw err;
+        } else {
+          const customer = await stripe.customers.retrieve(subscription.customer);
+          if (customer && customer.metadata && customer.metadata.uid) {
+            const uid = customer.metadata.uid;
+            await updateUserWithRetry(uid, updatedData);
+            console.log(`✅ Assinatura atualizada para usuário ${uid} (via customer)`);
           }
+        }
+        break;
+      }
+
+        // 🆕 EVENTOS ADICIONAIS PARA PAYMENT INTENT (boleto)
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object;
+        console.log(`💰 Payment Intent succeeded: ${paymentIntent.id}`);
+
+        // Este evento pode ser útil como backup para detectar pagamentos de boleto
+        if (paymentIntent.payment_method_types?.includes('boleto')) {
+          console.log(`📄 Boleto pago detectado via payment_intent: ${paymentIntent.id}`);
+          // A lógica principal já está no invoice.payment_succeeded
+        }
+        break;
+      }
+
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object;
+        console.log(`❌ Payment Intent failed: ${paymentIntent.id}`);
+
+        if (paymentIntent.payment_method_types?.includes('boleto')) {
+          console.log(`📄❌ Boleto expirado detectado via payment_intent: ${paymentIntent.id}`);
+          // A lógica principal já está no invoice.payment_failed
         }
         break;
       }
@@ -434,7 +497,6 @@ export async function POST(req) {
     const payload = await req.text();
     const sig = (await headers()).get('stripe-signature');
 
-    // Verificar se temos os dados necessários
     if (!payload || !sig) {
       console.error('❌ Webhook Error: Payload ou assinatura ausentes');
       return NextResponse.json(
@@ -443,7 +505,6 @@ export async function POST(req) {
       );
     }
 
-    // Construir o evento com a assinatura verificada
     event = stripe.webhooks.constructEvent(
         payload,
         sig,
@@ -458,35 +519,32 @@ export async function POST(req) {
     );
   }
 
-  // Log para debug
   console.log(`🔔 Recebido evento Stripe: ${event.type}`);
 
-  // Eventos que queremos tratar
+  // 🆕 EVENTOS COMPLETOS PARA BOLETO E CARTÃO
   const permittedEvents = [
     'checkout.session.completed',
     'customer.subscription.deleted',
     'invoice.payment_failed',
     'customer.subscription.created',
     'customer.subscription.updated',
-    'invoice.paid'
+    'invoice.payment_succeeded',  // ✅ Essencial para boleto
+    'payment_intent.succeeded',   // ✅ Backup para boleto
+    'payment_intent.payment_failed' // ✅ Para boleto expirado
   ];
 
   if (permittedEvents.includes(event.type)) {
     try {
-      // Processar o evento com timeout
       await processEventWithTimeout(event);
       return NextResponse.json({ message: 'Processed' }, { status: 200 });
     } catch (error) {
       console.error("❌ Erro no processamento do webhook:", error);
-      // Falhas no processamento de webhook retornam 200 para o Stripe não tentar novamente
-      // O ideal é implementar uma fila para reprocessamento interno
       return NextResponse.json(
           { message: 'Webhook received but had processing errors' },
           { status: 200 }
       );
     }
   } else {
-    // Eventos não tratados também retornam 200
     console.log(`⏭️ Evento não tratado: ${event.type}`);
     return NextResponse.json({ message: 'Received' }, { status: 200 });
   }
