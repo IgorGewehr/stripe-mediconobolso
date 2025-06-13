@@ -600,11 +600,39 @@ function CheckoutForm() {
         }
     }, []);
 
-    // 🆕 VALIDAÇÃO ATUALIZADA PARA INCLUIR BOLETO
+    const isUpgradeFlow = Boolean(user && user.uid);
+
+// 🔧 AJUSTE NA VALIDAÇÃO DE DADOS PESSOAIS
     const validatePersonalInfo = useCallback(() => {
         const newErrors = {};
 
-        if (!user) {
+        // Se é upgrade, usar dados do usuário existente
+        if (isUpgradeFlow) {
+            if (!user.fullName && !formData.fullName.trim()) {
+                newErrors.fullName = "Nome completo é obrigatório";
+            }
+            if (!user.email && !formData.email.trim()) {
+                newErrors.email = "Email é obrigatório";
+            }
+
+            // Para upgrade, CPF e endereço são obrigatórios apenas se não existirem
+            if (!user.cpf && !formData.billingCpf.trim()) {
+                newErrors.billingCpf = "CPF é obrigatório";
+            } else if (formData.billingCpf && !validateCPF(formData.billingCpf)) {
+                newErrors.billingCpf = "CPF inválido";
+            }
+
+            // Validar endereço se não existir
+            if (!user.address || !user.address.street) {
+                if (!formData.street.trim()) newErrors.street = "Rua é obrigatória";
+                if (!formData.city.trim()) newErrors.city = "Cidade é obrigatória";
+                if (!formData.state) newErrors.state = "Estado é obrigatório";
+                if (!formData.cep.trim()) newErrors.cep = "CEP é obrigatório";
+                if (!formData.number.trim()) newErrors.number = "Número é obrigatório";
+                if (!formData.neighborhood.trim()) newErrors.neighborhood = "Bairro é obrigatório";
+            }
+        } else {
+            // Validação completa para novos usuários
             if (!formData.fullName.trim()) newErrors.fullName = "Nome completo é obrigatório";
             if (!formData.phone.trim()) newErrors.phone = "Telefone é obrigatório";
             else if (formData.phone.replace(/\D/g, '').length < 10) newErrors.phone = "Telefone inválido";
@@ -612,48 +640,30 @@ function CheckoutForm() {
             else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Email inválido";
             if (!formData.password.trim()) newErrors.password = "Senha é obrigatória";
             else if (formData.password.length < 6) newErrors.password = "A senha deve ter pelo menos 6 caracteres";
-        } else {
-            if (!formData.fullName.trim()) newErrors.fullName = "Nome completo é obrigatório";
-            if (!formData.email.trim()) newErrors.email = "Email é obrigatório";
+
+            // Validações para CPF e endereço
+            if (!formData.billingCpf.trim()) {
+                newErrors.billingCpf = "CPF é obrigatório";
+            } else if (!validateCPF(formData.billingCpf)) {
+                newErrors.billingCpf = "CPF inválido";
+            }
+
+            if (!formData.cep.trim()) {
+                newErrors.cep = "CEP é obrigatório";
+            } else if (formData.cep.replace(/\D/g, '').length !== 8) {
+                newErrors.cep = "CEP inválido";
+            }
+
+            if (!formData.street.trim()) newErrors.street = "Rua é obrigatória";
+            if (!formData.number.trim()) newErrors.number = "Número é obrigatório";
+            if (!formData.neighborhood.trim()) newErrors.neighborhood = "Bairro é obrigatório";
+            if (!formData.city.trim()) newErrors.city = "Cidade é obrigatória";
+            if (!formData.state) newErrors.state = "Estado é obrigatório";
         }
 
-        // Validações para CPF e endereço (obrigatório para boleto)
-        if (!formData.billingCpf.trim()) {
-            newErrors.billingCpf = "CPF é obrigatório";
-        } else if (!validateCPF(formData.billingCpf)) {
-            newErrors.billingCpf = "CPF inválido";
-        }
-
-        if (!formData.cep.trim()) {
-            newErrors.cep = "CEP é obrigatório";
-        } else if (formData.cep.replace(/\D/g, '').length !== 8) {
-            newErrors.cep = "CEP inválido";
-        }
-
-        if (!formData.street.trim()) {
-            newErrors.street = "Rua é obrigatória";
-        }
-
-        if (!formData.number.trim()) {
-            newErrors.number = "Número é obrigatório";
-        }
-
-        if (!formData.neighborhood.trim()) {
-            newErrors.neighborhood = "Bairro é obrigatório";
-        }
-
-        if (!formData.city.trim()) {
-            newErrors.city = "Cidade é obrigatória";
-        }
-
-        if (!formData.state) {
-            newErrors.state = "Estado é obrigatório";
-        }
-
-        // 🆕 VALIDAÇÃO ESPECÍFICA PARA BOLETO
+        // Validação específica para boleto
         if (paymentMethod === 'boleto' && selectedPlan !== 'free') {
-            // Para boleto, nome completo deve ter pelo menos 2 palavras
-            const nameParts = formData.fullName.trim().split(' ');
+            const nameParts = (formData.fullName || user?.fullName || '').trim().split(' ');
             if (nameParts.length < 2) {
                 newErrors.fullName = "Nome completo (nome e sobrenome) é obrigatório para boleto";
             }
@@ -665,8 +675,8 @@ function CheckoutForm() {
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    }, [formData, user, selectedPlan, paymentMethod]);
-
+    }, [formData, user, selectedPlan, paymentMethod, isUpgradeFlow]);
+    
     // Função para selecionar o plano (atualizada)
     const handlePlanSelect = useCallback(async (planId) => {
         console.log(`🎯 Plan selected: ${planId}`);
@@ -989,7 +999,6 @@ function CheckoutForm() {
         </Box>
     );
 
-    // 🆕 FUNÇÃO PRINCIPAL DE SUBMISSÃO ATUALIZADA PARA BOLETO
     const handleSubmitPayment = useCallback(async (e) => {
         e.preventDefault();
 
@@ -1013,11 +1022,89 @@ function CheckoutForm() {
         setError('');
 
         try {
-            const currentUser = firebaseService.auth.currentUser;
+            // 🔧 CORRIGIDO: Aguardar um pouco para o usuário ser autenticado se necessário
+            let currentUser = firebaseService.auth.currentUser;
+            let needsToWaitForAuth = false;
+
+            // Se não tem usuário autenticado e não é usuário existente, criar conta primeiro
+            if (!currentUser && !user) {
+                console.log('🔄 Criando conta antes do pagamento...');
+
+                // Validar dados básicos primeiro
+                const basicErrors = {};
+                if (!formData.fullName.trim()) basicErrors.fullName = "Nome completo é obrigatório";
+                if (!formData.phone.trim()) basicErrors.phone = "Telefone é obrigatório";
+                if (!formData.email.trim()) basicErrors.email = "Email é obrigatório";
+                if (!formData.password.trim()) basicErrors.password = "Senha é obrigatória";
+
+                if (Object.keys(basicErrors).length > 0) {
+                    setErrors(basicErrors);
+                    throw new Error('Complete todos os campos obrigatórios');
+                }
+
+                // Criar conta
+                const userData = {
+                    fullName: formData.fullName.trim(),
+                    email: formData.email,
+                    phone: formData.phone,
+                    assinouPlano: false,
+                    createdAt: new Date(),
+                    checkoutStarted: true
+                };
+
+                const currentReferralSource = referralSource || localStorage.getItem('referralSource');
+                if (currentReferralSource === 'enrico') {
+                    userData.enrico = true;
+                    console.log('✅ Cliente marcado como vindo através do Enrico');
+                } else if (currentReferralSource) {
+                    userData.referralSource = currentReferralSource;
+                }
+
+                console.log('🔄 Criando usuário...');
+                await firebaseService.signUp(
+                    formData.email,
+                    formData.password,
+                    userData
+                );
+
+                // 🔧 CORREÇÃO CRÍTICA: Aguardar a autenticação ser processada
+                needsToWaitForAuth = true;
+            }
+
+            // 🔧 AGUARDAR AUTENTICAÇÃO COM TIMEOUT
+            if (needsToWaitForAuth || !currentUser) {
+                console.log('⏳ Aguardando autenticação...');
+                const maxWaitTime = 10000; // 10 segundos
+                const checkInterval = 200; // 200ms
+                let waitedTime = 0;
+
+                while (!currentUser && waitedTime < maxWaitTime) {
+                    await new Promise(resolve => setTimeout(resolve, checkInterval));
+                    currentUser = firebaseService.auth.currentUser;
+                    waitedTime += checkInterval;
+
+                    if (currentUser) {
+                        console.log('✅ Usuário autenticado:', currentUser.uid);
+                        break;
+                    }
+                }
+
+                if (!currentUser) {
+                    throw new Error("Erro na autenticação. Tente novamente em alguns segundos.");
+                }
+            }
+
+            // Usar usuário existente se disponível
+            if (user && user.uid) {
+                currentUser = { uid: user.uid, email: user.email || formData.email };
+                console.log('✅ Usando usuário existente:', currentUser.uid);
+            }
 
             if (!currentUser) {
-                throw new Error("Usuário não autenticado");
+                throw new Error("Usuário não identificado. Recarregue a página e tente novamente.");
             }
+
+            console.log('🔄 Processando pagamento para usuário:', currentUser.uid);
 
             // 1) Atualizar informações do usuário no Firebase
             const userData = {
@@ -1049,7 +1136,7 @@ function CheckoutForm() {
             }
 
             await firebaseService.editUserData(currentUser.uid, userData);
-            console.log("Dados do usuário atualizados no Firebase");
+            console.log("✅ Dados do usuário atualizados no Firebase");
 
             // 2) Chamar a API para criar a subscription
             const requestBody = {
@@ -1094,29 +1181,25 @@ function CheckoutForm() {
             if (paymentMethod === 'boleto') {
                 console.log('📄 Processando boleto...');
 
-                // 🆕 MELHOR TRATAMENTO DO BOLETO
                 if (boletoUrl) {
                     console.log('📄 URL do boleto recebida:', boletoUrl);
-
-                    // Mostrar mensagem de sucesso primeiro
                     setSuccess('Boleto gerado com sucesso! Abrindo o boleto em nova aba...');
 
-                    // 🔧 CORREÇÃO: Usar setTimeout para garantir que a mensagem apareça
                     setTimeout(() => {
                         try {
                             window.open(boletoUrl, '_blank');
+                            setSuccess('Boleto aberto! Após o pagamento, sua conta será ativada automaticamente.');
                         } catch (openError) {
                             console.warn('Erro ao abrir boleto:', openError);
-                            // Fallback: copiar URL para clipboard
                             navigator.clipboard.writeText(boletoUrl).then(() => {
-                                setSuccess('Boleto gerado! URL copiada para área de transferência. Cole no navegador para acessar.');
+                                setSuccess('Boleto gerado! URL copiada para área de transferência.');
                             }).catch(() => {
                                 setSuccess(`Boleto gerado! Acesse: ${boletoUrl}`);
                             });
                         }
                     }, 1000);
 
-                    // 🆕 ENVIAR EMAIL COM INSTRUÇÕES DO BOLETO
+                    // Enviar email com instruções do boleto
                     try {
                         await fetch('/api/send-boleto-email', {
                             method: 'POST',
@@ -1131,37 +1214,16 @@ function CheckoutForm() {
                         });
                     } catch (emailError) {
                         console.warn('⚠️ Erro ao enviar email do boleto:', emailError);
-                        // Não bloqueia o fluxo se o email falhar
                     }
 
-                    // 🔧 CORREÇÃO: Para boleto, não fazer polling imediatamente
-                    // Boleto pode demorar dias para ser pago, então só mostrar instrucoes
                     setTimeout(() => {
-                        setSuccess('Boleto enviado por email! Após o pagamento, sua conta será ativada automaticamente.');
                         setIsProcessingPayment(false);
                         setLoading(false);
                     }, 3000);
 
                 } else {
-                    // Se não tem URL, significa que está sendo processado
-                    setSuccess('Boleto está sendo processado. Você receberá um email com as instruções de pagamento em breve.');
-
-                    // Aguardar um pouco para ver se a URL aparece
-                    setTimeout(async () => {
-                        try {
-                            // Tentar buscar novamente os dados da subscription
-                            const checkResponse = await fetch(`/api/check-subscription-status?subscriptionId=${subscriptionId}`);
-                            if (checkResponse.ok) {
-                                const checkData = await checkResponse.json();
-                                if (checkData.boletoUrl) {
-                                    window.open(checkData.boletoUrl, '_blank');
-                                    setSuccess('Boleto disponível! Aberto em nova aba.');
-                                }
-                            }
-                        } catch (checkError) {
-                            console.warn('Erro ao verificar status da subscription:', checkError);
-                        }
-
+                    setSuccess('Boleto está sendo processado. Você receberá um email com as instruções.');
+                    setTimeout(() => {
                         setIsProcessingPayment(false);
                         setLoading(false);
                     }, 5000);
@@ -1170,6 +1232,10 @@ function CheckoutForm() {
             } else if (clientSecret) {
                 // Para cartão, confirmar pagamento via Stripe Elements
                 console.log('💳 Confirmando pagamento de cartão...');
+
+                if (!stripe || !elements) {
+                    throw new Error('Sistema de pagamento não carregado. Recarregue a página.');
+                }
 
                 const { error: paymentError } = await stripe.confirmCardPayment(
                     clientSecret,
@@ -1222,12 +1288,12 @@ function CheckoutForm() {
             await firebaseService.editUserData(currentUser.uid, updateData);
 
         } catch (error) {
-            console.error('Erro no checkout:', error);
+            console.error('❌ Erro no checkout:', error);
             setError(error.message || 'Ocorreu um erro durante o processamento do pagamento');
             setIsProcessingPayment(false);
             setLoading(false);
         }
-    }, [validatePersonalInfo, validatePaymentInfo, selectedPlan, formData, stripe, elements, router, mapStripeError, pollUserSubscriptionStatus, plans, referralSource, paymentMethod]);
+    }, [validatePersonalInfo, validatePaymentInfo, selectedPlan, formData, stripe, elements, router, mapStripeError, pollUserSubscriptionStatus, plans, referralSource, paymentMethod, user]);
 
     // Renderização do formulário (seção de pagamento atualizada)
     return (

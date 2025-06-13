@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -21,6 +21,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import LockIcon from "@mui/icons-material/Lock";
 import UpgradeIcon from "@mui/icons-material/Upgrade";
 import StarIcon from "@mui/icons-material/Star";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
+
+// Importar o modal de upgrade
+import UpgradeModal from './UpgradeModal';
 
 // Tema consistente com o padrão existente
 const theme = createTheme({
@@ -116,7 +121,7 @@ const MODULE_INFO = {
     'ai_analysis': {
         icon: '🤖',
         name: 'Análise por IA',
-        description: 'Análise automatizada de exames'
+        description: 'Análise automatizada de exames e relatórios clínicos'
     },
     'dados': {
         icon: '⚙️',
@@ -128,12 +133,15 @@ const MODULE_INFO = {
 const AccessDeniedDialog = ({
                                 open,
                                 onClose,
-                                moduleName = 'este módulo',
+                                moduleName = 'ai_analysis',
                                 onUpgrade,
                                 title = "Acesso Restrito"
                             }) => {
     const muiTheme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    // Estado para controlar o modal de upgrade
+    const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
     // Buscar informações do módulo
     const moduleInfo = MODULE_INFO[moduleName] || {
@@ -143,13 +151,26 @@ const AccessDeniedDialog = ({
     };
 
     const handleUpgrade = () => {
+        // Abrir o modal de upgrade em vez de redirecionar
+        setUpgradeModalOpen(true);
+    };
+
+    const handleUpgradeSuccess = () => {
+        // Fechar todos os modais e executar callback se fornecido
+        setUpgradeModalOpen(false);
+        onClose();
         if (onUpgrade) {
             onUpgrade();
-        } else {
-            // Ação padrão - pode ser redirecionar para página de planos
-            console.log('Redirecionando para upgrade...');
         }
+
+        // Opcional: recarregar a página ou atualizar o estado do usuário
+        // window.location.reload();
+    };
+
+    const handleCheckoutRedirect = () => {
+        // Opção alternativa: redirecionar para checkout
         onClose();
+        window.location.href = '/checkout';
     };
 
     return (
@@ -322,7 +343,7 @@ const AccessDeniedDialog = ({
 
                         <Button
                             variant="contained"
-                            startIcon={<UpgradeIcon />}
+                            startIcon={<CreditCardIcon />}
                             onClick={handleUpgrade}
                             sx={{
                                 flex: 1,
@@ -334,11 +355,36 @@ const AccessDeniedDialog = ({
                                 }
                             }}
                         >
-                            Fazer Upgrade
+                            Upgrade Agora
                         </Button>
+                    </Box>
+
+                    {/* Link alternativo para checkout */}
+                    <Box sx={{ mt: 2, textAlign: 'center' }}>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: theme.palette.grey[500],
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                                '&:hover': {
+                                    color: theme.palette.primary.main
+                                }
+                            }}
+                            onClick={handleCheckoutRedirect}
+                        >
+                            Ou acesse a página de planos →
+                        </Typography>
                     </Box>
                 </DialogContent>
             </Dialog>
+
+            {/* Modal de upgrade */}
+            <UpgradeModal
+                open={upgradeModalOpen}
+                onClose={() => setUpgradeModalOpen(false)}
+                onSuccess={handleUpgradeSuccess}
+            />
         </ThemeProvider>
     );
 };
