@@ -1,6 +1,8 @@
 "use client";
 
 import React, {useState, useEffect, useRef, useMemo} from 'react';
+
+import LockIcon from '@mui/icons-material/Lock';
 import {
     Dialog,
     DialogContent,
@@ -58,8 +60,6 @@ import { useAuth } from '../authProvider';
 import ExamTable from "./examTable";
 import { createWorker } from 'tesseract.js';
 import useModuleAccess from '../useModuleAccess';
-import ModuleProtection from '../ModuleProtection';
-import AccessDeniedDialog from '../organismsComponents/accessDeniedDialog';
 
 // Theme creation for defining colors, fonts, and formats
 const theme = createTheme({
@@ -423,24 +423,27 @@ const ExamDialog = ({
     const [processingInBrowser, setProcessingInBrowser] = useState(false);
     const [ocrProgress, setOcrProgress] = useState(0);
     const [ocrStatus, setOcrStatus] = useState('');
+    const { isFreeUser } = useAuth(); // Usar apenas isFreeUser do contexto
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
     const checkAIAccess = () => {
-        return hasAccess(MODULES.AI_ANALYSIS) && hasAccess(MODULES.EXAM_PROCESSING);
+        return !isFreeUser; // Simples: se não é usuário gratuito, tem acesso
     };
 
 
     const handleAIProcessWithCheck = (attachment = null) => {
-        if (!checkAIAccess()) {
+        console.log("🔐 Tentando processar com IA. É usuário gratuito?", isFreeUser);
+
+        if (isFreeUser) {
+            console.log("❌ Acesso negado - usuário gratuito");
             setUpgradeDialogOpen(true);
             return;
         }
 
-        // Prosseguir com processamento normal
+        console.log("✅ Acesso permitido - processando com IA");
         if (attachment) {
             handleProcessExistingAttachment(attachment);
         } else {
-            // Processar primeiro arquivo processável
             const processableFile = attachments.find(att => {
                 const { isSupported } = detectFileType(att);
                 return isSupported;
@@ -450,14 +453,6 @@ const ExamDialog = ({
             }
         }
     };
-
-
-    const handleUpgrade = () => {
-        setUpgradeDialogOpen(false);
-        // Redirecionar para checkout mantendo dados do usuário
-        window.location.href = '/checkout';
-    };
-
 
     // Função para mostrar notificações
     const showNotification = (message, severity = 'success') => {
@@ -714,6 +709,41 @@ const ExamDialog = ({
         }
     };
 
+
+    const getTooltipText = () => {
+        if (isFreeUser) {
+            return "Funcionalidade Premium - Faça upgrade para processar com IA";
+        }
+        return isImage ? "Processar imagem com OCR" : "Processar com IA";
+    };
+
+    const handleProcessSafely = (event) => {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        try {
+            console.log("AttachmentChip: Verificando acesso para processamento");
+
+            // NOVA VERIFICAÇÃO SIMPLIFICADA:
+            if (isFreeUser) {
+                console.log("AttachmentChip: Acesso negado - usuário gratuito");
+                setUpgradeDialogOpen(true);
+                return;
+            }
+
+            if (onProcess) {
+                console.log("AttachmentChip: Executando processamento");
+                onProcess();
+            } else {
+                console.error("AttachmentChip: Handler onProcess não definido");
+            }
+        } catch (error) {
+            console.error("Erro ao processar anexo:", error);
+            alert("Não foi possível processar este anexo. Por favor, tente novamente.");
+        }
+    };
     // Attachment chip with better styling
     // Substitua completamente o componente AttachmentChip por esta versão:
     const AttachmentChip = ({ file, onOpen, onRemove, onProcess, disabled }) => {
@@ -838,45 +868,35 @@ const ExamDialog = ({
                     </Typography>
                 </Box>
 
-                {/* ✅ Botão para processar anexos com verificação */}
                 {isSupported && onProcess && (
-                    <ModuleProtection
-                        moduleId={MODULES.AI_ANALYSIS}
-                        showTooltip={false}
-                        showDialog={false}
-                        onAccessDenied={() => setUpgradeDialogOpen(true)}
-                    >
-                        <Tooltip title={isImage ? "Processar imagem com OCR" : "Processar com IA"}>
-                            <IconButton
-                                size="small"
-                                onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-
-                                    if (!checkAIAccess()) {
-                                        setUpgradeDialogOpen(true);
-                                        return;
-                                    }
-
-                                    onProcess();
-                                }}
-                                disabled={disabled}
-                                color="primary"
-                                sx={{
-                                    ml: 0.5,
-                                    p: 0.5,
-                                    bgcolor: isImage ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-                                    '&:hover': {
-                                        backgroundColor: isImage
+                    <Tooltip title={getTooltipText()}>
+                        <IconButton
+                            size="small"
+                            onClick={handleProcessSafely}
+                            disabled={disabled}
+                            color="primary"
+                            sx={{
+                                ml: 0.5,
+                                p: 0.5,
+                                bgcolor: isFreeUser
+                                    ? alpha('#f59e0b', 0.1)
+                                    : (isImage ? alpha(theme.palette.primary.main, 0.1) : 'transparent'),
+                                '&:hover': {
+                                    backgroundColor: isFreeUser
+                                        ? alpha('#f59e0b', 0.2)
+                                        : (isImage
                                             ? alpha(theme.palette.primary.main, 0.2)
-                                            : alpha(theme.palette.primary.main, 0.1),
-                                    }
-                                }}
-                            >
+                                            : alpha(theme.palette.primary.main, 0.1)),
+                                }
+                            }}
+                        >
+                            {isFreeUser ? (
+                                <LockIcon fontSize="small" sx={{ fontSize: '16px', color: '#f59e0b' }} />
+                            ) : (
                                 <AutoAwesomeIcon fontSize="small" sx={{ fontSize: '16px' }} />
-                            </IconButton>
-                        </Tooltip>
-                    </ModuleProtection>
+                            )}
+                        </IconButton>
+                    </Tooltip>
                 )}
 
                 {/* Botão para processar anexos - MODIFICADO com estilo mais destacado para imagens */}
@@ -931,6 +951,12 @@ const ExamDialog = ({
     // NOVA FUNÇÃO: Processar arquivo PDF/DOCX/Imagem com IA
     const processExamFile = async (file) => {
         // Se não recebemos um arquivo válido, não tente processar
+
+        if (isFreeUser) {
+            setUpgradeDialogOpen(true);
+            return;
+        }
+
         if (!file) {
             showNotification("Arquivo inválido", "error");
             return false;
@@ -1210,6 +1236,12 @@ const ExamDialog = ({
     };
 
     const handleProcessExistingAttachment = async (attachment) => {
+
+        if (isFreeUser) {
+            setUpgradeDialogOpen(true);
+            return false;
+        }
+        
         console.log("===== PROCESS ATTACHMENT STARTED =====");
         console.log("Attachment recebido:", attachment);
 
@@ -1537,6 +1569,12 @@ const ExamDialog = ({
                 return false;
             }
         };
+
+        const handleUpgrade = () => {
+            setUpgradeDialogOpen(false);
+            window.location.href = '/checkout';
+        };
+
 
         // Try the path reconstruction
         constructAndTryPath().then(success => {
@@ -2569,30 +2607,25 @@ const ExamDialog = ({
                                                 <Box sx={{ display: 'flex', gap: 2 }}>
                                                     {/* Botão para processar com IA - mostrado somente quando há anexos processáveis */}
                                                     {hasProcessableAttachments && (
-                                                        <ModuleProtection
-                                                            moduleId={MODULES.AI_ANALYSIS}
-                                                            showTooltip={false}
-                                                            showDialog={false}
-                                                            onAccessDenied={() => setUpgradeDialogOpen(true)}
+                                                        <Button
+                                                            variant="outlined"
+                                                            startIcon={isFreeUser ? <LockIcon /> : <AutoAwesomeIcon />}
+                                                            onClick={() => handleAIProcessWithCheck()}
+                                                            disabled={isLoading}
+                                                            sx={{
+                                                                height: 36,
+                                                                color: isFreeUser ? '#f59e0b' : categoryColor.main,
+                                                                borderColor: isFreeUser ? '#f59e0b' : categoryColor.main,
+                                                                '&:hover': {
+                                                                    backgroundColor: isFreeUser
+                                                                        ? alpha('#f59e0b', 0.1)
+                                                                        : alpha(categoryColor.light, 0.3),
+                                                                    borderColor: isFreeUser ? '#d97706' : categoryColor.dark
+                                                                }
+                                                            }}
                                                         >
-                                                            <Button
-                                                                variant="outlined"
-                                                                startIcon={<AutoAwesomeIcon />}
-                                                                onClick={() => handleAIProcessWithCheck()}
-                                                                disabled={isLoading}
-                                                                sx={{
-                                                                    height: 36,
-                                                                    color: categoryColor.main,
-                                                                    borderColor: categoryColor.main,
-                                                                    '&:hover': {
-                                                                        backgroundColor: alpha(categoryColor.light, 0.3),
-                                                                        borderColor: categoryColor.dark
-                                                                    }
-                                                                }}
-                                                            >
-                                                                Processar com IA
-                                                            </Button>
-                                                        </ModuleProtection>
+                                                            {isFreeUser ? 'Funcionalidade Premium' : 'Processar com IA'}
+                                                        </Button>
                                                     )}
 
                                                     <Button
