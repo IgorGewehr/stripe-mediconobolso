@@ -58,8 +58,6 @@ import { ptBR } from 'date-fns/locale';
 import FirebaseService from '../../../lib/firebaseService';
 import { useAuth } from '../authProvider';
 import ExamTable from "./examTable";
-import { createWorker } from 'tesseract.js';
-import useModuleAccess from '../useModuleAccess';
 import AccessDeniedDialog from "./accessDeniedDialog";
 
 // Theme creation for defining colors, fonts, and formats
@@ -711,13 +709,6 @@ const ExamDialog = ({
     };
 
 
-    const getTooltipText = () => {
-        if (isFreeUser) {
-            return "Funcionalidade Premium - Faça upgrade para processar com IA";
-        }
-        return isImage ? "Processar imagem com OCR" : "Processar com IA";
-    };
-
     const handleProcessSafely = (event) => {
         if (event) {
             event.preventDefault();
@@ -762,6 +753,28 @@ const ExamDialog = ({
                 return <AttachFileOutlinedIcon sx={{ color: "#64748B", fontSize: '18px' }} />;
             }
         };
+        const getTooltipText = () => {
+            if (isFreeUser) {
+                return "Funcionalidade Premium - Faça upgrade para processar com IA";
+            }
+            return isImage ? "Processar imagem com OCR" : "Processar com IA";
+        };
+
+        const handleProcessSafely = (event) => {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            try {
+                if (isFreeUser) {
+                    setUpgradeDialogOpen(true);
+                    return;
+                }
+                if (onProcess) onProcess();
+            } catch (error) {
+                console.error("Erro ao processar anexo:", error);
+            }
+        };
 
         // Safe function to click on attachment
         const handleOpenSafely = () => {
@@ -783,46 +796,7 @@ const ExamDialog = ({
             }
         };
 
-        // Safe function to process attachment - MODIFICADO
-        const handleProcessSafely = (event) => {
-            // Log para depuração detalhada
-            console.log("===== PROCESS BUTTON CLICKED =====");
-            console.log("File para processamento:", file);
-            console.log("File type:", isImage ? "Image" : isPdf ? "PDF" : isDocx ? "DOCX" : "Other");
 
-            // Verificação adicional para detecção de tipo de arquivo
-            console.log("Detalhes do arquivo:", {
-                fileName: file.fileName || file.name,
-                fileType: file.fileType || file.type,
-                isImage: isImage
-            });
-
-            // Impedir propagação do evento
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-
-            try {
-                console.log("Tentando executar onProcess");
-                // Chamada direta para processamento de anexos
-                if (isImage) {
-                    console.log("DETECTADO IMAGEM - Chamando processamento específico para imagem");
-                }
-
-                // Chamar a função de processamento
-                if (onProcess) {
-                    console.log("Executando onProcess()");
-                    onProcess();
-                    console.log("onProcess() executado com sucesso");
-                } else {
-                    console.error("ERRO: Handler onProcess não definido");
-                }
-            } catch (error) {
-                console.error("Erro ao processar anexo:", error);
-                alert("Não foi possível processar este anexo. Por favor, tente novamente.");
-            }
-        };
 
         return (
             <Box
@@ -1571,10 +1545,6 @@ const ExamDialog = ({
             }
         };
 
-        const handleUpgrade = () => {
-            setUpgradeDialogOpen(false);
-            window.location.href = '/checkout';
-        };
 
 
         // Try the path reconstruction
@@ -1585,6 +1555,16 @@ const ExamDialog = ({
             }
         });
     };
+    const handleUpgrade = () => {
+        console.log("🔄 Fechando dialog de upgrade do ExamDialog");
+        setUpgradeDialogOpen(false);
+
+        // Opcional: callback para o componente pai saber que o upgrade foi iniciado
+        // if (onUpgradeStarted) {
+        //     onUpgradeStarted();
+        // }
+    };
+
 
     const handleRemoveAttachment = async (index) => {
         if (isEditMode && exam.id) {
