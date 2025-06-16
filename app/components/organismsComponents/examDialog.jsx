@@ -60,6 +60,7 @@ import { useAuth } from '../authProvider';
 import ExamTable from "./examTable";
 import { createWorker } from 'tesseract.js';
 import useModuleAccess from '../useModuleAccess';
+import AccessDeniedDialog from "./accessDeniedDialog";
 
 // Theme creation for defining colors, fonts, and formats
 const theme = createTheme({
