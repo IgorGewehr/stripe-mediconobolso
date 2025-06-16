@@ -384,6 +384,8 @@ const AccessDeniedDialog = ({
                 open={upgradeModalOpen}
                 onClose={() => setUpgradeModalOpen(false)}
                 onSuccess={handleUpgradeSuccess}
+                selectedPlan="quarterly" // Plano do meio por padrão
+                allowedPaymentMethods={['card', 'boleto']} // Todos os métodos disponíveis
             />
         </ThemeProvider>
     );

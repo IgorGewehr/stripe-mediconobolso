@@ -67,7 +67,7 @@ const CARD_ELEMENT_OPTIONS = {
     },
 };
 
-// Validação e formatação (mantidas iguais)
+// Validação e formatação
 const validateCPF = (cpf) => {
     cpf = cpf.replace(/[^\d]+/g, '');
     if (cpf === '' || cpf.length !== 11) return false;
@@ -131,21 +131,8 @@ const brazilianStates = [
     { value: 'TO', label: 'Tocantins' }
 ];
 
+// 🆕 PLANOS ATUALIZADOS - Removido plano gratuito, adicionado plano trimestral
 const plansData = {
-    free: {
-        id: 'free',
-        name: 'Gratuito',
-        price: 'R$0',
-        pricePerMonth: 'R$0/mês',
-        period: '/sempre',
-        free: true,
-        features: [
-            'Acesso a todas as funções exceto:',
-            '- função financeira e cadastro de pacientes limitada',
-            '- ferramentas de IA',
-            '- treinamento com chamada de vídeo'
-        ]
-    },
     monthly: {
         id: 'monthly',
         name: 'Pro',
@@ -159,6 +146,21 @@ const plansData = {
             'Atualizações gratuitas'
         ],
         priceId: 'price_1QyKrNI2qmEooUtqKfgYIemz'
+    },
+    quarterly: {
+        id: 'quarterly',
+        name: 'Trimestral',
+        price: 'R$345',
+        pricePerMonth: 'R$115/mês',
+        period: '/trimestre',
+        features: [
+            'Acesso a todas as funcionalidades',
+            'Pacientes ilimitados',
+            'Suporte prioritário',
+            'Atualizações gratuitas',
+            'Economia de 9% em relação ao plano mensal'
+        ],
+        priceId: 'price_1RIH5eI2qmEooUtqsdXyxnEP'
     },
     annual: {
         id: 'annual',
@@ -178,9 +180,9 @@ const plansData = {
     }
 };
 
-// 🆕 COMPONENTE PARA SELEÇÃO DE MÉTODO DE PAGAMENTO
+// 🆕 COMPONENTE PARA SELEÇÃO DE MÉTODO DE PAGAMENTO - Atualizado para restringir boleto apenas para planos não mensais
 const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange, selectedPlan }) => {
-    if (selectedPlan === 'free') return null;
+    const allowBoleto = selectedPlan !== 'monthly'; // Boleto não disponível para plano mensal
 
     return (
         <Box sx={{ mb: 3 }}>
@@ -220,49 +222,71 @@ const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange, selectedP
                     />
                 </Paper>
 
-                <Paper sx={{
-                    backgroundColor: paymentMethod === 'boleto' ? 'rgba(249, 185, 52, 0.2)' : '#2F2F2F',
-                    border: paymentMethod === 'boleto' ? '2px solid #F9B934' : '1px solid #5F5F5F',
-                    borderRadius: 2,
-                    p: 2,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease'
-                }} onClick={() => onPaymentMethodChange('boleto')}>
-                    <FormControlLabel
-                        value="boleto"
-                        control={<Radio sx={{ color: '#F9B934' }} />}
-                        label={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <ReceiptIcon sx={{ color: '#F9B934' }} />
-                                <Box>
-                                    <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
-                                        Boleto Bancário
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                                        Vencimento em 3 dias • Acesso após confirmação
-                                    </Typography>
+                {allowBoleto && (
+                    <Paper sx={{
+                        backgroundColor: paymentMethod === 'boleto' ? 'rgba(249, 185, 52, 0.2)' : '#2F2F2F',
+                        border: paymentMethod === 'boleto' ? '2px solid #F9B934' : '1px solid #5F5F5F',
+                        borderRadius: 2,
+                        p: 2,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                    }} onClick={() => onPaymentMethodChange('boleto')}>
+                        <FormControlLabel
+                            value="boleto"
+                            control={<Radio sx={{ color: '#F9B934' }} />}
+                            label={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <ReceiptIcon sx={{ color: '#F9B934' }} />
+                                    <Box>
+                                        <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
+                                            Boleto Bancário
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'grey.400' }}>
+                                            Vencimento em 3 dias • Acesso após confirmação
+                                        </Typography>
+                                    </Box>
                                 </Box>
+                            }
+                            sx={{ m: 0, width: '100%' }}
+                        />
+                    </Paper>
+                )}
+
+                {!allowBoleto && (
+                    <Paper sx={{
+                        backgroundColor: '#1A1A1A',
+                        border: '1px solid #3F3F3F',
+                        borderRadius: 2,
+                        p: 2,
+                        opacity: 0.6
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <ReceiptIcon sx={{ color: 'grey.600' }} />
+                            <Box>
+                                <Typography variant="subtitle1" sx={{ color: 'grey.600', fontWeight: 'bold' }}>
+                                    Boleto Bancário
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: 'grey.600' }}>
+                                    Disponível apenas para planos trimestrais e anuais
+                                </Typography>
                             </Box>
-                        }
-                        sx={{ m: 0, width: '100%' }}
-                    />
-                </Paper>
+                        </Box>
+                    </Paper>
+                )}
             </RadioGroup>
         </Box>
     );
 };
 
-// Componente de Cartão de Plano (mantido igual)
+// Componente de Cartão de Plano
 const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
-    const isFree = plan.free;
-
     return (
         <Paper sx={{
-            backgroundColor: isFree ? '#1B5E20' : '#1F1F1F',
+            backgroundColor: '#1F1F1F',
             color: 'white',
             borderRadius: 2,
             overflow: 'hidden',
-            border: isSelected ? `2px solid ${isFree ? '#4CAF50' : '#F9B934'}` : `1px solid ${isFree ? '#2E7D32' : '#3F3F3F'}`,
+            border: isSelected ? '2px solid #F9B934' : '1px solid #3F3F3F',
             position: 'relative',
             p: 0,
             cursor: 'pointer',
@@ -270,27 +294,16 @@ const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
             display: 'flex',
             flexDirection: 'column',
             transition: 'all 0.3s ease',
-            boxShadow: isSelected ? `0 8px 16px rgba(${isFree ? '76, 175, 80' : '249, 185, 52'}, 0.2)` : 'none',
+            boxShadow: isSelected ? '0 8px 16px rgba(249, 185, 52, 0.2)' : 'none',
             '&:hover': {
                 transform: 'translateY(-5px)',
-                boxShadow: isFree ? '0 6px 12px rgba(76, 175, 80, 0.3)' : '0 6px 12px rgba(0,0,0,0.2)'
+                boxShadow: '0 6px 12px rgba(0,0,0,0.2)'
             },
             fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
-            width: '100%',
-            background: isFree ? 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 50%, #388E3C 100%)' : '#1F1F1F'
+            width: '100%'
         }}
                onClick={onSelect}
                elevation={isSelected ? 8 : 1}>
-            {isFree && (
-                <Box sx={{
-                    position: 'absolute', top: 0, left: 0, right: 0,
-                    backgroundColor: '#4CAF50', color: 'white',
-                    fontSize: '0.8rem', fontWeight: 'bold',
-                    py: 0.5, px: 1, textAlign: 'center', zIndex: 1
-                }}>
-                    🎉 TOTALMENTE GRÁTIS
-                </Box>
-            )}
 
             {plan.popular && (
                 <Box sx={{
@@ -303,15 +316,15 @@ const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
                 </Box>
             )}
 
-            <Box sx={{ p: 2, flexGrow: 1, pt: (plan.popular || isFree) ? 4 : 2 }}>
+            <Box sx={{ p: 2, flexGrow: 1, pt: plan.popular ? 4 : 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'baseline' }}>
-                    {plan.price} <Typography variant="caption" sx={{ ml: 1, color: isFree ? '#A5D6A7' : 'grey.400' }}>{plan.period}</Typography>
+                    {plan.price} <Typography variant="caption" sx={{ ml: 1, color: 'grey.400' }}>{plan.period}</Typography>
                 </Typography>
                 <Typography variant="subtitle1" sx={{ my: 1 }}>
                     {plan.name}
                 </Typography>
 
-                {plan.pricePerMonth && !isFree && (
+                {plan.pricePerMonth && (
                     <Typography variant="body1" sx={{
                         color: '#F9B934', mb: 2, fontWeight: 'bold', fontSize: '1.1rem',
                         border: '1px dashed #F9B934', p: 1, borderRadius: 1, textAlign: 'center'
@@ -320,56 +333,27 @@ const PlanCard = React.memo(({ plan, isSelected, onSelect }) => {
                     </Typography>
                 )}
 
-                {isFree && (
-                    <Typography variant="body1" sx={{
-                        color: '#81C784', mb: 2, fontWeight: 'bold', fontSize: '1.1rem',
-                        border: '1px dashed #81C784', p: 1, borderRadius: 1, textAlign: 'center'
-                    }}>
-                        Sem custos ocultos!
-                    </Typography>
-                )}
-
                 {plan.features.map((feature, idx) => (
                     <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
-                        {feature.startsWith('Acesso a todas as funções exceto:') ? (
-                            <Typography variant="body2" sx={{
-                                color: isFree ? '#E8F5E8' : 'grey.400',
-                                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                                fontWeight: 'bold'
-                            }}>
-                                {feature}
-                            </Typography>
-                        ) : feature.startsWith('-') ? (
-                            <Typography variant="body2" sx={{
-                                color: isFree ? '#E8F5E8' : 'grey.400',
-                                fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' },
-                                ml: 1
-                            }}>
-                                {feature}
-                            </Typography>
-                        ) : (
-                            <>
-                                <CheckIcon sx={{ fontSize: '0.9rem', color: isFree ? '#81C784' : '#F9B934', mr: 1, mt: 0.3 }} />
-                                <Typography variant="body2" sx={{ color: isFree ? '#E8F5E8' : 'grey.400', fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' } }}>
-                                    {feature}
-                                </Typography>
-                            </>
-                        )}
+                        <CheckIcon sx={{ fontSize: '0.9rem', color: '#F9B934', mr: 1, mt: 0.3 }} />
+                        <Typography variant="body2" sx={{ color: 'grey.400', fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' } }}>
+                            {feature}
+                        </Typography>
                     </Box>
                 ))}
             </Box>
 
             <Button variant="contained" fullWidth sx={{
                 py: 1.5, borderRadius: 0,
-                backgroundColor: isSelected ? (isFree ? '#66BB6A' : '#F9B934') : (isFree ? '#388E3C' : '#2F2F2F'),
-                color: isSelected ? 'white' : (isFree ? 'white' : 'white'),
+                backgroundColor: isSelected ? '#F9B934' : '#2F2F2F',
+                color: 'white',
                 fontWeight: 'bold',
                 '&:hover': {
-                    backgroundColor: isSelected ? (isFree ? '#5CB660' : '#E5A830') : (isFree ? '#4CAF50' : '#3F3F3F'),
+                    backgroundColor: isSelected ? '#E5A830' : '#3F3F3F',
                 },
                 marginTop: 'auto'
             }}>
-                {isSelected ? 'SELECIONADO' : (isFree ? 'COMEÇAR GRÁTIS' : 'ESCOLHA O PLANO')}
+                {isSelected ? 'SELECIONADO' : 'ESCOLHA O PLANO'}
             </Button>
         </Paper>
     );
@@ -393,7 +377,7 @@ function CheckoutForm() {
     const [userCreated, setUserCreated] = useState(false);
     const [showPaymentForm, setShowPaymentForm] = useState(false);
 
-    // 🆕 ESTADO PARA MÉTODO DE PAGAMENTO
+    // Estado para método de pagamento
     const [paymentMethod, setPaymentMethod] = useState('card');
 
     const [formData, setFormData] = useState({
@@ -459,7 +443,14 @@ function CheckoutForm() {
         }
     }, [user]);
 
-    // Polling para verificar status (mantido igual)
+    // 🆕 CORREÇÃO: Atualizar paymentMethod quando plano mensal for selecionado
+    useEffect(() => {
+        if (selectedPlan === 'monthly' && paymentMethod === 'boleto') {
+            setPaymentMethod('card');
+        }
+    }, [selectedPlan, paymentMethod]);
+
+    // Polling para verificar status
     const pollUserSubscriptionStatus = useCallback(async (uid, maxAttempts = 15, interval = 2000, minLoadingTime = 12000) => {
         if (!uid) return;
 
@@ -517,7 +508,7 @@ function CheckoutForm() {
         await checkStatus();
     }, [router]);
 
-    // Handlers (mantidos iguais)
+    // Handlers
     const handleInputChange = useCallback((e) => {
         const { name, value } = e.target;
 
@@ -559,14 +550,14 @@ function CheckoutForm() {
         setShowPassword(prev => !prev);
     }, []);
 
-    // 🆕 HANDLER PARA MUDANÇA DE MÉTODO DE PAGAMENTO
+    // Handler para mudança de método de pagamento
     const handlePaymentMethodChange = useCallback((method) => {
         setPaymentMethod(method);
         setErrors({}); // Limpar erros ao trocar método
         console.log(`💳 Método de pagamento selecionado: ${method}`);
     }, []);
 
-    // Mapeamento de erros (mantidos iguais)
+    // Mapeamento de erros
     const mapFirebaseError = useCallback((error) => {
         switch (error.code) {
             case 'auth/email-already-in-use':
@@ -602,7 +593,7 @@ function CheckoutForm() {
 
     const isUpgradeFlow = Boolean(user && user.uid);
 
-// 🔧 AJUSTE NA VALIDAÇÃO DE DADOS PESSOAIS
+    // Validação de dados pessoais
     const validatePersonalInfo = useCallback(() => {
         const newErrors = {};
 
@@ -662,232 +653,90 @@ function CheckoutForm() {
         }
 
         // Validação específica para boleto
-        if (paymentMethod === 'boleto' && selectedPlan !== 'free') {
+        if (paymentMethod === 'boleto') {
             const nameParts = (formData.fullName || user?.fullName || '').trim().split(' ');
             if (nameParts.length < 2) {
                 newErrors.fullName = "Nome completo (nome e sobrenome) é obrigatório para boleto";
             }
         }
 
-        if (selectedPlan === 'free' && !formData.termsAccepted) {
+        if (!formData.termsAccepted) {
             newErrors.termsAccepted = "Você precisa aceitar os termos";
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    }, [formData, user, selectedPlan, paymentMethod, isUpgradeFlow]);
-    
-    // Função para selecionar o plano (atualizada)
+    }, [formData, user, paymentMethod, isUpgradeFlow]);
+
+    // Função para selecionar o plano
     const handlePlanSelect = useCallback(async (planId) => {
         console.log(`🎯 Plan selected: ${planId}`);
         console.log(`🔗 Current referral source: ${referralSource}`);
 
         setSelectedPlan(planId);
         setShowPersonalInfo(true);
+        setShowPaymentForm(true);
 
-        if (planId !== 'free') {
-            setShowPaymentForm(true);
+        if (!userCreated && !user) {
+            try {
+                const basicErrors = {};
 
-            if (!userCreated && !user) {
-                try {
-                    const basicErrors = {};
+                if (!formData.fullName.trim()) basicErrors.fullName = "Nome completo é obrigatório";
+                if (!formData.phone.trim()) basicErrors.phone = "Telefone é obrigatório";
+                else if (formData.phone.replace(/\D/g, '').length < 10) basicErrors.phone = "Telefone inválido";
+                if (!formData.email.trim()) basicErrors.email = "Email é obrigatório";
+                else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) basicErrors.email = "Email inválido";
+                if (!formData.password.trim()) basicErrors.password = "Senha é obrigatória";
+                else if (formData.password.length < 6) basicErrors.password = "A senha deve ter pelo menos 6 caracteres";
 
-                    if (!formData.fullName.trim()) basicErrors.fullName = "Nome completo é obrigatório";
-                    if (!formData.phone.trim()) basicErrors.phone = "Telefone é obrigatório";
-                    else if (formData.phone.replace(/\D/g, '').length < 10) basicErrors.phone = "Telefone inválido";
-                    if (!formData.email.trim()) basicErrors.email = "Email é obrigatório";
-                    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) basicErrors.email = "Email inválido";
-                    if (!formData.password.trim()) basicErrors.password = "Senha é obrigatória";
-                    else if (formData.password.length < 6) basicErrors.password = "A senha deve ter pelo menos 6 caracteres";
-
-                    if (Object.keys(basicErrors).length > 0) {
-                        setErrors(basicErrors);
-                        return;
-                    }
-
-                    setIsCreatingAccount(true);
-                    setError('');
-
-                    const userData = {
-                        fullName: formData.fullName.trim(),
-                        email: formData.email,
-                        phone: formData.phone,
-                        assinouPlano: false,
-                        createdAt: new Date(),
-                        checkoutStarted: true
-                    };
-
-                    const currentReferralSource = referralSource || localStorage.getItem('referralSource');
-
-                    if (currentReferralSource === 'enrico') {
-                        userData.enrico = true;
-                        console.log('✅ Cliente marcado como vindo através do Enrico (paid plan creation)');
-                        console.log('📝 UserData:', userData);
-                    } else if (currentReferralSource) {
-                        console.log(`🔗 Other referral source detected: ${currentReferralSource}`);
-                        userData.referralSource = currentReferralSource;
-                    }
-
-                    console.log('🔄 Creating user account with data:', userData);
-
-                    await firebaseService.signUp(
-                        formData.email,
-                        formData.password,
-                        userData
-                    );
-
-                    setSuccess('Conta criada com sucesso!');
-                    setUserCreated(true);
-                } catch (error) {
-                    console.error("❌ Erro no cadastro:", error);
-                    setAuthError(mapFirebaseError(error));
-                } finally {
-                    setIsCreatingAccount(false);
+                if (Object.keys(basicErrors).length > 0) {
+                    setErrors(basicErrors);
+                    return;
                 }
-            }
-        }
-    }, [formData, userCreated, user, mapFirebaseError, referralSource]);
 
-    // Envio de emails (mantido igual)
-    const sendWelcomeEmails = async (email, name, appLink) => {
-        try {
-            console.log(`📧 Enviando emails de boas-vindas para: ${email}`);
+                setIsCreatingAccount(true);
+                setError('');
 
-            const response = await fetch('/api/email', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: email,
-                    name: name,
-                    type: 'both',
-                    appLink: appLink
-                })
-            });
+                const userData = {
+                    fullName: formData.fullName.trim(),
+                    email: formData.email,
+                    phone: formData.phone,
+                    assinouPlano: false,
+                    createdAt: new Date(),
+                    checkoutStarted: true
+                };
 
-            const result = await response.json();
+                const currentReferralSource = referralSource || localStorage.getItem('referralSource');
 
-            if (result.success) {
-                console.log('✅ Emails de boas-vindas enviados com sucesso!');
-                return { success: true, data: result.data };
-            } else {
-                console.error('❌ Falha ao enviar emails:', result.error);
-                return { success: false, error: result.error };
-            }
-        } catch (error) {
-            console.error('❌ Erro ao chamar API de email:', error);
-            return { success: false, error: error.message };
-        }
-    };
+                if (currentReferralSource === 'enrico') {
+                    userData.enrico = true;
+                    console.log('✅ Cliente marcado como vindo através do Enrico (paid plan creation)');
+                    console.log('📝 UserData:', userData);
+                } else if (currentReferralSource) {
+                    console.log(`🔗 Other referral source detected: ${currentReferralSource}`);
+                    userData.referralSource = currentReferralSource;
+                }
 
-    // Cadastro gratuito (mantido igual)
-    const handleFreeSignup = useCallback(async () => {
-        try {
-            console.log('🆓 Starting free signup process...');
-            console.log(`🔗 Current referral source: ${referralSource}`);
+                console.log('🔄 Creating user account with data:', userData);
 
-            if (!validatePersonalInfo()) {
-                console.log('❌ Validation failed for personal info');
-                return;
-            }
-
-            setIsCreatingAccount(true);
-            setError('');
-
-            const userData = {
-                fullName: formData.fullName.trim(),
-                email: formData.email,
-                phone: formData.phone,
-                gratuito: true,
-                assinouPlano: false,
-                planType: 'free',
-                createdAt: new Date(),
-                checkoutCompleted: true,
-                address: {
-                    cep: formData.cep,
-                    street: formData.street,
-                    number: formData.number,
-                    complement: formData.complement || '',
-                    neighborhood: formData.neighborhood,
-                    city: formData.city,
-                    state: formData.state,
-                    country: 'BR'
-                },
-                cpf: formData.billingCpf
-            };
-
-            const currentReferralSource = referralSource || localStorage.getItem('referralSource');
-
-            if (currentReferralSource === 'enrico') {
-                userData.enrico = true;
-                console.log('✅ Cliente GRATUITO marcado como vindo através do Enrico');
-                console.log('📝 UserData completo:', userData);
-            } else if (currentReferralSource) {
-                console.log(`🔗 Other referral source detected: ${currentReferralSource}`);
-                userData.referralSource = currentReferralSource;
-            }
-
-            let currentUser;
-
-            if (!user) {
-                console.log('🔄 Creating new user account...');
-                const userCredential = await firebaseService.signUp(
+                await firebaseService.signUp(
                     formData.email,
                     formData.password,
                     userData
                 );
-                currentUser = userCredential.user;
-                console.log('✅ User account created successfully');
-            } else {
-                console.log('🔄 Updating existing user data...');
-                await firebaseService.editUserData(user.uid, userData);
-                currentUser = user;
-                console.log('✅ User data updated successfully');
+
+                setSuccess('Conta criada com sucesso!');
+                setUserCreated(true);
+            } catch (error) {
+                console.error("❌ Erro no cadastro:", error);
+                setAuthError(mapFirebaseError(error));
+            } finally {
+                setIsCreatingAccount(false);
             }
-
-            const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;
-            const welcomeName = formData.fullName.trim() || formData.email.split('@')[0];
-
-            console.log('📧 [FREE-SIGNUP] Preparando envio dos emails de boas-vindas...');
-
-            const sendEmailsInBackground = async () => {
-                try {
-                    console.log('📧 [FREE-SIGNUP] Chamando sendWelcomeEmails...');
-                    const emailResult = await sendWelcomeEmails(formData.email, welcomeName, appLink);
-
-                    if (emailResult.success) {
-                        console.log('✅ [FREE-SIGNUP] Emails de boas-vindas enviados com sucesso!');
-                        console.log('📧 [FREE-SIGNUP] Detalhes:', emailResult.data);
-                    } else {
-                        console.error('❌ [FREE-SIGNUP] Falha ao enviar emails:', emailResult.error);
-                    }
-                } catch (emailError) {
-                    console.error('❌ [FREE-SIGNUP] Erro geral ao enviar emails:', emailError);
-                }
-            };
-
-            sendEmailsInBackground().catch(error => {
-                console.error('❌ [FREE-SIGNUP] Erro não tratado no envio de emails:', error);
-            });
-
-            setSuccess('Conta gratuita criada com sucesso! Redirecionando...');
-            setUserCreated(true);
-
-            setTimeout(() => {
-                console.log('🚀 [FREE-SIGNUP] Redirecionando para /app...');
-                router.push('/app');
-            }, 2000);
-
-        } catch (error) {
-            console.error("❌ [FREE-SIGNUP] Erro no cadastro gratuito:", error);
-            setAuthError(mapFirebaseError(error));
-        } finally {
-            setIsCreatingAccount(false);
         }
-    }, [formData, user, mapFirebaseError, validatePersonalInfo, referralSource, router]);
+    }, [formData, userCreated, user, mapFirebaseError, referralSource]);
 
-    // 🆕 VALIDAÇÃO ESPECÍFICA PARA MÉTODO DE PAGAMENTO
+    // Validação específica para método de pagamento
     const validatePaymentInfo = useCallback(() => {
         const newErrors = {};
 
@@ -896,10 +745,8 @@ function CheckoutForm() {
             if (!formData.termsAccepted) {
                 newErrors.termsAccepted = "Você precisa aceitar os termos";
             }
-
-            // Validações específicas do boleto já foram feitas no validatePersonalInfo
         } else {
-            // Validações para cartão (mantidas iguais)
+            // Validações para cartão
             if (!formData.cardholderName.trim()) {
                 newErrors.cardholderName = "Nome do titular é obrigatório";
             }
@@ -922,7 +769,7 @@ function CheckoutForm() {
         return Object.keys(newErrors).length === 0;
     }, [formData, stripe, elements, paymentMethod]);
 
-    // Renderização do loading (mantida igual)
+    // Renderização do loading
     const renderLoadingScreen = () => (
         <Box sx={{
             display: 'flex',
@@ -1022,7 +869,7 @@ function CheckoutForm() {
         setError('');
 
         try {
-            // 🔧 CORRIGIDO: Aguardar um pouco para o usuário ser autenticado se necessário
+            // Aguardar um pouco para o usuário ser autenticado se necessário
             let currentUser = firebaseService.auth.currentUser;
             let needsToWaitForAuth = false;
 
@@ -1067,11 +914,10 @@ function CheckoutForm() {
                     userData
                 );
 
-                // 🔧 CORREÇÃO CRÍTICA: Aguardar a autenticação ser processada
                 needsToWaitForAuth = true;
             }
 
-            // 🔧 AGUARDAR AUTENTICAÇÃO COM TIMEOUT
+            // Aguardar autenticação com timeout
             if (needsToWaitForAuth || !currentUser) {
                 console.log('⏳ Aguardando autenticação...');
                 const maxWaitTime = 10000; // 10 segundos
@@ -1295,10 +1141,10 @@ function CheckoutForm() {
         }
     }, [validatePersonalInfo, validatePaymentInfo, selectedPlan, formData, stripe, elements, router, mapStripeError, pollUserSubscriptionStatus, plans, referralSource, paymentMethod, user]);
 
-    // Renderização do formulário (seção de pagamento atualizada)
+    // Renderização do formulário
     return (
         <Box sx={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-            {/* Lado Esquerdo - Estático (mantido igual) */}
+            {/* Lado Esquerdo - Estático */}
             <Box sx={{
                 width: { xs: '0%', md: '60%' },
                 bgcolor: '#151B3B',
@@ -1380,7 +1226,7 @@ function CheckoutForm() {
                 </Box>
             </Box>
 
-            {/* Lado Direito - Formulário de Checkout (atualizado) */}
+            {/* Lado Direito - Formulário de Checkout */}
             <Box sx={{
                 width: { xs: '100%', md: '80%' },
                 bgcolor: '#0F0F0F',
@@ -1395,7 +1241,7 @@ function CheckoutForm() {
                     renderLoadingScreen()
                 ) : (
                     <>
-                        {/* Logo em telas pequenas (mantido igual) */}
+                        {/* Logo em telas pequenas */}
                         <Box sx={{
                             display: { xs: 'flex', md: 'none' },
                             flexDirection: 'column',
@@ -1441,7 +1287,7 @@ function CheckoutForm() {
                             </Typography>
                         </Box>
 
-                        {/* Container principal (cabeçalho mantido igual) */}
+                        {/* Container principal */}
                         <Box sx={{
                             maxWidth: 850,
                             margin: '0',
@@ -1497,9 +1343,7 @@ function CheckoutForm() {
                                 </Button>
                             </Box>
 
-                            {/* Seções do formulário - mantidas iguais até a seção de pagamento */}
-
-                            {/* Seção 1: INFORMAÇÕES BÁSICAS (mantida igual) */}
+                            {/* Seção 1: INFORMAÇÕES BÁSICAS */}
                             <Box sx={{ mb: 5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, pl: 0 }}>
                                     <Box sx={{
@@ -1665,7 +1509,7 @@ function CheckoutForm() {
                                 )}
                             </Box>
 
-                            {/* Seção 2: SELEÇÃO DE PLANO (mantida igual) */}
+                            {/* Seção 2: SELEÇÃO DE PLANO */}
                             <Box sx={{ mb: 5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, pl: 0 }}>
                                     <Box sx={{
@@ -1700,7 +1544,7 @@ function CheckoutForm() {
                                     ))}
                                 </Grid>
 
-                                {success && !isProcessingPayment && selectedPlan !== 'free' && (
+                                {success && !isProcessingPayment && (
                                     <Alert
                                         severity="success"
                                         sx={{ mt: 3, mb: 2, bgcolor: '#113828', color: 'white', ml: 3 }}
@@ -1709,7 +1553,7 @@ function CheckoutForm() {
                                     </Alert>
                                 )}
 
-                                {isCreatingAccount && selectedPlan !== 'free' && (
+                                {isCreatingAccount && (
                                     <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, ml: 3 }}>
                                         <CircularProgress size={20} sx={{ color: '#F9B934', mr: 2 }} />
                                         <Typography variant="body2" sx={{ color: 'white' }}>
@@ -1719,7 +1563,7 @@ function CheckoutForm() {
                                 )}
                             </Box>
 
-                            {/* Seção 3: DADOS PESSOAIS E ENDEREÇO (mantida igual) */}
+                            {/* Seção 3: DADOS PESSOAIS E ENDEREÇO */}
                             <Collapse in={showPersonalInfo}>
                                 <Box sx={{ mb: 5 }}>
                                     <Divider sx={{ my: 3, borderColor: '#3F3F3F' }} />
@@ -1966,127 +1810,12 @@ function CheckoutForm() {
                                                 </FormControl>
                                             </Grid>
                                         </Grid>
-
-                                        {selectedPlan === 'free' && (
-                                            <FormControlLabel
-                                                control={
-                                                    <Checkbox
-                                                        checked={formData.termsAccepted}
-                                                        name="termsAccepted"
-                                                        onChange={handleCheckboxChange}
-                                                        sx={{
-                                                            color: 'grey.500',
-                                                            '&.Mui-checked': {
-                                                                color: '#4CAF50',
-                                                            },
-                                                        }}
-                                                    />
-                                                }
-                                                label={
-                                                    <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                                                        Aceito os <span style={{ color: 'white', textDecoration: 'underline' }}>Termos e Condições</span> e <span style={{ color: 'white', textDecoration: 'underline' }}>Política de Privacidade</span>
-                                                    </Typography>
-                                                }
-                                                sx={{ mt: 2 }}
-                                            />
-                                        )}
-                                        {errors.termsAccepted && selectedPlan === 'free' && (
-                                            <Typography variant="caption" color="#FF4747" sx={{ display: 'block', mt: 1 }}>
-                                                {errors.termsAccepted}
-                                            </Typography>
-                                        )}
                                     </Box>
-
-                                    {isCreatingAccount && selectedPlan === 'free' && (
-                                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, ml: 3 }}>
-                                            <CircularProgress size={20} sx={{ color: '#4CAF50', mr: 2 }} />
-                                            <Typography variant="body2" sx={{ color: 'white' }}>
-                                                Criando sua conta gratuita...
-                                            </Typography>
-                                        </Box>
-                                    )}
-
-                                    {success && selectedPlan === 'free' && (
-                                        <Alert
-                                            severity="success"
-                                            sx={{ mt: 3, mb: 2, bgcolor: '#113828', color: 'white', ml: 3 }}
-                                        >
-                                            {success}
-                                        </Alert>
-                                    )}
-
-                                    {selectedPlan === 'free' && !success && (
-                                        <Box sx={{ mt: 4, pl: 3 }}>
-                                            <Button
-                                                onClick={handleFreeSignup}
-                                                variant="contained"
-                                                fullWidth
-                                                disabled={isCreatingAccount}
-                                                sx={{
-                                                    background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 50%, #81C784 100%)',
-                                                    color: 'white',
-                                                    p: 2.5,
-                                                    fontSize: '18px',
-                                                    fontWeight: 'bold',
-                                                    borderRadius: 2,
-                                                    boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.5px',
-                                                    position: 'relative',
-                                                    overflow: 'hidden',
-                                                    '&:hover': {
-                                                        background: 'linear-gradient(135deg, #43A047 0%, #5CB85C 50%, #7CB342 100%)',
-                                                        boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
-                                                        transform: 'translateY(-1px)',
-                                                    },
-                                                    '&:active': {
-                                                        transform: 'translateY(0px)',
-                                                    },
-                                                    '&.Mui-disabled': {
-                                                        background: '#616161',
-                                                        color: '#E0E0E0'
-                                                    },
-                                                    '&::before': {
-                                                        content: '""',
-                                                        position: 'absolute',
-                                                        top: 0,
-                                                        left: '-100%',
-                                                        width: '100%',
-                                                        height: '100%',
-                                                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-                                                        transition: 'left 0.5s',
-                                                    },
-                                                    '&:hover::before': {
-                                                        left: '100%',
-                                                    },
-                                                    transition: 'all 0.3s ease'
-                                                }}
-                                                startIcon={isCreatingAccount ? <CircularProgress size={20} color="inherit" /> : null}
-                                            >
-                                                {isCreatingAccount ? 'CRIANDO CONTA...' : '🚀 COMECE AGORA GRÁTIS'}
-                                            </Button>
-
-                                            <Typography
-                                                variant="body2"
-                                                sx={{
-                                                    color: '#81C784',
-                                                    textAlign: 'center',
-                                                    mt: 2,
-                                                    fontWeight: 'medium',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center'
-                                                }}
-                                            >
-                                                ✨ Sem cartão de crédito necessário • Acesso imediato
-                                            </Typography>
-                                        </Box>
-                                    )}
                                 </Box>
                             </Collapse>
 
-                            {/* Seção 4: FORMULÁRIO DE PAGAMENTO - 🆕 ATUALIZADA COM SELEÇÃO DE MÉTODO */}
-                            {showPaymentForm && selectedPlan !== 'free' && (
+                            {/* Seção 4: FORMULÁRIO DE PAGAMENTO */}
+                            {showPaymentForm && (
                                 <Box component="form" onSubmit={handleSubmitPayment} sx={{ mb: 4 }}>
                                     <Divider sx={{ my: 3, borderColor: '#3F3F3F' }} />
 
@@ -2110,14 +1839,14 @@ function CheckoutForm() {
                                     </Box>
 
                                     <Box sx={{ mb: 4, pl: 3 }}>
-                                        {/* 🆕 SELETOR DE MÉTODO DE PAGAMENTO */}
+                                        {/* SELETOR DE MÉTODO DE PAGAMENTO */}
                                         <PaymentMethodSelector
                                             paymentMethod={paymentMethod}
                                             onPaymentMethodChange={handlePaymentMethodChange}
                                             selectedPlan={selectedPlan}
                                         />
 
-                                        {/* 🆕 CAMPOS ESPECÍFICOS PARA CARTÃO */}
+                                        {/* CAMPOS ESPECÍFICOS PARA CARTÃO */}
                                         {paymentMethod === 'card' && (
                                             <>
                                                 <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -2202,7 +1931,7 @@ function CheckoutForm() {
                                             </>
                                         )}
 
-                                        {/* 🆕 INFORMAÇÕES PARA BOLETO */}
+                                        {/* INFORMAÇÕES PARA BOLETO */}
                                         {paymentMethod === 'boleto' && (
                                             <Box sx={{
                                                 backgroundColor: 'rgba(249, 185, 52, 0.1)',
@@ -2248,7 +1977,8 @@ function CheckoutForm() {
                                             <Box sx={{ textAlign: 'right' }}>
                                                 <Typography variant="body2" sx={{ color: 'grey.400' }}>
                                                     {selectedPlan === 'monthly' ? '~127 BRL' :
-                                                        selectedPlan === 'annual' ? '~1143 BRL' : ''}
+                                                        selectedPlan === 'quarterly' ? '~345 BRL' :
+                                                            selectedPlan === 'annual' ? '~1143 BRL' : ''}
                                                 </Typography>
                                                 <Typography variant="caption" sx={{ color: '#F9B934' }}>
                                                     via {paymentMethod === 'boleto' ? 'Boleto' : 'Cartão'}
@@ -2272,7 +2002,7 @@ function CheckoutForm() {
                                             }
                                             label={
                                                 <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                                                    Aceito os <span style={{ color: 'white', textDecoration: 'underline' }}>Termos e Condições</span> e <span style={{ color: 'white', textDecoration: 'underline' }}>Política de Privacidade</span>, e concordo em pagar {selectedPlan && plans[selectedPlan]?.price} a cada {selectedPlan === 'monthly' ? 'mês' : 'ano'} até que eu cancele.
+                                                    Aceito os <span style={{ color: 'white', textDecoration: 'underline' }}>Termos e Condições</span> e <span style={{ color: 'white', textDecoration: 'underline' }}>Política de Privacidade</span>, e concordo em pagar {selectedPlan && plans[selectedPlan]?.price} a cada {selectedPlan === 'monthly' ? 'mês' : selectedPlan === 'quarterly' ? 'trimestre' : 'ano'} até que eu cancele.
                                                 </Typography>
                                             }
                                         />

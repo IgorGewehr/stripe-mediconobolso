@@ -28,7 +28,8 @@ import {
     Divider,
     IconButton,
     useTheme,
-    useMediaQuery
+    useMediaQuery,
+    Chip
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CloseIcon from "@mui/icons-material/Close";
@@ -76,42 +77,57 @@ const CARD_ELEMENT_OPTIONS = {
     },
 };
 
-// Dados dos planos
+// Dados dos planos atualizados com os 3 planos
 const plansData = {
     monthly: {
         id: 'monthly',
-        name: 'Pro',
+        name: 'Essencial',
         price: 'R$127',
         pricePerMonth: 'R$127/mês',
         period: '/mês',
         features: [
-            'Acesso completo a todas as funcionalidades',
-            'Análise de IA para exames e relatórios',
-            'Pacientes ilimitados',
-            'Suporte prioritário'
+            'Exames automáticos com IA',
+            'Resumo Clínico com IA',
+            'Pacientes Ilimitados'
         ],
-        priceId: 'price_1QyKrNI2qmEooUtqKfgYIemz'
+        priceId: 'price_1QyKrNI2qmEooUtqKfgYIemz',
+        paymentMethods: ['card'] // Apenas cartão
+    },
+    quarterly: {
+        id: 'quarterly',
+        name: 'Profissional',
+        price: 'R$345',
+        pricePerMonth: 'R$115/mês',
+        period: '/trimestre',
+        popular: true,
+        features: [
+            'Tudo do Essencial',
+            'Módulo financeiro completo',
+            'Chat com IA médica em tempo real'
+        ],
+        priceId: 'price_1RIH5eI2qmEooUtqsdXyxnEP',
+        paymentMethods: ['card', 'boleto'],
+        savings: '9% de desconto'
     },
     annual: {
         id: 'annual',
-        name: 'Especialista',
+        name: 'Premium',
         price: 'R$1143',
         pricePerMonth: 'R$95,25/mês',
         period: '/ano',
-        popular: true,
         features: [
-            'Acesso completo a todas as funcionalidades',
-            'Análise de IA para exames e relatórios',
-            'Pacientes ilimitados',
+            'Tudo do Profissional',
             'Suporte prioritário',
-            'Economia de 25% em relação ao plano mensal'
+            'Integrações avançadas'
         ],
-        priceId: 'price_1QyKwWI2qmEooUtqOJ9lCFBl'
+        priceId: 'price_1QyKwWI2qmEooUtqOJ9lCFBl',
+        paymentMethods: ['card', 'boleto'],
+        savings: '25% de desconto'
     }
 };
 
 // Componente de seleção de método de pagamento
-const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange }) => {
+const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange, allowedMethods = ['card', 'boleto'] }) => {
     return (
         <Box sx={{ mb: 3 }}>
             <FormLabel component="legend" sx={{ color: 'white', mb: 2, fontWeight: 'bold' }}>
@@ -122,17 +138,19 @@ const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange }) => {
                 onChange={(e) => onPaymentMethodChange(e.target.value)}
                 sx={{ gap: 2 }}
             >
+                {/* Cartão de Crédito */}
                 <Paper sx={{
                     backgroundColor: paymentMethod === 'card' ? 'rgba(249, 185, 52, 0.2)' : '#2F2F2F',
                     border: paymentMethod === 'card' ? '2px solid #F9B934' : '1px solid #5F5F5F',
                     borderRadius: 2,
                     p: 2,
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease'
-                }} onClick={() => onPaymentMethodChange('card')}>
+                    transition: 'all 0.3s ease',
+                    opacity: allowedMethods.includes('card') ? 1 : 0.5
+                }} onClick={() => allowedMethods.includes('card') && onPaymentMethodChange('card')}>
                     <FormControlLabel
                         value="card"
-                        control={<Radio sx={{ color: '#F9B934' }} />}
+                        control={<Radio sx={{ color: '#F9B934' }} disabled={!allowedMethods.includes('card')} />}
                         label={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                 <CreditCardIcon sx={{ color: '#F9B934' }} />
@@ -147,34 +165,53 @@ const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange }) => {
                             </Box>
                         }
                         sx={{ m: 0, width: '100%' }}
+                        disabled={!allowedMethods.includes('card')}
                     />
                 </Paper>
 
+                {/* Boleto Bancário */}
                 <Paper sx={{
                     backgroundColor: paymentMethod === 'boleto' ? 'rgba(249, 185, 52, 0.2)' : '#2F2F2F',
                     border: paymentMethod === 'boleto' ? '2px solid #F9B934' : '1px solid #5F5F5F',
                     borderRadius: 2,
                     p: 2,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease'
-                }} onClick={() => onPaymentMethodChange('boleto')}>
+                    cursor: allowedMethods.includes('boleto') ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.3s ease',
+                    opacity: allowedMethods.includes('boleto') ? 1 : 0.5
+                }} onClick={() => allowedMethods.includes('boleto') && onPaymentMethodChange('boleto')}>
                     <FormControlLabel
                         value="boleto"
-                        control={<Radio sx={{ color: '#F9B934' }} />}
+                        control={<Radio sx={{ color: '#F9B934' }} disabled={!allowedMethods.includes('boleto')} />}
                         label={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <ReceiptIcon sx={{ color: '#F9B934' }} />
+                                <ReceiptIcon sx={{ color: allowedMethods.includes('boleto') ? '#F9B934' : 'grey.500' }} />
                                 <Box>
-                                    <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
+                                    <Typography variant="subtitle1" sx={{
+                                        color: allowedMethods.includes('boleto') ? 'white' : 'grey.500',
+                                        fontWeight: 'bold'
+                                    }}>
                                         Boleto Bancário
+                                        {!allowedMethods.includes('boleto') && (
+                                            <Typography component="span" variant="caption" sx={{
+                                                ml: 1,
+                                                color: 'orange',
+                                                fontWeight: 'normal'
+                                            }}>
+                                                (Não disponível)
+                                            </Typography>
+                                        )}
                                     </Typography>
                                     <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                                        Vencimento em 3 dias • Acesso após confirmação
+                                        {allowedMethods.includes('boleto')
+                                            ? 'Vencimento em 3 dias • Acesso após confirmação'
+                                            : 'Disponível apenas para planos trimestrais e anuais'
+                                        }
                                     </Typography>
                                 </Box>
                             </Box>
                         }
                         sx={{ m: 0, width: '100%' }}
+                        disabled={!allowedMethods.includes('boleto')}
                     />
                 </Paper>
             </RadioGroup>
@@ -225,9 +262,23 @@ const PlanCard = ({ plan, isSelected, onSelect }) => {
                     </Typography>
                 </Typography>
 
-                <Typography variant="h6" sx={{ mb: 2 }}>
+                <Typography variant="h6" sx={{ mb: 1 }}>
                     {plan.name}
                 </Typography>
+
+                {/* Badge de desconto */}
+                {plan.savings && (
+                    <Chip
+                        label={plan.savings}
+                        size="small"
+                        sx={{
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            color: '#22C55E',
+                            fontSize: '11px',
+                            mb: 2
+                        }}
+                    />
+                )}
 
                 <Typography variant="body1" sx={{
                     color: '#F9B934', mb: 2, fontWeight: 'bold', fontSize: '1rem',
@@ -244,6 +295,25 @@ const PlanCard = ({ plan, isSelected, onSelect }) => {
                         </Typography>
                     </Box>
                 ))}
+
+                {/* Indicador de métodos de pagamento para plano mensal */}
+                {plan.id === 'monthly' && (
+                    <Box sx={{
+                        mt: 2,
+                        p: 1,
+                        borderRadius: 1,
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        border: '1px solid rgba(255, 193, 7, 0.3)'
+                    }}>
+                        <Typography variant="caption" sx={{
+                            color: '#FFC107',
+                            fontSize: '11px',
+                            fontWeight: 600
+                        }}>
+                            💳 Apenas cartão de crédito
+                        </Typography>
+                    </Box>
+                )}
             </Box>
 
             <Button variant="contained" fullWidth sx={{
@@ -263,18 +333,31 @@ const PlanCard = ({ plan, isSelected, onSelect }) => {
 };
 
 // Componente principal do formulário de upgrade
-function UpgradeForm({ onClose, onSuccess }) {
+function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterly', allowedPaymentMethods = ['card', 'boleto'] }) {
     const stripe = useStripe();
     const elements = useElements();
     const { user } = useAuth();
 
-    const [selectedPlan, setSelectedPlan] = useState('annual');
+    const [selectedPlan, setSelectedPlan] = useState(initialPlan);
     const [paymentMethod, setPaymentMethod] = useState('card');
     const [cardholderName, setCardholderName] = useState(user?.fullName || '');
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    // Determinar métodos de pagamento permitidos para o plano selecionado
+    const currentPlanPaymentMethods = plansData[selectedPlan]?.paymentMethods || ['card'];
+    const finalAllowedMethods = allowedPaymentMethods.filter(method =>
+        currentPlanPaymentMethods.includes(method)
+    );
+
+    // Se o método atual não é permitido, resetar para cartão
+    React.useEffect(() => {
+        if (!finalAllowedMethods.includes(paymentMethod)) {
+            setPaymentMethod('card');
+        }
+    }, [selectedPlan, finalAllowedMethods, paymentMethod]);
 
     const handleSubmitUpgrade = useCallback(async (e) => {
         e.preventDefault();
@@ -291,6 +374,12 @@ function UpgradeForm({ onClose, onSuccess }) {
 
         if (paymentMethod === 'card' && (!stripe || !elements)) {
             setError('Aguarde o carregamento do formulário de pagamento');
+            return;
+        }
+
+        // Validação adicional: boleto não permitido para plano mensal
+        if (selectedPlan === 'monthly' && paymentMethod === 'boleto') {
+            setError('Pagamento por boleto não está disponível para o plano mensal');
             return;
         }
 
@@ -384,7 +473,7 @@ function UpgradeForm({ onClose, onSuccess }) {
 
             <Grid container spacing={2} sx={{ mb: 4 }}>
                 {Object.values(plansData).map((plan) => (
-                    <Grid item xs={12} sm={6} key={plan.id}>
+                    <Grid item xs={12} sm={4} key={plan.id}>
                         <PlanCard
                             plan={plan}
                             isSelected={selectedPlan === plan.id}
@@ -400,6 +489,7 @@ function UpgradeForm({ onClose, onSuccess }) {
             <PaymentMethodSelector
                 paymentMethod={paymentMethod}
                 onPaymentMethodChange={setPaymentMethod}
+                allowedMethods={finalAllowedMethods}
             />
 
             {/* Campos específicos para cartão */}
@@ -602,7 +692,13 @@ function UpgradeForm({ onClose, onSuccess }) {
 }
 
 // Componente principal do modal
-const UpgradeModal = ({ open, onClose, onSuccess }) => {
+const UpgradeModal = ({
+                          open,
+                          onClose,
+                          onSuccess,
+                          selectedPlan = 'quarterly',
+                          allowedPaymentMethods = ['card', 'boleto']
+                      }) => {
     const muiTheme = useTheme();
     const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
 
@@ -612,7 +708,7 @@ const UpgradeModal = ({ open, onClose, onSuccess }) => {
                 <Dialog
                     open={open}
                     onClose={onClose}
-                    maxWidth="md"
+                    maxWidth="lg"
                     fullWidth
                     fullScreen={isMobile}
                     PaperProps={{
@@ -646,6 +742,8 @@ const UpgradeModal = ({ open, onClose, onSuccess }) => {
                         <UpgradeForm
                             onClose={onClose}
                             onSuccess={onSuccess}
+                            selectedPlan={selectedPlan}
+                            allowedPaymentMethods={allowedPaymentMethods}
                         />
                     </DialogContent>
                 </Dialog>

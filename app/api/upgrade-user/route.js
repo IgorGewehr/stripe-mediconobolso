@@ -34,6 +34,14 @@ export async function POST(req) {
             );
         }
 
+        // 🚫 VALIDAÇÃO: Boleto não disponível para plano mensal
+        if (plan === "monthly" && paymentMethod === 'boleto') {
+            return NextResponse.json(
+                { message: 'Pagamento por boleto não está disponível para o plano mensal. Utilize cartão de crédito.' },
+                { status: 400 }
+            );
+        }
+
         // 🔍 BUSCAR DADOS DO USUÁRIO ATUAL
         let userData;
         try {
@@ -76,34 +84,46 @@ export async function POST(req) {
             }
         }
 
-        // Define o priceId
+        // 🎯 DEFINIÇÃO DOS PREÇOS REORGANIZADA
+        // Estrutura: Essencial -> Profissional -> Premium
         let priceId;
         switch (plan) {
-            case "annual":
-                priceId = "price_1QyKwWI2qmEooUtqOJ9lCFBl";
+            case "monthly":
+                // Plano Essencial (básico)
+                priceId = "price_1QyKrNI2qmEooUtqKfgYIemz";
                 break;
             case "quarterly":
+                // Plano Profissional (do meio) - SEU PRICE ID AQUI
                 priceId = "price_1RIH5eI2qmEooUtqsdXyxnEP";
                 break;
+            case "annual":
+                // Plano Premium (avançado)
+                priceId = "price_1QyKwWI2qmEooUtqOJ9lCFBl";
+                break;
             default:
-                priceId = "price_1QyKrNI2qmEooUtqKfgYIemz";
+                // Fallback para o plano do meio se não especificado
+                priceId = "price_1RIH5eI2qmEooUtqsdXyxnEP";
         }
+
+        console.log(`📋 Plano selecionado: ${plan} (${priceId})`);
 
         // Preparar metadados
         const customerMetadata = {
             uid,
-            upgradeVersion: '1.0',
+            upgradeVersion: '2.0', // Versão atualizada
             paymentMethod: paymentMethod,
             originalEmail: userData.email,
-            upgradeDate: new Date().toISOString()
+            upgradeDate: new Date().toISOString(),
+            planCategory: plan === 'monthly' ? 'essencial' : plan === 'quarterly' ? 'profissional' : 'premium'
         };
 
         const subscriptionMetadata = {
             uid,
             plan,
+            planCategory: plan === 'monthly' ? 'essencial' : plan === 'quarterly' ? 'profissional' : 'premium',
             paymentMethod: paymentMethod,
             isUpgrade: 'true',
-            upgradeVersion: '1.0'
+            upgradeVersion: '2.0'
         };
 
         // Adicionar CPF aos metadados se disponível
@@ -184,14 +204,14 @@ export async function POST(req) {
                 }
             };
             subscriptionData.automatic_tax = { enabled: false };
-            console.log(`📄 Configurando upgrade para BOLETO`);
+            console.log(`📄 Configurando upgrade para BOLETO - Plano: ${plan}`);
         } else {
             subscriptionData.payment_behavior = 'default_incomplete';
             subscriptionData.payment_settings = {
                 save_default_payment_method: 'on_subscription',
                 payment_method_types: ['card']
             };
-            console.log(`💳 Configurando upgrade para CARTÃO`);
+            console.log(`💳 Configurando upgrade para CARTÃO - Plano: ${plan}`);
         }
 
         // Criar nova assinatura
@@ -213,8 +233,10 @@ export async function POST(req) {
             upgradeInProgress: true,
             newSubscriptionId: subscription.id,
             upgradePlan: plan,
+            planCategory: plan === 'monthly' ? 'essencial' : plan === 'quarterly' ? 'profissional' : 'premium',
             upgradeMethod: paymentMethod,
             upgradeStartedAt: new Date(),
+            upgradeVersion: '2.0',
             // Manter dados atuais até confirmação
             previousPlan: userData.planType || 'free'
         };
@@ -230,6 +252,14 @@ export async function POST(req) {
         await firebaseService.editUserData(uid, upgradeData);
         console.log(`✅ Dados de upgrade salvos no Firebase`);
 
+        // 📊 LOG PARA MONITORAMENTO
+        console.log(`🎯 Upgrade Summary:
+        - UID: ${uid}
+        - Plano: ${plan} (${plan === 'monthly' ? 'Essencial' : plan === 'quarterly' ? 'Profissional' : 'Premium'})
+        - Price ID: ${priceId}
+        - Método: ${paymentMethod}
+        - Subscription: ${subscription.id}`);
+
         // Retorno específico para boleto
         if (paymentMethod === 'boleto') {
             if (paymentIntent.next_action?.boleto_display_details?.hosted_voucher_url) {
@@ -238,6 +268,8 @@ export async function POST(req) {
                     subscriptionId: subscription.id,
                     clientSecret: paymentIntent.client_secret,
                     paymentMethod: 'boleto',
+                    plan: plan,
+                    planCategory: plan === 'monthly' ? 'essencial' : plan === 'quarterly' ? 'profissional' : 'premium',
                     boletoUrl: paymentIntent.next_action.boleto_display_details.hosted_voucher_url,
                     message: 'Boleto gerado com sucesso para upgrade'
                 });
@@ -247,6 +279,8 @@ export async function POST(req) {
                     subscriptionId: subscription.id,
                     clientSecret: paymentIntent.client_secret,
                     paymentMethod: 'boleto',
+                    plan: plan,
+                    planCategory: plan === 'monthly' ? 'essencial' : plan === 'quarterly' ? 'profissional' : 'premium',
                     message: 'Boleto está sendo processado para upgrade'
                 });
             }
@@ -257,6 +291,8 @@ export async function POST(req) {
                 subscriptionId: subscription.id,
                 clientSecret: paymentIntent.client_secret,
                 paymentMethod: 'card',
+                plan: plan,
+                planCategory: plan === 'monthly' ? 'essencial' : plan === 'quarterly' ? 'profissional' : 'premium',
                 message: 'Upgrade configurado com sucesso'
             });
         }
