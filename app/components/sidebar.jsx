@@ -8,6 +8,9 @@ import useModuleAccess from "./useModuleAccess";
 import ModuleProtection from "./ModuleProtection";
 import LockIcon from "@mui/icons-material/Lock";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+// ✨ IMPORTAR ÍCONE PARA O CHAT IA
+import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { MODULES } from "../../lib/moduleConfig";
 
 const Sidebar = ({
@@ -17,6 +20,9 @@ const Sidebar = ({
                      onMenuSelect,
                      onLogout,
                      onProfileClick,
+                     // ✨ NOVAS PROPS PARA O CHAT IA
+                     onChatToggle,
+                     isChatOpen = false,
                  }) => {
     const [selected, setSelected] = useState(initialSelected);
     const { user } = useAuth();
@@ -46,38 +52,36 @@ const Sidebar = ({
                 icon: "/agenda.svg",
                 moduleId: MODULES.APPOINTMENTS
             },
-            // ✨ LÓGICA HÍBRIDA: Estes ainda são hardcoded disabled
             {
                 label: "Métricas",
                 icon: "/metricas.svg",
-                disabled: true, // 🔒 Hardcoded - ainda não liberado para ninguém
-                moduleId: null // Não usa sistema de módulos ainda
+                disabled: true,
+                moduleId: null
             },
             {
                 label: "Financeiro",
                 icon: "/financeiro.svg",
-                disabled: true, // 🔒 Hardcoded - ainda não liberado para ninguém
-                moduleId: null // Não usa sistema de módulos ainda
+                disabled: true,
+                moduleId: null
             }
         ],
         admin: [
-            // ✨ LÓGICA ANTERIOR: Só mostra para admin (não usa sistema de módulos)
             ...(user && user.administrador === true ? [{
                 label: "Dados",
                 iconComponent: AdminPanelSettingsIcon,
-                moduleId: null // Não usa sistema de módulos
+                moduleId: null
             }] : [])
         ],
         suporte: [
             {
                 label: "Central de Ajuda",
                 icon: "/centralajuda.svg",
-                moduleId: null // Sempre disponível
+                moduleId: null
             },
             {
                 label: "Reportar",
                 icon: "/reportar.svg",
-                moduleId: null // Sempre disponível
+                moduleId: null
             }
         ]
     }), [user]);
@@ -85,7 +89,6 @@ const Sidebar = ({
     // Filtrar itens baseado no acesso (híbrido)
     const visibleItems = useMemo(() => {
         const filterItems = (items) => items.map(item => {
-            // Se tem disabled hardcoded, usar isso
             if (item.hasOwnProperty('disabled')) {
                 return {
                     ...item,
@@ -94,7 +97,6 @@ const Sidebar = ({
                 };
             }
 
-            // Se não tem moduleId, é sempre acessível (suporte, admin)
             if (!item.moduleId) {
                 return {
                     ...item,
@@ -103,7 +105,6 @@ const Sidebar = ({
                 };
             }
 
-            // Usar sistema de módulos
             return {
                 ...item,
                 hasAccess: hasAccess(item.moduleId),
@@ -118,16 +119,13 @@ const Sidebar = ({
         };
     }, [menuItems, hasAccess]);
 
-    // Obter módulos indisponíveis para mostrar opções de upgrade (só se não for legacy)
     const unavailableModules = isLegacyUser ? [] : getUnavailableModules();
 
     const handleMenuClick = (label, isLogout = false, disabled = false, moduleId = null) => {
         if (disabled) {
-            // Para itens disabled hardcoded, não fazer nada
             if (label === "Métricas" || label === "Financeiro") {
-                return; // Silenciosamente ignora cliques em itens ainda não liberados
+                return;
             }
-            // Para outros itens desabilitados, o ModuleProtection cuidará do diálogo
             return;
         }
 
@@ -140,13 +138,19 @@ const Sidebar = ({
         onMenuSelect?.(label);
     };
 
+    // ✨ HANDLER PARA O BOTÃO DE CHAT IA
+    const handleChatClick = () => {
+        if (onChatToggle) {
+            onChatToggle();
+        }
+    };
+
     const handleProfileClick = () => {
         if (onProfileClick) onProfileClick();
         else onMenuSelect?.("Meu Perfil");
     };
 
     const handleUpgrade = (moduleId) => {
-        // Redirecionar para página de upgrade/checkout
         window.location.href = '/checkout';
     };
 
@@ -186,6 +190,44 @@ const Sidebar = ({
         },
     });
 
+    // ✨ ESTILOS ESPECÍFICOS PARA O BOTÃO DE CHAT IA
+    const chatButtonStyles = {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        fontFamily: "Gellix, sans-serif",
+        fontSize: "12px",
+        fontWeight: 600,
+        textTransform: "none",
+        width: "180px",
+        height: "44px",
+        px: 2.5,
+        py: 1.5,
+        borderRadius: "16px",
+        transition: "all 0.2s ease",
+        color: isChatOpen ? "#FFFFFF" : "#2D3748",
+        backgroundColor: isChatOpen
+            ? "#10B981"
+            : "#FFFFFF",
+        border: `2px solid ${isChatOpen ? "#10B981" : "#E2E8F0"}`,
+        boxShadow: isChatOpen
+            ? "0 4px 16px rgba(16, 185, 129, 0.25)"
+            : "0 2px 8px rgba(0, 0, 0, 0.06)",
+        "&:hover": {
+            backgroundColor: isChatOpen
+                ? "#059669"
+                : "#F7FAFC",
+            borderColor: isChatOpen ? "#059669" : "#10B981",
+            boxShadow: isChatOpen
+                ? "0 6px 20px rgba(16, 185, 129, 0.35)"
+                : "0 4px 12px rgba(16, 185, 129, 0.15)",
+            transform: "translateY(-1px)",
+        },
+        "&:active": {
+            transform: "translateY(0)",
+        },
+    };
+
     const iconStyles = { width: "18px", height: "18px", mr: 1.2 };
     const lockIconStyles = { width: "14px", height: "14px", ml: 0.8, color: "#8A94A6" };
     const categoryLabelStyle = {
@@ -202,7 +244,6 @@ const Sidebar = ({
     const renderMenuItem = (item) => {
         const isSelected = selected === item.label;
 
-        // Se é item hardcoded disabled (Métricas/Financeiro), renderizar simples
         if (item.hasOwnProperty('disabled') && item.disabled) {
             return (
                 <Button
@@ -230,7 +271,6 @@ const Sidebar = ({
             );
         }
 
-        // Se é item sem moduleId (admin, suporte), renderizar simples
         if (!item.moduleId) {
             return (
                 <Button
@@ -256,7 +296,6 @@ const Sidebar = ({
             );
         }
 
-        // Se é item com sistema de módulos e está desabilitado
         if (item.disabled && item.moduleId) {
             return (
                 <ModuleProtection
@@ -290,7 +329,6 @@ const Sidebar = ({
             );
         }
 
-        // Item normal (habilitado com sistema de módulos)
         return (
             <Button
                 key={item.label}
@@ -409,7 +447,56 @@ const Sidebar = ({
                         {visibleItems.suporte.map(renderMenuItem)}
                     </Box>
 
-
+                    {/* ✨ NOVA SEÇÃO: ASSISTENTE IA */}
+                    <Typography sx={{...categoryLabelStyle, color: "#10B981", fontWeight: 600}}>
+                        Assistente IA
+                    </Typography>
+                    <Box sx={{ mb: 2 }}>
+                        <Tooltip
+                            title={isChatOpen ? "Fechar Chat Médico" : "Abrir Assistente Médico IA"}
+                            placement="right"
+                        >
+                            <Button
+                                onClick={handleChatClick}
+                                variant="contained"
+                                sx={chatButtonStyles}
+                                startIcon={
+                                    <SmartToyIcon
+                                        sx={{
+                                            width: "20px",
+                                            height: "20px",
+                                            mr: 1,
+                                            color: isChatOpen ? "#FFFFFF" : "#10B981"
+                                        }}
+                                    />
+                                }
+                            >
+                                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                                    <Typography
+                                        sx={{
+                                            fontSize: "12px",
+                                            fontWeight: 600,
+                                            lineHeight: 1.2,
+                                            color: "inherit"
+                                        }}
+                                    >
+                                        Chat Médico
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontSize: "10px",
+                                            fontWeight: 400,
+                                            lineHeight: 1.2,
+                                            color: isChatOpen ? "rgba(255,255,255,0.9)" : "#64748B",
+                                            mt: 0.2
+                                        }}
+                                    >
+                                        {isChatOpen ? "Ativo" : "Clique para abrir"}
+                                    </Typography>
+                                </Box>
+                            </Button>
+                        </Tooltip>
+                    </Box>
                 </Box>
 
                 {/* Meu Perfil */}

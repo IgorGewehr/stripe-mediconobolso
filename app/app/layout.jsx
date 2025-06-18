@@ -17,9 +17,12 @@ import {useResponsiveScale} from "../components/useScale";
 import CentralAjudaTemplate from "../components/centralAjudaTemplate";
 import UserProfileTemplate from "../components/userProfileTemplate";
 import HelpCenter from "../components/helpCenter";
-import UserDataTemplate from "../components/userDataTemplate"; // Importar o componente UserDataTemplate
+import UserDataTemplate from "../components/userDataTemplate";
 import {HelpCenter as HelpCenterIcon } from "@mui/icons-material";
 import Script from "next/script";
+
+// ✨ IMPORTAR O COMPONENTE DE CHAT IA
+import MedicalChatDialog from "../components/organismsComponents/MedicalChatDialog";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -28,6 +31,9 @@ export default function AppLayout({ children }) {
     const loading = auth?.loading || false;
     const logout = auth?.logout;
     const router = useRouter();
+
+    // ✨ NOVO ESTADO PARA CONTROLAR O CHAT IA
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     // Verificar se o usuário é administrador
     const isAdmin = user && user.administrador === true;
@@ -66,10 +72,19 @@ export default function AppLayout({ children }) {
 
     const { scaleStyle } = useResponsiveScale();
 
+    // ✨ HANDLER PARA ABRIR/FECHAR O CHAT IA
+    const handleChatToggle = () => {
+        setIsChatOpen(!isChatOpen);
+    };
+
+    const handleChatClose = () => {
+        setIsChatOpen(false);
+    };
+
     // Handler para quando um paciente é clicado na tabela
     const handlePatientClick = (patientId) => {
         setSelectedPatientId(patientId);
-        setActivePage("PatientProfile"); // Definir uma nova página ativa para o perfil do paciente
+        setActivePage("PatientProfile");
     };
 
     const handleReportClick = () => {
@@ -81,7 +96,6 @@ export default function AppLayout({ children }) {
     }
 
     // Handler para voltar da visualização do paciente para a tabela de pacientes
-    // Este handler foi mantido para compatibilidade mas não é mais usado no TopAppBar
     const handleBackToPatients = () => {
         setSelectedPatientId(null);
         setActivePage("dashboard");
@@ -103,13 +117,14 @@ export default function AppLayout({ children }) {
     };
 
     // Expor o handler globalmente para que os componentes possam acessá-lo
-    // Útil quando componentes aninhados precisam navegar
     useEffect(() => {
         // Expor handlers para uso global em componentes aninhados
         window.handlePatientClick = handlePatientClick;
         window.handleMenuSelect = handleMenuSelect;
         window.handleBackToDashboard = handleBackToDashboard;
         window.handleReceitaClick = handleReceitaClick;
+        // ✨ EXPOR HANDLER DO CHAT GLOBALMENTE
+        window.handleChatToggle = handleChatToggle;
 
         // Limpeza ao desmontar o componente
         return () => {
@@ -117,6 +132,7 @@ export default function AppLayout({ children }) {
             delete window.handleMenuSelect;
             delete window.handleBackToDashboard;
             delete window.handleReceitaClick;
+            delete window.handleChatToggle;
         };
     }, []);
 
@@ -133,10 +149,8 @@ export default function AppLayout({ children }) {
             case "dashboard":
                 return <Dashboard onClickPatients={handlePatientClick}/>;
             case "pacientes":
-                // Substituimos o PacienteCadastroTemplate pelo novo PatientsListPage
                 return <PatientsListPage onPatientClick={handlePatientClick} />;
             case "receitas":
-                // Recebendo o handler de clique no paciente diretamente
                 return <PrescriptionsPage />;
             case "agenda":
                 return <AgendaMedica initialConsultationId={agendaConsultationId} />;
@@ -145,24 +159,21 @@ export default function AppLayout({ children }) {
             case "criar novo paciente":
                 return <PacienteCadastroTemplate/>;
             case "central de ajuda":
-                return <HelpCenter initialTab={0}/>;  // Videos tab
+                return <HelpCenter initialTab={0}/>;
             case "reportar":
                 return <HelpCenter initialTab={1}/>;
-            case "meu perfil": // Adicione este novo case para a tela de perfil
+            case "meu perfil":
                 return <UserProfileTemplate onLogout={logout}/>;
-            case "dados": // Nova opção para a página de dados - apenas para administradores
-                // Verificar se o usuário é administrador antes de renderizar
+            case "dados":
                 return isAdmin ? <UserDataTemplate /> : <Dashboard onClickPatients={handlePatientClick}/>;
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
     };
 
-
     const handleProfileClick = () => {
         setActivePage("Meu Perfil");
     };
-
 
     // Callback para o botão "Paciente" da TopAppBar
     const handlePacienteTopAppBarClick = () => {
@@ -198,7 +209,7 @@ export default function AppLayout({ children }) {
             case "meu perfil":
                 return "Meu Perfil";
             case "dados":
-                return "Administração de Dados"; // Título para a nova página
+                return "Administração de Dados";
             case "dashboard":
                 return (
                     <>
@@ -232,38 +243,43 @@ export default function AppLayout({ children }) {
     };
 
     return (
-
         <>
-
-        <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF", }}>
-            <Sidebar
-                initialSelected={activePage}
-                onMenuSelect={handleMenuSelect}
-                onLogout={logout}
-                onProfileClick={handleProfileClick}
-                userName={user?.fullName?.split(' ')[0] || "Médico"}
-                userRole={user?.especialidade || ""}
-            />
-            <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
-                <Box sx={{ flexShrink: 0 }}>
-                    <TopAppBar
-                        title={getPageTitle()}
-                        onPacienteClick={handlePacienteTopAppBarClick}
-                        onAgendamentoClick={handleAgendamentoClick}
-                        // Sempre usa handleBackToDashboard para o botão de voltar
-                        onBackClick={handleBackToDashboard}
-                        onReceitaClick={handleReceitaClick}
-                        onProfileClick={handleProfileClick}
-                    />
-                </Box>
-                <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
-                    {/* Aplica o contentScaleStyle para ajustar a escala do conteúdo */}
-                    <Box sx={{ height: 'auto', padding: '10px', boxSizing: 'border-box', ...scaleStyle }}>
-                        {renderContent()}
+            <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF", }}>
+                <Sidebar
+                    initialSelected={activePage}
+                    onMenuSelect={handleMenuSelect}
+                    onLogout={logout}
+                    onProfileClick={handleProfileClick}
+                    userName={user?.fullName?.split(' ')[0] || "Médico"}
+                    userRole={user?.especialidade || ""}
+                    // ✨ PASSAR PROPS DO CHAT PARA A SIDEBAR
+                    onChatToggle={handleChatToggle}
+                    isChatOpen={isChatOpen}
+                />
+                <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
+                    <Box sx={{ flexShrink: 0 }}>
+                        <TopAppBar
+                            title={getPageTitle()}
+                            onPacienteClick={handlePacienteTopAppBarClick}
+                            onAgendamentoClick={handleAgendamentoClick}
+                            onBackClick={handleBackToDashboard}
+                            onReceitaClick={handleReceitaClick}
+                            onProfileClick={handleProfileClick}
+                        />
+                    </Box>
+                    <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
+                        <Box sx={{ height: 'auto', padding: '10px', boxSizing: 'border-box', ...scaleStyle }}>
+                            {renderContent()}
+                        </Box>
                     </Box>
                 </Box>
             </Box>
-        </Box>
-            </>
+
+            {/* ✨ DIALOG DE CHAT IA - RENDERIZADO POR CIMA DE TUDO */}
+            <MedicalChatDialog
+                open={isChatOpen}
+                onClose={handleChatClose}
+            />
+        </>
     );
 }
