@@ -22,7 +22,7 @@ import {HelpCenter as HelpCenterIcon } from "@mui/icons-material";
 import Script from "next/script";
 
 // ✨ IMPORTAR O COMPONENTE DE CHAT IA
-import MedicalChatDialog from "../components/organismsComponents/MedicalChatDialog";
+import MedicalChatDialog from "../components/organismsComponents/medicalChatDialog";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
