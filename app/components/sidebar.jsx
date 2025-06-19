@@ -8,9 +8,9 @@ import useModuleAccess from "./useModuleAccess";
 import ModuleProtection from "./ModuleProtection";
 import LockIcon from "@mui/icons-material/Lock";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-// ✨ IMPORTAR ÍCONE PARA O CHAT IA
-import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
+// ✨ IMPORTAR ÍCONE PARA O DOCTOR AI
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import PsychologyIcon from "@mui/icons-material/Psychology";
 import { MODULES } from "../../lib/moduleConfig";
 
 const Sidebar = ({
@@ -20,9 +20,6 @@ const Sidebar = ({
                      onMenuSelect,
                      onLogout,
                      onProfileClick,
-                     // ✨ NOVAS PROPS PARA O CHAT IA
-                     onChatToggle,
-                     isChatOpen = false,
                  }) => {
     const [selected, setSelected] = useState(initialSelected);
     const { user } = useAuth();
@@ -72,6 +69,14 @@ const Sidebar = ({
                 moduleId: null
             }] : [])
         ],
+        ia: [
+            {
+                label: "Doctor AI",
+                iconComponent: PsychologyIcon,
+                moduleId: null,
+                special: true
+            }
+        ],
         suporte: [
             {
                 label: "Central de Ajuda",
@@ -115,6 +120,7 @@ const Sidebar = ({
         return {
             principal: filterItems(menuItems.principal),
             admin: filterItems(menuItems.admin),
+            ia: filterItems(menuItems.ia),
             suporte: filterItems(menuItems.suporte)
         };
     }, [menuItems, hasAccess]);
@@ -136,13 +142,6 @@ const Sidebar = ({
 
         setSelected(label);
         onMenuSelect?.(label);
-    };
-
-    // ✨ HANDLER PARA O BOTÃO DE CHAT IA
-    const handleChatClick = () => {
-        if (onChatToggle) {
-            onChatToggle();
-        }
     };
 
     const handleProfileClick = () => {
@@ -190,8 +189,8 @@ const Sidebar = ({
         },
     });
 
-    // ✨ ESTILOS ESPECÍFICOS PARA O BOTÃO DE CHAT IA
-    const chatButtonStyles = {
+    // ✨ ESTILOS ESPECÍFICOS PARA O BOTÃO DO DOCTOR AI
+    const doctorAIButtonStyles = (isSelected) => ({
         display: "flex",
         alignItems: "center",
         justifyContent: "flex-start",
@@ -205,28 +204,28 @@ const Sidebar = ({
         py: 1.5,
         borderRadius: "16px",
         transition: "all 0.2s ease",
-        color: isChatOpen ? "#FFFFFF" : "#2D3748",
-        backgroundColor: isChatOpen
-            ? "#10B981"
+        color: isSelected ? "#FFFFFF" : "#2D3748",
+        backgroundColor: isSelected
+            ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
             : "#FFFFFF",
-        border: `2px solid ${isChatOpen ? "#10B981" : "#E2E8F0"}`,
-        boxShadow: isChatOpen
-            ? "0 4px 16px rgba(16, 185, 129, 0.25)"
+        border: `2px solid ${isSelected ? "transparent" : "#E2E8F0"}`,
+        boxShadow: isSelected
+            ? "0 4px 16px rgba(102, 126, 234, 0.25)"
             : "0 2px 8px rgba(0, 0, 0, 0.06)",
         "&:hover": {
-            backgroundColor: isChatOpen
-                ? "#059669"
+            backgroundColor: isSelected
+                ? "linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)"
                 : "#F7FAFC",
-            borderColor: isChatOpen ? "#059669" : "#10B981",
-            boxShadow: isChatOpen
-                ? "0 6px 20px rgba(16, 185, 129, 0.35)"
-                : "0 4px 12px rgba(16, 185, 129, 0.15)",
+            borderColor: isSelected ? "transparent" : "#667eea",
+            boxShadow: isSelected
+                ? "0 6px 20px rgba(102, 126, 234, 0.35)"
+                : "0 4px 12px rgba(102, 126, 234, 0.15)",
             transform: "translateY(-1px)",
         },
         "&:active": {
             transform: "translateY(0)",
         },
-    };
+    });
 
     const iconStyles = { width: "18px", height: "18px", mr: 1.2 };
     const lockIconStyles = { width: "14px", height: "14px", ml: 0.8, color: "#8A94A6" };
@@ -243,6 +242,57 @@ const Sidebar = ({
     // Renderizar item do menu com lógica híbrida
     const renderMenuItem = (item) => {
         const isSelected = selected === item.label;
+
+        // ✨ TRATAMENTO ESPECIAL PARA O DOCTOR AI
+        if (item.special && item.label === "Doctor AI") {
+            return (
+                <Tooltip
+                    key={item.label}
+                    title="Assistente Médico com IA"
+                    placement="right"
+                >
+                    <Button
+                        onClick={() => handleMenuClick(item.label, false, false)}
+                        variant="contained"
+                        sx={doctorAIButtonStyles(isSelected)}
+                        startIcon={
+                            <AutoAwesomeIcon
+                                sx={{
+                                    width: "20px",
+                                    height: "20px",
+                                    mr: 1,
+                                    color: isSelected ? "#FFFFFF" : "#667eea"
+                                }}
+                            />
+                        }
+                    >
+                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                            <Typography
+                                sx={{
+                                    fontSize: "12px",
+                                    fontWeight: 600,
+                                    lineHeight: 1.2,
+                                    color: "inherit"
+                                }}
+                            >
+                                Doctor AI
+                            </Typography>
+                            <Typography
+                                sx={{
+                                    fontSize: "10px",
+                                    fontWeight: 400,
+                                    lineHeight: 1.2,
+                                    color: isSelected ? "rgba(255,255,255,0.9)" : "#64748B",
+                                    mt: 0.2
+                                }}
+                            >
+                                Assistente Médico
+                            </Typography>
+                        </Box>
+                    </Button>
+                </Tooltip>
+            );
+        }
 
         if (item.hasOwnProperty('disabled') && item.disabled) {
             return (
@@ -442,60 +492,17 @@ const Sidebar = ({
                         </>
                     )}
 
+                    {/* ✨ NOVA SEÇÃO: ASSISTENTE IA */}
+                    <Typography sx={{...categoryLabelStyle, color: "#667eea", fontWeight: 600}}>
+                        Inteligência Artificial
+                    </Typography>
+                    <Box sx={{ mb: 2 }}>
+                        {visibleItems.ia.map(renderMenuItem)}
+                    </Box>
+
                     <Typography sx={categoryLabelStyle}>Suporte</Typography>
                     <Box>
                         {visibleItems.suporte.map(renderMenuItem)}
-                    </Box>
-
-                    {/* ✨ NOVA SEÇÃO: ASSISTENTE IA */}
-                    <Typography sx={{...categoryLabelStyle, color: "#10B981", fontWeight: 600}}>
-                        Assistente IA
-                    </Typography>
-                    <Box sx={{ mb: 2 }}>
-                        <Tooltip
-                            title={isChatOpen ? "Fechar Chat Médico" : "Abrir Assistente Médico IA"}
-                            placement="right"
-                        >
-                            <Button
-                                onClick={handleChatClick}
-                                variant="contained"
-                                sx={chatButtonStyles}
-                                startIcon={
-                                    <SmartToyIcon
-                                        sx={{
-                                            width: "20px",
-                                            height: "20px",
-                                            mr: 1,
-                                            color: isChatOpen ? "#FFFFFF" : "#10B981"
-                                        }}
-                                    />
-                                }
-                            >
-                                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                                    <Typography
-                                        sx={{
-                                            fontSize: "12px",
-                                            fontWeight: 600,
-                                            lineHeight: 1.2,
-                                            color: "inherit"
-                                        }}
-                                    >
-                                        Chat Médico
-                                    </Typography>
-                                    <Typography
-                                        sx={{
-                                            fontSize: "10px",
-                                            fontWeight: 400,
-                                            lineHeight: 1.2,
-                                            color: isChatOpen ? "rgba(255,255,255,0.9)" : "#64748B",
-                                            mt: 0.2
-                                        }}
-                                    >
-                                        {isChatOpen ? "Ativo" : "Clique para abrir"}
-                                    </Typography>
-                                </Box>
-                            </Button>
-                        </Tooltip>
                     </Box>
                 </Box>
 

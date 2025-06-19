@@ -21,8 +21,8 @@ import UserDataTemplate from "../components/userDataTemplate";
 import {HelpCenter as HelpCenterIcon } from "@mui/icons-material";
 import Script from "next/script";
 
-// ✨ IMPORTAR O COMPONENTE DE CHAT IA
-import MedicalChatDialog from "../components/organismsComponents/medicalChatDialog";
+// ✨ IMPORTAR O NOVO COMPONENTE DOCTOR AI
+import DoctorAITemplate from "../components/doctorAITemplate";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -31,9 +31,6 @@ export default function AppLayout({ children }) {
     const loading = auth?.loading || false;
     const logout = auth?.logout;
     const router = useRouter();
-
-    // ✨ NOVO ESTADO PARA CONTROLAR O CHAT IA
-    const [isChatOpen, setIsChatOpen] = useState(false);
 
     // Verificar se o usuário é administrador
     const isAdmin = user && user.administrador === true;
@@ -71,15 +68,6 @@ export default function AppLayout({ children }) {
     };
 
     const { scaleStyle } = useResponsiveScale();
-
-    // ✨ HANDLER PARA ABRIR/FECHAR O CHAT IA
-    const handleChatToggle = () => {
-        setIsChatOpen(!isChatOpen);
-    };
-
-    const handleChatClose = () => {
-        setIsChatOpen(false);
-    };
 
     // Handler para quando um paciente é clicado na tabela
     const handlePatientClick = (patientId) => {
@@ -123,8 +111,6 @@ export default function AppLayout({ children }) {
         window.handleMenuSelect = handleMenuSelect;
         window.handleBackToDashboard = handleBackToDashboard;
         window.handleReceitaClick = handleReceitaClick;
-        // ✨ EXPOR HANDLER DO CHAT GLOBALMENTE
-        window.handleChatToggle = handleChatToggle;
 
         // Limpeza ao desmontar o componente
         return () => {
@@ -132,7 +118,6 @@ export default function AppLayout({ children }) {
             delete window.handleMenuSelect;
             delete window.handleBackToDashboard;
             delete window.handleReceitaClick;
-            delete window.handleChatToggle;
         };
     }, []);
 
@@ -158,6 +143,9 @@ export default function AppLayout({ children }) {
                 return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToDashboard} />;
             case "criar novo paciente":
                 return <PacienteCadastroTemplate/>;
+            // ✨ NOVA ROTA PARA DOCTOR AI
+            case "doctor ai":
+                return <DoctorAITemplate />;
             case "central de ajuda":
                 return <HelpCenter initialTab={0}/>;
             case "reportar":
@@ -210,6 +198,16 @@ export default function AppLayout({ children }) {
                 return "Meu Perfil";
             case "dados":
                 return "Administração de Dados";
+            // ✨ NOVO TÍTULO PARA DOCTOR AI
+            case "doctor ai":
+                return (
+                    <>
+                        <span style={{color: "#667eea"}}>
+                            Doctor AI
+                        </span>
+                        {" - Seu assistente médico inteligente"}
+                    </>
+                );
             case "dashboard":
                 return (
                     <>
@@ -252,9 +250,6 @@ export default function AppLayout({ children }) {
                     onProfileClick={handleProfileClick}
                     userName={user?.fullName?.split(' ')[0] || "Médico"}
                     userRole={user?.especialidade || ""}
-                    // ✨ PASSAR PROPS DO CHAT PARA A SIDEBAR
-                    onChatToggle={handleChatToggle}
-                    isChatOpen={isChatOpen}
                 />
                 <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
                     <Box sx={{ flexShrink: 0 }}>
@@ -274,12 +269,6 @@ export default function AppLayout({ children }) {
                     </Box>
                 </Box>
             </Box>
-
-            {/* ✨ DIALOG DE CHAT IA - RENDERIZADO POR CIMA DE TUDO */}
-            <MedicalChatDialog
-                open={isChatOpen}
-                onClose={handleChatClose}
-            />
         </>
     );
 }

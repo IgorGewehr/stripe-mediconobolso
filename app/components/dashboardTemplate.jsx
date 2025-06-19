@@ -13,6 +13,7 @@ import PatientsListCard from "./organismsComponents/patientsList";
 import { useAuth } from "./authProvider";
 import FirebaseService from "../../lib/firebaseService";
 import { format, addDays, subDays, startOfDay, isAfter } from 'date-fns';
+import MiniChatCard from "./organismsComponents/miniChatCard";
 
 const Dashboard = ({ onClickPatients }) => {
     const theme = useTheme();
@@ -256,10 +257,7 @@ const Dashboard = ({ onClickPatients }) => {
 
                 {/* Lado direito - Métricas */}
                 <Grid item xs={12} md={4}>
-                    <MetricsCard
-                        metrics={metrics}
-                        loading={loading}
-                    />
+                    <MiniChatCard />
                 </Grid>
             </Grid>
         </Box>
