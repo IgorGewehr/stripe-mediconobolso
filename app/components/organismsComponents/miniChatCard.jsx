@@ -130,7 +130,7 @@ const MiniChatCard = () => {
             elevation={0}
             sx={{
                 width: '100%',
-                height: '100%', // Mesma altura do MetricsCard
+                height: '600px', // Altura fixa - ajuste conforme necessário
                 borderRadius: '20px',
                 border: '1px solid',
                 borderColor: theme.palette.divider,
@@ -152,7 +152,8 @@ const MiniChatCard = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    mb: 2
+                    mb: 2,
+                    flexShrink: 0 // Impede que o header encolha
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <AutoAwesomeIcon sx={{ color: '#1852FE', fontSize: 20 }} />
@@ -189,7 +190,22 @@ const MiniChatCard = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         minHeight: 0, // Importante para o scroll funcionar
-                        border: '1px solid #F0F0F0'
+                        border: '1px solid #F0F0F0',
+                        // Adiciona scroll customizado
+                        '&::-webkit-scrollbar': {
+                            width: '6px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                            backgroundColor: '#f1f1f1',
+                            borderRadius: '3px',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                            backgroundColor: '#c1c1c1',
+                            borderRadius: '3px',
+                            '&:hover': {
+                                backgroundColor: '#a8a8a8',
+                            },
+                        },
                     }}
                 >
                     {messages.length === 0 ? (
@@ -359,6 +375,7 @@ const MiniChatCard = () => {
                             mb: 1,
                             fontSize: '0.75rem',
                             py: 0.5,
+                            flexShrink: 0, // Impede que o erro encolha
                             '& .MuiAlert-message': { py: 0.5 }
                         }}
                         onClose={() => setError('')}
@@ -368,7 +385,12 @@ const MiniChatCard = () => {
                 )}
 
                 {/* Input */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    flexShrink: 0 // Impede que o input encolha
+                }}>
                     <TextField
                         ref={inputRef}
                         fullWidth
