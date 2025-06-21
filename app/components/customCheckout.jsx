@@ -48,6 +48,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import Image from 'next/image';
+import { FacebookEvents, generateEventId } from '../../lib/facebookConversions';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -430,6 +431,26 @@ function CheckoutForm() {
             });
             console.log('Facebook Pixel: InitiateCheckout event tracked');
         }
+
+        const sendInitiateCheckout = async () => {
+            try {
+                await FacebookEvents.InitiateCheckout(
+                    {
+                        email: formData.email || user?.email,
+                        fullName: formData.fullName || user?.fullName
+                    },
+                    {
+                        value: '127.00', // valor padrão
+                        planType: 'checkout_started'
+                    }
+                );
+            } catch (error) {
+                console.error('Erro ao enviar InitiateCheckout via API:', error);
+            }
+        };
+
+        sendInitiateCheckout();
+
     }, []);
 
     useEffect(() => {
@@ -853,15 +874,23 @@ function CheckoutForm() {
             return;
         }
 
-        // Track AddPaymentInfo event for Facebook Pixel
-        if (window.fbq) {
-            window.fbq('track', 'AddPaymentInfo', {
-                currency: 'BRL',
-                content_category: 'subscription',
-                content_ids: [plans[selectedPlan]?.priceId],
-                payment_method: paymentMethod
-            });
-            console.log('Facebook Pixel: AddPaymentInfo event tracked');
+        try {
+            await FacebookEvents.AddPaymentInfo(
+                {
+                    email: formData.email || user?.email,
+                    fullName: formData.fullName || user?.fullName,
+                    phone: formData.phone || user?.phone,
+                    city: formData.city,
+                    state: formData.state,
+                    zipCode: formData.cep
+                },
+                {
+                    paymentMethod: paymentMethod,
+                    planType: selectedPlan
+                }
+            );
+        } catch (error) {
+            console.error('Erro ao enviar AddPaymentInfo via API:', error);
         }
 
         setIsProcessingPayment(true);
@@ -1067,6 +1096,25 @@ function CheckoutForm() {
                         setLoading(false);
                     }, 3000);
 
+                    try {
+                        await FacebookEvents.Purchase(
+                            {
+                                email: currentUser.email || formData.email,
+                                fullName: formData.fullName.trim(),
+                                phone: formData.phone,
+                                city: formData.city,
+                                state: formData.state,
+                                zipCode: formData.cep
+                            },
+                            {
+                                value: plans[selectedPlan]?.price.replace('R$', ''),
+                                planType: selectedPlan
+                            }
+                        );
+                    } catch (fbError) {
+                        console.error('Erro ao enviar evento Purchase boleto:', fbError);
+                    }
+
                 } else {
                     setSuccess('Boleto está sendo processado. Você receberá um email com as instruções.');
                     setTimeout(() => {
@@ -1106,6 +1154,25 @@ function CheckoutForm() {
 
                 if (paymentError) {
                     throw new Error(mapStripeError(paymentError));
+                }
+
+                try {
+                    await FacebookEvents.Purchase(
+                        {
+                            email: currentUser.email || formData.email,
+                            fullName: formData.fullName.trim(),
+                            phone: formData.phone,
+                            city: formData.city,
+                            state: formData.state,
+                            zipCode: formData.cep
+                        },
+                        {
+                            value: plans[selectedPlan]?.price.replace('R$', ''),
+                            planType: selectedPlan
+                        }
+                    );
+                } catch (fbError) {
+                    console.error('Erro ao enviar evento Purchase cartão:', fbError);
                 }
 
                 setSuccess('Pagamento processado com sucesso! Aguardando confirmação...');

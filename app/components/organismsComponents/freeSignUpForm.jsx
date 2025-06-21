@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../authProvider';
 import firebaseService from '../../../lib/firebaseService';
@@ -30,6 +30,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import GoogleButton from '../organismsComponents/googleButton';
+import {FacebookEvents} from "../../../lib/facebookConversions";
 
 // Lista de estados brasileiros
 const brazilianStates = [
@@ -89,6 +90,26 @@ const FreeSignupForm = () => {
         phone: '',
         termsAccepted: false
     });
+
+    useEffect(() => {
+        // Enviar evento Lead quando página carrega
+        const sendLeadEvent = async () => {
+            try {
+                await FacebookEvents.Lead(
+                    {
+                        // Dados iniciais (pode estar vazio)
+                    },
+                    {
+                        source: 'free_signup_page'
+                    }
+                );
+            } catch (error) {
+                console.error('Erro ao enviar evento Lead:', error);
+            }
+        };
+
+        sendLeadEvent();
+    }, []);
 
     // Estados de erro
     const [errors, setErrors] = useState({});
@@ -282,6 +303,7 @@ const FreeSignupForm = () => {
 
             console.log('✅ Cadastro gratuito com Google concluído');
 
+
             // Enviar emails de boas-vindas
             firebaseService.sendGoogleWelcomeEmails(
                 user.email,
@@ -289,6 +311,23 @@ const FreeSignupForm = () => {
             ).catch(console.error);
 
             setSuccess(true);
+
+            try {
+                await FacebookEvents.CompleteRegistration(
+                    {
+                        email: user.email,
+                        fullName: user.displayName,
+                        // Google pode não fornecer todos os dados
+                    },
+                    {
+                        method: 'google',
+                        planType: 'free'
+                    }
+                );
+                console.log('✅ Evento CompleteRegistration (Google) enviado para Facebook');
+            } catch (fbError) {
+                console.error('❌ Erro ao enviar evento CompleteRegistration Google:', fbError);
+            }
 
             // Aguardar antes de redirecionar
             setTimeout(() => {
