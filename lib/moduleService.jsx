@@ -8,10 +8,7 @@ import {
     MODULE_INFO
 } from './moduleConfig';
 
-/**
- * Serviço para gerenciar módulos de usuários
- * Integra com Firebase e fornece métodos para atualizar permissões
- */
+
 class ModuleService {
 
     /**
