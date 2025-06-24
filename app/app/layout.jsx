@@ -23,6 +23,7 @@ import Script from "next/script";
 
 // ✨ IMPORTAR O NOVO COMPONENTE DOCTOR AI
 import DoctorAITemplate from "../components/doctorAITemplate";
+import UnifiedUserManagement from "../components/organismsComponents/unifiedUserManagement";
 
 export default function AppLayout({ children }) {
     // Obter dados de autenticação
@@ -153,7 +154,7 @@ export default function AppLayout({ children }) {
             case "meu perfil":
                 return <UserProfileTemplate onLogout={logout}/>;
             case "dados":
-                return isAdmin ? <UserDataTemplate /> : <Dashboard onClickPatients={handlePatientClick}/>;
+                return isAdmin ? <UnifiedUserManagement /> : <Dashboard onClickPatients={handlePatientClick}/>;
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }

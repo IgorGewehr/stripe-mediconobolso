@@ -5,6 +5,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import firebaseService from "../../lib/firebaseService";
 import moduleService from "../../lib/moduleService";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import presenceService from "../../lib/presenceService";
 
 const AuthContext = createContext();
 
@@ -18,6 +19,8 @@ export const AuthProvider = ({ children }) => {
     const searchParams = useSearchParams();
 
     const isFreeUser = Boolean(user?.gratuito);
+
+    const [presenceInitialized, setPresenceInitialized] = useState(false);
 
     // 🔧 FUNÇÃO AUXILIAR PARA EXTRAIR REFERÊNCIA
     const extractReferralSource = (path) => {
@@ -318,6 +321,8 @@ export const AuthProvider = ({ children }) => {
                     console.log('👤 Authenticated user detected:', authUser.uid);
                     let userData = null;
 
+
+
                     // 🆕 TENTAR BUSCAR DADOS DO USUÁRIO COM TRATAMENTO DE ERRO
                     try {
                         userData = await firebaseService.getUserData(authUser.uid);
@@ -339,6 +344,16 @@ export const AuthProvider = ({ children }) => {
                         console.log('👴 Usuário LEGACY - Mantendo acesso total SEM migração');
                     } else {
                         userData = await migrateUserModulesIfNeeded(userData, authUser.uid);
+                    }
+
+                    try {
+                        await firebaseService.registerDetailedLogin(
+                            authUser.uid,
+                            authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email'
+                        );
+                        console.log('✅ Login detalhado registrado');
+                    } catch (loginError) {
+                        console.warn('⚠️ Erro ao registrar login detalhado (não crítico):', loginError);
                     }
 
                     // 🆕 VALIDAÇÃO ADICIONAL DOS DADOS
@@ -387,6 +402,12 @@ export const AuthProvider = ({ children }) => {
                 }
             } else {
                 console.log('🚫 No authenticated user');
+
+                if (presenceInitialized) {
+                    await presenceService.stopPresence();
+                    setPresenceInitialized(false);
+                }
+
                 setUser(null);
 
                 // Redirecionar usuário não autenticado tentando acessar área protegida
@@ -400,7 +421,7 @@ export const AuthProvider = ({ children }) => {
         });
 
         return () => unsubscribe();
-    }, [pathname, router, searchParams, referralSource]);
+    }, [pathname, router, searchParams, referralSource, presenceInitialized]);
 
     // Verificação de tamanho de tela
     useEffect(() => {
@@ -421,8 +442,54 @@ export const AuthProvider = ({ children }) => {
         return () => window.removeEventListener('resize', checkScreenSize);
     }, [user, loading, pathname, router]);
 
+    useEffect(() => {
+        if (!user?.uid) {
+            // Se não há usuário, parar presença
+            if (presenceInitialized) {
+                presenceService.stopPresence();
+                setPresenceInitialized(false);
+            }
+            return;
+        }
+
+        // Se há usuário e presença não foi inicializada
+        if (user.uid && !presenceInitialized && !loading) {
+            console.log('🔴 Iniciando sistema de presença para:', user.uid);
+
+            const userData = {
+                fullName: user.fullName,
+                email: user.email,
+                planType: user.planType || (user.gratuito ? 'free' : 'premium'),
+                isAdmin: user.administrador === true
+            };
+
+            presenceService.startPresence(user.uid, userData)
+                .then(() => {
+                    setPresenceInitialized(true);
+                    console.log('✅ Sistema de presença iniciado com sucesso');
+                })
+                .catch((error) => {
+                    console.error('❌ Erro ao iniciar sistema de presença:', error);
+                });
+        }
+
+        // Cleanup quando componente for desmontado
+        return () => {
+            if (presenceInitialized) {
+                presenceService.stopPresence();
+                setPresenceInitialized(false);
+            }
+        };
+    }, [user?.uid, presenceInitialized, loading]);
+
     const logout = async () => {
         try {
+            // Parar sistema de presença antes do logout
+            if (presenceInitialized) {
+                await presenceService.stopPresence();
+                setPresenceInitialized(false);
+            }
+
             await signOut(firebaseService.auth);
             router.push('/');
         } catch (error) {
