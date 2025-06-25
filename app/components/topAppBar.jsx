@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { Box, Typography, Button } from "@mui/material";
+import NotificationComponent from "./organismsComponents/notificationComponent";
 
 // Atualiza o ActionButton para aceitar onClick
 const ActionButton = ({ label, icon, isPrimary = false, onClick }) => {
@@ -101,7 +102,8 @@ const TopAppBar = ({
                        onPacienteClick,
                        onBackClick,
                        onAgendamentoClick,
-                       onReceitaClick
+                       onReceitaClick,
+                       onNotificationClick
                    }) => {
     const handlePacienteClick = () => {
         if (onPacienteClick) {
@@ -118,6 +120,12 @@ const TopAppBar = ({
     const handleReceitaClick = () => {
         if (onReceitaClick) {
             onReceitaClick();
+        }
+    };
+
+    const handleNotificationClick = (data) => {
+        if (onNotificationClick) {
+            onNotificationClick(data);
         }
     };
 
@@ -175,8 +183,15 @@ const TopAppBar = ({
                     {title}
                 </Typography>
             </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {renderButtons()}
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                {/* Componente de notificação */}
+                <NotificationComponent onMessageClick={handleNotificationClick} />
+
+                {/* Botões de ação */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {renderButtons()}
+                </Box>
             </Box>
         </Box>
     );

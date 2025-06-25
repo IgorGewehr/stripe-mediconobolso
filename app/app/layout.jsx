@@ -60,6 +60,9 @@ export default function AppLayout({ children }) {
     const [selectedPatientId, setSelectedPatientId] = useState(null);
     const [agendaConsultationId, setAgendaConsultationId] = useState(null);
 
+    // ✨ NOVO ESTADO PARA MENSAGEM SELECIONADA
+    const [selectedMessageId, setSelectedMessageId] = useState(null);
+
     // Estilo de escala para o conteúdo
     const contentScaleStyle = {
         transform: 'scale(0.95)',
@@ -93,6 +96,7 @@ export default function AppLayout({ children }) {
     // Handler global para o botão Back - sempre leva ao Dashboard
     const handleBackToDashboard = () => {
         setSelectedPatientId(null);
+        setSelectedMessageId(null); // ✨ RESETAR MENSAGEM SELECIONADA
         setActivePage("Dashboard");
     };
 
@@ -103,6 +107,19 @@ export default function AppLayout({ children }) {
 
     const handleReceitaClick = () => {
         setActivePage("Receitas");
+    };
+
+    // ✨ NOVO HANDLER PARA NOTIFICAÇÕES
+    const handleNotificationClick = (data) => {
+        if (data?.openCentralAjuda) {
+            // Abrir central de ajuda geral
+            setSelectedMessageId(null);
+            setActivePage("Central de Ajuda");
+        } else if (data?.id) {
+            // Abrir mensagem específica
+            setSelectedMessageId(data.id);
+            setActivePage("Central de Ajuda");
+        }
     };
 
     // Expor o handler globalmente para que os componentes possam acessá-lo
@@ -150,7 +167,7 @@ export default function AppLayout({ children }) {
             case "central de ajuda":
                 return <HelpCenter initialTab={0}/>;
             case "reportar":
-                return <HelpCenter initialTab={1}/>;
+                return <CentralAjudaTemplate selectedMessageId={selectedMessageId} />;
             case "meu perfil":
                 return <UserProfileTemplate onLogout={logout}/>;
             case "dados":
@@ -209,6 +226,8 @@ export default function AppLayout({ children }) {
                         {" - Seu assistente médico inteligente"}
                     </>
                 );
+            case "central de ajuda":
+                return "Central de Ajuda";
             case "dashboard":
                 return (
                     <>
@@ -261,6 +280,7 @@ export default function AppLayout({ children }) {
                             onBackClick={handleBackToDashboard}
                             onReceitaClick={handleReceitaClick}
                             onProfileClick={handleProfileClick}
+                            onNotificationClick={handleNotificationClick} // ✨ NOVO HANDLER
                         />
                     </Box>
                     <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
