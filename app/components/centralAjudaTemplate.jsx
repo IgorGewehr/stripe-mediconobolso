@@ -31,7 +31,8 @@ import {
     Tab,
     Tabs,
     CircularProgress,
-    Tooltip
+    Tooltip,
+    Backdrop
 } from "@mui/material";
 import {
     Send as SendIcon,
@@ -52,6 +53,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
     // Estados básicos
     const [activeTab, setActiveTab] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [loadingReport, setLoadingReport] = useState(false); // ✨ NOVO: Loading específico para carregar report
     const [showSuccess, setShowSuccess] = useState(false);
     const [error, setError] = useState('');
 
@@ -96,8 +98,8 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
 
                 // Se ainda assim não encontrou, verificar se há reports para corrigir
                 if (userReports.length === 0) {
-                    const fixResult = await firebaseService.fixUserReports(user.uid);
-                    if (fixResult.fixedCount > 0) {
+                    const fixResult = await firebaseService.fixUserReports?.(user.uid);
+                    if (fixResult?.fixedCount > 0) {
                         // Se corrigiu algum, tentar buscar novamente
                         userReports = await firebaseService.getUserReports(user.uid);
                     }
@@ -154,20 +156,41 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
         }
     };
 
-    // ✨ FUNÇÃO MELHORADA PARA ABRIR REPORT
+    // ✨ FUNÇÃO CORRIGIDA PARA ABRIR REPORT
     const handleReportClick = async (report) => {
         console.log('🔔 Abrindo report:', report.id);
-        setSelectedReport(report);
-        setOpenDialog(true);
+        setLoadingReport(true);
 
-        // Marcar como lida se tinha respostas não lidas
-        if (report.hasUnreadResponses) {
-            try {
-                await firebaseService.markReportAsReadByUser(report.id);
-                await loadReports(); // Recarregar para atualizar o estado
-            } catch (error) {
-                console.error("❌ Erro ao marcar como lido:", error);
+        try {
+            // 🔧 CORREÇÃO: Buscar o report completo com todas as respostas
+            console.log('📥 Buscando dados completos do report...');
+            const fullReport = await firebaseService.getReport(report.id);
+
+            if (!fullReport) {
+                setError('Report não encontrado');
+                return;
             }
+
+            console.log('✅ Report completo carregado:', fullReport);
+
+            // Definir o report selecionado com dados completos
+            setSelectedReport(fullReport);
+            setOpenDialog(true);
+
+            // Marcar como lida se tinha respostas não lidas
+            if (fullReport.hasUnreadResponses) {
+                try {
+                    await firebaseService.markReportAsReadByUser(report.id);
+                    await loadReports(); // Recarregar para atualizar o estado da lista
+                } catch (error) {
+                    console.error("❌ Erro ao marcar como lido:", error);
+                }
+            }
+        } catch (error) {
+            console.error("❌ Erro ao carregar report completo:", error);
+            setError('Erro ao carregar conversa: ' + error.message);
+        } finally {
+            setLoadingReport(false);
         }
     };
 
@@ -187,10 +210,11 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
 
             setNewResponse("");
 
-            // Recarregar o report selecionado
+            // 🔧 CORREÇÃO: Recarregar o report selecionado com dados completos
             const updatedReport = await firebaseService.getReport(selectedReport.id);
             if (updatedReport) {
                 setSelectedReport(updatedReport);
+                console.log('✅ Report atualizado após envio de resposta');
             }
 
             // Recarregar lista de reports
@@ -652,41 +676,49 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                             </Typography>
                         </Box>
 
-                        {/* Respostas */}
-                        {selectedReport.responses && selectedReport.responses.map((response) => (
-                            <Box
-                                key={response.id}
-                                sx={{
-                                    mb: 2,
-                                    p: 2,
-                                    borderRadius: '12px',
-                                    backgroundColor: response.isAdmin
-                                        ? 'rgba(24, 82, 254, 0.1)'
-                                        : '#f5f5f5',
-                                    ml: response.isAdmin ? 0 : 4,
-                                    mr: response.isAdmin ? 4 : 0
-                                }}
-                            >
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                    <Avatar sx={{
-                                        width: 32,
-                                        height: 32,
-                                        backgroundColor: response.isAdmin ? '#1852FE' : '#666'
-                                    }}>
-                                        {response.isAdmin ? 'A' : response.authorName?.charAt(0) || 'U'}
-                                    </Avatar>
-                                    <Typography variant="subtitle2" fontWeight={600}>
-                                        {response.isAdmin ? 'Administrador' : response.authorName || 'Você'}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {formatDate(response.createdAt)}
+                        {/* ✨ CORREÇÃO: Renderização melhorada das respostas */}
+                        {selectedReport.responses && selectedReport.responses.length > 0 ? (
+                            selectedReport.responses.map((response) => (
+                                <Box
+                                    key={response.id}
+                                    sx={{
+                                        mb: 2,
+                                        p: 2,
+                                        borderRadius: '12px',
+                                        backgroundColor: response.isAdmin
+                                            ? 'rgba(24, 82, 254, 0.1)'
+                                            : '#f5f5f5',
+                                        ml: response.isAdmin ? 0 : 4,
+                                        mr: response.isAdmin ? 4 : 0
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                        <Avatar sx={{
+                                            width: 32,
+                                            height: 32,
+                                            backgroundColor: response.isAdmin ? '#1852FE' : '#666'
+                                        }}>
+                                            {response.isAdmin ? 'A' : response.authorName?.charAt(0) || 'U'}
+                                        </Avatar>
+                                        <Typography variant="subtitle2" fontWeight={600}>
+                                            {response.isAdmin ? 'Administrador' : response.authorName || 'Você'}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {formatDate(response.createdAt)}
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="body1">
+                                        {response.content}
                                     </Typography>
                                 </Box>
-                                <Typography variant="body1">
-                                    {response.content}
+                            ))
+                        ) : (
+                            <Box sx={{ textAlign: 'center', py: 2 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Ainda não há respostas para esta mensagem.
                                 </Typography>
                             </Box>
-                        ))}
+                        )}
                     </Box>
 
                     {/* Campo de resposta - só mostrar se não estiver resolvida */}
@@ -750,6 +782,16 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
 
     return (
         <Box sx={{ maxWidth: "1000px", mx: "auto", p: 3, ...scaleStyle }}>
+            {/* Loading backdrop para carregamento de report */}
+            <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={loadingReport}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <CircularProgress color="inherit" />
+                    <Typography variant="body2">
+                        Carregando conversa...
+                    </Typography>
+                </Box>
+            </Backdrop>
+
             <Typography
                 variant="h4"
                 component="h1"
