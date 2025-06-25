@@ -874,24 +874,6 @@ const UnifiedUserManagement = () => {
                         </Grid>
                     </Grid>
                 </Card>
-
-                {/* Dicas Importantes */}
-                <Alert
-                    severity="info"
-                    sx={{
-                        mt: 4,
-                        borderRadius: '12px',
-                        backgroundColor: 'rgba(24, 82, 254, 0.1)',
-                        border: '1px solid rgba(24, 82, 254, 0.2)'
-                    }}
-                    icon={<InfoIcon />}
-                >
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        <strong>Nova Estrutura:</strong> Os reports agora são armazenados em uma estrutura otimizada
-                        que permite carregamento instantâneo. Reports marcados como "urgentes" (alta prioridade)
-                        aparecem destacados em vermelho. Recomendamos responder reports não lidos em até 24 horas.
-                    </Typography>
-                </Alert>
             </Box>
         );
     };
