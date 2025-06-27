@@ -86,12 +86,15 @@ import {
     AutoAwesome as AwesomeIcon,
     Comment as CommentIcon,
     Reviews as ReviewsIcon,
+    Chat as ChatIcon,
+
 
 } from '@mui/icons-material';
 
 import firebaseService from "../../../lib/firebaseService";
 import { useAuth } from "../authProvider";
 import AdminMessagesComponent from "./adminMessagesComponent";
+import AdminChatDialog from "./adminChatDialog";
 
 const UnifiedUserManagement = () => {
     // Estados básicos
@@ -128,6 +131,9 @@ const UnifiedUserManagement = () => {
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [lastUpdate, setLastUpdate] = useState(null);
 
+    const [selectedChatUser, setSelectedChatUser] = useState(null);
+    const [openChatDialog, setOpenChatDialog] = useState(false);
+
     const { user: currentUser } = useAuth();
 
     // ====================================================
@@ -160,6 +166,25 @@ const UnifiedUserManagement = () => {
             setLoading(false);
         }
     }, [currentUser, searchQuery, planFilter, statusFilter, orderBy, order]);
+
+
+    const handleOpenChat = (user) => {
+        console.log('🔄 Abrindo chat com usuário:', user.fullName);
+        setSelectedChatUser(user);
+        setOpenChatDialog(true);
+    };
+
+
+    const handleCloseChat = () => {
+        setOpenChatDialog(false);
+        setSelectedChatUser(null);
+    };
+
+    const handleConversationCreated = (conversationId) => {
+        console.log('✅ Nova conversa criada:', conversationId);
+        // Opcional: recarregar dados ou mostrar notificação
+        loadPlatformStats();
+    };
 
     // ✨ FUNÇÃO ATUALIZADA PARA CARREGAR ESTATÍSTICAS (USANDO NOVA ESTRUTURA)
     const loadPlatformStats = useCallback(async () => {
@@ -1471,17 +1496,43 @@ const UnifiedUserManagement = () => {
 
                                                     {/* Ações */}
                                                     <TableCell align="center">
-                                                        <Button
-                                                            variant="outlined"
-                                                            size="small"
-                                                            startIcon={<VisibilityIcon />}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleOpenUserDetails(user);
-                                                            }}
-                                                        >
-                                                            Detalhes
-                                                        </Button>
+                                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                                                            <Button
+                                                                variant="outlined"
+                                                                size="small"
+                                                                startIcon={<VisibilityIcon />}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleOpenUserDetails(user);
+                                                                }}
+                                                            >
+                                                                Detalhes
+                                                            </Button>
+
+                                                            {/* ✨ NOVO BOTÃO DE CHAT */}
+                                                            <Tooltip title={`Conversar com ${user.fullName}`}>
+                                                                <Button
+                                                                    variant="outlined"
+                                                                    size="small"
+                                                                    color="primary"
+                                                                    startIcon={<ChatIcon />}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleOpenChat(user);
+                                                                    }}
+                                                                    sx={{
+                                                                        borderColor: '#1852FE',
+                                                                        color: '#1852FE',
+                                                                        '&:hover': {
+                                                                            borderColor: '#0039CB',
+                                                                            backgroundColor: 'rgba(24, 82, 254, 0.04)'
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Chat
+                                                                </Button>
+                                                            </Tooltip>
+                                                        </Box>
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -1519,6 +1570,14 @@ const UnifiedUserManagement = () => {
                 open={openReportsDialog}
                 onClose={handleCloseReports}
             />
+
+            <AdminChatDialog
+                selectedUser={selectedChatUser}
+                open={openChatDialog}
+                onClose={handleCloseChat}
+                onConversationCreated={handleConversationCreated}
+            />
+
         </Box>
     );
 };

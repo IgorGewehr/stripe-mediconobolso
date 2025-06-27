@@ -48,6 +48,7 @@ import {
 import { useResponsiveScale } from "./useScale";
 import { useAuth } from "./authProvider";
 import firebaseService from "../../lib/firebaseService";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 const CentralAjudaTemplate = ({ selectedReportId = null }) => {
     // Estados básicos
@@ -257,6 +258,9 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                 return <SupportIcon sx={{ color: '#ff9800' }} />;
             case 'system':
                 return <InfoIcon sx={{ color: '#4caf50' }} />;
+            // ✨ NOVO: Adicionar tipo admin_chat
+            case 'admin_chat':
+                return <AdminPanelSettingsIcon sx={{ color: '#9c27b0' }} />; // Ícone roxo para admin
             default:
                 return <MessageIcon sx={{ color: '#9e9e9e' }} />;
         }
@@ -582,6 +586,18 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                                                     color={getPriorityColor(report.priority)}
                                                     variant="outlined"
                                                 />
+
+                                                {report.type === 'admin_chat' && (
+                                                    <Chip
+                                                        label="Admin"
+                                                        size="small"
+                                                        sx={{
+                                                            backgroundColor: '#9c27b0',
+                                                            color: 'white',
+                                                            fontSize: '10px'
+                                                        }}
+                                                    />
+                                                )}
                                                 <Typography variant="caption" color="text.secondary">
                                                     {formatDate(report.updatedAt)}
                                                 </Typography>
@@ -620,13 +636,19 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)'
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                    // ✨ NOVO: Cor especial para admin_chat
+                    backgroundColor: selectedReport.type === 'admin_chat' ? 'rgba(156, 39, 176, 0.04)' : 'transparent'
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         {getMessageIcon(selectedReport.type)}
                         <Box>
                             <Typography variant="h6">
-                                {selectedReport.subject}
+                                {/* ✨ NOVO: Título especial para admin_chat */}
+                                {selectedReport.type === 'admin_chat' && selectedReport.isAdminInitiated
+                                    ? `Conversa com Administrador`
+                                    : selectedReport.subject
+                                }
                             </Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                                 <Chip
@@ -639,6 +661,18 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                                     size="small"
                                     color={getPriorityColor(selectedReport.priority)}
                                 />
+                                {/* ✨ NOVO: Chip especial para admin_chat */}
+                                {selectedReport.type === 'admin_chat' && (
+                                    <Chip
+                                        label="Conversa com Admin"
+                                        size="small"
+                                        sx={{
+                                            backgroundColor: '#9c27b0',
+                                            color: 'white',
+                                            fontWeight: 500
+                                        }}
+                                    />
+                                )}
                                 <Typography variant="caption" color="text.secondary">
                                     {formatDate(selectedReport.createdAt)}
                                 </Typography>
@@ -653,30 +687,56 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                 <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '500px' }}>
                     {/* Área de conversação */}
                     <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-                        {/* Mensagem original */}
-                        <Box sx={{
-                            mb: 3,
-                            p: 2,
-                            borderRadius: '12px',
-                            backgroundColor: '#f5f5f5'
-                        }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                <Avatar sx={{ width: 32, height: 32 }}>
-                                    {user?.fullName?.charAt(0) || 'U'}
-                                </Avatar>
-                                <Typography variant="subtitle2" fontWeight={600}>
-                                    Você
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    {formatDate(selectedReport.createdAt)}
+                        {/* ✨ NOVO: Mensagem especial para admin_chat */}
+                        {selectedReport.type === 'admin_chat' && selectedReport.isAdminInitiated ? (
+                            <Box sx={{
+                                mb: 3,
+                                p: 2,
+                                borderRadius: '12px',
+                                backgroundColor: 'rgba(156, 39, 176, 0.1)',
+                                border: '1px solid rgba(156, 39, 176, 0.2)'
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                    <Avatar sx={{ width: 32, height: 32, backgroundColor: '#9c27b0' }}>
+                                        <AdminPanelSettingsIcon sx={{ fontSize: 16 }} />
+                                    </Avatar>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        {selectedReport.adminInitiatorName || 'Administrador'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {formatDate(selectedReport.createdAt)}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body1">
+                                    {selectedReport.content}
                                 </Typography>
                             </Box>
-                            <Typography variant="body1">
-                                {selectedReport.content}
-                            </Typography>
-                        </Box>
+                        ) : (
+                            // Mensagem original normal
+                            <Box sx={{
+                                mb: 3,
+                                p: 2,
+                                borderRadius: '12px',
+                                backgroundColor: '#f5f5f5'
+                            }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                    <Avatar sx={{ width: 32, height: 32 }}>
+                                        {user?.fullName?.charAt(0) || 'U'}
+                                    </Avatar>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Você
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {formatDate(selectedReport.createdAt)}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body1">
+                                    {selectedReport.content}
+                                </Typography>
+                            </Box>
+                        )}
 
-                        {/* ✨ CORREÇÃO: Renderização melhorada das respostas */}
+                        {/* Renderização das respostas (sem alteração) */}
                         {selectedReport.responses && selectedReport.responses.length > 0 ? (
                             selectedReport.responses.map((response) => (
                                 <Box
@@ -715,13 +775,16 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                         ) : (
                             <Box sx={{ textAlign: 'center', py: 2 }}>
                                 <Typography variant="body2" color="text.secondary">
-                                    Ainda não há respostas para esta mensagem.
+                                    {selectedReport.type === 'admin_chat'
+                                        ? 'Responda a mensagem do administrador.'
+                                        : 'Ainda não há respostas para esta mensagem.'
+                                    }
                                 </Typography>
                             </Box>
                         )}
                     </Box>
 
-                    {/* Campo de resposta - só mostrar se não estiver resolvida */}
+                    {/* Campo de resposta - mesmo código, mas com placeholder especial para admin_chat */}
                     {selectedReport.status !== 'resolved' && (
                         <Box sx={{
                             p: 2,
@@ -733,7 +796,11 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                                     fullWidth
                                     multiline
                                     rows={2}
-                                    placeholder="Digite sua resposta..."
+                                    placeholder={
+                                        selectedReport.type === 'admin_chat'
+                                            ? "Responder ao administrador..."
+                                            : "Digite sua resposta..."
+                                    }
                                     value={newResponse}
                                     onChange={(e) => setNewResponse(e.target.value)}
                                     sx={{
@@ -760,6 +827,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                         </Box>
                     )}
 
+                    {/* Mensagem de resolvida (sem alteração) */}
                     {selectedReport.status === 'resolved' && (
                         <Box sx={{
                             p: 2,

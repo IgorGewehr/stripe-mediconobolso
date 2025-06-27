@@ -24,6 +24,7 @@ import {
     Feedback as FeedbackIcon,
     Info as InfoIcon,
     Support as SupportIcon,
+    AdminPanelSettings as AdminPanelSettingsIcon,
     MarkEmailRead as MarkReadIcon
 } from "@mui/icons-material";
 import firebaseService from "../../../lib/firebaseService";
@@ -120,15 +121,17 @@ const NotificationComponent = ({ onMessageClick }) => {
 
         handleClose();
         if (onMessageClick) {
-            // ✨ PASSAR O REPORT ID PARA ABRIR DIRETAMENTE
+            // ✨ REDIRECIONAMENTO CORRETO PARA CENTRAL DE AJUDA
             onMessageClick({
-                openCentralAjuda: true,
+                action: 'openCentralAjuda', // Ação específica para abrir a Central de Ajuda
                 selectedReportId: report.id,
-                report: report
+                report: report,
+                tab: 'messages' // Especifica que deve ir para a aba de mensagens
             });
         }
     };
 
+    // ✨ FUNÇÃO ATUALIZADA PARA INCLUIR admin_chat
     const getMessageIcon = (type) => {
         switch (type) {
             case 'bug':
@@ -139,11 +142,14 @@ const NotificationComponent = ({ onMessageClick }) => {
                 return <SupportIcon sx={{ fontSize: 20, color: '#ff9800' }} />;
             case 'system':
                 return <InfoIcon sx={{ fontSize: 20, color: '#4caf50' }} />;
+            case 'admin_chat':
+                return <AdminPanelSettingsIcon sx={{ fontSize: 20, color: '#9c27b0' }} />;
             default:
                 return <MessageIcon sx={{ fontSize: 20, color: '#9e9e9e' }} />;
         }
     };
 
+    // ✨ FUNÇÃO ATUALIZADA PARA INCLUIR admin_chat
     const getMessageTypeLabel = (type) => {
         switch (type) {
             case 'bug':
@@ -154,6 +160,8 @@ const NotificationComponent = ({ onMessageClick }) => {
                 return 'Suporte';
             case 'system':
                 return 'Sistema';
+            case 'admin_chat':
+                return 'Chat Admin';
             default:
                 return 'Mensagem';
         }
@@ -298,10 +306,24 @@ const NotificationComponent = ({ onMessageClick }) => {
                             )}
                         </Box>
 
+                        {/* ✨ ESTATÍSTICAS DETALHADAS */}
                         {unreadCount > 0 && (
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                                {unreadCount} mensagem{unreadCount !== 1 ? 's' : ''} não lida{unreadCount !== 1 ? 's' : ''}
-                            </Typography>
+                            <Box sx={{ mt: 0.5 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                    {(() => {
+                                        const adminChats = reports.filter(r => r.type === 'admin_chat' && r.hasUnreadResponses).length;
+                                        const regularReports = unreadCount - adminChats;
+
+                                        if (adminChats > 0 && regularReports > 0) {
+                                            return `${adminChats} chat${adminChats !== 1 ? 's' : ''} admin • ${regularReports} report${regularReports !== 1 ? 's' : ''}`;
+                                        } else if (adminChats > 0) {
+                                            return `${adminChats} chat${adminChats !== 1 ? 's' : ''} com administrador`;
+                                        } else {
+                                            return `${unreadCount} mensagem${unreadCount !== 1 ? 's' : ''} não lida${unreadCount !== 1 ? 's' : ''}`;
+                                        }
+                                    })()}
+                                </Typography>
+                            </Box>
                         )}
                     </Box>
 
@@ -333,9 +355,12 @@ const NotificationComponent = ({ onMessageClick }) => {
                                             backgroundColor: report.hasUnreadResponses
                                                 ? 'rgba(24, 82, 254, 0.04)'
                                                 : 'transparent',
-                                            borderLeft: report.hasUnreadResponses
-                                                ? '3px solid #1852FE'
-                                                : '3px solid transparent',
+                                            // ✨ BORDA ESPECIAL PARA admin_chat
+                                            borderLeft: report.type === 'admin_chat'
+                                                ? '3px solid #9c27b0'
+                                                : report.hasUnreadResponses
+                                                    ? '3px solid #1852FE'
+                                                    : '3px solid transparent',
                                             '&:hover': {
                                                 backgroundColor: 'rgba(24, 82, 254, 0.08)'
                                             }
@@ -357,7 +382,11 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                         }}
                                                         noWrap
                                                     >
-                                                        {report.subject || getMessageTypeLabel(report.type)}
+                                                        {/* ✨ TÍTULO ESPECIAL PARA admin_chat */}
+                                                        {report.type === 'admin_chat' && report.isAdminInitiated
+                                                            ? '💬 Conversa com Admin'
+                                                            : (report.subject || getMessageTypeLabel(report.type))
+                                                        }
                                                     </Typography>
                                                     <Typography
                                                         variant="caption"
@@ -393,7 +422,12 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                             sx={{
                                                                 fontSize: '10px',
                                                                 height: '20px',
-                                                                borderColor: 'rgba(0, 0, 0, 0.12)'
+                                                                borderColor: 'rgba(0, 0, 0, 0.12)',
+                                                                // ✨ COR ESPECIAL PARA admin_chat
+                                                                ...(report.type === 'admin_chat' && {
+                                                                    borderColor: '#9c27b0',
+                                                                    color: '#9c27b0'
+                                                                })
                                                             }}
                                                         />
 
@@ -419,8 +453,29 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                             </Typography>
                                                         )}
 
-                                                        {/* ✨ INDICADOR DE NOVA RESPOSTA */}
-                                                        {report.hasUnreadResponses && (
+                                                        {/* ✨ INDICADOR ESPECIAL PARA CHAT ADMIN */}
+                                                        {report.type === 'admin_chat' && report.hasUnreadResponses && (
+                                                            <Chip
+                                                                label="Mensagem do Admin!"
+                                                                size="small"
+                                                                sx={{
+                                                                    fontSize: '9px',
+                                                                    height: '18px',
+                                                                    backgroundColor: '#9c27b0',
+                                                                    color: 'white',
+                                                                    fontWeight: 600,
+                                                                    animation: 'pulse 2s infinite',
+                                                                    '@keyframes pulse': {
+                                                                        '0%': { opacity: 1 },
+                                                                        '50%': { opacity: 0.7 },
+                                                                        '100%': { opacity: 1 }
+                                                                    }
+                                                                }}
+                                                            />
+                                                        )}
+
+                                                        {/* INDICADOR DE NOVA RESPOSTA NORMAL */}
+                                                        {report.hasUnreadResponses && report.type !== 'admin_chat' && (
                                                             <Chip
                                                                 label="Nova resposta!"
                                                                 size="small"
@@ -455,7 +510,11 @@ const NotificationComponent = ({ onMessageClick }) => {
                             onClick={() => {
                                 handleClose();
                                 if (onMessageClick) {
-                                    onMessageClick({ openCentralAjuda: true });
+                                    // ✨ REDIRECIONAMENTO CORRETO
+                                    onMessageClick({
+                                        action: 'openCentralAjuda',
+                                        tab: 'messages'
+                                    });
                                 }
                             }}
                             sx={{
