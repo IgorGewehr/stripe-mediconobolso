@@ -17,30 +17,38 @@ import {
     Typography,
     Button,
     Grid,
-    Paper,
-    CircularProgress,
     Alert,
     Checkbox,
     FormControlLabel,
-    Radio,
-    RadioGroup,
-    FormLabel,
-    Divider,
+    CircularProgress,
     IconButton,
     useTheme,
     useMediaQuery,
+    Paper,
+    Divider,
+    Radio,
+    RadioGroup,
+    FormLabel,
+    Stack,
+    Avatar,
     Chip
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CloseIcon from "@mui/icons-material/Close";
-import CheckIcon from "@mui/icons-material/Check";
-import CreditCardIcon from '@mui/icons-material/CreditCard';
-import ReceiptIcon from '@mui/icons-material/Receipt';
+import {
+    Close as CloseIcon,
+    CheckCircle as CheckCircleIcon,
+    CreditCard as CreditCardIcon,
+    Receipt as ReceiptIcon,
+    Star as StarIcon,
+    Crown as CrownIcon,
+    Diamond as DiamondIcon,
+    Savings as SavingsIcon
+} from '@mui/icons-material';
 import { useAuth } from '../authProvider';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-// Tema consistente
+// Tema atualizado e consistente
 const theme = createTheme({
     palette: {
         mode: 'dark',
@@ -57,8 +65,29 @@ const theme = createTheme({
         }
     },
     typography: {
-        fontFamily: '"Gellix", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     },
+    shape: {
+        borderRadius: 12
+    },
+    components: {
+        MuiButton: {
+            styleOverrides: {
+                root: {
+                    borderRadius: 8,
+                    textTransform: 'none',
+                    fontWeight: 600
+                }
+            }
+        },
+        MuiCard: {
+            styleOverrides: {
+                root: {
+                    borderRadius: 12
+                }
+            }
+        }
+    }
 });
 
 const CARD_ELEMENT_OPTIONS = {
@@ -66,7 +95,7 @@ const CARD_ELEMENT_OPTIONS = {
         base: {
             fontSize: '16px',
             color: '#ffffff',
-            fontFamily: 'Arial, sans-serif',
+            fontFamily: 'Inter, Arial, sans-serif',
             '::placeholder': { color: '#999999' },
             backgroundColor: 'transparent',
         },
@@ -77,7 +106,7 @@ const CARD_ELEMENT_OPTIONS = {
     },
 };
 
-// Dados dos planos atualizados com os 3 planos
+// Configuração dos planos atualizada
 const plansData = {
     monthly: {
         id: 'monthly',
@@ -88,10 +117,15 @@ const plansData = {
         features: [
             'Exames automáticos com IA',
             'Resumo Clínico com IA',
-            'Pacientes Ilimitados'
+            'Pacientes Ilimitados',
+            'Relatórios básicos',
+            'Suporte por email'
         ],
         priceId: 'price_1QyKrNI2qmEooUtqKfgYIemz',
-        paymentMethods: ['card'] // Apenas cartão
+        paymentMethods: ['card'],
+        color: '#3B82F6',
+        bgColor: 'rgba(59, 130, 246, 0.1)',
+        icon: <StarIcon />
     },
     quarterly: {
         id: 'quarterly',
@@ -103,11 +137,17 @@ const plansData = {
         features: [
             'Tudo do Essencial',
             'Módulo financeiro completo',
-            'Chat com IA médica em tempo real'
+            'Chat com IA médica em tempo real',
+            'Relatórios avançados',
+            'Integrações básicas',
+            'Suporte prioritário'
         ],
         priceId: 'price_1RIH5eI2qmEooUtqsdXyxnEP',
         paymentMethods: ['card', 'boleto'],
-        savings: '9% de desconto'
+        savings: '9% de economia',
+        color: '#8B5CF6',
+        bgColor: 'rgba(139, 92, 246, 0.1)',
+        icon: <CrownIcon />
     },
     annual: {
         id: 'annual',
@@ -117,12 +157,18 @@ const plansData = {
         period: '/ano',
         features: [
             'Tudo do Profissional',
-            'Suporte prioritário',
-            'Integrações avançadas'
+            'Suporte prioritário VIP',
+            'Integrações avançadas',
+            'Analytics premium',
+            'Consultoria incluída',
+            'Recursos beta antecipados'
         ],
         priceId: 'price_1QyKwWI2qmEooUtqOJ9lCFBl',
         paymentMethods: ['card', 'boleto'],
-        savings: '25% de desconto'
+        savings: '25% de economia',
+        color: '#F59E0B',
+        bgColor: 'rgba(245, 158, 11, 0.1)',
+        icon: <DiamondIcon />
     }
 };
 
@@ -153,9 +199,19 @@ const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange, allowedMe
                         control={<Radio sx={{ color: '#F9B934' }} disabled={!allowedMethods.includes('card')} />}
                         label={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <CreditCardIcon sx={{ color: '#F9B934' }} />
+                                <Avatar sx={{
+                                    backgroundColor: allowedMethods.includes('card') ? '#F9B93420' : '#6B728020',
+                                    color: allowedMethods.includes('card') ? '#F9B934' : '#6B7280',
+                                    width: 40,
+                                    height: 40
+                                }}>
+                                    <CreditCardIcon />
+                                </Avatar>
                                 <Box>
-                                    <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
+                                    <Typography variant="subtitle1" sx={{
+                                        color: allowedMethods.includes('card') ? 'white' : '#6B7280',
+                                        fontWeight: 'bold'
+                                    }}>
                                         Cartão de Crédito
                                     </Typography>
                                     <Typography variant="body2" sx={{ color: 'grey.400' }}>
@@ -184,10 +240,17 @@ const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange, allowedMe
                         control={<Radio sx={{ color: '#F9B934' }} disabled={!allowedMethods.includes('boleto')} />}
                         label={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <ReceiptIcon sx={{ color: allowedMethods.includes('boleto') ? '#F9B934' : 'grey.500' }} />
+                                <Avatar sx={{
+                                    backgroundColor: allowedMethods.includes('boleto') ? '#8B5CF620' : '#6B728020',
+                                    color: allowedMethods.includes('boleto') ? '#8B5CF6' : '#6B7280',
+                                    width: 40,
+                                    height: 40
+                                }}>
+                                    <ReceiptIcon />
+                                </Avatar>
                                 <Box>
                                     <Typography variant="subtitle1" sx={{
-                                        color: allowedMethods.includes('boleto') ? 'white' : 'grey.500',
+                                        color: allowedMethods.includes('boleto') ? 'white' : '#6B7280',
                                         fontWeight: 'bold'
                                     }}>
                                         Boleto Bancário
@@ -223,21 +286,22 @@ const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange, allowedMe
 const PlanCard = ({ plan, isSelected, onSelect }) => {
     return (
         <Paper sx={{
-            backgroundColor: '#1F1F1F',
+            backgroundColor: isSelected ? plan.bgColor : '#1F1F1F',
             color: 'white',
-            borderRadius: 2,
-            border: isSelected ? '2px solid #F9B934' : '1px solid #3F3F3F',
+            borderRadius: 3,
+            border: isSelected ? `2px solid ${plan.color}` : '1px solid #3F3F3F',
             position: 'relative',
-            p: 2,
+            p: 0,
             cursor: 'pointer',
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
             transition: 'all 0.3s ease',
-            boxShadow: isSelected ? '0 8px 16px rgba(249, 185, 52, 0.2)' : 'none',
+            boxShadow: isSelected ? `0 8px 16px ${plan.color}20` : 'none',
             '&:hover': {
                 transform: 'translateY(-2px)',
-                boxShadow: '0 6px 12px rgba(0,0,0,0.2)'
+                boxShadow: `0 6px 12px ${plan.color}20`,
+                borderColor: plan.color
             }
         }}
                onClick={onSelect}
@@ -245,84 +309,159 @@ const PlanCard = ({ plan, isSelected, onSelect }) => {
 
             {plan.popular && (
                 <Box sx={{
-                    position: 'absolute', top: 0, left: 0, right: 0,
-                    backgroundColor: '#F9B934', color: 'black',
-                    fontSize: '0.8rem', fontWeight: 'bold',
-                    py: 0.5, px: 1, textAlign: 'center', zIndex: 1
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: plan.color,
+                    color: 'white',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold',
+                    py: 0.5,
+                    px: 1,
+                    textAlign: 'center',
+                    zIndex: 1,
+                    borderRadius: '12px 12px 0 0'
                 }}>
                     MAIS POPULAR
                 </Box>
             )}
 
-            <Box sx={{ p: 1, flexGrow: 1, pt: plan.popular ? 3 : 1 }}>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'baseline', mb: 1 }}>
+            <Box sx={{ p: 3, flexGrow: 1, pt: plan.popular ? 4 : 3 }}>
+                {/* Ícone e Nome do Plano */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <Avatar sx={{
+                        backgroundColor: `${plan.color}20`,
+                        color: plan.color,
+                        width: 48,
+                        height: 48
+                    }}>
+                        {plan.icon}
+                    </Avatar>
+                    <Box>
+                        <Typography variant="h5" sx={{
+                            fontWeight: 'bold',
+                            color: plan.color
+                        }}>
+                            {plan.name}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'grey.400' }}>
+                            {plan.description}
+                        </Typography>
+                    </Box>
+                </Box>
+
+                {/* Preço */}
+                <Typography variant="h4" sx={{
+                    fontWeight: 'bold',
+                    color: 'white',
+                    mb: 0.5
+                }}>
                     {plan.price}
                     <Typography variant="caption" sx={{ ml: 1, color: 'grey.400' }}>
                         {plan.period}
                     </Typography>
                 </Typography>
 
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                    {plan.name}
-                </Typography>
+                {/* Preço mensal em destaque */}
+                {plan.pricePerMonth && (
+                    <Box sx={{
+                        backgroundColor: `${plan.color}20`,
+                        border: `1px solid ${plan.color}`,
+                        borderRadius: 2,
+                        p: 1.5,
+                        mb: 2,
+                        textAlign: 'center'
+                    }}>
+                        <Typography variant="body1" sx={{
+                            color: plan.color,
+                            fontWeight: 'bold'
+                        }}>
+                            {plan.pricePerMonth}
+                        </Typography>
+                    </Box>
+                )}
 
-                {/* Badge de desconto */}
+                {/* Badge de economia */}
                 {plan.savings && (
                     <Chip
+                        icon={<SavingsIcon />}
                         label={plan.savings}
                         size="small"
                         sx={{
-                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            backgroundColor: '#22C55E20',
                             color: '#22C55E',
-                            fontSize: '11px',
-                            mb: 2
+                            border: '1px solid #22C55E40',
+                            mb: 2,
+                            fontWeight: 600
                         }}
                     />
                 )}
 
-                <Typography variant="body1" sx={{
-                    color: '#F9B934', mb: 2, fontWeight: 'bold', fontSize: '1rem',
-                    border: '1px dashed #F9B934', p: 1, borderRadius: 1, textAlign: 'center'
-                }}>
-                    {plan.pricePerMonth}
-                </Typography>
-
-                {plan.features.map((feature, idx) => (
-                    <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
-                        <CheckIcon sx={{ fontSize: '1rem', color: '#F9B934', mr: 1, mt: 0.3 }} />
-                        <Typography variant="body2" sx={{ color: 'grey.300', fontSize: '0.9rem' }}>
-                            {feature}
-                        </Typography>
-                    </Box>
-                ))}
-
-                {/* Indicador de métodos de pagamento para plano mensal */}
-                {plan.id === 'monthly' && (
-                    <Box sx={{
-                        mt: 2,
-                        p: 1,
-                        borderRadius: 1,
-                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                        border: '1px solid rgba(255, 193, 7, 0.3)'
-                    }}>
-                        <Typography variant="caption" sx={{
-                            color: '#FFC107',
-                            fontSize: '11px',
-                            fontWeight: 600
+                {/* Lista de funcionalidades */}
+                <Box sx={{ mb: 2 }}>
+                    {plan.features.map((feature, idx) => (
+                        <Box key={idx} sx={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            mb: 1.5,
+                            gap: 1
                         }}>
-                            💳 Apenas cartão de crédito
-                        </Typography>
-                    </Box>
-                )}
+                            <CheckCircleIcon sx={{
+                                fontSize: 16,
+                                color: plan.color,
+                                mt: 0.2,
+                                flexShrink: 0
+                            }} />
+                            <Typography variant="body2" sx={{
+                                color: 'grey.300',
+                                fontSize: '0.9rem',
+                                lineHeight: 1.4
+                            }}>
+                                {feature}
+                            </Typography>
+                        </Box>
+                    ))}
+                </Box>
+
+                {/* Indicador de métodos de pagamento */}
+                <Box sx={{
+                    mt: 'auto',
+                    pt: 2,
+                    borderTop: '1px solid #3F3F3F'
+                }}>
+                    <Typography variant="caption" sx={{
+                        color: 'grey.500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5
+                    }}>
+                        {plan.paymentMethods.includes('boleto') ? (
+                            <>
+                                <CreditCardIcon sx={{ fontSize: 14 }} />
+                                <ReceiptIcon sx={{ fontSize: 14 }} />
+                                Cartão ou Boleto
+                            </>
+                        ) : (
+                            <>
+                                <CreditCardIcon sx={{ fontSize: 14 }} />
+                                Apenas Cartão
+                            </>
+                        )}
+                    </Typography>
+                </Box>
             </Box>
 
+            {/* Botão de seleção */}
             <Button variant="contained" fullWidth sx={{
-                py: 1.5, borderRadius: 1,
-                backgroundColor: isSelected ? '#F9B934' : '#2F2F2F',
-                color: isSelected ? 'black' : 'white',
+                py: 1.5,
+                backgroundColor: isSelected ? plan.color : '#2F2F2F',
+                color: isSelected ? 'white' : 'grey.400',
                 fontWeight: 'bold',
+                borderRadius: '0 0 12px 12px',
                 '&:hover': {
-                    backgroundColor: isSelected ? '#E5A830' : '#3F3F3F',
+                    backgroundColor: plan.color,
+                    color: 'white'
                 },
                 marginTop: 'auto'
             }}>
@@ -387,16 +526,12 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
         setError('');
 
         try {
-            // Usar dados do usuário atual
-            const userData = {
+            console.log('🔄 Processando upgrade para usuário:', {
                 uid: user.uid,
                 email: user.email,
-                fullName: user.fullName || cardholderName,
-                cpf: user.cpf || '', // Usar CPF existente ou vazio
-                address: user.address || {} // Usar endereço existente ou vazio
-            };
-
-            console.log('🔄 Processando upgrade para usuário:', userData);
+                plan: selectedPlan,
+                paymentMethod
+            });
 
             // Chamar API específica para upgrade
             const response = await fetch('/api/upgrade-user', {
@@ -406,10 +541,10 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                     plan: selectedPlan,
                     uid: user.uid,
                     email: user.email,
-                    name: userData.fullName,
-                    cpf: userData.cpf,
+                    name: user.fullName || cardholderName,
+                    cpf: user.cpf || '',
                     paymentMethod: paymentMethod,
-                    address: userData.address,
+                    address: user.address || {},
                     isUpgrade: true
                 })
             });
@@ -420,23 +555,29 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
             }
 
             const data = await response.json();
-            const { subscriptionId, clientSecret, boletoUrl } = data;
+            console.log('✅ Resposta do upgrade:', data);
 
             if (paymentMethod === 'boleto') {
-                if (boletoUrl) {
+                // Processar boleto
+                if (data.boletoUrl) {
                     setSuccess('Boleto gerado com sucesso! Abrindo em nova aba...');
                     setTimeout(() => {
-                        window.open(boletoUrl, '_blank');
-                        onSuccess?.();
+                        try {
+                            window.open(data.boletoUrl, '_blank');
+                        } catch (openError) {
+                            console.warn('Erro ao abrir boleto:', openError);
+                        }
+                        // Chamar callback de sucesso
+                        handleUpgradeSuccess();
                     }, 1000);
                 } else {
                     setSuccess('Boleto está sendo processado. Você receberá um email com as instruções.');
-                    setTimeout(() => onSuccess?.(), 2000);
+                    setTimeout(() => handleUpgradeSuccess(), 2000);
                 }
-            } else if (clientSecret) {
+            } else {
                 // Confirmar pagamento via cartão
                 const { error: paymentError } = await stripe.confirmCardPayment(
-                    clientSecret,
+                    data.clientSecret,
                     {
                         payment_method: {
                             card: elements.getElement(CardNumberElement),
@@ -452,8 +593,8 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                     throw new Error(paymentError.message);
                 }
 
-                setSuccess('Pagamento processado com sucesso! Sua conta será atualizada em instantes.');
-                setTimeout(() => onSuccess?.(), 2000);
+                setSuccess('Upgrade realizado com sucesso! Sua conta será atualizada em instantes.');
+                setTimeout(() => handleUpgradeSuccess(), 2000);
             }
 
         } catch (error) {
@@ -462,16 +603,44 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
         } finally {
             setIsProcessing(false);
         }
-    }, [selectedPlan, paymentMethod, cardholderName, termsAccepted, stripe, elements, user, onSuccess]);
+    }, [selectedPlan, paymentMethod, cardholderName, termsAccepted, stripe, elements, user]);
+
+    // Função de sucesso aprimorada
+    const handleUpgradeSuccess = useCallback(() => {
+        // Chamar callback de sucesso do parent
+        onSuccess?.();
+
+        // Tracking opcional
+        if (typeof window !== 'undefined' && window.gtag) {
+            window.gtag('event', 'upgrade_completed', {
+                plan_type: selectedPlan,
+                payment_method: paymentMethod,
+                user_id: user?.uid
+            });
+        }
+    }, [selectedPlan, paymentMethod, user?.uid, onSuccess]);
 
     return (
-        <Box component="form" onSubmit={handleSubmitUpgrade} sx={{ p: 3 }}>
-            {/* Seleção de plano */}
-            <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>
-                Escolha seu plano:
-            </Typography>
+        <Box sx={{ p: 4 }}>
+            {/* Header */}
+            <Box sx={{ textAlign: 'center', mb: 4 }}>
+                <Typography variant="h4" sx={{
+                    fontWeight: 'bold',
+                    mb: 1,
+                    background: 'linear-gradient(45deg, #F9B934, #E5A830)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                }}>
+                    Escolha seu plano
+                </Typography>
+                <Typography variant="subtitle1" color="text.secondary">
+                    Desbloqueie todo o potencial da plataforma
+                </Typography>
+            </Box>
 
-            <Grid container spacing={2} sx={{ mb: 4 }}>
+            {/* Seleção de plano */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
                 {Object.values(plansData).map((plan) => (
                     <Grid item xs={12} sm={4} key={plan.id}>
                         <PlanCard
@@ -483,7 +652,7 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                 ))}
             </Grid>
 
-            <Divider sx={{ my: 3, borderColor: '#3F3F3F' }} />
+            <Divider sx={{ my: 4, borderColor: '#3F3F3F' }} />
 
             {/* Método de pagamento */}
             <PaymentMethodSelector
@@ -495,43 +664,49 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
             {/* Campos específicos para cartão */}
             {paymentMethod === 'card' && (
                 <Box sx={{ mb: 3 }}>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                        Nome no cartão
+                    <Typography variant="body1" sx={{ mb: 2, fontWeight: 600 }}>
+                        Dados do cartão
                     </Typography>
-                    <Box sx={{
-                        p: 2,
-                        backgroundColor: '#2F2F2F',
-                        borderRadius: 1,
-                        border: '1px solid #5F5F5F',
-                        mb: 2
-                    }}>
-                        <input
-                            type="text"
-                            value={cardholderName}
-                            onChange={(e) => setCardholderName(e.target.value)}
-                            placeholder="Nome como aparece no cartão"
-                            style={{
-                                width: '100%',
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'white',
-                                fontSize: '16px',
-                                outline: 'none'
-                            }}
-                        />
+
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                            Nome no cartão
+                        </Typography>
+                        <Box sx={{
+                            p: 2,
+                            backgroundColor: '#2F2F2F',
+                            borderRadius: 2,
+                            border: '1px solid #5F5F5F'
+                        }}>
+                            <input
+                                type="text"
+                                value={cardholderName}
+                                onChange={(e) => setCardholderName(e.target.value)}
+                                placeholder="Nome como aparece no cartão"
+                                style={{
+                                    width: '100%',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'white',
+                                    fontSize: '16px',
+                                    outline: 'none'
+                                }}
+                            />
+                        </Box>
                     </Box>
 
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                        Número do cartão
-                    </Typography>
-                    <Box sx={{
-                        p: 2,
-                        backgroundColor: '#2F2F2F',
-                        borderRadius: 1,
-                        border: '1px solid #5F5F5F',
-                        mb: 2
-                    }}>
-                        <CardNumberElement options={CARD_ELEMENT_OPTIONS} />
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                            Número do cartão
+                        </Typography>
+                        <Box sx={{
+                            p: 2,
+                            backgroundColor: '#2F2F2F',
+                            borderRadius: 2,
+                            border: '1px solid #5F5F5F'
+                        }}>
+                            <CardNumberElement options={CARD_ELEMENT_OPTIONS} />
+                        </Box>
                     </Box>
 
                     <Grid container spacing={2}>
@@ -542,7 +717,7 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                             <Box sx={{
                                 p: 2,
                                 backgroundColor: '#2F2F2F',
-                                borderRadius: 1,
+                                borderRadius: 2,
                                 border: '1px solid #5F5F5F'
                             }}>
                                 <CardExpiryElement options={CARD_ELEMENT_OPTIONS} />
@@ -555,7 +730,7 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                             <Box sx={{
                                 p: 2,
                                 backgroundColor: '#2F2F2F',
-                                borderRadius: 1,
+                                borderRadius: 2,
                                 border: '1px solid #5F5F5F'
                             }}>
                                 <CardCvcElement options={CARD_ELEMENT_OPTIONS} />
@@ -568,24 +743,29 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
             {/* Informações sobre boleto */}
             {paymentMethod === 'boleto' && (
                 <Box sx={{
-                    backgroundColor: 'rgba(249, 185, 52, 0.1)',
-                    border: '1px solid #F9B934',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    border: '1px solid #8B5CF6',
                     borderRadius: 2,
                     p: 3,
                     mb: 3
                 }}>
-                    <Typography variant="h6" sx={{ color: '#F9B934', mb: 2, fontWeight: 'bold' }}>
+                    <Typography variant="h6" sx={{ color: '#8B5CF6', mb: 2, fontWeight: 'bold' }}>
                         📄 Pagamento por Boleto
                     </Typography>
-                    <Typography variant="body2" sx={{ color: 'white', mb: 1 }}>
-                        • Boleto será gerado após confirmação
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'white', mb: 1 }}>
-                        • Vencimento em 3 dias úteis
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'white' }}>
-                        • Acesso será liberado após confirmação do pagamento
-                    </Typography>
+                    <Stack spacing={1}>
+                        <Typography variant="body2" sx={{ color: 'white' }}>
+                            • Boleto será gerado após confirmação
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'white' }}>
+                            • Vencimento em 3 dias úteis
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'white' }}>
+                            • Acesso será liberado após confirmação do pagamento
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#8B5CF6' }}>
+                            • Você receberá o boleto por email
+                        </Typography>
+                    </Stack>
                 </Box>
             )}
 
@@ -595,19 +775,27 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 mb: 3,
-                p: 2,
+                p: 3,
                 backgroundColor: 'rgba(249, 185, 52, 0.1)',
-                borderRadius: 1
+                borderRadius: 2,
+                border: '1px solid #F9B934'
             }}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {plansData[selectedPlan]?.price}
-                    <Typography variant="caption" sx={{ ml: 1, color: 'grey.400' }}>
-                        {plansData[selectedPlan]?.period}
+                <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white' }}>
+                        {plansData[selectedPlan]?.name}
                     </Typography>
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#F9B934' }}>
-                    via {paymentMethod === 'boleto' ? 'Boleto' : 'Cartão'}
-                </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        {plansData[selectedPlan]?.pricePerMonth}
+                    </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#F9B934' }}>
+                        {plansData[selectedPlan]?.price}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#F9B934' }}>
+                        via {paymentMethod === 'boleto' ? 'Boleto' : 'Cartão'}
+                    </Typography>
+                </Box>
             </Paper>
 
             {/* Termos */}
@@ -626,7 +814,14 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                 }
                 label={
                     <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                        Aceito os termos e condições do serviço
+                        Aceito os{' '}
+                        <span style={{ color: '#F9B934', textDecoration: 'underline', cursor: 'pointer' }}>
+                            termos e condições
+                        </span>
+                        {' '}e{' '}
+                        <span style={{ color: '#F9B934', textDecoration: 'underline', cursor: 'pointer' }}>
+                            política de privacidade
+                        </span>
                     </Typography>
                 }
                 sx={{ mb: 3 }}
@@ -646,7 +841,7 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
             )}
 
             {/* Botões */}
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
                 <Button
                     variant="outlined"
                     onClick={onClose}
@@ -667,10 +862,12 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                     type="submit"
                     variant="contained"
                     disabled={!termsAccepted || isProcessing}
+                    onClick={handleSubmitUpgrade}
                     sx={{
                         backgroundColor: '#F9B934',
                         color: 'black',
                         fontWeight: 'bold',
+                        px: 4,
                         '&:hover': {
                             backgroundColor: '#E5A830',
                         },
@@ -686,7 +883,7 @@ function UpgradeForm({ onClose, onSuccess, selectedPlan: initialPlan = 'quarterl
                         : (paymentMethod === 'boleto' ? 'Gerar Boleto' : 'Finalizar Upgrade')
                     }
                 </Button>
-            </Box>
+            </Stack>
         </Box>
     );
 }
@@ -715,24 +912,36 @@ const UpgradeModal = ({
                         sx: {
                             backgroundColor: '#0F0F0F',
                             color: 'white',
-                            borderRadius: isMobile ? 0 : '16px',
-                            maxHeight: '90vh'
+                            borderRadius: isMobile ? 0 : 3,
+                            maxHeight: '95vh'
                         }
                     }}
                 >
+                    {/* Header */}
                     <Box sx={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        p: 2,
+                        p: 3,
                         borderBottom: '1px solid #3F3F3F'
                     }}>
-                        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                            Upgrade para Premium
-                        </Typography>
+                        <Box>
+                            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                                Upgrade para Premium
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Desbloqueie todo o potencial da plataforma
+                            </Typography>
+                        </Box>
                         <IconButton
                             onClick={onClose}
-                            sx={{ color: 'white' }}
+                            sx={{
+                                color: 'white',
+                                backgroundColor: '#2F2F2F',
+                                '&:hover': {
+                                    backgroundColor: '#3F3F3F'
+                                }
+                            }}
                         >
                             <CloseIcon />
                         </IconButton>

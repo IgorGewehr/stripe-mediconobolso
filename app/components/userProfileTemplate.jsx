@@ -18,7 +18,9 @@ import {
     Paper,
     InputAdornment,
     alpha,
-    useTheme, Tooltip
+    useTheme,
+    Tooltip,
+    Chip
 } from "@mui/material";
 import {
     Edit as EditIcon,
@@ -36,11 +38,16 @@ import {
     LocationCity as LocationCityIcon,
     PinDrop as PinDropIcon,
     Margin as MarginIcon,
-    Apartment as ApartmentIcon
+    Apartment as ApartmentIcon,
+    CreditCard as CreditCardIcon,
+    Receipt as ReceiptIcon,
+    Settings as SettingsIcon,
+    Upgrade as UpgradeIcon
 } from "@mui/icons-material";
 import FirebaseService from "../../lib/firebaseService";
 import {useAuth} from "./authProvider";
 import LogoutIcon from '@mui/icons-material/Logout';
+import SubscriptionManagerDialog from './organismsComponents/subscriptionManagerDialog';
 
 // Enhanced color palette
 const themeColors = {
@@ -96,6 +103,14 @@ const applyCepMask = (value) => {
         return numbers;
     }
     return `${numbers.substring(0, 5)}-${numbers.substring(5, 8)}`;
+};
+
+// Configuração dos planos para exibição
+const plansDisplay = {
+    free: { name: 'Gratuito', color: '#6B7280', icon: '🆓' },
+    monthly: { name: 'Essencial', color: '#3B82F6', icon: '⚡' },
+    quarterly: { name: 'Profissional', color: '#8B5CF6', icon: '🚀' },
+    annual: { name: 'Premium', color: '#F59E0B', icon: '👑' }
 };
 
 // Campo editável com UI elegante e minimalista
@@ -259,6 +274,9 @@ const UserProfileTemplate = ({onLogout}) => {
     const [errors, setErrors] = useState({});
     const [alert, setAlert] = useState({open: false, message: '', severity: 'success'});
 
+    // 🆕 Estado para o modal de gerenciamento de assinatura
+    const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
+
     // Extrair o primeiro nome do usuário logado
     const getFirstName = (fullName) => {
         if (!fullName) return '';
@@ -266,6 +284,22 @@ const UserProfileTemplate = ({onLogout}) => {
     };
 
     const firstName = getFirstName(userData.fullName);
+
+    // 🆕 Função para determinar o tipo de plano do usuário
+    const getUserPlanInfo = () => {
+        if (userData.administrador) {
+            return { name: 'Administrador', color: '#DC2626', icon: '👨‍💼' };
+        }
+
+        if (userData.assinouPlano) {
+            const planType = userData.planType || 'monthly';
+            return plansDisplay[planType] || plansDisplay.monthly;
+        }
+
+        return plansDisplay.free;
+    };
+
+    const planInfo = getUserPlanInfo();
 
     // Carregar dados do usuário
     useEffect(() => {
@@ -595,6 +629,21 @@ const UserProfileTemplate = ({onLogout}) => {
                                 {userData.especialidade || "Médico"}
                             </Typography>
 
+                            {/* 🆕 Chip do plano atual */}
+                            <Chip
+                                icon={<span style={{ fontSize: '16px' }}>{planInfo.icon}</span>}
+                                label={planInfo.name}
+                                sx={{
+                                    mb: 2,
+                                    backgroundColor: alpha(planInfo.color, 0.1),
+                                    color: planInfo.color,
+                                    borderColor: planInfo.color,
+                                    fontWeight: 600,
+                                    fontSize: '14px'
+                                }}
+                                variant="outlined"
+                            />
+
                             {!isEditing ? (
                                 <Button
                                     variant="outlined"
@@ -744,7 +793,33 @@ const UserProfileTemplate = ({onLogout}) => {
                                     </Typography>
                                 </Box>
                             </Box>
+
+                            {/* 🆕 Botão para gerenciar assinatura */}
                             <Divider sx={{ my: 2 }} />
+
+                            <Button
+                                variant="outlined"
+                                startIcon={<SettingsIcon />}
+                                onClick={() => setShowSubscriptionManager(true)}
+                                fullWidth
+                                sx={{
+                                    borderRadius: '12px',
+                                    textTransform: 'none',
+                                    fontFamily: 'Gellix, sans-serif',
+                                    fontWeight: 500,
+                                    color: themeColors.primary,
+                                    borderColor: alpha(themeColors.primary, 0.5),
+                                    py: 1,
+                                    mb: 1,
+                                    '&:hover': {
+                                        backgroundColor: alpha(themeColors.primary, 0.08),
+                                        borderColor: themeColors.primary
+                                    },
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                Gerenciar Assinatura
+                            </Button>
 
                             <Button
                                 variant="outlined"
@@ -760,7 +835,6 @@ const UserProfileTemplate = ({onLogout}) => {
                                     color: themeColors.error,
                                     borderColor: alpha(themeColors.error, 0.5),
                                     py: 1,
-                                    mt: 1,
                                     '&:hover': {
                                         backgroundColor: alpha(themeColors.error, 0.08),
                                         borderColor: themeColors.error
@@ -1084,6 +1158,12 @@ const UserProfileTemplate = ({onLogout}) => {
                     </Card>
                 </Grid>
             </Grid>
+
+            {/* 🆕 Modal de gerenciamento de assinatura */}
+            <SubscriptionManagerDialog
+                open={showSubscriptionManager}
+                onClose={() => setShowSubscriptionManager(false)}
+            />
 
             {/* Alerta de Feedback */}
             <Snackbar
