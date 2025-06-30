@@ -112,6 +112,16 @@ const formatDate = (dateValue, locale = 'pt-BR') => {
     }
 };
 
+// Função auxiliar para obter configuração segura do plano
+const getSafePlanConfig = (planType) => {
+    // Se o planType existir no plansConfig, retorna ele
+    if (planType && plansConfig[planType]) {
+        return plansConfig[planType];
+    }
+    // Caso contrário, retorna o plano free como fallback
+    return plansConfig.free;
+};
+
 // Componente para Status Badge
 const StatusBadge = ({ status, paymentMethod }) => {
     const getStatusConfig = () => {
@@ -637,8 +647,8 @@ const SubscriptionManagerDialog = ({ open, onClose }) => {
         onClose();
     };
 
-    // Definir configuração do plano atual
-    const currentPlanConfig = plansConfig[subscriptionData?.planType || 'free'];
+    // Definir configuração do plano atual - FIX APLICADO AQUI
+    const currentPlanConfig = getSafePlanConfig(subscriptionData?.planType);
 
     // Renderização do loading inicial
     if (!subscriptionData && loading) {
