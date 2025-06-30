@@ -40,9 +40,9 @@ import {
     CreditCard as CreditCardIcon,
     Receipt as ReceiptIcon,
     Star as StarIcon,
-    Crown as CrownIcon,
+    EmojiEvents as CrownIcon,
     Diamond as DiamondIcon,
-    Savings as SavingsIcon
+    SavingsOutlined as SavingsIcon
 } from '@mui/icons-material';
 import { useAuth } from '../authProvider';
 
