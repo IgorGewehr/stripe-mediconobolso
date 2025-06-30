@@ -49,7 +49,7 @@ import {
     CalendarToday as CalendarTodayIcon
 } from '@mui/icons-material';
 import { useAuth } from '../authProvider';
-import UpgradeModal from '../organismsComponents/UpgradeModal';
+import UpgradeModal from '../organismsComponents/upgradeModal';
 
 // Configuração dos planos com ícones e cores melhoradas
 const plansConfig = {
