@@ -42,12 +42,14 @@ import {
     CreditCard as CreditCardIcon,
     Receipt as ReceiptIcon,
     Settings as SettingsIcon,
-    Upgrade as UpgradeIcon
+    Upgrade as UpgradeIcon,
+    People as PeopleIcon
 } from "@mui/icons-material";
 import FirebaseService from "../../lib/firebaseService";
 import {useAuth} from "./authProvider";
-import LogoutIcon from '@mui/icons-material/Logout';
 import SubscriptionManagerDialog from './organismsComponents/subscriptionManagerDialog';
+import LogoutIcon from '@mui/icons-material/Logout';
+import SecretaryManagerDialog from './organismsComponents/secretaryManagerDialog';
 
 // Enhanced color palette
 const themeColors = {
@@ -70,28 +72,21 @@ const themeColors = {
 // Helper para máscara de telefone
 const applyPhoneMask = (value) => {
     if (!value) return "";
-
-    // Remove tudo que não for dígito
     const numbers = value.replace(/\D/g, "");
-
     let result = "";
     let numberIndex = 0;
     const mask = "(99) 99999-9999";
 
-    // Aplica a máscara
     for (let i = 0; i < mask.length && numberIndex < numbers.length; i++) {
         if (mask[i] === "9") {
             result += numbers[numberIndex++];
         } else {
             result += mask[i];
-
-            // Se o próximo caractere na máscara não for 9, adicione-o também
             if (i + 1 < mask.length && mask[i + 1] !== "9") {
                 result += mask[++i];
             }
         }
     }
-
     return result;
 };
 
@@ -263,7 +258,7 @@ const EditableField = ({
 
 const UserProfileTemplate = ({onLogout}) => {
     const theme = useTheme();
-    const {user, loading: authLoading} = useAuth();
+    const {user, loading: authLoading, isSecretary} = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -274,8 +269,12 @@ const UserProfileTemplate = ({onLogout}) => {
     const [errors, setErrors] = useState({});
     const [alert, setAlert] = useState({open: false, message: '', severity: 'success'});
 
-    // 🆕 Estado para o modal de gerenciamento de assinatura
+    // Estados para dialogs
     const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
+    const [showSecretaryManager, setShowSecretaryManager] = useState(false);
+
+    // Estado para informações da secretária
+    const [secretaryInfo, setSecretaryInfo] = useState(null);
 
     // Extrair o primeiro nome do usuário logado
     const getFirstName = (fullName) => {
@@ -285,7 +284,7 @@ const UserProfileTemplate = ({onLogout}) => {
 
     const firstName = getFirstName(userData.fullName);
 
-    // 🆕 Função para determinar o tipo de plano do usuário
+    // Função para determinar o tipo de plano do usuário
     const getUserPlanInfo = () => {
         if (userData.administrador) {
             return { name: 'Administrador', color: '#DC2626', icon: '👨‍💼' };
@@ -300,6 +299,15 @@ const UserProfileTemplate = ({onLogout}) => {
     };
 
     const planInfo = getUserPlanInfo();
+
+    // Verificar se o usuário pode gerenciar secretárias
+    const canManageSecretaries = () => {
+        // Secretárias não podem gerenciar outras secretárias
+        if (isSecretary) return false;
+
+        // Apenas médicos com planos pagos ou admins podem ter secretárias
+        return userData.administrador || userData.assinouPlano;
+    };
 
     // Carregar dados do usuário
     useEffect(() => {
@@ -327,6 +335,24 @@ const UserProfileTemplate = ({onLogout}) => {
             loadUserData();
         }
     }, [user, authLoading]);
+
+    // Carregar informações da secretária
+    useEffect(() => {
+        const loadSecretaryInfo = async () => {
+            if (user?.uid && canManageSecretaries()) {
+                try {
+                    const info = await FirebaseService.getDoctorSecretaryInfo(user.uid);
+                    setSecretaryInfo(info);
+                } catch (error) {
+                    console.warn('Erro ao carregar informações da secretária:', error);
+                }
+            }
+        };
+
+        if (user && !authLoading && userData.administrador !== undefined) {
+            loadSecretaryInfo();
+        }
+    }, [user, authLoading, userData.administrador, userData.assinouPlano]);
 
     // Handler para mudanças nos campos do formulário
     const handleChange = (field) => (e) => {
@@ -370,8 +396,6 @@ const UserProfileTemplate = ({onLogout}) => {
         try {
             setLoading(true);
             await FirebaseService.logout();
-            // Redirecionar para login ou home após logout bem-sucedido
-            // Você pode ajustar isso conforme necessário
         } catch (error) {
             console.error("Erro ao fazer logout:", error);
             setAlert({
@@ -527,7 +551,6 @@ const UserProfileTemplate = ({onLogout}) => {
 
     return (
         <Box sx={{py: 2, px: {xs: 2, md: 3}}}>
-
             <Grid container spacing={3}>
                 {/* Coluna da Esquerda - Foto e Informações Básicas */}
                 <Grid item xs={12} md={4}>
@@ -629,7 +652,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                 {userData.especialidade || "Médico"}
                             </Typography>
 
-                            {/* 🆕 Chip do plano atual */}
+                            {/* Chip do plano atual */}
                             <Chip
                                 icon={<span style={{ fontSize: '16px' }}>{planInfo.icon}</span>}
                                 label={planInfo.name}
@@ -794,56 +817,118 @@ const UserProfileTemplate = ({onLogout}) => {
                                 </Box>
                             </Box>
 
-                            {/* 🆕 Botão para gerenciar assinatura */}
+                            {/* Indicador de secretária ativa */}
+                            {secretaryInfo && (
+                                <Box sx={{ mb: 2 }}>
+                                    <Typography
+                                        variant="caption"
+                                        sx={{
+                                            display: 'block',
+                                            color: themeColors.textTertiary,
+                                            fontFamily: "Gellix, sans-serif",
+                                            mb: 0.5
+                                        }}
+                                    >
+                                        Secretária Ativa
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <PeopleIcon
+                                            fontSize="small"
+                                            sx={{ color: themeColors.success, mr: 1 }}
+                                        />
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                color: themeColors.success,
+                                                fontFamily: "Gellix, sans-serif",
+                                                fontWeight: 500
+                                            }}
+                                        >
+                                            {secretaryInfo.name}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            )}
+
                             <Divider sx={{ my: 2 }} />
 
-                            <Button
-                                variant="outlined"
-                                startIcon={<SettingsIcon />}
-                                onClick={() => setShowSubscriptionManager(true)}
-                                fullWidth
-                                sx={{
-                                    borderRadius: '12px',
-                                    textTransform: 'none',
-                                    fontFamily: 'Gellix, sans-serif',
-                                    fontWeight: 500,
-                                    color: themeColors.primary,
-                                    borderColor: alpha(themeColors.primary, 0.5),
-                                    py: 1,
-                                    mb: 1,
-                                    '&:hover': {
-                                        backgroundColor: alpha(themeColors.primary, 0.08),
-                                        borderColor: themeColors.primary
-                                    },
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                Gerenciar Assinatura
-                            </Button>
+                            {/* Botões de gerenciamento */}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                {/* Botão para gerenciar secretárias (apenas para médicos) */}
+                                {canManageSecretaries() && (
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<PeopleIcon />}
+                                        onClick={() => setShowSecretaryManager(true)}
+                                        fullWidth
+                                        sx={{
+                                            borderRadius: '12px',
+                                            textTransform: 'none',
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontWeight: 500,
+                                            color: themeColors.success,
+                                            borderColor: alpha(themeColors.success, 0.5),
+                                            py: 1,
+                                            '&:hover': {
+                                                backgroundColor: alpha(themeColors.success, 0.08),
+                                                borderColor: themeColors.success
+                                            },
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        {secretaryInfo ? 'Gerenciar Secretária' : 'Adicionar Secretária'}
+                                    </Button>
+                                )}
 
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<LogoutIcon />}
-                                onClick={onLogout}
-                                fullWidth
-                                sx={{
-                                    borderRadius: '12px',
-                                    textTransform: 'none',
-                                    fontFamily: 'Gellix, sans-serif',
-                                    fontWeight: 500,
-                                    color: themeColors.error,
-                                    borderColor: alpha(themeColors.error, 0.5),
-                                    py: 1,
-                                    '&:hover': {
-                                        backgroundColor: alpha(themeColors.error, 0.08),
-                                        borderColor: themeColors.error
-                                    },
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                Sair da Conta
-                            </Button>
+                                {/* Botão de gerenciar assinatura */}
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<SettingsIcon />}
+                                    onClick={() => setShowSubscriptionManager(true)}
+                                    fullWidth
+                                    sx={{
+                                        borderRadius: '12px',
+                                        textTransform: 'none',
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontWeight: 500,
+                                        color: themeColors.primary,
+                                        borderColor: alpha(themeColors.primary, 0.5),
+                                        py: 1,
+                                        '&:hover': {
+                                            backgroundColor: alpha(themeColors.primary, 0.08),
+                                            borderColor: themeColors.primary
+                                        },
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    Gerenciar Assinatura
+                                </Button>
+
+                                {/* Botão de logout */}
+                                <Button
+                                    variant="outlined"
+                                    color="error"
+                                    startIcon={<LogoutIcon />}
+                                    onClick={onLogout}
+                                    fullWidth
+                                    sx={{
+                                        borderRadius: '12px',
+                                        textTransform: 'none',
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontWeight: 500,
+                                        color: themeColors.error,
+                                        borderColor: alpha(themeColors.error, 0.5),
+                                        py: 1,
+                                        '&:hover': {
+                                            backgroundColor: alpha(themeColors.error, 0.08),
+                                            borderColor: themeColors.error
+                                        },
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    Sair da Conta
+                                </Button>
+                            </Box>
                         </CardContent>
                     </Card>
                 </Grid>
@@ -1159,10 +1244,16 @@ const UserProfileTemplate = ({onLogout}) => {
                 </Grid>
             </Grid>
 
-            {/* 🆕 Modal de gerenciamento de assinatura */}
+            {/* Modal de gerenciamento de assinatura */}
             <SubscriptionManagerDialog
                 open={showSubscriptionManager}
                 onClose={() => setShowSubscriptionManager(false)}
+            />
+
+            {/* Modal de gerenciamento de secretárias */}
+            <SecretaryManagerDialog
+                open={showSecretaryManager}
+                onClose={() => setShowSecretaryManager(false)}
             />
 
             {/* Alerta de Feedback */}
