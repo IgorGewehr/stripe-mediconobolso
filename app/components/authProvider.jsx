@@ -225,7 +225,6 @@ export const AuthProvider = ({ children }) => {
         });
     }, []);
 
-    // ✅ CACHE PARA CONTEXTO UNIFICADO MELHORADO
     const getUserUnifiedContextCached = useCallback(async (userId, forceRefresh = false) => {
         const cacheKey = `userContext_${userId}`;
 
@@ -236,8 +235,67 @@ export const AuthProvider = ({ children }) => {
 
         return await globalCache.getOrSet('userContext', userId, async () => {
             console.log('🔍 Buscando novo contexto para:', userId);
-            return await firebaseService.getUserUnifiedContext(userId);
-        }, forceRefresh ? 1000 : 5 * 60 * 1000); // Cache menor se forçado
+
+            try {
+                // ✅ VERIFICAR SE É SECRETÁRIA PRIMEIRO (MAIS PROVÁVEL EM PRODUÇÃO)
+                const secretaryRef = doc(firestore, "secretaries", userId);
+                const secretarySnap = await getDoc(secretaryRef);
+
+                if (secretarySnap.exists()) {
+                    const secretaryData = secretarySnap.data();
+
+                    if (!secretaryData.active) {
+                        throw new Error("Conta de secretária desativada");
+                    }
+
+                    // Buscar dados do médico responsável
+                    const doctorData = await firebaseService.getUserData(secretaryData.doctorId);
+                    if (!doctorData) {
+                        throw new Error("Médico responsável não encontrado");
+                    }
+
+                    // ✅ ATUALIZAR ÚLTIMO LOGIN DA SECRETÁRIA (NÃO BLOQUEANTE)
+                    updateDoc(secretaryRef, {
+                        lastLogin: new Date(),
+                        loginCount: (secretaryData.loginCount || 0) + 1
+                    }).catch(error => {
+                        console.warn('⚠️ Erro ao atualizar último login da secretária:', error);
+                    });
+
+                    const context = {
+                        userType: 'secretary',
+                        workingDoctorId: secretaryData.doctorId,
+                        userData: doctorData,
+                        secretaryData: secretaryData,
+                        permissions: secretaryData.permissions || {},
+                        isSecretary: true,
+                        secretaryId: userId
+                    };
+
+                    console.log(`👩‍💼 Contexto de secretária obtido: ${secretaryData.name} -> ${doctorData.fullName}`);
+                    return context;
+                }
+
+                // ✅ SE NÃO É SECRETÁRIA, VERIFICAR SE É MÉDICO
+                console.log('🔍 Não é secretária, verificando se é médico...');
+                const doctorData = await firebaseService.getUserData(userId);
+
+                const context = {
+                    userType: 'doctor',
+                    workingDoctorId: userId,
+                    userData: doctorData,
+                    permissions: 'full',
+                    isSecretary: false
+                };
+
+                console.log(`👨‍⚕️ Contexto de médico obtido: ${doctorData.fullName}`);
+                return context;
+
+            } catch (error) {
+                console.error("❌ Erro ao obter contexto unificado:", error);
+                throw new Error("Usuário não autorizado - não é médico nem secretária válida");
+            }
+        }, forceRefresh ? 1000 : 5 * 60 * 1000);
     }, []);
 
     // ✅ VERIFICAR SE DEVE REDIRECIONAR PARA APP - OTIMIZADO
@@ -318,7 +376,6 @@ export const AuthProvider = ({ children }) => {
         return true;
     }, [isSecretary, permissions]);
 
-    // ✅ FUNÇÃO MELHORADA PARA CRIAR CONTA DE SECRETÁRIA
     const createSecretaryAccount = useCallback(async (secretaryData) => {
         if (!user || isSecretary) {
             throw new Error("Apenas médicos podem criar contas de secretária");
@@ -333,7 +390,7 @@ export const AuthProvider = ({ children }) => {
             );
 
             if (result.success) {
-                console.log('✅ Secretária criada com sucesso, preparando invalidação de cache...');
+                console.log('✅ Secretária criada com sucesso!');
 
                 // ✅ INVALIDAR TODOS OS CACHES RELACIONADOS
                 const doctorId = workingDoctorId || user.uid;
@@ -342,19 +399,15 @@ export const AuthProvider = ({ children }) => {
                 globalCache.invalidate('profileData', doctorId);
                 invalidateVerificationCache(doctorId);
 
-                // ✅ AGENDAR RECARREGAMENTO DO CONTEXTO APÓS O RE-LOGIN
-                if (result.needsDoctorRelogin) {
-                    console.log('📝 Re-login será necessário, cache invalidado para próximo carregamento');
-                } else {
-                    // Se não precisar de re-login, recarregar imediatamente
-                    setTimeout(async () => {
-                        try {
-                            await reloadUserContext(true);
-                        } catch (error) {
-                            console.warn('⚠️ Erro ao recarregar contexto após criação:', error);
-                        }
-                    }, 1500);
-                }
+                // ✅ NÃO PRECISA MAIS DE RE-LOGIN, RECARREGAR CONTEXTO IMEDIATAMENTE
+                setTimeout(async () => {
+                    try {
+                        console.log('🔄 Recarregando contexto após criação de secretária...');
+                        await reloadUserContext(true);
+                    } catch (error) {
+                        console.warn('⚠️ Erro ao recarregar contexto após criação:', error);
+                    }
+                }, 2000); // Dar tempo para propagação dos dados
             }
 
             return result;
@@ -363,6 +416,204 @@ export const AuthProvider = ({ children }) => {
             throw error;
         }
     }, [user, isSecretary, workingDoctorId]);
+
+// ✅ AUTHENTICATION STATE CHECK MELHORADO
+    useEffect(() => {
+        let isMounted = true;
+        let unsubscribe = null;
+
+        console.log('🔐 Auth state check initialized for path:', pathname);
+
+        const handleAuthenticatedUser = async (authUser) => {
+            if (!isMounted || processingRef.current) return;
+
+            try {
+                processingRef.current = true;
+                console.log('👤 Processing authenticated user:', authUser.uid);
+
+                // ✅ AGUARDAR UM POUCO PARA DADOS RECÉM-CRIADOS
+                const isNewlyCreated = localStorage.getItem('newlyCreatedSecretary');
+                const forceRefresh = !!isNewlyCreated;
+
+                if (isNewlyCreated) {
+                    console.log('🔄 Usuário recém-criado detectado, aguardando propagação...');
+                    localStorage.removeItem('newlyCreatedSecretary');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+
+                // ✅ OBTER CONTEXTO COM RETRY PARA SECRETÁRIAS RECÉM-CRIADAS
+                let context;
+                let retries = 0;
+                const maxRetries = 3;
+
+                while (retries < maxRetries) {
+                    try {
+                        const timeoutPromise = new Promise((_, reject) =>
+                            setTimeout(() => reject(new Error('Context timeout')), 10000)
+                        );
+
+                        const contextPromise = getUserUnifiedContextCached(authUser.uid, forceRefresh || retries > 0);
+                        context = await Promise.race([contextPromise, timeoutPromise]);
+                        break; // Sucesso, sair do loop
+
+                    } catch (error) {
+                        retries++;
+                        console.warn(`⚠️ Tentativa ${retries}/${maxRetries} falhou:`, error.message);
+
+                        if (retries < maxRetries) {
+                            console.log(`🔄 Aguardando ${retries * 1000}ms antes da próxima tentativa...`);
+                            await new Promise(resolve => setTimeout(resolve, retries * 1000));
+                        } else {
+                            throw error;
+                        }
+                    }
+                }
+
+                if (!isMounted) return;
+
+                console.log('🎯 Contexto unificado obtido:', context.userType);
+
+                // ✅ ATUALIZAR ESTADOS
+                setUserContext(context);
+                setIsSecretary(context.isSecretary);
+                setWorkingDoctorId(context.workingDoctorId);
+                setPermissions(context.permissions);
+
+                // ✅ PREPARAR DADOS DO USUÁRIO
+                const displayUserData = {
+                    uid: authUser.uid,
+                    ...context.userData,
+                    isSecretary: context.isSecretary,
+                    workingDoctorId: context.workingDoctorId,
+                    permissions: context.permissions
+                };
+
+                if (context.isSecretary) {
+                    displayUserData.secretaryData = context.secretaryData;
+                    displayUserData.secretaryName = context.secretaryData.name;
+                    displayUserData.secretaryEmail = context.secretaryData.email;
+                    console.log(`👩‍💼 Secretária logada: ${context.secretaryData.name} -> Médico: ${context.userData.fullName}`);
+                }
+
+                setUser(displayUserData);
+
+                // ✅ REGISTRAR LOGIN (NÃO BLOQUEANTE)
+                firebaseService.registerDetailedLogin(
+                    authUser.uid,
+                    authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email'
+                ).catch((loginError) => {
+                    console.warn('⚠️ Erro ao registrar login detalhado (não crítico):', loginError);
+                });
+
+                // ✅ REDIRECIONAMENTO
+                setTimeout(() => {
+                    if (!isMounted) return;
+
+                    const userData = context.userData;
+
+                    if (shouldRedirectToApp(userData, pathname)) {
+                        console.log('✅ Redirecting authenticated user to /app');
+                        router.push('/app');
+                    } else {
+                        const authRedirect = shouldRedirectToAuth(userData, pathname);
+                        if (authRedirect) {
+                            console.log(`❌ Redirecting user to ${authRedirect.redirect} (reason: ${authRedirect.reason})`);
+                            router.push(authRedirect.redirect);
+                        }
+                    }
+                }, context.isSecretary ? 500 : 200);
+
+            } catch (error) {
+                console.error("❌ Auth processing error:", error);
+
+                if (isMounted) {
+                    // Reset em caso de erro
+                    setUser(null);
+                    setUserContext(null);
+                    setIsSecretary(false);
+                    setWorkingDoctorId(null);
+                    setPermissions('full');
+
+                    // Se erro de autorização, redirecionar
+                    if (error.message.includes('não autorizado') || error.message.includes('unauthorized')) {
+                        router.push('/');
+                    }
+                }
+            } finally {
+                processingRef.current = false;
+            }
+        };
+
+        const handleUnauthenticatedUser = async () => {
+            if (!isMounted) return;
+
+            console.log('🚫 Processing unauthenticated user');
+
+            if (presenceInitialized) {
+                try {
+                    await presenceService.stopPresence();
+                    setPresenceInitialized(false);
+                } catch (error) {
+                    console.warn('⚠️ Erro ao parar presença:', error);
+                }
+            }
+
+            // Reset completo
+            setUser(null);
+            setUserContext(null);
+            setIsSecretary(false);
+            setWorkingDoctorId(null);
+            setPermissions('full');
+            globalCache.invalidate('userContext');
+            globalCache.invalidate('secretaryInfo');
+            globalCache.invalidate('profileData');
+            verificationCache.clear();
+
+            const authRedirect = shouldRedirectToAuth(null, pathname);
+            if (authRedirect) {
+                console.log(`🚫 Unauthenticated user trying to access protected route, redirecting to ${authRedirect.redirect}`);
+                router.push(authRedirect.redirect);
+            }
+        };
+
+        // ✅ CONFIGURAR LISTENER
+        try {
+            unsubscribe = onAuthStateChanged(firebaseService.auth, async (authUser) => {
+                if (!isMounted) return;
+
+                try {
+                    if (authUser) {
+                        await handleAuthenticatedUser(authUser);
+                    } else {
+                        await handleUnauthenticatedUser();
+                    }
+                } catch (error) {
+                    console.error("❌ Auth listener error:", error);
+                } finally {
+                    if (isMounted) {
+                        setLoading(false);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("❌ Auth listener setup error:", error);
+            if (isMounted) {
+                setLoading(false);
+            }
+        }
+
+        return () => {
+            isMounted = false;
+            processingRef.current = false;
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, [pathname]);
+
+    const markAsNewlyCreated = useCallback(() => {
+        localStorage.setItem('newlyCreatedSecretary', 'true');
+    }, []);
 
     // ✅ FUNÇÃO PARA ATUALIZAR PERMISSÕES - MELHORADA
     const updateSecretaryPermissions = useCallback(async (secretaryId, newPermissions) => {
@@ -1012,16 +1263,17 @@ export const AuthProvider = ({ children }) => {
         // Funções para secretárias - MELHORADAS
         hasModulePermission,
         canViewSensitiveData,
-        createSecretaryAccount,
+        createSecretaryAccount, // ✅ FUNÇÃO CORRIGIDA
         updateSecretaryPermissions,
         deactivateSecretary,
         getEffectiveUserId,
         getDisplayUserData,
         reloadUserContext,
 
-        // ✅ NOVAS FUNÇÕES PARA GERENCIAMENTO DE CACHE
+        // ✅ NOVAS FUNÇÕES
         clearRelatedCaches,
         forceRefreshUserContext: () => reloadUserContext(true),
+        markAsNewlyCreated, // ✅ NOVA FUNÇÃO
 
         // Funções de módulos
         updateUserModules,
@@ -1041,7 +1293,7 @@ export const AuthProvider = ({ children }) => {
         isSecretary, workingDoctorId, permissions, userContext,
         hasModulePermission, canViewSensitiveData, createSecretaryAccount,
         updateSecretaryPermissions, deactivateSecretary, getEffectiveUserId,
-        getDisplayUserData, reloadUserContext, clearRelatedCaches,
+        getDisplayUserData, reloadUserContext, clearRelatedCaches, markAsNewlyCreated,
         updateUserModules, upgradeUserPlan, migrateFromLegacy,
         isProtectedRoute, isPublicRoute, checkIfLegacyUser,
         userHasAccess, userHasValidData

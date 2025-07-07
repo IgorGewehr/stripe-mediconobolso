@@ -37,8 +37,6 @@ import {
     People as PeopleIcon,
     Settings as SettingsIcon,
     Warning as WarningIcon,
-    Lock as LockIcon,
-    Key as KeyIcon,
     Refresh as RefreshIcon,
     Visibility as VisibilityIcon,
     VisibilityOff as VisibilityOffIcon
@@ -47,148 +45,12 @@ import { useAuth } from '../authProvider';
 import firebaseService from '../../../lib/firebaseService';
 import globalCache from '../globalCache';
 
-// ✅ COMPONENTE DE DIÁLOGO PARA RE-LOGIN DO MÉDICO
-const DoctorReloginDialog = ({ open, onClose, onRelogin, doctorEmail, loading, progress }) => {
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState('');
-
-    const handleRelogin = async () => {
-        if (!password.trim()) {
-            setError('Digite sua senha');
-            return;
-        }
-
-        try {
-            setError('');
-            await onRelogin(password);
-        } catch (error) {
-            setError(error.message);
-        }
-    };
-
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter' && !loading) {
-            handleRelogin();
-        }
-    };
-
-    useEffect(() => {
-        if (open) {
-            setPassword('');
-            setError('');
-        }
-    }, [open]);
-
-    return (
-        <Dialog
-            open={open}
-            onClose={loading ? undefined : onClose}
-            maxWidth="sm"
-            fullWidth
-            disableEscapeKeyDown={loading}
-        >
-            <DialogTitle>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <KeyIcon sx={{ color: '#1976d2', mr: 2 }} />
-                    <Box>
-                        <Typography variant="h6">
-                            Confirme sua Identidade
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                            Secretária criada com sucesso! Faça login para continuar.
-                        </Typography>
-                    </Box>
-                </Box>
-            </DialogTitle>
-
-            {loading && (
-                <Box sx={{ px: 3 }}>
-                    <LinearProgress variant="determinate" value={progress} />
-                </Box>
-            )}
-
-            <DialogContent>
-                <Alert severity="success" sx={{ mb: 3 }}>
-                    <Typography variant="body2">
-                        ✅ <strong>Secretária criada com sucesso!</strong><br />
-                        Por questões de segurança, confirme sua senha para continuar.
-                    </Typography>
-                </Alert>
-
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                    <strong>Seu e-mail:</strong> {doctorEmail}
-                </Typography>
-
-                <TextField
-                    fullWidth
-                    type={showPassword ? 'text' : 'password'}
-                    label="Sua senha"
-                    placeholder="Digite sua senha para continuar"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    disabled={loading}
-                    error={!!error}
-                    helperText={error}
-                    sx={{ mb: 2 }}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <LockIcon />
-                            </InputAdornment>
-                        ),
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    edge="end"
-                                    disabled={loading}
-                                >
-                                    {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
-
-                <Typography variant="caption" color="textSecondary">
-                    Este é um processo de segurança padrão. Seus dados estão protegidos.
-                </Typography>
-            </DialogContent>
-            <DialogActions>
-                <Button
-                    onClick={onClose}
-                    disabled={loading}
-                    color="inherit"
-                >
-                    Cancelar
-                </Button>
-                <Button
-                    variant="contained"
-                    onClick={handleRelogin}
-                    disabled={loading || !password.trim()}
-                    startIcon={loading ? <CircularProgress size={20} /> : <KeyIcon />}
-                >
-                    {loading ? 'Fazendo Login...' : 'Confirmar'}
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
-
 const SecretaryManagerDialog = ({ open, onClose }) => {
     const { user, isSecretary, reloadUserContext } = useAuth();
     const [currentTab, setCurrentTab] = useState(0);
     const [loading, setLoading] = useState(false);
     const [secretaryInfo, setSecretaryInfo] = useState(null);
     const [alert, setAlert] = useState({ open: false, message: '', severity: 'success' });
-
-    // ✅ ESTADOS PARA RE-LOGIN DO MÉDICO
-    const [showReloginDialog, setShowReloginDialog] = useState(false);
-    const [reloginData, setReloginData] = useState(null);
-    const [reloginLoading, setReloginLoading] = useState(false);
-    const [reloginProgress, setReloginProgress] = useState(0);
 
     // ✅ ESTADOS PARA LIMITES DO PLANO
     const [planLimits, setPlanLimits] = useState({
@@ -219,12 +81,11 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [creating, setCreating] = useState(false);
 
-    // ✅ FUNÇÃO PARA CARREGAR LIMITES DO PLANO
+    // ✅ FUNÇÃO SIMPLIFICADA PARA CARREGAR LIMITES DO PLANO
     const loadPlanLimits = async () => {
         try {
             console.log('📊 Carregando limites do plano...');
 
-            // ✅ Calcular limites baseado nos dados do usuário
             let max, planName;
             if (user?.administrador) {
                 max = 10;
@@ -237,7 +98,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                 planName = 'Gratuito';
             }
 
-            // Contar secretárias existentes
             const current = secretaryInfo ? 1 : 0;
             const canCreateMore = current < max;
             const remaining = Math.max(0, max - current);
@@ -254,7 +114,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
             console.log('✅ Limites do plano carregados:', limits);
         } catch (error) {
             console.error('❌ Erro ao carregar limites do plano:', error);
-            // Usar valores padrão em caso de erro
             setPlanLimits({
                 current: 0,
                 max: 1,
@@ -265,7 +124,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
         }
     };
 
-    // ✅ FUNÇÃO PARA CRIAR SECRETÁRIA
+    // ✅ FUNÇÃO SIMPLIFICADA PARA CRIAR SECRETÁRIA
     const handleCreateSecretary = async () => {
         if (!validateCreateForm()) {
             showAlert('Por favor, corrija os erros no formulário', 'error');
@@ -279,6 +138,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
 
         try {
             setCreating(true);
+            console.log('🔄 Iniciando criação simplificada de secretária...');
 
             const secretaryData = {
                 name: createForm.name.trim(),
@@ -287,27 +147,21 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                 permissions: createForm.permissions
             };
 
-            console.log('🔄 Iniciando criação de secretária...');
             showAlert('Criando secretária...', 'info');
 
+            // ✅ CRIAR SECRETÁRIA SEM LOGOUT
             const result = await firebaseService.createSecretaryAccount(user.uid, secretaryData);
 
             if (result.success) {
-                console.log('✅ Secretária criada, aguardando re-login do médico...');
+                console.log('✅ Secretária criada com sucesso!');
+                showAlert('Secretária criada com sucesso! 🎉', 'success');
 
-                if (result.needsDoctorRelogin && result.doctorSession) {
-                    // ✅ MOSTRAR DIALOG DE RE-LOGIN
-                    setReloginData({
-                        doctorEmail: result.doctorSession.email,
-                        secretaryData: result.data
-                    });
-                    setShowReloginDialog(true);
-                } else {
-                    // Caso não precise de re-login (raro)
-                    showAlert('Secretária criada com sucesso! 🎉', 'success');
-                    await handleSuccessfulCreation();
-                }
+                // ✅ PROCESSAR SUCESSO IMEDIATAMENTE
+                await handleSuccessfulCreation(result.data);
+            } else {
+                throw new Error(result.error || 'Erro desconhecido na criação');
             }
+
         } catch (error) {
             console.error('❌ Erro ao criar secretária:', error);
             showAlert(error.message || 'Erro ao criar secretária', 'error');
@@ -316,54 +170,11 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
         }
     };
 
-    // ✅ FUNÇÃO PARA LIDAR COM RE-LOGIN DO MÉDICO
-    const handleDoctorRelogin = async (password) => {
-        if (!password || !reloginData) {
-            throw new Error('Digite sua senha para continuar');
-        }
-
+    // ✅ FUNÇÃO SIMPLIFICADA PARA LIDAR COM SUCESSO DA CRIAÇÃO
+    const handleSuccessfulCreation = async (createdData) => {
         try {
-            setReloginLoading(true);
-            setReloginProgress(20);
+            console.log('🎉 Processando sucesso da criação...');
 
-            console.log('🔐 Fazendo re-login do médico...');
-
-            setReloginProgress(50);
-            const result = await firebaseService.restoreDoctorSession(
-                reloginData.doctorEmail,
-                password
-            );
-
-            if (result.success) {
-                setReloginProgress(80);
-                console.log('✅ Re-login bem-sucedido');
-
-                // ✅ AGUARDAR UM POUCO PARA PROPAGAÇÃO DOS DADOS
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
-                // Fechar dialog de re-login
-                setShowReloginDialog(false);
-                setReloginData(null);
-
-                setReloginProgress(100);
-
-                // Mostrar sucesso e limpar formulário
-                showAlert(`Secretária criada com sucesso! 🎉${result.secretaryInfo ? ` (${result.secretaryInfo.name})` : ''}`, 'success');
-                await handleSuccessfulCreation();
-            }
-        } catch (error) {
-            console.error('❌ Erro no re-login:', error);
-            setReloginProgress(0);
-            throw new Error('Senha incorreta. Tente novamente.');
-        } finally {
-            setReloginLoading(false);
-            setReloginProgress(0);
-        }
-    };
-
-    // ✅ FUNÇÃO PARA LIDAR COM SUCESSO DA CRIAÇÃO
-    const handleSuccessfulCreation = async () => {
-        try {
             // Limpar formulário
             setCreateForm({
                 name: '',
@@ -382,7 +193,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
             });
             setCreateErrors({});
 
-            // ✅ INVALIDAR TODOS OS CACHES RELACIONADOS
+            // ✅ INVALIDAR CACHE
             console.log('🗑️ Invalidando caches...');
             globalCache.invalidate('userContext', user.uid);
             globalCache.invalidate('secretaryInfo', user.uid);
@@ -391,45 +202,39 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
             // ✅ AGUARDAR UM POUCO PARA PROPAGAÇÃO
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Recarregar contexto do usuário
-            try {
-                console.log('🔄 Recarregando contexto do usuário...');
-                await reloadUserContext();
-            } catch (error) {
-                console.warn('⚠️ Erro ao recarregar contexto:', error);
-            }
-
-            // ✅ AGUARDAR MAIS UM POUCO E RECARREGAR INFORMAÇÕES DA SECRETÁRIA
-            await new Promise(resolve => setTimeout(resolve, 500));
-            await loadSecretaryInfo(true); // Force reload
-            await loadPlanLimits(); // Recarregar limites
+            // ✅ RECARREGAR INFORMAÇÕES
+            await Promise.all([
+                loadSecretaryInfo(true),
+                loadPlanLimits(),
+                reloadUserContext().catch(error => {
+                    console.warn('⚠️ Erro ao recarregar contexto:', error);
+                })
+            ]);
 
             // Ir para aba de gerenciamento
             setCurrentTab(1);
+
+            console.log('✅ Sucesso processado completamente');
+
         } catch (error) {
-            console.error('❌ Erro no pós-processamento da criação:', error);
-            showAlert('Secretária criada, mas houve erro ao atualizar interface. Recarregue a página.', 'warning');
+            console.error('❌ Erro no pós-processamento:', error);
+            showAlert('Secretária criada, mas houve erro ao atualizar interface. Atualize a página.', 'warning');
         }
     };
 
-    // ✅ FUNÇÃO PARA CARREGAR INFORMAÇÕES DA SECRETÁRIA
+    // ✅ FUNÇÃO MELHORADA PARA CARREGAR INFORMAÇÕES DA SECRETÁRIA
     const loadSecretaryInfo = async (forceReload = false) => {
         try {
             setLoading(true);
 
             if (forceReload) {
-                // ✅ INVALIDAR CACHE ANTES DE BUSCAR
                 globalCache.invalidate('secretaryInfo', user.uid);
                 console.log('🔄 Força recarregamento das informações da secretária...');
-            }
-
-            // ✅ AGUARDAR UM POUCO PARA DADOS RECÉM-CRIADOS
-            if (forceReload) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Aguardar propagação dos dados
+                await new Promise(resolve => setTimeout(resolve, 1500));
             }
 
             const info = await firebaseService.getDoctorSecretaryInfo(user.uid);
-
             setSecretaryInfo(info);
 
             if (info) {
@@ -437,6 +242,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
             } else {
                 console.log('📝 Nenhuma secretária encontrada');
             }
+
         } catch (error) {
             console.error('❌ Erro ao carregar informações da secretária:', error);
             showAlert('Erro ao carregar informações da secretária', 'error');
@@ -450,20 +256,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
         console.log('🔄 Atualizando informações da secretária manualmente...');
         await loadSecretaryInfo(true);
         await loadPlanLimits();
-    };
-
-    // ✅ FUNÇÃO PARA CANCELAR RE-LOGIN
-    const handleCancelRelogin = () => {
-        setShowReloginDialog(false);
-        setReloginData(null);
-
-        showAlert(
-            'Secretária foi criada, mas você foi deslogado. Faça login novamente para ver as informações.',
-            'warning'
-        );
-
-        // Fechar o dialog principal
-        onClose();
     };
 
     // Função para mostrar alert
@@ -511,7 +303,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
             [field]: event.target.value
         }));
 
-        // Limpar erro do campo
         if (createErrors[field]) {
             setCreateErrors(prev => ({
                 ...prev,
@@ -537,7 +328,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
     // ✅ CARREGAR INFORMAÇÕES AO ABRIR O DIALOG
     useEffect(() => {
         if (open && user?.uid && !isSecretary) {
-            console.log('📂 Dialog aberto, carregando informações da secretária...');
+            console.log('📂 Dialog aberto, carregando informações...');
             loadSecretaryInfo();
             loadPlanLimits();
         }
@@ -548,12 +339,10 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
         if (!open) {
             setCurrentTab(0);
             setSecretaryInfo(null);
-            setShowReloginDialog(false);
-            setReloginData(null);
         }
     }, [open]);
 
-    // ✅ VERIFICAÇÃO ESPECÍFICA PARA SECRETÁRIAS
+    // ✅ VERIFICAÇÃO PARA SECRETÁRIAS
     if (isSecretary) {
         return (
             <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -565,9 +354,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                     <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
                         Secretárias não podem gerenciar outras secretárias.
                     </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                        Entre em contato com o médico responsável para gerenciar secretárias.
-                    </Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={onClose}>Fechar</Button>
@@ -578,7 +364,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
 
     return (
         <>
-            {/* Dialog principal */}
             <Dialog
                 open={open}
                 onClose={onClose}
@@ -595,7 +380,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                             Gerenciar Secretárias
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {/* ✅ BOTÃO DE REFRESH */}
                             {currentTab === 1 && (
                                 <IconButton
                                     onClick={handleRefreshSecretaryInfo}
@@ -633,10 +417,10 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                 </Box>
 
                 <DialogContent sx={{ p: 0, minHeight: '500px' }}>
-                    {/* ✅ ABA DE CRIAÇÃO - FORMULÁRIO COMPLETO */}
+                    {/* ✅ ABA DE CRIAÇÃO */}
                     {currentTab === 0 && (
                         <Box sx={{ p: 3 }}>
-                            {/* ✅ INDICADOR DE LIMITE */}
+                            {/* Indicador de limite */}
                             <Card sx={{ mb: 3, bgcolor: '#f8f9fa', border: '1px solid #e9ecef' }}>
                                 <CardContent sx={{ py: 2 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -648,13 +432,11 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                                 {planLimits.current} de {planLimits.max} secretária{planLimits.max > 1 ? 's' : ''} utilizada{planLimits.max > 1 ? 's' : ''}
                                             </Typography>
                                         </Box>
-                                        <Box sx={{ textAlign: 'right' }}>
-                                            <Chip
-                                                label={planLimits.canCreateMore ? `${planLimits.remaining} disponível${planLimits.remaining !== 1 ? 'is' : ''}` : 'Limite atingido'}
-                                                color={planLimits.canCreateMore ? 'success' : 'warning'}
-                                                size="small"
-                                            />
-                                        </Box>
+                                        <Chip
+                                            label={planLimits.canCreateMore ? `${planLimits.remaining} disponível${planLimits.remaining !== 1 ? 'is' : ''}` : 'Limite atingido'}
+                                            color={planLimits.canCreateMore ? 'success' : 'warning'}
+                                            size="small"
+                                        />
                                     </Box>
 
                                     {!planLimits.canCreateMore && (
@@ -669,7 +451,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                     )}
                                 </CardContent>
                             </Card>
-
 
                             <Grid container spacing={3}>
                                 {/* Dados básicos */}
@@ -769,7 +550,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                     />
                                 </Grid>
 
-                                {/* Permissões */}
+                                {/* Permissões simplificadas */}
                                 <Grid item xs={12}>
                                     <Divider sx={{ my: 2 }} />
                                     <Typography variant="h6" sx={{ mb: 2 }}>
@@ -836,7 +617,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                     {/* ✅ ABA DE GERENCIAMENTO */}
                     {currentTab === 1 && (
                         <Box sx={{ p: 3 }}>
-                            {/* ✅ INDICADOR DE LOADING MELHORADO */}
                             {loading ? (
                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
                                     <CircularProgress sx={{ mb: 2 }} />
@@ -847,7 +627,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                             ) : secretaryInfo ? (
                                 <Card>
                                     <CardContent>
-                                        {/* ✅ INDICADOR DE SUCESSO */}
                                         <Alert severity="success" sx={{ mb: 3 }}>
                                             <Typography variant="body2">
                                                 ✅ <strong>Secretária ativa encontrada!</strong> Sua secretária está configurada e operacional.
@@ -890,7 +669,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                 </Card>
                             ) : (
                                 <Box sx={{ textAlign: 'center', py: 4 }}>
-                                    {/* ✅ AVISO MELHORADO QUANDO NÃO HÁ SECRETÁRIA */}
                                     <PeopleIcon sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
                                     <Typography variant="h6" color="textSecondary">
                                         Nenhuma Secretária Cadastrada
@@ -911,7 +689,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                     )}
                 </DialogContent>
 
-                {/* ✅ BOTÕES DE AÇÃO PARA ABA DE CRIAÇÃO */}
+                {/* ✅ BOTÕES DE AÇÃO SIMPLIFICADOS */}
                 {currentTab === 0 && (
                     <DialogActions sx={{ p: 3, pt: 1 }}>
                         <Button onClick={onClose} disabled={creating}>
@@ -922,26 +700,15 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                             startIcon={creating ? <CircularProgress size={20} /> : <PersonAddIcon />}
                             onClick={handleCreateSecretary}
                             disabled={creating || !planLimits.canCreateMore}
-                            sx={{
-                                ...(planLimits.canCreateMore ? {} : {
-                                    backgroundColor: '#ffa726',
-                                    '&:hover': { backgroundColor: '#ff9800' }
-                                })
-                            }}
                         >
-                            {creating ? 'Criando...' :
-                                !planLimits.canCreateMore ? `Limite ${planLimits.planName} Atingido` :
-                                    'Criar Secretária'}
+                            {creating ? 'Criando...' : 'Criar Secretária'}
                         </Button>
 
-                        {/* ✅ BOTÃO DE UPGRADE (SE GRATUITO E LIMITE ATINGIDO) */}
                         {!planLimits.canCreateMore && planLimits.planName === 'Gratuito' && (
                             <Button
                                 variant="outlined"
                                 color="primary"
-                                onClick={() => {
-                                    window.open('/checkout', '_blank');
-                                }}
+                                onClick={() => window.open('/checkout', '_blank')}
                                 sx={{ ml: 1 }}
                             >
                                 Fazer Upgrade
@@ -950,16 +717,6 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                     </DialogActions>
                 )}
             </Dialog>
-
-            {/* ✅ DIALOG DE RE-LOGIN DO MÉDICO */}
-            <DoctorReloginDialog
-                open={showReloginDialog}
-                onClose={handleCancelRelogin}
-                onRelogin={handleDoctorRelogin}
-                doctorEmail={reloginData?.doctorEmail}
-                loading={reloginLoading}
-                progress={reloginProgress}
-            />
 
             {/* Snackbar de alertas */}
             <Snackbar

@@ -222,7 +222,6 @@ const PermissionDetails = ({ module, action, userPermissions, onRequestAccess })
     );
 };
 
-// ✅ COMPONENTE PRINCIPAL DE ROTA PROTEGIDA MELHORADO
 const ProtectedRoute = ({
                             children,
                             requiredModule,
@@ -236,26 +235,59 @@ const ProtectedRoute = ({
         hasModulePermission,
         userContext,
         getDisplayUserData,
-        permissions
+        permissions,
+        loading: authLoading
     } = useAuth();
 
     const [loading, setLoading] = useState(true);
     const [permissionResult, setPermissionResult] = useState(null);
     const [showRequestDialog, setShowRequestDialog] = useState(false);
 
-    // ✅ VERIFICAR PERMISSÕES DE FORMA ASSÍNCRONA
+    // ✅ VERIFICAR PERMISSÕES DE FORMA MAIS ROBUSTA
     const checkPermissions = useCallback(async () => {
         try {
             setLoading(true);
 
+            // ✅ AGUARDAR O AUTHPROVIDER TERMINAR DE CARREGAR
+            if (authLoading) {
+                console.log('⏳ Aguardando AuthProvider terminar...');
+                return;
+            }
+
             // Médicos sempre têm acesso total
             if (!isSecretary) {
+                console.log('👨‍⚕️ Médico detectado, acesso total garantido');
                 setPermissionResult({ hasAccess: true, reason: 'doctor' });
                 return;
             }
 
-            // Aguardar um frame para evitar blocking
-            await new Promise(resolve => requestAnimationFrame(resolve));
+            // ✅ VERIFICAR SE CONTEXTO DE SECRETÁRIA ESTÁ CARREGADO
+            if (!userContext || !userContext.isSecretary) {
+                console.log('⚠️ Contexto de secretária não carregado ainda');
+                setPermissionResult({
+                    hasAccess: false,
+                    reason: 'context_loading',
+                    needsWait: true
+                });
+                return;
+            }
+
+            // ✅ VERIFICAR SE PERMISSÕES ESTÃO DISPONÍVEIS
+            if (!permissions || typeof permissions !== 'object') {
+                console.log('⚠️ Permissões não carregadas ainda');
+                setPermissionResult({
+                    hasAccess: false,
+                    reason: 'permissions_loading',
+                    needsWait: true
+                });
+                return;
+            }
+
+            console.log('🔍 Verificando permissão de secretária:', {
+                module: requiredModule,
+                action: requiredAction,
+                permissions: permissions
+            });
 
             // Verificar permissão da secretária
             const hasAccess = hasModulePermission(requiredModule, requiredAction);
@@ -268,8 +300,10 @@ const ProtectedRoute = ({
                 userPermissions: permissions
             });
 
+            console.log(`✅ Verificação concluída: ${hasAccess ? 'ACESSO PERMITIDO' : 'ACESSO NEGADO'}`);
+
         } catch (error) {
-            console.error('Erro ao verificar permissões:', error);
+            console.error('❌ Erro ao verificar permissões:', error);
             setPermissionResult({
                 hasAccess: false,
                 reason: 'error',
@@ -278,11 +312,26 @@ const ProtectedRoute = ({
         } finally {
             setLoading(false);
         }
-    }, [isSecretary, hasModulePermission, requiredModule, requiredAction, permissions]);
+    }, [isSecretary, hasModulePermission, requiredModule, requiredAction, permissions, userContext, authLoading]);
 
-    // ✅ EXECUTAR VERIFICAÇÃO AO MONTAR COMPONENTE
+    // ✅ VERIFICAÇÃO COM RETRY PARA AGUARDAR CARREGAMENTO COMPLETO
     useEffect(() => {
-        checkPermissions();
+        let retryCount = 0;
+        const maxRetries = 5;
+        const retryDelay = 1000;
+
+        const checkWithRetry = async () => {
+            await checkPermissions();
+
+            // ✅ SE AINDA ESTÁ CARREGANDO E TEMOS RETRIES, TENTAR NOVAMENTE
+            if (permissionResult?.needsWait && retryCount < maxRetries) {
+                retryCount++;
+                console.log(`🔄 Retry ${retryCount}/${maxRetries} para verificação de permissões...`);
+                setTimeout(checkWithRetry, retryDelay);
+            }
+        };
+
+        checkWithRetry();
     }, [checkPermissions]);
 
     // ✅ FUNÇÃO PARA SOLICITAR ACESSO
@@ -299,9 +348,22 @@ const ProtectedRoute = ({
         }
     }, []);
 
-    // ✅ MOSTRAR LOADING
-    if (loading) {
-        return <PermissionLoadingState />;
+    // ✅ MOSTRAR LOADING ENQUANTO VERIFICA
+    if (loading || authLoading || permissionResult?.needsWait) {
+        return (
+            <Box sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Skeleton variant="circular" width={40} height={40} sx={{ mr: 2 }} />
+                    <Skeleton variant="text" width={200} height={30} />
+                </Box>
+                <LinearProgress sx={{ mb: 2 }} />
+                <Typography variant="body2" color="textSecondary">
+                    {authLoading ? 'Carregando dados do usuário...' : 'Verificando permissões...'}
+                </Typography>
+                <Skeleton variant="text" width="100%" height={20} />
+                <Skeleton variant="text" width="80%" height={20} />
+            </Box>
+        );
     }
 
     // ✅ SE TEM ACESSO, RENDERIZAR CHILDREN
@@ -309,10 +371,27 @@ const ProtectedRoute = ({
         return children;
     }
 
+    // ✅ SE HOUVE ERRO, MOSTRAR MENSAGEM ESPECÍFICA
+    if (permissionResult?.reason === 'error') {
+        return (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    <Typography variant="body2">
+                        <strong>Erro ao verificar permissões:</strong><br />
+                        {permissionResult.error}
+                    </Typography>
+                </Alert>
+                <Button variant="outlined" onClick={() => window.location.reload()}>
+                    Recarregar Página
+                </Button>
+            </Box>
+        );
+    }
+
     // ✅ OBTER DADOS PARA EXIBIÇÃO
     const displayData = getDisplayUserData();
 
-    // ✅ RENDERIZAR TELA DE ACESSO NEGADO
+    // ✅ RENDERIZAR TELA DE ACESSO NEGADO MELHORADA
     return (
         <>
             <Box sx={{
@@ -357,39 +436,54 @@ const ProtectedRoute = ({
                     {fallbackMessage || `Você não tem permissão para acessar ${MODULE_CONFIG[requiredModule]?.name || requiredModule}.`}
                 </Typography>
 
-                {/* Informações da secretária */}
-                <Card sx={{ mb: 3, maxWidth: 500, width: '100%' }}>
-                    <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Avatar sx={{ mr: 2, bgcolor: '#1976d2' }}>
-                                <PersonIcon />
-                            </Avatar>
-                            <Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                    {displayData?.secretaryName || 'Secretária'}
-                                </Typography>
+                {/* ✅ INFORMAÇÕES DA SECRETÁRIA - MELHORADAS */}
+                {isSecretary && displayData && (
+                    <Card sx={{ mb: 3, maxWidth: 500, width: '100%' }}>
+                        <CardContent>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                <Avatar sx={{ mr: 2, bgcolor: '#1976d2' }}>
+                                    <PersonIcon />
+                                </Avatar>
+                                <Box>
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                        {displayData?.secretaryName || 'Secretária'}
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                        Trabalhando para Dr. {userContext?.userData?.fullName || 'Médico'}
+                                    </Typography>
+                                </Box>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <EmailIcon sx={{ mr: 1, color: '#666', fontSize: 20 }} />
                                 <Typography variant="body2" color="textSecondary">
-                                    Trabalhando para Dr. {userContext?.userData?.fullName}
+                                    {displayData?.secretaryEmail || displayData?.email}
                                 </Typography>
                             </Box>
-                        </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                            <EmailIcon sx={{ mr: 1, color: '#666', fontSize: 20 }} />
-                            <Typography variant="body2" color="textSecondary">
-                                {displayData?.secretaryEmail}
-                            </Typography>
-                        </Box>
-                    </CardContent>
-                </Card>
+                            {/* ✅ INFORMAÇÕES DE DEBUG EM DESENVOLVIMENTO */}
+                            {process.env.NODE_ENV === 'development' && (
+                                <Alert severity="info" sx={{ mt: 2 }}>
+                                    <Typography variant="caption">
+                                        <strong>Debug:</strong><br />
+                                        Módulo: {requiredModule}<br />
+                                        Ação: {requiredAction}<br />
+                                        Permissões carregadas: {permissions ? 'Sim' : 'Não'}<br />
+                                        Contexto carregado: {userContext ? 'Sim' : 'Não'}
+                                    </Typography>
+                                </Alert>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Detalhes de permissão */}
-                {showDetailedPermissions && (
+                {showDetailedPermissions && permissionResult?.userPermissions && (
                     <Box sx={{ width: '100%', maxWidth: 600 }}>
                         <PermissionDetails
                             module={requiredModule}
                             action={requiredAction}
-                            userPermissions={permissions}
+                            userPermissions={permissionResult.userPermissions}
                             onRequestAccess={handleRequestAccess}
                         />
                     </Box>
