@@ -12,6 +12,7 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import PsychologyIcon from "@mui/icons-material/Psychology";
 import { MODULES } from "../../lib/moduleConfig";
+import SecretaryIndicator from "./organismsComponents/secretaryIndicator";
 
 const Sidebar = ({
                      initialSelected = "Dashboard",
@@ -25,6 +26,7 @@ const Sidebar = ({
     const { user } = useAuth();
     const { hasAccess, isAdmin, getUnavailableModules, isLegacyUser } = useModuleAccess();
     const { scaleStyle } = useResponsiveScale();
+    const { isSecretary, userContext } = useAuth();
 
     // Definir itens do menu com lógica híbrida
     const menuItems = useMemo(() => ({
@@ -474,6 +476,16 @@ const Sidebar = ({
                         </Typography>
                     </Box>
                 </Box>
+
+                {isSecretary && (
+                    <Box sx={{ mb: 2, mx: 1 }}>
+                        <SecretaryIndicator
+                            isSecretary={isSecretary}
+                            secretaryName={userContext?.secretaryData?.name}
+                            doctorName={userContext?.userData?.fullName}
+                        />
+                    </Box>
+                )}
 
                 {/* Itens principais */}
                 <Box sx={{ flex: 1, overflowY: "auto" }}>

@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Box, CircularProgress } from "@mui/material";
+import React, { useState, useEffect, useCallback } from "react";
+import { Box, CircularProgress, Typography, Button, Alert } from "@mui/material";
+import LockIcon from '@mui/icons-material/Lock';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TopAppBar from "../components/topAppBar";
 import Sidebar from "../components/sidebar";
 import DashboardTemplate from "../components/dashboardTemplate";
@@ -13,38 +15,101 @@ import { useRouter } from "next/navigation";
 import Dashboard from "../components/dashboardTemplate";
 import PatientsListPage from "../components/patientsListTemplate";
 import PrescriptionsPage from "../components/receitasTemplate";
-import {useResponsiveScale} from "../components/useScale";
+import { useResponsiveScale } from "../components/useScale";
 import CentralAjudaTemplate from "../components/centralAjudaTemplate";
 import UserProfileTemplate from "../components/userProfileTemplate";
 import HelpCenter from "../components/helpCenter";
 import UserDataTemplate from "../components/userDataTemplate";
-import {HelpCenter as HelpCenterIcon } from "@mui/icons-material";
-import Script from "next/script";
-
-// ✨ IMPORTAR O NOVO COMPONENTE DOCTOR AI
 import DoctorAITemplate from "../components/doctorAITemplate";
 import UnifiedUserManagement from "../components/organismsComponents/unifiedUserManagement";
 
+// ✅ COMPONENTE PARA PROTEGER ROTAS COM VERIFICAÇÃO DE PERMISSÕES
+const ProtectedRoute = ({ children, requiredModule, requiredAction = 'read', fallbackMessage }) => {
+    const { isSecretary, hasModulePermission, userContext, getDisplayUserData } = useAuth();
+
+    // Médicos sempre têm acesso total
+    if (!isSecretary) {
+        return children;
+    }
+
+    // Verificar permissão da secretária
+    const hasPermission = hasModulePermission(requiredModule, requiredAction);
+
+    if (!hasPermission) {
+        const displayData = getDisplayUserData();
+
+        return (
+            <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '60vh',
+                textAlign: 'center',
+                p: 3,
+                backgroundColor: '#f8f9fa',
+                borderRadius: 2
+            }}>
+                <LockIcon sx={{ fontSize: 64, color: '#FF6B6B', mb: 2 }} />
+                <Typography variant="h5" sx={{ mb: 1, color: '#2d3748', fontWeight: 600 }}>
+                    Acesso Restrito
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 1, color: '#4a5568', maxWidth: 400 }}>
+                    {fallbackMessage || `Você não tem permissão para acessar ${requiredModule}.`}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 3, color: '#718096', maxWidth: 400 }}>
+                    Entre em contato com <strong>Dr. {userContext?.userData?.fullName}</strong> para solicitar acesso a este módulo.
+                </Typography>
+
+                <Alert severity="info" sx={{ mb: 3, maxWidth: 400 }}>
+                    <Typography variant="caption">
+                        <strong>Secretária:</strong> {displayData?.secretaryName}<br />
+                        <strong>Permissão necessária:</strong> {requiredModule} - {requiredAction}
+                    </Typography>
+                </Alert>
+
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => window.handleBackToDashboard?.()}
+                    sx={{
+                        borderColor: '#4285F4',
+                        color: '#4285F4',
+                        '&:hover': {
+                            backgroundColor: 'rgba(66, 133, 244, 0.08)',
+                            borderColor: '#4285F4'
+                        }
+                    }}
+                >
+                    Voltar ao Dashboard
+                </Button>
+            </Box>
+        );
+    }
+
+    return children;
+};
+
+// ✅ COMPONENTE PRINCIPAL DO APPLAYOUT
 export default function AppLayout({ children }) {
-    // Obter dados de autenticação
+    // Estados principais
     const auth = useAuth();
     const user = auth?.user;
     const loading = auth?.loading || false;
     const logout = auth?.logout;
+    const isSecretary = auth?.isSecretary || false;
+    const userContext = auth?.userContext;
+    const hasModulePermission = auth?.hasModulePermission;
     const router = useRouter();
+
+    // Estados de navegação
+    const [activePage, setActivePage] = useState("Dashboard");
+    const [selectedPatientId, setSelectedPatientId] = useState(null);
+    const [agendaConsultationId, setAgendaConsultationId] = useState(null);
+    const [selectedMessageId, setSelectedMessageId] = useState(null);
 
     // Verificar se o usuário é administrador
     const isAdmin = user && user.administrador === true;
-
-    const handleMenuSelect = (page, consultationId = null) => {
-        setActivePage(page);
-        if (page.toLowerCase() === "agenda" && consultationId) {
-            setAgendaConsultationId(consultationId);
-        } else if (page.toLowerCase() !== "patientprofile") {
-            setSelectedPatientId(null);
-            setAgendaConsultationId(null);
-        }
-    };
 
     // Verificar autenticação quando o componente carrega
     useEffect(() => {
@@ -53,64 +118,60 @@ export default function AppLayout({ children }) {
         }
     }, [loading, user, router]);
 
-    // Define o estado inicial para "Dashboard"
-    const [activePage, setActivePage] = useState("Dashboard");
-
-    // Novo estado para armazenar o paciente selecionado
-    const [selectedPatientId, setSelectedPatientId] = useState(null);
-    const [agendaConsultationId, setAgendaConsultationId] = useState(null);
-
-    // ✨ NOVO ESTADO PARA MENSAGEM SELECIONADA
-    const [selectedMessageId, setSelectedMessageId] = useState(null);
-
-    // Estilo de escala para o conteúdo
-    const contentScaleStyle = {
-        transform: 'scale(0.95)',
-        transformOrigin: 'top left',
-        width: '105.26%', // Corrigido o valor (100% / 0.95 ≈ 105.26%)
-        height: '105.26%',
-    };
-
+    // Configuração de escala responsiva
     const { scaleStyle } = useResponsiveScale();
 
-    // Handler para quando um paciente é clicado na tabela
-    const handlePatientClick = (patientId) => {
+    // ✅ HANDLERS DE NAVEGAÇÃO OTIMIZADOS
+    const handleMenuSelect = useCallback((page, consultationId = null) => {
+        console.log(`📍 Navegando para: ${page}`);
+        setActivePage(page);
+
+        if (page.toLowerCase() === "agenda" && consultationId) {
+            setAgendaConsultationId(consultationId);
+        } else if (page.toLowerCase() !== "patientprofile") {
+            setSelectedPatientId(null);
+            setAgendaConsultationId(null);
+        }
+
+        // Limpar mensagem selecionada ao navegar
+        if (page.toLowerCase() !== "central de ajuda") {
+            setSelectedMessageId(null);
+        }
+    }, []);
+
+    const handlePatientClick = useCallback((patientId) => {
+        console.log(`👤 Selecionando paciente: ${patientId}`);
         setSelectedPatientId(patientId);
         setActivePage("PatientProfile");
-    };
+    }, []);
 
-    const handleReportClick = () => {
-        setActivePage("Reportar");
-    }
-
-    const handleCentralClick = () => {
-        setActivePage("Central de AJuda");
-    }
-
-    // Handler para voltar da visualização do paciente para a tabela de pacientes
-    const handleBackToPatients = () => {
+    const handleBackToDashboard = useCallback(() => {
+        console.log('🏠 Voltando ao Dashboard');
         setSelectedPatientId(null);
-        setActivePage("dashboard");
-    };
-
-    // Handler global para o botão Back - sempre leva ao Dashboard
-    const handleBackToDashboard = () => {
-        setSelectedPatientId(null);
-        setSelectedMessageId(null); // ✨ RESETAR MENSAGEM SELECIONADA
+        setSelectedMessageId(null);
         setActivePage("Dashboard");
-    };
+    }, []);
 
-    // Handler para o botão de agendamento
-    const handleAgendamentoClick = () => {
+    const handleAgendamentoClick = useCallback(() => {
         setActivePage("Agenda");
-    };
+    }, []);
 
-    const handleReceitaClick = () => {
+    const handleReceitaClick = useCallback(() => {
         setActivePage("Receitas");
-    };
+    }, []);
 
-    // ✨ NOVO HANDLER PARA NOTIFICAÇÕES
-    const handleNotificationClick = (data) => {
+    const handlePacienteTopAppBarClick = useCallback(() => {
+        setActivePage("Criar novo paciente");
+    }, []);
+
+    const handleProfileClick = useCallback(() => {
+        setActivePage("Meu Perfil");
+    }, []);
+
+    // ✅ HANDLER PARA NOTIFICAÇÕES MELHORADO
+    const handleNotificationClick = useCallback((data) => {
+        console.log('🔔 Notificação clicada:', data);
+
         if (data?.openCentralAjuda) {
             // Abrir central de ajuda geral
             setSelectedMessageId(null);
@@ -119,110 +180,202 @@ export default function AppLayout({ children }) {
             // Abrir mensagem específica
             setSelectedMessageId(data.id);
             setActivePage("Central de Ajuda");
+        } else if (data?.reportar) {
+            // Abrir página de reportar
+            setSelectedMessageId(null);
+            setActivePage("Reportar");
         }
-    };
+    }, []);
 
-    // Expor o handler globalmente para que os componentes possam acessá-lo
-    useEffect(() => {
-        // Expor handlers para uso global em componentes aninhados
-        window.handlePatientClick = handlePatientClick;
-        window.handleMenuSelect = handleMenuSelect;
-        window.handleBackToDashboard = handleBackToDashboard;
-        window.handleReceitaClick = handleReceitaClick;
-
-        // Limpeza ao desmontar o componente
-        return () => {
-            delete window.handlePatientClick;
-            delete window.handleMenuSelect;
-            delete window.handleBackToDashboard;
-            delete window.handleReceitaClick;
+    // ✅ CONFIGURAÇÃO DOS MÓDULOS COM PERMISSÕES
+    const getModulePermissions = useCallback(() => {
+        return {
+            patients: { read: true, write: true, viewDetails: true },
+            prescriptions: { read: true, write: true },
+            appointments: { read: true, write: true },
+            exams: { read: true, write: false },
+            notes: { read: true, write: true },
+            financial: { read: false, write: false },
+            reports: { read: true, write: false }
         };
     }, []);
 
-    useEffect(() => {
-        window.handleMenuSelect = handleMenuSelect;
-        return () => {
-            delete window.handleMenuSelect;
-        };
-    }, [handleMenuSelect]);
+    // ✅ VERIFICAR SE USUÁRIO PODE ACESSAR PÁGINA
+    const canAccessPage = useCallback((page) => {
+        if (!isSecretary) return true; // Médicos têm acesso total
 
-    const renderContent = () => {
-        // Converte para lowercase para facilitar a comparação
-        switch (activePage.toLowerCase()) {
+        const moduleMap = {
+            'pacientes': 'patients',
+            'receitas': 'prescriptions',
+            'agenda': 'appointments',
+            'patientprofile': 'patients'
+        };
+
+        const requiredModule = moduleMap[page.toLowerCase()];
+        if (!requiredModule) return true; // Páginas sem módulo específico
+
+        return hasModulePermission(requiredModule, 'read');
+    }, [isSecretary, hasModulePermission]);
+
+    // ✅ FUNÇÃO PARA RENDERIZAR CONTEÚDO COM PROTEÇÃO
+    const renderContent = useCallback(() => {
+        const page = activePage.toLowerCase();
+
+        switch (page) {
             case "dashboard":
                 return <Dashboard onClickPatients={handlePatientClick}/>;
+
             case "pacientes":
-                return <PatientsListPage onPatientClick={handlePatientClick} />;
+                return (
+                    <ProtectedRoute
+                        requiredModule="patients"
+                        requiredAction="read"
+                        fallbackMessage="Você precisa de permissão para visualizar a lista de pacientes."
+                    >
+                        <PatientsListPage onPatientClick={handlePatientClick} />
+                    </ProtectedRoute>
+                );
+
             case "receitas":
-                return <PrescriptionsPage />;
+                return (
+                    <ProtectedRoute
+                        requiredModule="prescriptions"
+                        requiredAction="read"
+                        fallbackMessage="Você precisa de permissão para visualizar receitas médicas."
+                    >
+                        <PrescriptionsPage />
+                    </ProtectedRoute>
+                );
+
             case "agenda":
-                return <AgendaMedica initialConsultationId={agendaConsultationId} />;
+                return (
+                    <ProtectedRoute
+                        requiredModule="appointments"
+                        requiredAction="read"
+                        fallbackMessage="Você precisa de permissão para acessar a agenda médica."
+                    >
+                        <AgendaMedica initialConsultationId={agendaConsultationId} />
+                    </ProtectedRoute>
+                );
+
             case "patientprofile":
-                return <PacienteTemplate pacienteId={selectedPatientId} onBack={handleBackToDashboard} />;
+                return (
+                    <ProtectedRoute
+                        requiredModule="patients"
+                        requiredAction="viewDetails"
+                        fallbackMessage="Você precisa de permissão para visualizar detalhes dos pacientes."
+                    >
+                        <PacienteTemplate
+                            pacienteId={selectedPatientId}
+                            onBack={handleBackToDashboard}
+                        />
+                    </ProtectedRoute>
+                );
+
             case "criar novo paciente":
-                return <PacienteCadastroTemplate/>;
-            // ✨ NOVA ROTA PARA DOCTOR AI
+                return (
+                    <ProtectedRoute
+                        requiredModule="patients"
+                        requiredAction="write"
+                        fallbackMessage="Você precisa de permissão para criar novos pacientes."
+                    >
+                        <PacienteCadastroTemplate/>
+                    </ProtectedRoute>
+                );
+
             case "doctor ai":
+                // IA disponível para todos
                 return <DoctorAITemplate />;
+
             case "central de ajuda":
+                // Suporte disponível para todos
                 return <HelpCenter initialTab={0}/>;
+
             case "reportar":
+                // Reportar disponível para todos
                 return <CentralAjudaTemplate selectedMessageId={selectedMessageId} />;
+
             case "meu perfil":
+                // Perfil disponível para todos
                 return <UserProfileTemplate onLogout={logout}/>;
+
             case "dados":
-                return isAdmin ? <UnifiedUserManagement /> : <Dashboard onClickPatients={handlePatientClick}/>;
+                // Admin apenas para administradores
+                return isAdmin ? (
+                    <UnifiedUserManagement />
+                ) : (
+                    <Dashboard onClickPatients={handlePatientClick}/>
+                );
+
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
-    };
+    }, [
+        activePage,
+        selectedPatientId,
+        agendaConsultationId,
+        selectedMessageId,
+        handlePatientClick,
+        handleBackToDashboard,
+        logout,
+        isAdmin
+    ]);
 
-    const handleProfileClick = () => {
-        setActivePage("Meu Perfil");
-    };
+    // ✅ CONFIGURAR TÍTULO DINÂMICO COM BASE NA PÁGINA ATIVA
+    const getPageTitle = useCallback(() => {
+        const page = activePage.toLowerCase();
+        const firstName = user?.fullName?.split(' ')[0] || 'Médico';
 
-    // Callback para o botão "Paciente" da TopAppBar
-    const handlePacienteTopAppBarClick = () => {
-        setActivePage("Criar novo paciente");
-    };
+        // ✅ TÍTULOS ESPECIAIS PARA SECRETÁRIAS
+        if (isSecretary) {
+            const secretaryName = userContext?.secretaryData?.name || 'Secretária';
+            const doctorName = userContext?.userData?.fullName || 'Médico';
 
-    // Mostrar loading enquanto verifica autenticação
-    if (loading) {
-        return (
-            <Box
-                sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100vh',
-                }}
-            >
-                <CircularProgress color="primary" />
-            </Box>
-        );
-    }
+            switch (page) {
+                case "dashboard":
+                    return (
+                        <>
+                            Bem vinda,{" "}
+                            <span style={{color: "#1852FE"}}>
+                                {secretaryName}
+                            </span>
+                            {" "}(Dr. {doctorName})
+                        </>
+                    );
+                case "patientprofile":
+                    return "Perfil do Paciente";
+                case "meu perfil":
+                    return "Meu Perfil";
+                case "doctor ai":
+                    return (
+                        <>
+                            <span style={{color: "#667eea"}}>Doctor AI</span>
+                            {" - Assistente médico inteligente"}
+                        </>
+                    );
+                case "central de ajuda":
+                    return "Central de Ajuda";
+                case "agenda":
+                    return `${secretaryName}, confira a agenda do Dr. ${doctorName}`;
+                case "pacientes":
+                    return `${secretaryName}, gerencie os pacientes`;
+                default:
+                    return activePage;
+            }
+        }
 
-    // Se não estiver autenticado, não renderizar nada (redirecionamento ocorre pelo useEffect)
-    if (!user) {
-        return null;
-    }
-
-    // Configurar título dinâmico com base na página ativa
-    const getPageTitle = () => {
-        switch (activePage.toLowerCase()) {
+        // ✅ TÍTULOS PARA MÉDICOS
+        switch (page) {
             case "patientprofile":
                 return "Perfil do Paciente";
             case "meu perfil":
                 return "Meu Perfil";
             case "dados":
                 return "Administração de Dados";
-            // ✨ NOVO TÍTULO PARA DOCTOR AI
             case "doctor ai":
                 return (
                     <>
-                        <span style={{color: "#667eea"}}>
-                            Doctor AI
-                        </span>
+                        <span style={{color: "#667eea"}}>Doctor AI</span>
                         {" - Seu assistente médico inteligente"}
                     </>
                 );
@@ -233,16 +386,16 @@ export default function AppLayout({ children }) {
                     <>
                         Bem vindo,{" "}
                         <span style={{color: "#1852FE"}}>
-                        Dr. {user?.fullName}
-                    </span>
+                            Dr. {firstName}
+                        </span>
                     </>
                 );
             case "agenda":
                 return (
                     <>
-                    <span style={{color: "#1852FE"}}>
-                        Dr. {user?.fullName}
-                    </span>
+                        <span style={{color: "#1852FE"}}>
+                            Dr. {firstName}
+                        </span>
                         {", confira sua agenda"}
                     </>
                 );
@@ -250,7 +403,7 @@ export default function AppLayout({ children }) {
                 return (
                     <>
                         <span style={{color: "#1852FE"}}>
-                            Dr. {user?.fullName}
+                            Dr. {firstName}
                         </span>
                         {", gerencie seus pacientes"}
                     </>
@@ -258,38 +411,113 @@ export default function AppLayout({ children }) {
             default:
                 return activePage;
         }
-    };
+    }, [activePage, user, isSecretary, userContext]);
+
+    // ✅ EXPOR HANDLERS GLOBALMENTE
+    useEffect(() => {
+        window.handlePatientClick = handlePatientClick;
+        window.handleMenuSelect = handleMenuSelect;
+        window.handleBackToDashboard = handleBackToDashboard;
+        window.handleReceitaClick = handleReceitaClick;
+
+        return () => {
+            delete window.handlePatientClick;
+            delete window.handleMenuSelect;
+            delete window.handleBackToDashboard;
+            delete window.handleReceitaClick;
+        };
+    }, [handlePatientClick, handleMenuSelect, handleBackToDashboard, handleReceitaClick]);
+
+    // ✅ MOSTRAR LOADING DURANTE VERIFICAÇÃO DE AUTENTICAÇÃO
+    if (loading) {
+        return (
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                    backgroundColor: '#F4F9FF'
+                }}
+            >
+                <CircularProgress
+                    color="primary"
+                    size={60}
+                    sx={{ mb: 3 }}
+                />
+                <Typography
+                    variant="h6"
+                    sx={{
+                        color: '#1852FE',
+                        fontFamily: 'Gellix, sans-serif',
+                        mb: 1
+                    }}
+                >
+                    Carregando...
+                </Typography>
+                <Typography
+                    variant="body2"
+                    sx={{
+                        color: '#666',
+                        fontFamily: 'Gellix, sans-serif'
+                    }}
+                >
+                    Verificando suas credenciais
+                </Typography>
+            </Box>
+        );
+    }
+
+    // ✅ SE NÃO ESTIVER AUTENTICADO, NÃO RENDERIZAR NADA
+    if (!user) {
+        return null;
+    }
+
+    // ✅ ALERTAR SE SECRETÁRIA ESTÁ TENTANDO ACESSAR PÁGINA SEM PERMISSÃO
+    if (isSecretary && !canAccessPage(activePage)) {
+        console.warn(`⚠️ Secretária tentando acessar página sem permissão: ${activePage}`);
+    }
 
     return (
-        <>
-            <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF", }}>
-                <Sidebar
-                    initialSelected={activePage}
-                    onMenuSelect={handleMenuSelect}
-                    onLogout={logout}
-                    onProfileClick={handleProfileClick}
-                    userName={user?.fullName?.split(' ')[0] || "Médico"}
-                    userRole={user?.especialidade || ""}
-                />
-                <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
-                    <Box sx={{ flexShrink: 0 }}>
-                        <TopAppBar
-                            title={getPageTitle()}
-                            onPacienteClick={handlePacienteTopAppBarClick}
-                            onAgendamentoClick={handleAgendamentoClick}
-                            onBackClick={handleBackToDashboard}
-                            onReceitaClick={handleReceitaClick}
-                            onProfileClick={handleProfileClick}
-                            onNotificationClick={handleNotificationClick} // ✨ NOVO HANDLER
-                        />
-                    </Box>
-                    <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
-                        <Box sx={{ height: 'auto', padding: '10px', boxSizing: 'border-box', ...scaleStyle }}>
-                            {renderContent()}
-                        </Box>
+        <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF"}}>
+            {/* ✅ SIDEBAR COM SISTEMA DE PERMISSÕES */}
+            <Sidebar
+                initialSelected={activePage}
+                onMenuSelect={handleMenuSelect}
+                onLogout={logout}
+                onProfileClick={handleProfileClick}
+                userName={user?.fullName?.split(' ')[0] || "Médico"}
+                userRole={user?.especialidade || ""}
+            />
+
+            {/* ✅ ÁREA PRINCIPAL */}
+            <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
+                {/* ✅ TOP APP BAR */}
+                <Box sx={{ flexShrink: 0 }}>
+                    <TopAppBar
+                        title={getPageTitle()}
+                        onPacienteClick={handlePacienteTopAppBarClick}
+                        onAgendamentoClick={handleAgendamentoClick}
+                        onBackClick={handleBackToDashboard}
+                        onReceitaClick={handleReceitaClick}
+                        onProfileClick={handleProfileClick}
+                        onNotificationClick={handleNotificationClick}
+                    />
+                </Box>
+
+                {/* ✅ CONTEÚDO PRINCIPAL COM PROTEÇÃO */}
+                <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
+                    <Box sx={{
+                        height: 'auto',
+                        padding: '10px',
+                        boxSizing: 'border-box',
+                        ...scaleStyle
+                    }}>
+                        {renderContent()}
                     </Box>
                 </Box>
             </Box>
-        </>
+        </Box>
     );
 }

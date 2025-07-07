@@ -1,33 +1,82 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import firebaseService from "../../lib/firebaseService";
 import moduleService from "../../lib/moduleService";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import presenceService from "../../lib/presenceService";
+import globalCache from "./globalCache";
 
 const AuthContext = createContext();
 
+// ✅ CACHE PARA RESULTADOS DE VERIFICAÇÃO - MELHORADO
+const verificationCache = new Map();
+const CACHE_DURATION = 2 * 60 * 1000; // Reduzido para 2 minutos para dados mais frescos
+
+// ✅ FUNÇÃO AUXILIAR PARA CACHE COM TTL - MELHORADA
+const getCachedResult = (key, computeFn, duration = CACHE_DURATION) => {
+    const cached = verificationCache.get(key);
+
+    // ✅ Verificar se cache expirou ou se foi invalidado
+    if (cached && Date.now() - cached.timestamp < duration && !cached.invalidated) {
+        return cached.value;
+    }
+
+    const result = computeFn();
+    verificationCache.set(key, {
+        value: result,
+        timestamp: Date.now(),
+        invalidated: false
+    });
+
+    return result;
+};
+
+// ✅ FUNÇÃO PARA INVALIDAR CACHE ESPECÍFICO
+const invalidateVerificationCache = (pattern = null) => {
+    if (pattern) {
+        // Invalidar chaves que contenham o padrão
+        for (const [key, value] of verificationCache.entries()) {
+            if (key.includes(pattern)) {
+                value.invalidated = true;
+            }
+        }
+    } else {
+        // Invalidar todo o cache
+        verificationCache.clear();
+    }
+};
+
 export const AuthProvider = ({ children }) => {
+    // ✅ ESTADOS PRINCIPAIS
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [hasFreeTrialOffer, setHasFreeTrialOffer] = useState(false);
     const [referralSource, setReferralSource] = useState(null);
+
+    // ✅ ESTADOS PARA SISTEMA DE SECRETÁRIAS
+    const [userContext, setUserContext] = useState(null);
+    const [isSecretary, setIsSecretary] = useState(false);
+    const [workingDoctorId, setWorkingDoctorId] = useState(null);
+    const [permissions, setPermissions] = useState('full');
+
+    // ✅ ESTADOS PARA PERFORMANCE E PRESENÇA
+    const [presenceInitialized, setPresenceInitialized] = useState(false);
+
+    // ✅ HOOKS DO NEXT.JS
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const [userContext, setUserContext] = useState(null); // Contexto unificado
-    const [isSecretary, setIsSecretary] = useState(false);
-    const [workingDoctorId, setWorkingDoctorId] = useState(null); // ID do médico responsável
-    const [permissions, setPermissions] = useState('full');
+
+    // ✅ REFS PARA OTIMIZAÇÃO
+    const mountedRef = useRef(true);
+    const processingRef = useRef(false);
 
     const isFreeUser = Boolean(user?.gratuito);
 
-    const [presenceInitialized, setPresenceInitialized] = useState(false);
-
-    // 🔧 FUNÇÃO AUXILIAR PARA EXTRAIR REFERÊNCIA
-    const extractReferralSource = (path) => {
+    // ✅ FUNÇÃO AUXILIAR PARA EXTRAIR REFERÊNCIA - MEMOIZADA
+    const extractReferralSource = useCallback((path) => {
         if (path.startsWith('/checkout/') || path.startsWith('/free/')) {
             const parts = path.split('/').filter(Boolean);
             if (parts.length === 3 && parts[1] === 'pv1') {
@@ -38,25 +87,29 @@ export const AuthProvider = ({ children }) => {
             }
         }
         return null;
-    };
+    }, []);
 
-    // ✨ DETECTAR SE É USUÁRIO LEGACY
-    const checkIfLegacyUser = (userData) => {
+    // ✅ DETECTAR SE É USUÁRIO LEGACY - OTIMIZADO
+    const checkIfLegacyUser = useCallback((userData) => {
         if (!userData) return false;
-        if (userData.administrador === true) return false;
 
-        const hasOldFields = userData.hasOwnProperty('assinouPlano') || userData.hasOwnProperty('gratuito');
-        const hasNewFields = userData.hasOwnProperty('modules') || userData.hasOwnProperty('customModules') || userData.hasOwnProperty('planType');
+        const cacheKey = `legacy_${userData.uid || 'unknown'}`;
 
-        return hasOldFields && !hasNewFields;
-    };
+        return getCachedResult(cacheKey, () => {
+            if (userData.administrador === true) return false;
 
-    // 🆕 CRIAR DADOS BÁSICOS PARA USUÁRIOS ÓRFÃOS
-    const createOrphanUserData = async (authUser) => {
+            const hasOldFields = userData.hasOwnProperty('assinouPlano') || userData.hasOwnProperty('gratuito');
+            const hasNewFields = userData.hasOwnProperty('modules') || userData.hasOwnProperty('customModules') || userData.hasOwnProperty('planType');
+
+            return hasOldFields && !hasNewFields;
+        });
+    }, []);
+
+    // ✅ CRIAR DADOS BÁSICOS PARA USUÁRIOS ÓRFÃOS - MEMOIZADA
+    const createOrphanUserData = useCallback(async (authUser) => {
         try {
             console.log('🔧 Criando dados básicos para usuário órfão:', authUser.uid);
 
-            // Extrair informações básicas do Firebase Auth
             const [firstName, ...lastNameArray] = (authUser.displayName || '').split(' ');
             const lastName = lastNameArray.join(' ');
 
@@ -73,10 +126,9 @@ export const AuthProvider = ({ children }) => {
                 authProvider: authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email',
                 createdAt: new Date(),
                 checkoutCompleted: true,
-                needsProfileCompletion: true // Marcar para completar perfil
+                needsProfileCompletion: true
             };
 
-            // Adicionar dados específicos do Google se for o caso
             if (authUser.providerData?.[0]?.providerId === 'google.com') {
                 userData.googleProfile = {
                     uid: authUser.uid,
@@ -87,7 +139,6 @@ export const AuthProvider = ({ children }) => {
                 };
             }
 
-            // Verificar referralSource
             const currentReferralSource = referralSource || localStorage.getItem('referralSource');
             if (currentReferralSource === 'enrico') {
                 userData.enrico = true;
@@ -96,7 +147,6 @@ export const AuthProvider = ({ children }) => {
                 userData.referralSource = currentReferralSource;
             }
 
-            // Criar documento no Firestore
             await firebaseService.editUserData(authUser.uid, userData);
             console.log('✅ Dados básicos criados para usuário órfão');
 
@@ -105,10 +155,10 @@ export const AuthProvider = ({ children }) => {
             console.error('❌ Erro ao criar dados para usuário órfão:', error);
             throw error;
         }
-    };
+    }, [referralSource]);
 
-    // ✨ MIGRAÇÃO OPCIONAL
-    const migrateUserModulesIfNeeded = async (userData, uid) => {
+    // ✅ MIGRAÇÃO OPCIONAL - MEMOIZADA
+    const migrateUserModulesIfNeeded = useCallback(async (userData, uid) => {
         try {
             const hasOldFields = userData.hasOwnProperty('assinouPlano') || userData.hasOwnProperty('gratuito');
             const hasNewFields = userData.hasOwnProperty('modules') || userData.hasOwnProperty('customModules') || userData.hasOwnProperty('planType');
@@ -145,81 +195,104 @@ export const AuthProvider = ({ children }) => {
             console.error('❌ Erro na migração (não crítico):', error);
             return userData;
         }
-    };
+    }, []);
 
-    // 🔧 VERIFICAR SE USUÁRIO TEM ACESSO (CORRIGIDO)
-    const userHasAccess = (userData) => {
+    // ✅ VERIFICAR SE USUÁRIO TEM ACESSO - OTIMIZADO
+    const userHasAccess = useCallback((userData) => {
         if (!userData) return false;
 
-        // Admin sempre tem acesso
-        if (userData.administrador === true) return true;
+        const cacheKey = `access_${userData.uid || 'unknown'}_${userData.administrador}_${userData.assinouPlano}_${userData.gratuito}`;
 
-        // Legacy users sempre têm acesso
-        if (checkIfLegacyUser(userData)) return true;
+        return getCachedResult(cacheKey, () => {
+            if (userData.administrador === true) return true;
+            if (checkIfLegacyUser(userData)) return true;
+            return userData.assinouPlano === true || userData.gratuito === true;
+        });
+    }, [checkIfLegacyUser]);
 
-        // Usuários regulares - deve ter pelo menos um dos campos básicos
-        return userData.assinouPlano === true || userData.gratuito === true;
-    };
-
-    // 🔧 VERIFICAR SE USUÁRIO TEM DADOS VÁLIDOS
-    const userHasValidData = (userData) => {
+    // ✅ VERIFICAR SE USUÁRIO TEM DADOS VÁLIDOS - OTIMIZADO
+    const userHasValidData = useCallback((userData) => {
         if (!userData) return false;
 
-        // Verificar se tem dados mínimos necessários
-        return userData.email && (
-            userData.hasOwnProperty('assinouPlano') ||
-            userData.hasOwnProperty('gratuito') ||
-            userData.hasOwnProperty('planType')
-        );
-    };
+        const cacheKey = `valid_${userData.uid || 'unknown'}_${userData.email}`;
 
-    // 🔧 VERIFICAR SE DEVE REDIRECIONAR PARA APP
-    const shouldRedirectToApp = (userData, currentPath) => {
-        if (!userData) return false;
+        return getCachedResult(cacheKey, () => {
+            return userData.email && (
+                userData.hasOwnProperty('assinouPlano') ||
+                userData.hasOwnProperty('gratuito') ||
+                userData.hasOwnProperty('planType')
+            );
+        });
+    }, []);
 
-        // Verificar se tem dados válidos e acesso
-        if (!userHasValidData(userData) || !userHasAccess(userData)) return false;
+    // ✅ CACHE PARA CONTEXTO UNIFICADO MELHORADO
+    const getUserUnifiedContextCached = useCallback(async (userId, forceRefresh = false) => {
+        const cacheKey = `userContext_${userId}`;
 
-        // Não redirecionar se estiver em rotas específicas
-        const publicRoutes = ['/', '/login', '/checkout', '/free'];
-        const isInPublicRoute = publicRoutes.includes(currentPath) ||
-            currentPath.startsWith('/checkout/') ||
-            currentPath.startsWith('/free/');
-
-        // Se está em rota pública E tem parâmetro DCT, não redirecionar
-        if (isInPublicRoute && searchParams.get('dct') === '1') {
-            return false;
+        if (forceRefresh) {
+            console.log('🔄 Forçando atualização do contexto para:', userId);
+            globalCache.invalidate('userContext', userId);
         }
 
-        // Se está em rota pública e tem acesso, redirecionar
-        return isInPublicRoute;
-    };
+        return await globalCache.getOrSet('userContext', userId, async () => {
+            console.log('🔍 Buscando novo contexto para:', userId);
+            return await firebaseService.getUserUnifiedContext(userId);
+        }, forceRefresh ? 1000 : 5 * 60 * 1000); // Cache menor se forçado
+    }, []);
 
-    // 🔧 VERIFICAR SE DEVE REDIRECIONAR PARA LOGIN/CHECKOUT
-    const shouldRedirectToAuth = (userData, currentPath) => {
+    // ✅ VERIFICAR SE DEVE REDIRECIONAR PARA APP - OTIMIZADO
+    const shouldRedirectToApp = useCallback((userData, currentPath) => {
+        if (!userData) return false;
+
+        const cacheKey = `redirect_app_${userData.uid || 'unknown'}_${currentPath}`;
+
+        return getCachedResult(cacheKey, () => {
+            if (!userHasValidData(userData) || !userHasAccess(userData)) {
+                return false;
+            }
+
+            const publicRoutes = ['/', '/login', '/checkout', '/free'];
+            const isInPublicRoute = publicRoutes.includes(currentPath) ||
+                currentPath.startsWith('/checkout/') ||
+                currentPath.startsWith('/free/');
+
+            // Verificar parâmetro especial
+            if (isInPublicRoute && searchParams.get('dct') === '1') {
+                return false;
+            }
+
+            return isInPublicRoute;
+        }, 30000); // Cache por 30 segundos para rotas
+    }, [userHasValidData, userHasAccess, searchParams]);
+
+    // ✅ VERIFICAR SE DEVE REDIRECIONAR PARA LOGIN/CHECKOUT - OTIMIZADO
+    const shouldRedirectToAuth = useCallback((userData, currentPath) => {
         const protectedRoutes = ['/app', '/mobile'];
         const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
 
         if (!isProtectedRoute) return false;
 
-        // Se não tem usuário, redirecionar para login
-        if (!userData) return { redirect: '/', reason: 'no_user' };
-
-        // Se não tem dados válidos, redirecionar para completar cadastro
-        if (!userHasValidData(userData)) {
-            return { redirect: '/free', reason: 'invalid_data' };
+        if (!userData) {
+            return { redirect: '/', reason: 'no_user' };
         }
 
-        // Se não tem acesso, redirecionar para checkout
-        if (!userHasAccess(userData)) {
-            return { redirect: '/checkout', reason: 'no_access' };
-        }
+        const cacheKey = `redirect_auth_${userData.uid || 'unknown'}_${currentPath}`;
 
-        return false;
-    };
+        return getCachedResult(cacheKey, () => {
+            if (!userHasValidData(userData)) {
+                return { redirect: '/free', reason: 'invalid_data' };
+            }
 
-    // 🆕 FUNÇÃO PARA VERIFICAR PERMISSÃO DE MÓDULO
-    const hasModulePermission = (module, action = 'read') => {
+            if (!userHasAccess(userData)) {
+                return { redirect: '/checkout', reason: 'no_access' };
+            }
+
+            return false;
+        }, 30000); // Cache por 30 segundos
+    }, [userHasValidData, userHasAccess]);
+
+    // ✅ FUNÇÃO PARA VERIFICAR PERMISSÃO DE MÓDULO - OTIMIZADA
+    const hasModulePermission = useCallback((module, action = 'read') => {
         // Se é médico, sempre tem acesso total
         if (!isSecretary) return true;
 
@@ -228,10 +301,10 @@ export const AuthProvider = ({ children }) => {
 
         const modulePermissions = permissions[module];
         return modulePermissions ? modulePermissions[action] === true : false;
-    };
+    }, [isSecretary, permissions]);
 
-    // 🆕 FUNÇÃO PARA VERIFICAR SE PODE ACESSAR DETALHES SENSÍVEIS
-    const canViewSensitiveData = (dataType) => {
+    // ✅ FUNÇÃO PARA VERIFICAR SE PODE ACESSAR DETALHES SENSÍVEIS
+    const canViewSensitiveData = useCallback((dataType) => {
         if (!isSecretary) return true;
 
         const sensitiveModules = ['patients', 'anamnesis', 'medical_records'];
@@ -243,9 +316,209 @@ export const AuthProvider = ({ children }) => {
         }
 
         return true;
-    };
+    }, [isSecretary, permissions]);
 
-    // Detecção de rotas especiais e redirecionamentos
+    // ✅ FUNÇÃO MELHORADA PARA CRIAR CONTA DE SECRETÁRIA
+    const createSecretaryAccount = useCallback(async (secretaryData) => {
+        if (!user || isSecretary) {
+            throw new Error("Apenas médicos podem criar contas de secretária");
+        }
+
+        try {
+            console.log('🔄 Iniciando criação de secretária via AuthProvider...');
+
+            const result = await firebaseService.createSecretaryAccount(
+                workingDoctorId || user.uid,
+                secretaryData
+            );
+
+            if (result.success) {
+                console.log('✅ Secretária criada com sucesso, preparando invalidação de cache...');
+
+                // ✅ INVALIDAR TODOS OS CACHES RELACIONADOS
+                const doctorId = workingDoctorId || user.uid;
+                globalCache.invalidate('userContext', doctorId);
+                globalCache.invalidate('secretaryInfo', doctorId);
+                globalCache.invalidate('profileData', doctorId);
+                invalidateVerificationCache(doctorId);
+
+                // ✅ AGENDAR RECARREGAMENTO DO CONTEXTO APÓS O RE-LOGIN
+                if (result.needsDoctorRelogin) {
+                    console.log('📝 Re-login será necessário, cache invalidado para próximo carregamento');
+                } else {
+                    // Se não precisar de re-login, recarregar imediatamente
+                    setTimeout(async () => {
+                        try {
+                            await reloadUserContext(true);
+                        } catch (error) {
+                            console.warn('⚠️ Erro ao recarregar contexto após criação:', error);
+                        }
+                    }, 1500);
+                }
+            }
+
+            return result;
+        } catch (error) {
+            console.error("❌ Erro ao criar conta de secretária:", error);
+            throw error;
+        }
+    }, [user, isSecretary, workingDoctorId]);
+
+    // ✅ FUNÇÃO PARA ATUALIZAR PERMISSÕES - MELHORADA
+    const updateSecretaryPermissions = useCallback(async (secretaryId, newPermissions) => {
+        if (!user || isSecretary) {
+            throw new Error("Apenas médicos podem atualizar permissões");
+        }
+
+        try {
+            const result = await firebaseService.updateSecretaryPermissions(
+                workingDoctorId || user.uid,
+                secretaryId,
+                newPermissions
+            );
+
+            // ✅ INVALIDAR CACHE DO CONTEXTO APÓS ATUALIZAÇÃO
+            const doctorId = workingDoctorId || user.uid;
+            globalCache.invalidate('userContext', doctorId);
+            globalCache.invalidate('secretaryInfo', doctorId);
+            invalidateVerificationCache(doctorId);
+
+            return result;
+        } catch (error) {
+            console.error("❌ Erro ao atualizar permissões:", error);
+            throw error;
+        }
+    }, [user, isSecretary, workingDoctorId]);
+
+    // ✅ FUNÇÃO PARA DESATIVAR SECRETÁRIA - MELHORADA
+    const deactivateSecretary = useCallback(async (secretaryId) => {
+        if (!user || isSecretary) {
+            throw new Error("Apenas médicos podem desativar secretárias");
+        }
+
+        try {
+            const result = await firebaseService.deactivateSecretaryAccount(
+                workingDoctorId || user.uid,
+                secretaryId
+            );
+
+            // ✅ INVALIDAR CACHES E RECARREGAR DADOS
+            const doctorId = workingDoctorId || user.uid;
+            globalCache.invalidate('userContext', doctorId);
+            globalCache.invalidate('secretaryInfo', doctorId);
+            globalCache.invalidate('profileData', doctorId);
+            invalidateVerificationCache(doctorId);
+
+            // Atualizar dados do usuário
+            const updatedUserData = await firebaseService.getUserData(doctorId);
+            setUser(prev => ({ ...prev, ...updatedUserData }));
+
+            return result;
+        } catch (error) {
+            console.error("❌ Erro ao desativar secretária:", error);
+            throw error;
+        }
+    }, [user, isSecretary, workingDoctorId]);
+
+    // ✅ FUNÇÃO PARA OBTER ID EFETIVO PARA OPERAÇÕES
+    const getEffectiveUserId = useCallback(() => {
+        return workingDoctorId || user?.uid;
+    }, [workingDoctorId, user?.uid]);
+
+    // ✅ FUNÇÃO PARA OBTER DADOS PARA EXIBIÇÃO
+    const getDisplayUserData = useCallback(() => {
+        if (isSecretary) {
+            return {
+                ...user,
+                displayName: `${user.secretaryName} (Secretária de Dr. ${user.fullName})`,
+                role: 'Secretária',
+                doctorName: user.fullName,
+                name: user.fullName,
+                secretaryName: user.secretaryName,
+                secretaryEmail: user.secretaryEmail
+            };
+        }
+
+        return {
+            ...user,
+            displayName: `Dr. ${user.fullName}`,
+            role: user.administrador ? 'Administrador' : 'Médico',
+            name: user.fullName
+        };
+    }, [isSecretary, user]);
+
+    // ✅ FUNÇÃO DE LOGOUT MELHORADA
+    const logout = useCallback(async () => {
+        try {
+            console.log('🚪 Iniciando logout...');
+
+            // Parar sistema de presença antes do logout
+            if (presenceInitialized) {
+                await presenceService.stopPresence();
+                setPresenceInitialized(false);
+            }
+
+            await signOut(firebaseService.auth);
+
+            // Limpar todos os estados
+            setUserContext(null);
+            setIsSecretary(false);
+            setWorkingDoctorId(null);
+            setPermissions('full');
+
+            // ✅ LIMPAR TODOS OS CACHES
+            globalCache.invalidate('userContext');
+            globalCache.invalidate('secretaryInfo');
+            globalCache.invalidate('profileData');
+            verificationCache.clear();
+
+            console.log('✅ Logout realizado com sucesso');
+            router.push('/');
+        } catch (error) {
+            console.error("❌ Erro ao fazer logout:", error);
+        }
+    }, [presenceInitialized, router]);
+
+    // ✅ FUNÇÃO MELHORADA PARA RECARREGAR CONTEXTO DO USUÁRIO
+    const reloadUserContext = useCallback(async (forceRefresh = false) => {
+        if (!user?.uid) return;
+
+        try {
+            console.log('🔄 Recarregando contexto do usuário...', { forceRefresh });
+
+            // ✅ INVALIDAR CACHES RELACIONADOS
+            if (forceRefresh) {
+                globalCache.invalidate('userContext', user.uid);
+                globalCache.invalidate('secretaryInfo', user.uid);
+                globalCache.invalidate('profileData', user.uid);
+                invalidateVerificationCache(user.uid);
+            }
+
+            // ✅ AGUARDAR UM POUCO SE FOR REFRESH FORÇADO
+            if (forceRefresh) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            const context = await getUserUnifiedContextCached(user.uid, forceRefresh);
+
+            setUserContext(context);
+            setIsSecretary(context.isSecretary);
+            setWorkingDoctorId(context.workingDoctorId);
+            setPermissions(context.permissions);
+
+            console.log('✅ Contexto do usuário recarregado', {
+                userType: context.userType,
+                isSecretary: context.isSecretary
+            });
+
+            return context;
+        } catch (error) {
+            console.error('❌ Erro ao recarregar contexto:', error);
+            throw error;
+        }
+    }, [user?.uid, getUserUnifiedContextCached]);
+
+    // ✅ DETECÇÃO DE ROTAS ESPECIAIS E REDIRECIONAMENTOS
     useEffect(() => {
         console.log('🔍 Processing route:', pathname);
         let shouldSetFreeTrial = false;
@@ -316,18 +589,18 @@ export const AuthProvider = ({ children }) => {
                 }
             }, 150);
         }
-    }, [pathname, router]);
+    }, [pathname, router, extractReferralSource, referralSource]);
 
-    // Inicializar referralSource do localStorage
+    // ✅ INICIALIZAR REFERRALSOURCE DO LOCALSTORAGE
     useEffect(() => {
         const storedReferrer = localStorage.getItem('referralSource');
         if (storedReferrer && !referralSource) {
             console.log(`🔧 Initializing referral source from localStorage: ${storedReferrer}`);
             setReferralSource(storedReferrer);
         }
-    }, []);
+    }, [referralSource]);
 
-    // Handle other trial parameters
+    // ✅ HANDLE OTHER TRIAL PARAMETERS
     useEffect(() => {
         const dctParam = searchParams.get('dct');
         if (dctParam === '1') {
@@ -343,110 +616,199 @@ export const AuthProvider = ({ children }) => {
         }
     }, [searchParams, hasFreeTrialOffer]);
 
+    // ✅ AUTHENTICATION STATE CHECK - OTIMIZADO COM MELHOR SUPORTE A SECRETÁRIAS
     useEffect(() => {
-        console.log('🔐 Authentication state check running, pathname:', pathname);
-        const unsubscribe = onAuthStateChanged(firebaseService.auth, async (authUser) => {
-            if (authUser) {
-                try {
-                    console.log('👤 Authenticated user detected:', authUser.uid);
+        let isMounted = true;
+        let unsubscribe = null;
 
-                    // 🆕 BUSCAR CONTEXTO UNIFICADO (médico ou secretária)
-                    const context = await firebaseService.getUserUnifiedContext(authUser.uid);
-                    console.log('🎯 Contexto unificado obtido:', context.userType);
+        console.log('🔐 Auth state check initialized for path:', pathname);
 
-                    setUserContext(context);
-                    setIsSecretary(context.isSecretary);
-                    setWorkingDoctorId(context.workingDoctorId);
-                    setPermissions(context.permissions);
+        // ✅ FUNÇÃO PARA PROCESSAR USUÁRIO AUTENTICADO (MELHORADA)
+        const handleAuthenticatedUser = async (authUser) => {
+            if (!isMounted || processingRef.current) return;
 
-                    // Para a interface, sempre usar os dados do médico responsável
-                    const displayUserData = {
-                        uid: authUser.uid,
-                        ...context.userData,
-                        // 🎯 CAMPOS ESPECÍFICOS PARA IDENTIFICAÇÃO
-                        isSecretary: context.isSecretary,
-                        workingDoctorId: context.workingDoctorId,
-                        permissions: context.permissions
-                    };
+            try {
+                processingRef.current = true;
+                console.log('👤 Processing authenticated user:', authUser.uid);
 
-                    // Se é secretária, adicionar dados específicos
-                    if (context.isSecretary) {
-                        displayUserData.secretaryData = context.secretaryData;
-                        displayUserData.secretaryName = context.secretaryData.name;
-                        displayUserData.secretaryEmail = context.secretaryData.email;
+                // ✅ VERIFICAR SE É UM RE-LOGIN APÓS CRIAÇÃO DE SECRETÁRIA
+                const isPostSecretaryCreation = localStorage.getItem('tempDoctorSession');
+                const forceRefresh = !!isPostSecretaryCreation;
 
-                        console.log(`👩‍💼 Secretária logada: ${context.secretaryData.name} -> Médico: ${context.userData.fullName}`);
-                    }
+                if (isPostSecretaryCreation) {
+                    console.log('🔄 Re-login detectado após criação de secretária, forçando refresh');
+                    localStorage.removeItem('tempDoctorSession');
+                }
 
-                    setUser(displayUserData);
+                // ✅ TIMEOUT PARA EVITAR TRAVAMENTOS
+                const contextPromise = getUserUnifiedContextCached(authUser.uid, forceRefresh);
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Context timeout')), 10000)
+                );
 
-                    // Registrar login detalhado
-                    try {
-                        await firebaseService.registerDetailedLogin(
-                            authUser.uid,
-                            authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email'
-                        );
-                        console.log('✅ Login detalhado registrado');
-                    } catch (loginError) {
-                        console.warn('⚠️ Erro ao registrar login detalhado (não crítico):', loginError);
-                    }
+                const context = await Promise.race([contextPromise, timeoutPromise]);
 
-                    // 🔧 LÓGICA DE REDIRECIONAMENTO MANTIDA
-                    console.log('🔄 Checking redirect logic...');
-                    setTimeout(() => {
-                        if (shouldRedirectToApp(context.userData, pathname)) {
-                            console.log('✅ Redirecting authenticated user to /app');
-                            router.push('/app');
-                        } else {
-                            const authRedirect = shouldRedirectToAuth(context.userData, pathname);
-                            if (authRedirect) {
-                                console.log(`❌ Redirecting user to ${authRedirect.redirect} (reason: ${authRedirect.reason})`);
-                                router.push(authRedirect.redirect);
-                            }
+                if (!isMounted) return;
+
+                console.log('🎯 Contexto unificado obtido:', context.userType);
+
+                // ✅ ATUALIZAR ESTADOS EM BATCH
+                const newState = {
+                    userContext: context,
+                    isSecretary: context.isSecretary,
+                    workingDoctorId: context.workingDoctorId,
+                    permissions: context.permissions
+                };
+
+                // Aplicar todas as mudanças de uma vez
+                setUserContext(newState.userContext);
+                setIsSecretary(newState.isSecretary);
+                setWorkingDoctorId(newState.workingDoctorId);
+                setPermissions(newState.permissions);
+
+                // ✅ PREPARAR DADOS DO USUÁRIO PARA EXIBIÇÃO
+                const displayUserData = {
+                    uid: authUser.uid,
+                    ...context.userData,
+                    isSecretary: context.isSecretary,
+                    workingDoctorId: context.workingDoctorId,
+                    permissions: context.permissions
+                };
+
+                // Se é secretária, adicionar dados específicos
+                if (context.isSecretary) {
+                    displayUserData.secretaryData = context.secretaryData;
+                    displayUserData.secretaryName = context.secretaryData.name;
+                    displayUserData.secretaryEmail = context.secretaryData.email;
+                    console.log(`👩‍💼 Secretária logada: ${context.secretaryData.name} -> Médico: ${context.userData.fullName}`);
+                }
+
+                setUser(displayUserData);
+
+                // ✅ REGISTRAR LOGIN (NÃO BLOQUEANTE)
+                firebaseService.registerDetailedLogin(
+                    authUser.uid,
+                    authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email'
+                ).catch((loginError) => {
+                    console.warn('⚠️ Erro ao registrar login detalhado (não crítico):', loginError);
+                });
+
+                // ✅ REDIRECIONAMENTO OTIMIZADO
+                setTimeout(() => {
+                    if (!isMounted) return;
+
+                    // Usar dados já carregados ao invés de recalcular
+                    const userData = context.userData;
+
+                    if (shouldRedirectToApp(userData, pathname)) {
+                        console.log('✅ Redirecting authenticated user to /app');
+                        router.push('/app');
+                    } else {
+                        const authRedirect = shouldRedirectToAuth(userData, pathname);
+                        if (authRedirect) {
+                            console.log(`❌ Redirecting user to ${authRedirect.redirect} (reason: ${authRedirect.reason})`);
+                            router.push(authRedirect.redirect);
                         }
-                    }, 200);
+                    }
+                }, context.isSecretary ? 500 : 200); // Secretárias precisam de mais tempo
 
-                } catch (error) {
-                    console.error("❌ Erro crítico ao processar usuário autenticado:", error);
+            } catch (error) {
+                console.error("❌ Auth processing error:", error);
 
-                    // Em caso de erro crítico, fazer logout
-                    await signOut(firebaseService.auth);
+                if (isMounted) {
+                    // ✅ RESET LIMPO EM CASO DE ERRO
                     setUser(null);
                     setUserContext(null);
                     setIsSecretary(false);
                     setWorkingDoctorId(null);
                     setPermissions('full');
-                    router.push('/');
-                }
-            } else {
-                console.log('🚫 No authenticated user');
+                    globalCache.invalidate('userContext');
+                    verificationCache.clear();
 
-                if (presenceInitialized) {
+                    // Se erro crítico, redirecionar
+                    if (error.message.includes('timeout') || error.message.includes('unauthorized')) {
+                        router.push('/');
+                    }
+                }
+            } finally {
+                processingRef.current = false;
+            }
+        };
+
+        // ✅ FUNÇÃO PARA PROCESSAR USUÁRIO DESLOGADO (MELHORADA)
+        const handleUnauthenticatedUser = async () => {
+            if (!isMounted) return;
+
+            console.log('🚫 Processing unauthenticated user');
+
+            // ✅ PARAR PRESENÇA SE ATIVA
+            if (presenceInitialized) {
+                try {
                     await presenceService.stopPresence();
                     setPresenceInitialized(false);
-                }
-
-                setUser(null);
-                setUserContext(null);
-                setIsSecretary(false);
-                setWorkingDoctorId(null);
-                setPermissions('full');
-
-                // Redirecionar usuário não autenticado tentando acessar área protegida
-                const authRedirect = shouldRedirectToAuth(null, pathname);
-                if (authRedirect) {
-                    console.log(`🚫 Unauthenticated user trying to access protected route, redirecting to ${authRedirect.redirect}`);
-                    router.push(authRedirect.redirect);
+                } catch (error) {
+                    console.warn('⚠️ Erro ao parar presença:', error);
                 }
             }
-            setLoading(false);
-        });
 
-        return () => unsubscribe();
-    }, [pathname, router, searchParams, referralSource, presenceInitialized]);
+            // ✅ RESET COMPLETO COM LIMPEZA DE CACHE
+            setUser(null);
+            setUserContext(null);
+            setIsSecretary(false);
+            setWorkingDoctorId(null);
+            setPermissions('full');
+            globalCache.invalidate('userContext');
+            globalCache.invalidate('secretaryInfo');
+            globalCache.invalidate('profileData');
+            verificationCache.clear();
 
+            // ✅ REDIRECIONAR SE NECESSÁRIO
+            const authRedirect = shouldRedirectToAuth(null, pathname);
+            if (authRedirect) {
+                console.log(`🚫 Unauthenticated user trying to access protected route, redirecting to ${authRedirect.redirect}`);
+                router.push(authRedirect.redirect);
+            }
+        };
 
-    // Verificação de tamanho de tela
+        // ✅ CONFIGURAR LISTENER
+        try {
+            unsubscribe = onAuthStateChanged(firebaseService.auth, async (authUser) => {
+                if (!isMounted) return;
+
+                try {
+                    if (authUser) {
+                        await handleAuthenticatedUser(authUser);
+                    } else {
+                        await handleUnauthenticatedUser();
+                    }
+                } catch (error) {
+                    console.error("❌ Auth listener error:", error);
+                } finally {
+                    if (isMounted) {
+                        setLoading(false);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("❌ Auth listener setup error:", error);
+            if (isMounted) {
+                setLoading(false);
+            }
+        }
+
+        // ✅ CLEANUP
+        return () => {
+            isMounted = false;
+            processingRef.current = false;
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+
+        // ✅ DEPENDÊNCIAS MÍNIMAS (CRÍTICO!)
+    }, [pathname]); // Apenas pathname - outras funções são estáveis
+
+    // ✅ VERIFICAÇÃO DE TAMANHO DE TELA
     useEffect(() => {
         if (!user || loading || pathname !== '/app') return;
 
@@ -463,8 +825,9 @@ export const AuthProvider = ({ children }) => {
         checkScreenSize();
         window.addEventListener('resize', checkScreenSize);
         return () => window.removeEventListener('resize', checkScreenSize);
-    }, [user, loading, pathname, router]);
+    }, [user, loading, pathname, router, checkIfLegacyUser, userHasAccess]);
 
+    // ✅ SISTEMA DE PRESENÇA OTIMIZADO
     useEffect(() => {
         if (!user?.uid) {
             // Se não há usuário, parar presença
@@ -483,7 +846,9 @@ export const AuthProvider = ({ children }) => {
                 fullName: user.fullName,
                 email: user.email,
                 planType: user.planType || (user.gratuito ? 'free' : 'premium'),
-                isAdmin: user.administrador === true
+                isAdmin: user.administrador === true,
+                isSecretary: isSecretary,
+                doctorId: workingDoctorId
             };
 
             presenceService.startPresence(user.uid, userData)
@@ -503,115 +868,10 @@ export const AuthProvider = ({ children }) => {
                 setPresenceInitialized(false);
             }
         };
-    }, [user?.uid, presenceInitialized, loading]);
+    }, [user?.uid, presenceInitialized, loading, isSecretary, workingDoctorId]);
 
-    const createSecretaryAccount = async (secretaryData) => {
-        if (!user || isSecretary) {
-            throw new Error("Apenas médicos podem criar contas de secretária");
-        }
-
-        try {
-            const result = await firebaseService.createSecretaryAccount(
-                workingDoctorId || user.uid,
-                secretaryData
-            );
-
-            // Atualizar dados do usuário para refletir que agora tem secretária
-            const updatedUserData = await firebaseService.getUserData(workingDoctorId || user.uid);
-            setUser(prev => ({ ...prev, ...updatedUserData }));
-
-            return result;
-        } catch (error) {
-            console.error("❌ Erro ao criar conta de secretária:", error);
-            throw error;
-        }
-    };
-
-    const updateSecretaryPermissions = async (secretaryId, newPermissions) => {
-        if (!user || isSecretary) {
-            throw new Error("Apenas médicos podem atualizar permissões");
-        }
-
-        try {
-            return await firebaseService.updateSecretaryPermissions(
-                workingDoctorId || user.uid,
-                secretaryId,
-                newPermissions
-            );
-        } catch (error) {
-            console.error("❌ Erro ao atualizar permissões:", error);
-            throw error;
-        }
-    };
-
-    const deactivateSecretary = async (secretaryId) => {
-        if (!user || isSecretary) {
-            throw new Error("Apenas médicos podem desativar secretárias");
-        }
-
-        try {
-            const result = await firebaseService.deactivateSecretaryAccount(
-                workingDoctorId || user.uid,
-                secretaryId
-            );
-
-            // Atualizar dados do usuário
-            const updatedUserData = await firebaseService.getUserData(workingDoctorId || user.uid);
-            setUser(prev => ({ ...prev, ...updatedUserData }));
-
-            return result;
-        } catch (error) {
-            console.error("❌ Erro ao desativar secretária:", error);
-            throw error;
-        }
-    };
-
-    // 🆕 FUNÇÃO PARA OBTER ID EFETIVO PARA OPERAÇÕES
-    const getEffectiveUserId = () => {
-        return workingDoctorId || user?.uid;
-    };
-
-    // 🆕 FUNÇÃO PARA OBTER DADOS PARA EXIBIÇÃO
-    const getDisplayUserData = () => {
-        if (isSecretary) {
-            return {
-                ...user,
-                displayName: `${user.secretaryName} (Secretária de Dr. ${user.fullName})`,
-                role: 'Secretária',
-                doctorName: user.fullName
-            };
-        }
-
-        return {
-            ...user,
-            displayName: `Dr. ${user.fullName}`,
-            role: user.administrador ? 'Administrador' : 'Médico'
-        };
-    };
-
-    const logout = async () => {
-        try {
-            // Parar sistema de presença antes do logout
-            if (presenceInitialized) {
-                await presenceService.stopPresence();
-                setPresenceInitialized(false);
-            }
-
-            await signOut(firebaseService.auth);
-
-            setUserContext(null);
-            setIsSecretary(false);
-            setWorkingDoctorId(null);
-            setPermissions('full');
-
-            router.push('/');
-        } catch (error) {
-            console.error("❌ Erro ao fazer logout:", error);
-        }
-    };
-
-    // Funções para gerenciar módulos
-    const updateUserModules = async (modules, limitations = null) => {
+    // ✅ FUNÇÕES PARA GERENCIAR MÓDULOS
+    const updateUserModules = useCallback(async (modules, limitations = null) => {
         if (!user?.uid) return false;
 
         if (checkIfLegacyUser(user)) {
@@ -624,6 +884,10 @@ export const AuthProvider = ({ children }) => {
             if (result.success) {
                 const updatedUserData = await firebaseService.getUserData(user.uid);
                 setUser({ uid: user.uid, ...updatedUserData });
+
+                // Limpar cache do contexto
+                globalCache.invalidate('userContext');
+
                 return true;
             }
             return false;
@@ -631,9 +895,9 @@ export const AuthProvider = ({ children }) => {
             console.error('❌ Erro ao atualizar módulos do usuário:', error);
             return false;
         }
-    };
+    }, [user, checkIfLegacyUser]);
 
-    const upgradeUserPlan = async (newPlanType) => {
+    const upgradeUserPlan = useCallback(async (newPlanType) => {
         if (!user?.uid) return false;
 
         try {
@@ -641,6 +905,10 @@ export const AuthProvider = ({ children }) => {
             if (result.success) {
                 const updatedUserData = await firebaseService.getUserData(user.uid);
                 setUser({ uid: user.uid, ...updatedUserData });
+
+                // Limpar cache do contexto
+                globalCache.invalidate('userContext');
+
                 return true;
             }
             return false;
@@ -648,9 +916,9 @@ export const AuthProvider = ({ children }) => {
             console.error('❌ Erro ao fazer upgrade do plano:', error);
             return false;
         }
-    };
+    }, [user]);
 
-    const migrateFromLegacy = async (targetPlan = 'free') => {
+    const migrateFromLegacy = useCallback(async (targetPlan = 'free') => {
         if (!user?.uid) return false;
 
         const isLegacy = checkIfLegacyUser(user);
@@ -673,6 +941,10 @@ export const AuthProvider = ({ children }) => {
             if (result.success) {
                 const updatedUserData = await firebaseService.getUserData(user.uid);
                 setUser({ uid: user.uid, ...updatedUserData });
+
+                // Limpar cache do contexto
+                globalCache.invalidate('userContext');
+
                 console.log('✅ Usuário legacy migrado com sucesso');
                 return true;
             }
@@ -681,52 +953,102 @@ export const AuthProvider = ({ children }) => {
             console.error('❌ Erro ao migrar usuário legacy:', error);
             return false;
         }
-    };
+    }, [user, checkIfLegacyUser]);
 
-    const isProtectedRoute = (path) => {
+    // ✅ FUNÇÕES AUXILIARES
+    const isProtectedRoute = useCallback((path) => {
         return path.startsWith('/app') || path.startsWith('/mobile');
-    };
+    }, []);
 
-    const isPublicRoute = (path) => {
+    const isPublicRoute = useCallback((path) => {
         return ['/', '/login', '/free', '/checkout'].some(route =>
             path === route || path.startsWith(route + '/')
         );
-    };
+    }, []);
+
+    // ✅ FUNÇÃO AUXILIAR PARA LIMPAR CACHE QUANDO NECESSÁRIO
+    const clearRelatedCaches = useCallback((userId = null) => {
+        const targetUserId = userId || user?.uid;
+        if (targetUserId) {
+            globalCache.invalidate('userContext', targetUserId);
+            globalCache.invalidate('secretaryInfo', targetUserId);
+            globalCache.invalidate('profileData', targetUserId);
+            invalidateVerificationCache(targetUserId);
+        } else {
+            globalCache.invalidate('userContext');
+            globalCache.invalidate('secretaryInfo');
+            globalCache.invalidate('profileData');
+            verificationCache.clear();
+        }
+    }, [user?.uid]);
+
+    // ✅ CLEANUP AO DESMONTAR COMPONENTE
+    useEffect(() => {
+        mountedRef.current = true;
+
+        return () => {
+            mountedRef.current = false;
+            // Limpar caches ao desmontar
+            verificationCache.clear();
+        };
+    }, []);
+
+    // ✅ MEMOIZAR VALUE DO CONTEXT COM NOVAS FUNÇÕES
+    const contextValue = useMemo(() => ({
+        // Estados básicos
+        user,
+        loading,
+        isFreeUser,
+        logout,
+        hasFreeTrialOffer,
+        referralSource,
+
+        // Estados de secretária
+        isSecretary,
+        workingDoctorId,
+        permissions,
+        userContext,
+
+        // Funções para secretárias - MELHORADAS
+        hasModulePermission,
+        canViewSensitiveData,
+        createSecretaryAccount,
+        updateSecretaryPermissions,
+        deactivateSecretary,
+        getEffectiveUserId,
+        getDisplayUserData,
+        reloadUserContext,
+
+        // ✅ NOVAS FUNÇÕES PARA GERENCIAMENTO DE CACHE
+        clearRelatedCaches,
+        forceRefreshUserContext: () => reloadUserContext(true),
+
+        // Funções de módulos
+        updateUserModules,
+        upgradeUserPlan,
+        migrateFromLegacy,
+
+        // Funções auxiliares
+        isProtectedRoute,
+        isPublicRoute,
+
+        // Verificações de usuário
+        isLegacyUser: user ? checkIfLegacyUser(user) : false,
+        userHasAccess: user ? userHasAccess(user) : false,
+        userHasValidData: user ? userHasValidData(user) : false
+    }), [
+        user, loading, isFreeUser, logout, hasFreeTrialOffer, referralSource,
+        isSecretary, workingDoctorId, permissions, userContext,
+        hasModulePermission, canViewSensitiveData, createSecretaryAccount,
+        updateSecretaryPermissions, deactivateSecretary, getEffectiveUserId,
+        getDisplayUserData, reloadUserContext, clearRelatedCaches,
+        updateUserModules, upgradeUserPlan, migrateFromLegacy,
+        isProtectedRoute, isPublicRoute, checkIfLegacyUser,
+        userHasAccess, userHasValidData
+    ]);
 
     return (
-        <AuthContext.Provider value={{
-            user,
-            loading,
-            isFreeUser,
-            logout,
-            hasFreeTrialOffer,
-            referralSource,
-
-            // 🆕 PROPRIEDADES PARA SECRETÁRIAS
-            isSecretary,
-            workingDoctorId,
-            permissions,
-            userContext,
-
-            // 🆕 FUNÇÕES PARA SECRETÁRIAS
-            hasModulePermission,
-            canViewSensitiveData,
-            createSecretaryAccount,
-            updateSecretaryPermissions,
-            deactivateSecretary,
-            getEffectiveUserId,
-            getDisplayUserData,
-
-            // Funções existentes
-            isProtectedRoute,
-            isPublicRoute,
-            updateUserModules,
-            upgradeUserPlan,
-            migrateFromLegacy,
-            isLegacyUser: user ? checkIfLegacyUser(user) : false,
-            userHasAccess: user ? userHasAccess(user) : false,
-            userHasValidData: user ? userHasValidData(user) : false
-        }}>
+        <AuthContext.Provider value={contextValue}>
             {!loading && children}
         </AuthContext.Provider>
     );

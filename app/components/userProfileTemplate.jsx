@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useState, useEffect} from "react";
+import React, { useReducer, useMemo, useCallback, useRef, useEffect } from "react";
 import {
     Box,
     Card,
@@ -15,12 +15,12 @@ import {
     Snackbar,
     Alert,
     CircularProgress,
-    Paper,
     InputAdornment,
     alpha,
     useTheme,
-    Tooltip,
-    Chip
+    Chip,
+    Skeleton,
+    LinearProgress
 } from "@mui/material";
 import {
     Edit as EditIcon,
@@ -30,28 +30,25 @@ import {
     Phone as PhoneIcon,
     Email as EmailIcon,
     Badge as BadgeIcon,
-    LocalHospital as LocalHospitalIcon,
     Person as PersonIcon,
     LocationOn as LocationOnIcon,
-    Info as InfoIcon,
     Home as HomeIcon,
     LocationCity as LocationCityIcon,
     PinDrop as PinDropIcon,
     Margin as MarginIcon,
     Apartment as ApartmentIcon,
-    CreditCard as CreditCardIcon,
-    Receipt as ReceiptIcon,
     Settings as SettingsIcon,
-    Upgrade as UpgradeIcon,
     People as PeopleIcon
 } from "@mui/icons-material";
+import { debounce } from 'lodash';
 import FirebaseService from "../../lib/firebaseService";
-import {useAuth} from "./authProvider";
+import { useAuth } from "./authProvider";
 import SubscriptionManagerDialog from './organismsComponents/subscriptionManagerDialog';
-import LogoutIcon from '@mui/icons-material/Logout';
 import SecretaryManagerDialog from './organismsComponents/secretaryManagerDialog';
+import globalCache from './globalCache';
+import LogoutIcon from '@mui/icons-material/Logout';
 
-// Enhanced color palette
+// ✅ CONFIGURAÇÃO DE CORES OTIMIZADA
 const themeColors = {
     primary: "#1852FE",
     primaryLight: "#E9EFFF",
@@ -69,38 +66,7 @@ const themeColors = {
     shadowColor: "rgba(17, 30, 90, 0.05)",
 };
 
-// Helper para máscara de telefone
-const applyPhoneMask = (value) => {
-    if (!value) return "";
-    const numbers = value.replace(/\D/g, "");
-    let result = "";
-    let numberIndex = 0;
-    const mask = "(99) 99999-9999";
-
-    for (let i = 0; i < mask.length && numberIndex < numbers.length; i++) {
-        if (mask[i] === "9") {
-            result += numbers[numberIndex++];
-        } else {
-            result += mask[i];
-            if (i + 1 < mask.length && mask[i + 1] !== "9") {
-                result += mask[++i];
-            }
-        }
-    }
-    return result;
-};
-
-// Helper para máscara de CEP
-const applyCepMask = (value) => {
-    if (!value) return "";
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 5) {
-        return numbers;
-    }
-    return `${numbers.substring(0, 5)}-${numbers.substring(5, 8)}`;
-};
-
-// Configuração dos planos para exibição
+// ✅ CONFIGURAÇÃO DOS PLANOS PARA EXIBIÇÃO
 const plansDisplay = {
     free: { name: 'Gratuito', color: '#6B7280', icon: '🆓' },
     monthly: { name: 'Essencial', color: '#3B82F6', icon: '⚡' },
@@ -108,23 +74,376 @@ const plansDisplay = {
     annual: { name: 'Premium', color: '#F59E0B', icon: '👑' }
 };
 
-// Campo editável com UI elegante e minimalista
-const EditableField = ({
-                           label,
-                           value,
-                           isEditing,
-                           onChange,
-                           error,
-                           helperText,
-                           type = "text",
-                           required = false,
-                           startIcon,
-                           disabled = false,
-                           multiline = false,
-                           rows = 1,
-                           mask = null,
-                           ...props
-                       }) => {
+// ✅ TIPOS DE AÇÃO PARA O REDUCER
+const PROFILE_ACTIONS = {
+    SET_LOADING: 'SET_LOADING',
+    SET_USER_DATA: 'SET_USER_DATA',
+    SET_EDITING: 'SET_EDITING',
+    UPDATE_FORM_FIELD: 'UPDATE_FORM_FIELD',
+    UPDATE_NESTED_FIELD: 'UPDATE_NESTED_FIELD',
+    SET_ERRORS: 'SET_ERRORS',
+    CLEAR_ERROR: 'CLEAR_ERROR',
+    SET_PHOTO_PREVIEW: 'SET_PHOTO_PREVIEW',
+    SET_ALERT: 'SET_ALERT',
+    CLEAR_ALERT: 'CLEAR_ALERT',
+    RESET_FORM: 'RESET_FORM',
+    SET_SAVING: 'SET_SAVING',
+    SET_SECRETARY_INFO: 'SET_SECRETARY_INFO',
+    SET_SHOW_SECRETARY_MANAGER: 'SET_SHOW_SECRETARY_MANAGER',
+    SET_SHOW_SUBSCRIPTION_MANAGER: 'SET_SHOW_SUBSCRIPTION_MANAGER'
+};
+
+// ✅ ESTADO INICIAL - CORRIGIDO
+const initialProfileState = {
+    loading: true,
+    saving: false,
+    isEditing: false,
+    userData: {},
+    formData: {},
+    errors: {},
+    photoFile: null,
+    photoPreview: null,
+    alert: { open: false, message: '', severity: 'success' },
+    secretaryInfo: null,
+    showSubscriptionManager: false,
+    showSecretaryManager: false
+};
+
+// ✅ REDUCER PARA GERENCIAR ESTADO COMPLEXO - CORRIGIDO
+const profileReducer = (state, action) => {
+    switch (action.type) {
+        case PROFILE_ACTIONS.SET_LOADING:
+            return { ...state, loading: action.payload };
+
+        case PROFILE_ACTIONS.SET_SAVING:
+            return { ...state, saving: action.payload };
+
+        case PROFILE_ACTIONS.SET_USER_DATA:
+            return {
+                ...state,
+                userData: action.payload,
+                formData: action.payload,
+                loading: false
+            };
+
+        case PROFILE_ACTIONS.SET_EDITING:
+            return { ...state, isEditing: action.payload };
+
+        case PROFILE_ACTIONS.UPDATE_FORM_FIELD:
+            return {
+                ...state,
+                formData: {
+                    ...state.formData,
+                    [action.field]: action.value
+                }
+            };
+
+        case PROFILE_ACTIONS.UPDATE_NESTED_FIELD:
+            const [parent, child] = action.field.split('.');
+            return {
+                ...state,
+                formData: {
+                    ...state.formData,
+                    [parent]: {
+                        ...state.formData[parent],
+                        [child]: action.value
+                    }
+                }
+            };
+
+        case PROFILE_ACTIONS.SET_ERRORS:
+            return { ...state, errors: action.payload };
+
+        case PROFILE_ACTIONS.CLEAR_ERROR:
+            const newErrors = { ...state.errors };
+            delete newErrors[action.field];
+            return { ...state, errors: newErrors };
+
+        case PROFILE_ACTIONS.SET_PHOTO_PREVIEW:
+            return {
+                ...state,
+                photoFile: action.file,
+                photoPreview: action.preview
+            };
+
+        case PROFILE_ACTIONS.SET_ALERT:
+            return {
+                ...state,
+                alert: {
+                    open: true,
+                    message: action.message,
+                    severity: action.severity
+                }
+            };
+
+        case PROFILE_ACTIONS.CLEAR_ALERT:
+            return {
+                ...state,
+                alert: { ...state.alert, open: false }
+            };
+
+        case PROFILE_ACTIONS.RESET_FORM:
+            return {
+                ...state,
+                formData: state.userData,
+                errors: {},
+                photoFile: null,
+                photoPreview: null,
+                isEditing: false
+            };
+
+        case PROFILE_ACTIONS.SET_SECRETARY_INFO:
+            return { ...state, secretaryInfo: action.payload };
+
+        // ✅ NOVOS CASOS ADICIONADOS
+        case PROFILE_ACTIONS.SET_SHOW_SECRETARY_MANAGER:
+            return { ...state, showSecretaryManager: action.payload };
+
+        case PROFILE_ACTIONS.SET_SHOW_SUBSCRIPTION_MANAGER:
+            return { ...state, showSubscriptionManager: action.payload };
+
+        default:
+            return state;
+    }
+};
+
+// ✅ FUNÇÕES DE MÁSCARA OTIMIZADAS
+const applyPhoneMask = (value) => {
+    if (!value) return "";
+    const numbers = value.replace(/\D/g, "");
+
+    if (numbers.length <= 10) {
+        return numbers.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    } else {
+        return numbers.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    }
+};
+
+const applyCepMask = (value) => {
+    if (!value) return "";
+    const numbers = value.replace(/\D/g, "");
+    return numbers.replace(/(\d{5})(\d{3})/, "$1-$2");
+};
+
+const applyCpfMask = (value) => {
+    if (!value) return "";
+    const numbers = value.replace(/\D/g, "");
+    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
+// ✅ FUNÇÃO PARA APLICAR MÁSCARAS
+const applyFieldMask = (field, value) => {
+    switch (field) {
+        case 'phone':
+            return applyPhoneMask(value);
+        case 'address.cep':
+            return applyCepMask(value);
+        case 'cpf':
+            return applyCpfMask(value);
+        default:
+            return value;
+    }
+};
+
+// ✅ VALIDAÇÃO DE CPF
+const isValidCpf = (cpf) => {
+    const numbers = cpf.replace(/\D/g, "");
+
+    if (numbers.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(numbers)) return false;
+
+    // Validação dos dígitos verificadores
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+        sum += parseInt(numbers[i]) * (10 - i);
+    }
+    let digit1 = 11 - (sum % 11);
+    if (digit1 > 9) digit1 = 0;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+        sum += parseInt(numbers[i]) * (11 - i);
+    }
+    let digit2 = 11 - (sum % 11);
+    if (digit2 > 9) digit2 = 0;
+
+    return parseInt(numbers[9]) === digit1 && parseInt(numbers[10]) === digit2;
+};
+
+// ✅ VALIDAÇÃO DE CEP
+const isValidCep = (cep) => {
+    const numbers = cep.replace(/\D/g, "");
+    return /^\d{8}$/.test(numbers);
+};
+
+// ✅ VALIDAÇÃO OTIMIZADA DE FORMULÁRIO
+const validateFormData = (formData) => {
+    const errors = {};
+
+    // Validação de nome
+    if (!formData.fullName?.trim()) {
+        errors.fullName = 'Nome completo é obrigatório';
+    } else if (formData.fullName.trim().length < 3) {
+        errors.fullName = 'Nome deve ter pelo menos 3 caracteres';
+    }
+
+    // Validação de email
+    if (!formData.email?.trim()) {
+        errors.email = 'E-mail é obrigatório';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        errors.email = 'E-mail inválido';
+    }
+
+    // Validação de telefone
+    if (!formData.phone?.trim()) {
+        errors.phone = 'Telefone é obrigatório';
+    } else {
+        const phoneNumbers = formData.phone.replace(/\D/g, "");
+        if (phoneNumbers.length < 10 || phoneNumbers.length > 11) {
+            errors.phone = 'Telefone deve ter 10 ou 11 dígitos';
+        }
+    }
+
+    // Validação de CPF
+    if (!formData.cpf?.trim()) {
+        errors.cpf = 'CPF é obrigatório';
+    } else if (!isValidCpf(formData.cpf)) {
+        errors.cpf = 'CPF inválido';
+    }
+
+    // Validação de endereço
+    if (formData.address) {
+        if (!formData.address.street?.trim()) {
+            errors['address.street'] = 'Endereço é obrigatório';
+        }
+        if (!formData.address.city?.trim()) {
+            errors['address.city'] = 'Cidade é obrigatória';
+        }
+        if (!formData.address.state?.trim()) {
+            errors['address.state'] = 'Estado é obrigatório';
+        }
+        if (formData.address.cep && !isValidCep(formData.address.cep)) {
+            errors['address.cep'] = 'CEP inválido';
+        }
+    }
+
+    return errors;
+};
+
+// ✅ HOOK PERSONALIZADO PARA GERENCIAR ESTADO DO PERFIL - CORRIGIDO
+const useProfileState = () => {
+    const [state, dispatch] = useReducer(profileReducer, initialProfileState);
+    const validateTimeoutRef = useRef(null);
+
+    // ✅ AÇÕES MEMOIZADAS - CORRIGIDAS COM NOVAS FUNÇÕES
+    const actions = useMemo(() => ({
+        setLoading: (loading) => dispatch({ type: PROFILE_ACTIONS.SET_LOADING, payload: loading }),
+        setSaving: (saving) => dispatch({ type: PROFILE_ACTIONS.SET_SAVING, payload: saving }),
+        setUserData: (userData) => dispatch({ type: PROFILE_ACTIONS.SET_USER_DATA, payload: userData }),
+        setEditing: (editing) => dispatch({ type: PROFILE_ACTIONS.SET_EDITING, payload: editing }),
+        setErrors: (errors) => dispatch({ type: PROFILE_ACTIONS.SET_ERRORS, payload: errors }),
+        clearError: (field) => dispatch({ type: PROFILE_ACTIONS.CLEAR_ERROR, field }),
+        setPhotoPreview: (file, preview) => dispatch({ type: PROFILE_ACTIONS.SET_PHOTO_PREVIEW, file, preview }),
+        setAlert: (message, severity = 'success') => dispatch({ type: PROFILE_ACTIONS.SET_ALERT, message, severity }),
+        clearAlert: () => dispatch({ type: PROFILE_ACTIONS.CLEAR_ALERT }),
+        resetForm: () => dispatch({ type: PROFILE_ACTIONS.RESET_FORM }),
+        setSecretaryInfo: (info) => dispatch({ type: PROFILE_ACTIONS.SET_SECRETARY_INFO, payload: info }),
+        // ✅ NOVAS FUNÇÕES ADICIONADAS
+        setShowSecretaryManager: (show) => dispatch({ type: PROFILE_ACTIONS.SET_SHOW_SECRETARY_MANAGER, payload: show }),
+        setShowSubscriptionManager: (show) => dispatch({ type: PROFILE_ACTIONS.SET_SHOW_SUBSCRIPTION_MANAGER, payload: show })
+    }), []);
+
+    // ✅ FUNÇÃO OTIMIZADA PARA ATUALIZAR CAMPOS
+    const updateField = useCallback((field, value) => {
+        // Aplicar máscaras se necessário
+        const maskedValue = applyFieldMask(field, value);
+
+        if (field.includes('.')) {
+            dispatch({
+                type: PROFILE_ACTIONS.UPDATE_NESTED_FIELD,
+                field,
+                value: maskedValue
+            });
+        } else {
+            dispatch({
+                type: PROFILE_ACTIONS.UPDATE_FORM_FIELD,
+                field,
+                value: maskedValue
+            });
+        }
+
+        // Limpar erro do campo se existir
+        if (state.errors[field]) {
+            actions.clearError(field);
+        }
+    }, [state.errors, actions]);
+
+    // ✅ VALIDAÇÃO DEBOUNCED PARA MELHOR UX
+    const debouncedValidate = useCallback(
+        debounce((formData) => {
+            const errors = validateFormData(formData);
+            actions.setErrors(errors);
+        }, 500),
+        [actions]
+    );
+
+    // ✅ EXECUTAR VALIDAÇÃO QUANDO FORM DATA MUDAR
+    useEffect(() => {
+        if (state.isEditing && Object.keys(state.formData).length > 0) {
+            debouncedValidate(state.formData);
+        }
+
+        return () => {
+            debouncedValidate.cancel();
+        };
+    }, [state.formData, state.isEditing, debouncedValidate]);
+
+    return { state, actions, updateField };
+};
+
+// ✅ HOOK PARA OTIMIZAR RE-RENDERS DO FORMULÁRIO
+const useFormOptimization = (formData, errors) => {
+    // Memoizar campos calculados para evitar re-renders
+    const formStatus = useMemo(() => ({
+        hasChanges: Object.keys(formData).length > 0,
+        hasErrors: Object.keys(errors).length > 0,
+        isValid: Object.keys(errors).length === 0 && Object.keys(formData).length > 0
+    }), [formData, errors]);
+
+    // Memoizar configuração de campos
+    const fieldConfig = useMemo(() => ({
+        fullName: { required: true, type: 'text', icon: PersonIcon },
+        email: { required: true, type: 'email', icon: EmailIcon },
+        phone: { required: true, type: 'tel', icon: PhoneIcon, mask: 'phone' },
+        cpf: { required: true, type: 'text', icon: BadgeIcon, mask: 'cpf' },
+        'address.street': { required: true, type: 'text', icon: HomeIcon },
+        'address.number': { required: false, type: 'text', icon: MarginIcon },
+        'address.complement': { required: false, type: 'text', icon: ApartmentIcon },
+        'address.neighborhood': { required: false, type: 'text', icon: LocationOnIcon },
+        'address.city': { required: true, type: 'text', icon: LocationCityIcon },
+        'address.state': { required: true, type: 'text', icon: LocationOnIcon },
+        'address.cep': { required: false, type: 'text', icon: PinDropIcon, mask: 'cep' }
+    }), []);
+
+    return { formStatus, fieldConfig };
+};
+
+// ✅ COMPONENTE EDITÁVEL OTIMIZADO E MEMOIZADO
+const EditableField = React.memo(({
+                                      label,
+                                      value,
+                                      isEditing,
+                                      onChange,
+                                      error,
+                                      helperText,
+                                      type = "text",
+                                      required = false,
+                                      startIcon,
+                                      disabled = false,
+                                      multiline = false,
+                                      rows = 1,
+                                      ...props
+                                  }) => {
     return (
         <Box sx={{ mb: 2.5, position: 'relative' }}>
             {isEditing ? (
@@ -188,7 +507,7 @@ const EditableField = ({
                                     alignItems: 'center',
                                     mr: 0.5
                                 }}>
-                                    {startIcon}
+                                    {React.createElement(startIcon, { fontSize: 'small' })}
                                 </Box>
                             </InputAdornment>
                         ) : null
@@ -218,7 +537,7 @@ const EditableField = ({
                                 mt: 0.3,
                             }}
                         >
-                            {startIcon}
+                            {React.createElement(startIcon, { fontSize: 'small' })}
                         </Box>
                     )}
                     <Box sx={{ flex: 1 }}>
@@ -254,305 +573,291 @@ const EditableField = ({
             )}
         </Box>
     );
-};
+});
 
-const UserProfileTemplate = ({onLogout}) => {
+// ✅ COMPONENTE DE LOADING SKELETON
+const ProfileSkeleton = React.memo(() => (
+    <Box sx={{ py: 2, px: { xs: 2, md: 3 } }}>
+        <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+                <Card sx={{ borderRadius: '20px', p: 3 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <Skeleton variant="circular" width={120} height={120} sx={{ mb: 2 }} />
+                        <Skeleton variant="text" width={200} height={32} sx={{ mb: 1 }} />
+                        <Skeleton variant="text" width={150} height={20} sx={{ mb: 2 }} />
+                        <Skeleton variant="rectangular" width={120} height={36} sx={{ borderRadius: '50px' }} />
+                    </Box>
+                </Card>
+            </Grid>
+            <Grid item xs={12} md={8}>
+                <Card sx={{ borderRadius: '12px', p: 3 }}>
+                    <Skeleton variant="text" width={200} height={28} sx={{ mb: 3 }} />
+                    <Grid container spacing={2}>
+                        {[1, 2, 3, 4].map((item) => (
+                            <Grid item xs={12} md={6} key={item}>
+                                <Skeleton variant="rectangular" height={56} sx={{ borderRadius: '8px', mb: 2 }} />
+                            </Grid>
+                        ))}
+                    </Grid>
+                </Card>
+            </Grid>
+        </Grid>
+    </Box>
+));
+
+// ✅ COMPONENTE PRINCIPAL OTIMIZADO
+const UserProfileTemplate = ({ onLogout }) => {
     const theme = useTheme();
-    const {user, loading: authLoading, isSecretary} = useAuth();
-    const [isEditing, setIsEditing] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [userData, setUserData] = useState({});
-    const [formData, setFormData] = useState({});
-    const [photoFile, setPhotoFile] = useState(null);
-    const [photoPreview, setPhotoPreview] = useState(null);
-    const [errors, setErrors] = useState({});
-    const [alert, setAlert] = useState({open: false, message: '', severity: 'success'});
+    const auth = useAuth();
+    const { user, isSecretary, userContext, getDisplayUserData, reloadUserContext } = auth;
 
-    // Estados para dialogs
-    const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
-    const [showSecretaryManager, setShowSecretaryManager] = useState(false);
+    // ✅ USAR HOOK PERSONALIZADO PARA ESTADO
+    const { state, actions, updateField } = useProfileState();
+    const { formStatus, fieldConfig } = useFormOptimization(state.formData, state.errors);
 
-    // Estado para informações da secretária
-    const [secretaryInfo, setSecretaryInfo] = useState(null);
+    // ✅ REFS PARA PERFORMANCE
+    const loadingRef = useRef(false);
+    const saveTimeoutRef = useRef(null);
 
-    // Extrair o primeiro nome do usuário logado
-    const getFirstName = (fullName) => {
-        if (!fullName) return '';
-        return fullName.split(' ')[0];
-    };
+    // ✅ OBTER DADOS DE EXIBIÇÃO BASEADOS NO CONTEXTO
+    const displayData = getDisplayUserData();
 
-    const firstName = getFirstName(userData.fullName);
+    // ✅ FUNÇÃO PARA DETERMINAR TIPO DE PLANO BASEADO NO CONTEXTO
+    const getUserPlanInfo = useCallback(() => {
+        if (isSecretary) {
+            return { name: 'Secretária', color: '#10B981', icon: '👩‍💼' };
+        }
 
-    // Função para determinar o tipo de plano do usuário
-    const getUserPlanInfo = () => {
-        if (userData.administrador) {
+        if (state.userData.administrador) {
             return { name: 'Administrador', color: '#DC2626', icon: '👨‍💼' };
         }
 
-        if (userData.assinouPlano) {
-            const planType = userData.planType || 'monthly';
+        if (state.userData.assinouPlano) {
+            const planType = state.userData.planType || 'monthly';
             return plansDisplay[planType] || plansDisplay.monthly;
         }
 
         return plansDisplay.free;
-    };
+    }, [isSecretary, state.userData]);
 
-    const planInfo = getUserPlanInfo();
+    const canManageSecretaries = useCallback(() => {
+        if (isSecretary) return false; // Apenas secretárias não podem gerenciar outras secretárias
+        return true; // ✅ Todos os médicos podem gerenciar secretárias
+    }, [isSecretary]);
 
-    // Verificar se o usuário pode gerenciar secretárias
-    const canManageSecretaries = () => {
-        // Secretárias não podem gerenciar outras secretárias
-        if (isSecretary) return false;
 
-        // Apenas médicos com planos pagos ou admins podem ter secretárias
-        return userData.administrador || userData.assinouPlano;
-    };
+    // ✅ FUNÇÃO PARA OBTER PRIMEIRO NOME
+    const getFirstName = useCallback((fullName) => {
+        if (!fullName) return '';
+        return fullName.split(' ')[0];
+    }, []);
 
-    // Carregar dados do usuário
-    useEffect(() => {
-        const loadUserData = async () => {
-            if (!user?.uid) return;
+    // ✅ CARREGAR DADOS DO USUÁRIO BASEADO NO CONTEXTO - OTIMIZADO
+    const loadUserData = useCallback(async () => {
+        if (!user?.uid || loadingRef.current) return;
 
-            try {
-                setLoading(true);
-                const userData = await FirebaseService.getUserData(user.uid);
-                setUserData(userData);
-                setFormData(userData);
-                setLoading(false);
-            } catch (error) {
-                console.error("Erro ao carregar dados do usuário:", error);
-                setAlert({
-                    open: true,
-                    message: 'Erro ao carregar dados do perfil.',
-                    severity: 'error'
-                });
-                setLoading(false);
-            }
-        };
-
-        if (user && !authLoading) {
-            loadUserData();
-        }
-    }, [user, authLoading]);
-
-    // Carregar informações da secretária
-    useEffect(() => {
-        const loadSecretaryInfo = async () => {
-            if (user?.uid && canManageSecretaries()) {
-                try {
-                    const info = await FirebaseService.getDoctorSecretaryInfo(user.uid);
-                    setSecretaryInfo(info);
-                } catch (error) {
-                    console.warn('Erro ao carregar informações da secretária:', error);
-                }
-            }
-        };
-
-        if (user && !authLoading && userData.administrador !== undefined) {
-            loadSecretaryInfo();
-        }
-    }, [user, authLoading, userData.administrador, userData.assinouPlano]);
-
-    // Handler para mudanças nos campos do formulário
-    const handleChange = (field) => (e) => {
-        let value = e.target.value;
-
-        // Aplicar máscara se for um campo específico
-        if (field === 'phone') {
-            value = applyPhoneMask(value);
-        } else if (field === 'address.cep') {
-            value = applyCepMask(value);
-        }
-
-        // Gerenciar campos aninhados (address.field)
-        if (field.includes('.')) {
-            const [parent, child] = field.split('.');
-            setFormData(prev => ({
-                ...prev,
-                [parent]: {
-                    ...prev[parent],
-                    [child]: value
-                }
-            }));
-        } else {
-            // Campos regulares
-            setFormData(prev => ({
-                ...prev,
-                [field]: value
-            }));
-        }
-
-        // Limpar o erro do campo quando ele é editado
-        if (errors[field]) {
-            setErrors(prev => ({
-                ...prev,
-                [field]: null
-            }));
-        }
-    };
-
-    const handleLogout = async () => {
         try {
-            setLoading(true);
-            await FirebaseService.logout();
+            loadingRef.current = true;
+            actions.setLoading(true);
+
+            // ✅ USAR CACHE PARA DADOS DO USUÁRIO
+            const userData = await globalCache.getOrSet('profileData', user.uid, async () => {
+                if (isSecretary && userContext) {
+                    return userContext.userData;
+                } else {
+                    return await FirebaseService.getUserData(user.uid);
+                }
+            }, 2 * 60 * 1000); // 2 minutos de cache
+
+            actions.setUserData(userData);
+            console.log('✅ Dados do usuário carregados com sucesso');
+
         } catch (error) {
-            console.error("Erro ao fazer logout:", error);
-            setAlert({
-                open: true,
-                message: 'Erro ao fazer logout. Tente novamente.',
-                severity: 'error'
-            });
+            console.error("❌ Erro ao carregar dados do usuário:", error);
+            actions.setAlert('Erro ao carregar dados do perfil.', 'error');
         } finally {
-            setLoading(false);
+            loadingRef.current = false;
+            actions.setLoading(false);
         }
-    };
+    }, [user?.uid, isSecretary, userContext, actions]);
 
-    // Handler para upload de foto
-    const handlePhotoChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-
-            reader.onload = (event) => {
-                setPhotoFile(file);
-                setPhotoPreview(event.target.result);
-            };
-
-            reader.readAsDataURL(file);
-        }
-    };
-
-    // Validação dos campos do formulário
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formData.fullName || formData.fullName.trim() === '') {
-            newErrors.fullName = 'Nome completo é obrigatório';
-        }
-
-        if (!formData.phone || formData.phone.trim() === '') {
-            newErrors.phone = 'Telefone é obrigatório';
-        }
-
-        if (!formData.email || formData.email.trim() === '') {
-            newErrors.email = 'E-mail é obrigatório';
-        }
-
-        if (!formData.cpf || formData.cpf.trim() === '') {
-            newErrors.cpf = 'CPF é obrigatório';
-        }
-
-        // Validação de endereço
-        if (formData.address) {
-            if (!formData.address.street || formData.address.street.trim() === '') {
-                newErrors['address.street'] = 'Endereço é obrigatório';
-            }
-            if (!formData.address.city || formData.address.city.trim() === '') {
-                newErrors['address.city'] = 'Cidade é obrigatória';
-            }
-            if (!formData.address.state || formData.address.state.trim() === '') {
-                newErrors['address.state'] = 'Estado é obrigatório';
-            }
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    // Handler para salvar alterações
-    const handleSave = async () => {
-        if (!validateForm()) {
-            setAlert({
-                open: true,
-                message: 'Por favor, corrija os campos com erro antes de salvar.',
-                severity: 'error'
+    // ✅ CARREGAR INFORMAÇÕES DA SECRETÁRIA - CORRIGIDO
+    const loadSecretaryInfo = useCallback(async () => {
+        // ✅ VERIFICAÇÃO ADICIONADA PARA PREVENIR ERRO
+        if (!user?.uid || !canManageSecretaries() || isSecretary) {
+            console.log('⚠️ Não é possível carregar informações da secretária:', {
+                hasUser: !!user?.uid,
+                canManage: canManageSecretaries(),
+                isSecretary
             });
             return;
         }
 
         try {
-            setSaving(true);
+            const info = await globalCache.getOrSet('secretaryInfo', user.uid, async () => {
+                return await FirebaseService.getDoctorSecretaryInfo(user.uid);
+            }, 5 * 60 * 1000); // 5 minutos de cache
 
-            let updatedData = {...formData};
+            actions.setSecretaryInfo(info);
+        } catch (error) {
+            console.warn('⚠️ Erro ao carregar informações da secretária:', error);
+            // Não mostrar erro para o usuário pois é informação opcional
+        }
+    }, [user?.uid, canManageSecretaries, isSecretary, actions]);
 
-            // Se houver upload de foto
-            if (photoFile) {
+    // ✅ HANDLER PARA MUDANÇAS NOS CAMPOS - OTIMIZADO
+    const handleChange = useCallback((field) => (e) => {
+        const value = e.target.value;
+        updateField(field, value);
+    }, [updateField]);
+
+    // ✅ HANDLER DE LOGOUT MELHORADO
+    const handleLogout = useCallback(async () => {
+        try {
+            console.log('🚪 Iniciando logout do UserProfile...');
+            actions.setLoading(true);
+
+            // Limpar cache relacionado ao usuário
+            if (user?.uid) {
+                globalCache.invalidate('profileData', user.uid);
+                globalCache.invalidate('secretaryInfo', user.uid);
+            }
+
+            if (onLogout) {
+                await onLogout();
+            } else {
+                await auth.logout();
+            }
+        } catch (error) {
+            console.error("❌ Erro ao fazer logout:", error);
+            actions.setAlert('Erro ao fazer logout. Tente novamente.', 'error');
+            actions.setLoading(false);
+        }
+    }, [onLogout, auth, user?.uid, actions]);
+
+    // ✅ HANDLER PARA UPLOAD DE FOTO - OTIMIZADO
+    const handlePhotoChange = useCallback((e) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+
+            // Validar tamanho do arquivo (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                actions.setAlert('Arquivo muito grande. Máximo 5MB.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                actions.setPhotoPreview(file, event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    }, [actions]);
+
+    // ✅ VALIDAÇÃO DO FORMULÁRIO - OTIMIZADA
+    const validateForm = useCallback(() => {
+        const errors = validateFormData(state.formData);
+        actions.setErrors(errors);
+        return Object.keys(errors).length === 0;
+    }, [state.formData, actions]);
+
+    // ✅ HANDLER PARA SALVAR ALTERAÇÕES - OTIMIZADO
+    const handleSave = useCallback(async () => {
+        // Secretárias não podem editar dados do médico
+        if (isSecretary) {
+            actions.setAlert('Secretárias não podem editar dados do médico.', 'warning');
+            return;
+        }
+
+        if (!validateForm()) {
+            actions.setAlert('Por favor, corrija os campos com erro antes de salvar.', 'error');
+            return;
+        }
+
+        try {
+            actions.setSaving(true);
+            let updatedData = { ...state.formData };
+
+            // ✅ UPLOAD DE FOTO SE HOUVER
+            if (state.photoFile) {
                 try {
-                    const photoPath = `users/${user.uid}/profilePhoto/${Date.now()}_${photoFile.name}`;
-                    const photoURL = await FirebaseService.uploadFile(photoFile, photoPath);
+                    const photoPath = `users/${user.uid}/profilePhoto/${Date.now()}_${state.photoFile.name}`;
+                    const photoURL = await FirebaseService.uploadFile(state.photoFile, photoPath);
 
-                    // Se havia uma foto anterior, deletar
-                    if (userData.photoURL && userData.photoURL !== photoURL) {
+                    // Deletar foto anterior se existir
+                    if (state.userData.photoURL && state.userData.photoURL !== photoURL) {
                         try {
-                            await FirebaseService.deleteFile(userData.photoURL);
+                            await FirebaseService.deleteFile(state.userData.photoURL);
                         } catch (error) {
-                            console.warn("Erro ao deletar foto antiga:", error);
+                            console.warn("⚠️ Erro ao deletar foto antiga:", error);
                         }
                     }
 
                     updatedData.photoURL = photoURL;
                 } catch (error) {
-                    console.error("Erro ao fazer upload da foto:", error);
+                    console.error("❌ Erro ao fazer upload da foto:", error);
                     throw new Error("Erro ao fazer upload da foto de perfil.");
                 }
             }
 
-            // Atualizar dados no Firebase
+            // ✅ ATUALIZAR DADOS NO FIREBASE
             await FirebaseService.editUserData(user.uid, updatedData);
 
-            // Atualizar dados locais
-            setUserData(updatedData);
+            // ✅ ATUALIZAR DADOS LOCAIS E CACHE
+            actions.setUserData(updatedData);
+            globalCache.set('profileData', user.uid, updatedData, 2 * 60 * 1000);
 
-            setAlert({
-                open: true,
-                message: 'Perfil atualizado com sucesso!',
-                severity: 'success'
-            });
+            actions.setAlert('Perfil atualizado com sucesso!', 'success');
+            actions.setEditing(false);
 
-            setIsEditing(false);
-            setSaving(false);
+            // ✅ RECARREGAR CONTEXTO SE NECESSÁRIO
+            if (reloadUserContext) {
+                await reloadUserContext();
+            }
+
         } catch (error) {
-            console.error("Erro ao salvar perfil:", error);
-            setAlert({
-                open: true,
-                message: `Erro ao salvar alterações: ${error.message}`,
-                severity: 'error'
-            });
-            setSaving(false);
+            console.error("❌ Erro ao salvar perfil:", error);
+            actions.setAlert(`Erro ao salvar alterações: ${error.message}`, 'error');
+        } finally {
+            actions.setSaving(false);
         }
-    };
+    }, [isSecretary, validateForm, state, user?.uid, actions, reloadUserContext]);
 
-    // Handler para cancelar edição
-    const handleCancel = () => {
-        setFormData(userData);
-        setPhotoFile(null);
-        setPhotoPreview(null);
-        setErrors({});
-        setIsEditing(false);
-    };
+    // ✅ HANDLER PARA CANCELAR EDIÇÃO
+    const handleCancel = useCallback(() => {
+        actions.resetForm();
+    }, [actions]);
 
-    // Handler para fechar alerta
-    const handleCloseAlert = (event, reason) => {
-        if (reason === 'clickaway') {
-            return;
+    // ✅ CARREGAR DADOS INICIAIS
+    useEffect(() => {
+        if (user && !auth.loading) {
+            loadUserData();
+            loadSecretaryInfo();
         }
-        setAlert({...alert, open: false});
-    };
+    }, [user, auth.loading, loadUserData, loadSecretaryInfo]);
 
-    // Mostrar spinner durante carregamento inicial
-    if (loading || authLoading) {
-        return (
-            <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh'}}>
-                <CircularProgress color="primary"/>
-            </Box>
-        );
+    // ✅ CLEANUP AO DESMONTAR
+    useEffect(() => {
+        return () => {
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // ✅ VALORES MEMOIZADOS PARA PERFORMANCE
+    const planInfo = useMemo(() => getUserPlanInfo(), [getUserPlanInfo]);
+    const firstName = useMemo(() => getFirstName(displayData?.name), [getFirstName, displayData?.name]);
+
+    // ✅ MOSTRAR SKELETON DURANTE CARREGAMENTO
+    if (state.loading || auth.loading) {
+        return <ProfileSkeleton />;
     }
 
     return (
-        <Box sx={{py: 2, px: {xs: 2, md: 3}}}>
+        <Box sx={{ py: 2, px: { xs: 2, md: 3 } }}>
             <Grid container spacing={3}>
-                {/* Coluna da Esquerda - Foto e Informações Básicas */}
+                {/* ✅ COLUNA DA ESQUERDA - FOTO E INFORMAÇÕES BÁSICAS */}
                 <Grid item xs={12} md={4}>
                     <Card
                         elevation={0}
@@ -571,19 +876,20 @@ const UserProfileTemplate = ({onLogout}) => {
                             flexDirection: 'column',
                             alignItems: 'center'
                         }}>
+                            {/* ✅ AVATAR COM UPLOAD */}
                             <input
                                 accept="image/*"
                                 id="profile-photo-upload"
                                 type="file"
-                                style={{display: 'none'}}
+                                style={{ display: 'none' }}
                                 onChange={handlePhotoChange}
-                                disabled={!isEditing}
+                                disabled={!state.isEditing || isSecretary}
                             />
-                            <label htmlFor={isEditing ? "profile-photo-upload" : ""}>
-                                <Box sx={{position: 'relative'}}>
+                            <label htmlFor={state.isEditing && !isSecretary ? "profile-photo-upload" : ""}>
+                                <Box sx={{ position: 'relative' }}>
                                     <Avatar
-                                        src={photoPreview || userData.photoURL}
-                                        alt={userData.fullName || "Perfil"}
+                                        src={state.photoPreview || state.userData.photoURL}
+                                        alt={displayData?.name || "Perfil"}
                                         sx={{
                                             width: 120,
                                             height: 120,
@@ -593,18 +899,17 @@ const UserProfileTemplate = ({onLogout}) => {
                                             fontSize: '3rem',
                                             fontWeight: 600,
                                             transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                                            cursor: isEditing ? 'pointer' : 'default',
+                                            cursor: state.isEditing && !isSecretary ? 'pointer' : 'default',
                                             "&:hover": {
-                                                transform: isEditing ? "scale(1.05)" : "none",
-                                                boxShadow: isEditing ? "0 4px 20px rgba(24, 82, 254, 0.15)" : "none",
+                                                transform: state.isEditing && !isSecretary ? "scale(1.05)" : "none",
+                                                boxShadow: state.isEditing && !isSecretary ? "0 4px 20px rgba(24, 82, 254, 0.15)" : "none",
                                             },
                                         }}
                                     >
-                                        {userData.fullName ? userData.fullName.charAt(0) :
-                                            <PersonIcon fontSize="large"/>}
+                                        {displayData?.name ? displayData.name.charAt(0) : <PersonIcon fontSize="large" />}
                                     </Avatar>
 
-                                    {isEditing && (
+                                    {state.isEditing && !isSecretary && (
                                         <Box
                                             sx={{
                                                 position: 'absolute',
@@ -621,12 +926,13 @@ const UserProfileTemplate = ({onLogout}) => {
                                                 border: '2px solid white',
                                             }}
                                         >
-                                            <AddPhotoIcon sx={{color: 'white', fontSize: 20}}/>
+                                            <AddPhotoIcon sx={{ color: 'white', fontSize: 20 }} />
                                         </Box>
                                     )}
                                 </Box>
                             </label>
 
+                            {/* ✅ NOME E TÍTULO */}
                             <Typography
                                 variant="h5"
                                 sx={{
@@ -637,7 +943,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                     textAlign: 'center'
                                 }}
                             >
-                                Dr. {firstName}
+                                {isSecretary ? displayData?.name : `Dr. ${firstName}`}
                             </Typography>
 
                             <Typography
@@ -649,10 +955,26 @@ const UserProfileTemplate = ({onLogout}) => {
                                     textAlign: 'center'
                                 }}
                             >
-                                {userData.especialidade || "Médico"}
+                                {isSecretary ? 'Secretária' : (state.userData.especialidade || "Médico")}
                             </Typography>
 
-                            {/* Chip do plano atual */}
+                            {/* ✅ INFORMAÇÃO ESPECIAL PARA SECRETÁRIAS */}
+                            {isSecretary && userContext?.userData?.fullName && (
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        color: themeColors.textTertiary,
+                                        fontFamily: "Gellix, sans-serif",
+                                        mb: 2,
+                                        textAlign: 'center',
+                                        fontStyle: 'italic'
+                                    }}
+                                >
+                                    Trabalhando para Dr. {userContext.userData.fullName}
+                                </Typography>
+                            )}
+
+                            {/* ✅ CHIP DO PLANO ATUAL */}
                             <Chip
                                 icon={<span style={{ fontSize: '16px' }}>{planInfo.icon}</span>}
                                 label={planInfo.name}
@@ -667,11 +989,12 @@ const UserProfileTemplate = ({onLogout}) => {
                                 variant="outlined"
                             />
 
-                            {!isEditing ? (
+                            {/* ✅ BOTÕES DE AÇÃO */}
+                            {!state.isEditing && !isSecretary ? (
                                 <Button
                                     variant="outlined"
-                                    startIcon={<EditIcon/>}
-                                    onClick={() => setIsEditing(true)}
+                                    startIcon={<EditIcon />}
+                                    onClick={() => actions.setEditing(true)}
                                     sx={{
                                         borderRadius: '50px',
                                         mb: 3,
@@ -683,13 +1006,13 @@ const UserProfileTemplate = ({onLogout}) => {
                                 >
                                     Editar Perfil
                                 </Button>
-                            ) : (
-                                <Box sx={{display: 'flex', gap: 2, mb: 3}}>
+                            ) : state.isEditing && !isSecretary ? (
+                                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                                     <Button
                                         variant="outlined"
-                                        startIcon={<CloseIcon/>}
+                                        startIcon={<CloseIcon />}
                                         onClick={handleCancel}
-                                        disabled={saving}
+                                        disabled={state.saving}
                                         sx={{
                                             borderRadius: '50px',
                                             textTransform: 'none',
@@ -707,9 +1030,9 @@ const UserProfileTemplate = ({onLogout}) => {
                                     </Button>
                                     <Button
                                         variant="contained"
-                                        startIcon={saving ? <CircularProgress size={20} color="inherit"/> : <SaveIcon/>}
+                                        startIcon={state.saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
                                         onClick={handleSave}
-                                        disabled={saving}
+                                        disabled={state.saving || !formStatus.isValid}
                                         sx={{
                                             borderRadius: '50px',
                                             textTransform: 'none',
@@ -723,13 +1046,20 @@ const UserProfileTemplate = ({onLogout}) => {
                                             }
                                         }}
                                     >
-                                        {saving ? 'Salvando...' : 'Salvar'}
+                                        {state.saving ? 'Salvando...' : 'Salvar'}
                                     </Button>
                                 </Box>
-                            )}
+                            ) : isSecretary ? (
+                                <Alert severity="info" sx={{ mb: 3, maxWidth: 300 }}>
+                                    <Typography variant="caption">
+                                        Secretárias não podem editar dados do médico
+                                    </Typography>
+                                </Alert>
+                            ) : null}
                         </Box>
                     </Card>
 
+                    {/* ✅ CARD DE INFORMAÇÕES DA CONTA */}
                     <Card
                         elevation={0}
                         sx={{
@@ -739,7 +1069,7 @@ const UserProfileTemplate = ({onLogout}) => {
                             position: 'relative'
                         }}
                     >
-                        <CardContent sx={{p: 3}}>
+                        <CardContent sx={{ p: 3 }}>
                             <Typography
                                 variant="subtitle1"
                                 sx={{
@@ -752,7 +1082,8 @@ const UserProfileTemplate = ({onLogout}) => {
                                 Informações de Conta
                             </Typography>
 
-                            <Box sx={{mb: 2}}>
+                            {/* E-mail de Login */}
+                            <Box sx={{ mb: 2 }}>
                                 <Typography
                                     variant="caption"
                                     sx={{
@@ -764,10 +1095,10 @@ const UserProfileTemplate = ({onLogout}) => {
                                 >
                                     E-mail de Login
                                 </Typography>
-                                <Box sx={{display: 'flex', alignItems: 'center'}}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <EmailIcon
                                         fontSize="small"
-                                        sx={{color: themeColors.primary, mr: 1}}
+                                        sx={{ color: themeColors.primary, mr: 1 }}
                                     />
                                     <Typography
                                         variant="body2"
@@ -782,7 +1113,8 @@ const UserProfileTemplate = ({onLogout}) => {
                                 </Box>
                             </Box>
 
-                            <Box sx={{mb: 2}}>
+                            {/* Status da Conta */}
+                            <Box sx={{ mb: 2 }}>
                                 <Typography
                                     variant="caption"
                                     sx={{
@@ -794,7 +1126,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                 >
                                     Status da Conta
                                 </Typography>
-                                <Box sx={{display: 'flex', alignItems: 'center'}}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <Box
                                         sx={{
                                             width: 8,
@@ -817,8 +1149,8 @@ const UserProfileTemplate = ({onLogout}) => {
                                 </Box>
                             </Box>
 
-                            {/* Indicador de secretária ativa */}
-                            {secretaryInfo && (
+                            {/* Indicador de secretária ativa (apenas para médicos) */}
+                            {!isSecretary && state.secretaryInfo && (
                                 <Box sx={{ mb: 2 }}>
                                     <Typography
                                         variant="caption"
@@ -844,7 +1176,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                                 fontWeight: 500
                                             }}
                                         >
-                                            {secretaryInfo.name}
+                                            {state.secretaryInfo.name}
                                         </Typography>
                                     </Box>
                                 </Box>
@@ -852,14 +1184,14 @@ const UserProfileTemplate = ({onLogout}) => {
 
                             <Divider sx={{ my: 2 }} />
 
-                            {/* Botões de gerenciamento */}
+                            {/* ✅ BOTÕES DE GERENCIAMENTO */}
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                 {/* Botão para gerenciar secretárias (apenas para médicos) */}
-                                {canManageSecretaries() && (
+                                {!isSecretary && canManageSecretaries() && (
                                     <Button
                                         variant="outlined"
                                         startIcon={<PeopleIcon />}
-                                        onClick={() => setShowSecretaryManager(true)}
+                                        onClick={() => actions.setShowSecretaryManager(true)}
                                         fullWidth
                                         sx={{
                                             borderRadius: '12px',
@@ -876,41 +1208,44 @@ const UserProfileTemplate = ({onLogout}) => {
                                             transition: 'all 0.2s ease'
                                         }}
                                     >
-                                        {secretaryInfo ? 'Gerenciar Secretária' : 'Adicionar Secretária'}
+                                        {state.secretaryInfo ? 'Gerenciar Secretária' : 'Adicionar Secretária'}
                                     </Button>
                                 )}
 
-                                {/* Botão de gerenciar assinatura */}
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<SettingsIcon />}
-                                    onClick={() => setShowSubscriptionManager(true)}
-                                    fullWidth
-                                    sx={{
-                                        borderRadius: '12px',
-                                        textTransform: 'none',
-                                        fontFamily: 'Gellix, sans-serif',
-                                        fontWeight: 500,
-                                        color: themeColors.primary,
-                                        borderColor: alpha(themeColors.primary, 0.5),
-                                        py: 1,
-                                        '&:hover': {
-                                            backgroundColor: alpha(themeColors.primary, 0.08),
-                                            borderColor: themeColors.primary
-                                        },
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                >
-                                    Gerenciar Assinatura
-                                </Button>
+                                {/* Botão de gerenciar assinatura (apenas para médicos) */}
+                                {!isSecretary && (
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<SettingsIcon />}
+                                        onClick={() => actions.setShowSubscriptionManager(true)}
+                                        fullWidth
+                                        sx={{
+                                            borderRadius: '12px',
+                                            textTransform: 'none',
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontWeight: 500,
+                                            color: themeColors.primary,
+                                            borderColor: alpha(themeColors.primary, 0.5),
+                                            py: 1,
+                                            '&:hover': {
+                                                backgroundColor: alpha(themeColors.primary, 0.08),
+                                                borderColor: themeColors.primary
+                                            },
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        Gerenciar Assinatura
+                                    </Button>
+                                )}
 
                                 {/* Botão de logout */}
                                 <Button
                                     variant="outlined"
                                     color="error"
                                     startIcon={<LogoutIcon />}
-                                    onClick={onLogout}
+                                    onClick={handleLogout}
                                     fullWidth
+                                    disabled={state.loading}
                                     sx={{
                                         borderRadius: '12px',
                                         textTransform: 'none',
@@ -926,16 +1261,16 @@ const UserProfileTemplate = ({onLogout}) => {
                                         transition: 'all 0.2s ease'
                                     }}
                                 >
-                                    Sair da Conta
+                                    {state.loading ? <CircularProgress size={20} /> : 'Sair da Conta'}
                                 </Button>
                             </Box>
                         </CardContent>
                     </Card>
                 </Grid>
 
-                {/* Coluna da Direita - Detalhes Profissionais */}
+                {/* ✅ COLUNA DA DIREITA - DETALHES PROFISSIONAIS */}
                 <Grid item xs={12} md={8}>
-                    {/* Cartão de Informações Pessoais Refinado */}
+                    {/* ✅ CARTÃO DE INFORMAÇÕES PESSOAIS */}
                     <Card
                         elevation={0}
                         sx={{
@@ -945,10 +1280,16 @@ const UserProfileTemplate = ({onLogout}) => {
                             position: 'relative',
                             border: '1px solid',
                             borderColor: themeColors.borderColor,
-                            bgcolor: '#FFFFFF'
+                            bgcolor: '#FFFFFF',
+                            mb: 3
                         }}
                     >
                         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                            {/* Progress bar durante salvamento */}
+                            {state.saving && (
+                                <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, right: 0 }} />
+                            )}
+
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography
                                     variant="h6"
@@ -971,79 +1312,82 @@ const UserProfileTemplate = ({onLogout}) => {
                                     Dados Pessoais
                                 </Typography>
 
-                                {!isEditing ? (
+                                {!state.isEditing && !isSecretary ? (
                                     <IconButton
-                                        onClick={() => setIsEditing(true)}
+                                        onClick={() => actions.setEditing(true)}
                                         size="small"
-                                        sx={{
-                                            color: themeColors.primary,
-                                        }}
+                                        sx={{ color: themeColors.primary }}
                                     >
                                         <EditIcon fontSize="small" />
                                     </IconButton>
                                 ) : null}
                             </Box>
 
-                            <Divider sx={{ mb: 3 }}/>
+                            <Divider sx={{ mb: 3 }} />
 
                             <Grid container spacing={2.5}>
+                                {/* ✅ CAMPOS DO FORMULÁRIO */}
                                 <Grid item xs={12} md={6}>
                                     <EditableField
                                         label="Nome Completo"
-                                        value={formData.fullName || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.fullName || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('fullName')}
-                                        error={errors.fullName}
-                                        helperText={errors.fullName}
+                                        error={state.errors.fullName}
+                                        helperText={state.errors.fullName}
                                         required
-                                        startIcon={<PersonIcon sx={{ color: errors.fullName ? themeColors.error : themeColors.primary }}/>}
+                                        startIcon={PersonIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={6}>
                                     <EditableField
                                         label="CPF"
-                                        value={formData.cpf || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.cpf || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('cpf')}
-                                        error={errors.cpf}
-                                        helperText={errors.cpf}
+                                        error={state.errors.cpf}
+                                        helperText={state.errors.cpf}
                                         required
-                                        startIcon={<BadgeIcon sx={{ color: errors.cpf ? themeColors.error : themeColors.primary }}/>}
+                                        startIcon={BadgeIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={6}>
                                     <EditableField
                                         label="E-mail"
-                                        value={formData.email || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.email || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('email')}
-                                        error={errors.email}
-                                        helperText={errors.email}
+                                        error={state.errors.email}
+                                        helperText={state.errors.email}
                                         required
-                                        startIcon={<EmailIcon sx={{ color: errors.email ? themeColors.error : themeColors.primary }}/>}
+                                        startIcon={EmailIcon}
                                         type="email"
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={6}>
                                     <EditableField
                                         label="Telefone"
-                                        value={formData.phone || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.phone || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('phone')}
-                                        error={errors.phone}
-                                        helperText={errors.phone}
+                                        error={state.errors.phone}
+                                        helperText={state.errors.phone}
                                         required
-                                        startIcon={<PhoneIcon sx={{ color: errors.phone ? themeColors.error : themeColors.primary }}/>}
+                                        startIcon={PhoneIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
                             </Grid>
                         </CardContent>
                     </Card>
 
-                    {/* Cartão de Endereço Refinado */}
+                    {/* ✅ CARTÃO DE ENDEREÇO */}
                     <Card
                         elevation={0}
                         sx={{
@@ -1051,7 +1395,6 @@ const UserProfileTemplate = ({onLogout}) => {
                             boxShadow: '0px 2px 10px rgba(17, 30, 90, 0.08)',
                             overflow: 'hidden',
                             position: 'relative',
-                            mt: 3,
                             border: '1px solid',
                             borderColor: themeColors.borderColor,
                             bgcolor: '#FFFFFF'
@@ -1080,22 +1423,21 @@ const UserProfileTemplate = ({onLogout}) => {
                                     Endereço
                                 </Typography>
 
-                                {!isEditing ? (
+                                {!state.isEditing && !isSecretary ? (
                                     <IconButton
-                                        onClick={() => setIsEditing(true)}
+                                        onClick={() => actions.setEditing(true)}
                                         size="small"
-                                        sx={{
-                                            color: themeColors.primary,
-                                        }}
+                                        sx={{ color: themeColors.primary }}
                                     >
                                         <EditIcon fontSize="small" />
                                     </IconButton>
                                 ) : null}
                             </Box>
 
-                            <Divider sx={{ mb: 3 }}/>
+                            <Divider sx={{ mb: 3 }} />
 
-                            {!isEditing && (
+                            {/* ✅ VISUALIZAÇÃO DO ENDEREÇO QUANDO NÃO EDITANDO */}
+                            {!state.isEditing && (
                                 <Box
                                     sx={{
                                         mb: 3,
@@ -1106,7 +1448,7 @@ const UserProfileTemplate = ({onLogout}) => {
                                         bgcolor: alpha(themeColors.backgroundSecondary, 0.3)
                                     }}
                                 >
-                                    {formData.address?.street ? (
+                                    {state.formData.address?.street ? (
                                         <>
                                             <Typography
                                                 variant="body1"
@@ -1120,12 +1462,12 @@ const UserProfileTemplate = ({onLogout}) => {
                                                 }}
                                             >
                                                 <HomeIcon sx={{ color: themeColors.primary, mr: 1.5, fontSize: 18 }} />
-                                                {formData.address?.street}, {formData.address?.number || 'S/N'}
-                                                {formData.address?.complement ? ` - ${formData.address.complement}` : ''}
-                                                {formData.address?.neighborhood ? `, ${formData.address.neighborhood}` : ''}
+                                                {state.formData.address?.street}, {state.formData.address?.number || 'S/N'}
+                                                {state.formData.address?.complement ? ` - ${state.formData.address.complement}` : ''}
+                                                {state.formData.address?.neighborhood ? `, ${state.formData.address.neighborhood}` : ''}
                                             </Typography>
 
-                                            {formData.address?.city && (
+                                            {state.formData.address?.city && (
                                                 <Typography
                                                     variant="body1"
                                                     sx={{
@@ -1139,8 +1481,8 @@ const UserProfileTemplate = ({onLogout}) => {
                                                     }}
                                                 >
                                                     <LocationCityIcon sx={{ color: themeColors.primary, mr: 1.5, fontSize: 18 }} />
-                                                    {formData.address?.city} - {formData.address?.state}
-                                                    {formData.address?.cep ? `, CEP ${formData.address.cep}` : ''}
+                                                    {state.formData.address?.city} - {state.formData.address?.state}
+                                                    {state.formData.address?.cep ? `, CEP ${state.formData.address.cep}` : ''}
                                                 </Typography>
                                             )}
                                         </>
@@ -1159,83 +1501,91 @@ const UserProfileTemplate = ({onLogout}) => {
                                 </Box>
                             )}
 
+                            {/* ✅ CAMPOS DO ENDEREÇO */}
                             <Grid container spacing={2.5}>
                                 <Grid item xs={12} md={8}>
                                     <EditableField
                                         label="Rua"
-                                        value={formData.address?.street || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.address?.street || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('address.street')}
-                                        error={errors['address.street']}
-                                        helperText={errors['address.street']}
+                                        error={state.errors['address.street']}
+                                        helperText={state.errors['address.street']}
                                         required
-                                        startIcon={<HomeIcon sx={{ color: errors['address.street'] ? themeColors.error : themeColors.primary }}/>}
+                                        startIcon={HomeIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={4}>
                                     <EditableField
                                         label="Número"
-                                        value={formData.address?.number || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.address?.number || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('address.number')}
-                                        startIcon={<MarginIcon sx={{ color: themeColors.primary }}/>}
+                                        startIcon={MarginIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={6}>
                                     <EditableField
                                         label="Complemento"
-                                        value={formData.address?.complement || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.address?.complement || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('address.complement')}
-                                        startIcon={<ApartmentIcon sx={{ color: themeColors.primary }}/>}
+                                        startIcon={ApartmentIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={6}>
                                     <EditableField
                                         label="Bairro"
-                                        value={formData.address?.neighborhood || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.address?.neighborhood || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('address.neighborhood')}
-                                        startIcon={<LocationOnIcon sx={{ color: themeColors.primary }}/>}
+                                        startIcon={LocationOnIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={4}>
                                     <EditableField
                                         label="CEP"
-                                        value={formData.address?.cep || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.address?.cep || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('address.cep')}
-                                        startIcon={<PinDropIcon sx={{ color: themeColors.primary }}/>}
+                                        startIcon={PinDropIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={5}>
                                     <EditableField
                                         label="Cidade"
-                                        value={formData.address?.city || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.address?.city || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('address.city')}
-                                        error={errors['address.city']}
-                                        helperText={errors['address.city']}
+                                        error={state.errors['address.city']}
+                                        helperText={state.errors['address.city']}
                                         required
-                                        startIcon={<LocationCityIcon sx={{ color: errors['address.city'] ? themeColors.error : themeColors.primary }}/>}
+                                        startIcon={LocationCityIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12} md={3}>
                                     <EditableField
                                         label="Estado"
-                                        value={formData.address?.state || ""}
-                                        isEditing={isEditing}
+                                        value={state.formData.address?.state || ""}
+                                        isEditing={state.isEditing && !isSecretary}
                                         onChange={handleChange('address.state')}
-                                        error={errors['address.state']}
-                                        helperText={errors['address.state']}
+                                        error={state.errors['address.state']}
+                                        helperText={state.errors['address.state']}
                                         required
-                                        startIcon={<LocationOnIcon sx={{ color: errors['address.state'] ? themeColors.error : themeColors.primary }}/>}
+                                        startIcon={LocationOnIcon}
+                                        disabled={isSecretary}
                                     />
                                 </Grid>
                             </Grid>
@@ -1244,28 +1594,30 @@ const UserProfileTemplate = ({onLogout}) => {
                 </Grid>
             </Grid>
 
-            {/* Modal de gerenciamento de assinatura */}
-            <SubscriptionManagerDialog
-                open={showSubscriptionManager}
-                onClose={() => setShowSubscriptionManager(false)}
-            />
+            {/* ✅ MODAIS */}
+            {!isSecretary && (
+                <>
+                    <SubscriptionManagerDialog
+                        open={state.showSubscriptionManager}
+                        onClose={() => actions.setShowSubscriptionManager(false)}
+                    />
+                    <SecretaryManagerDialog
+                        open={state.showSecretaryManager}
+                        onClose={() => actions.setShowSecretaryManager(false)}
+                    />
+                </>
+            )}
 
-            {/* Modal de gerenciamento de secretárias */}
-            <SecretaryManagerDialog
-                open={showSecretaryManager}
-                onClose={() => setShowSecretaryManager(false)}
-            />
-
-            {/* Alerta de Feedback */}
+            {/* ✅ ALERTA DE FEEDBACK */}
             <Snackbar
-                open={alert.open}
+                open={state.alert.open}
                 autoHideDuration={6000}
-                onClose={handleCloseAlert}
-                anchorOrigin={{vertical: 'bottom', horizontal: 'center'}}
+                onClose={actions.clearAlert}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
             >
                 <Alert
-                    onClose={handleCloseAlert}
-                    severity={alert.severity}
+                    onClose={actions.clearAlert}
+                    severity={state.alert.severity}
                     variant="filled"
                     sx={{
                         width: '100%',
@@ -1273,7 +1625,7 @@ const UserProfileTemplate = ({onLogout}) => {
                         borderRadius: '10px'
                     }}
                 >
-                    {alert.message}
+                    {state.alert.message}
                 </Alert>
             </Snackbar>
         </Box>
