@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc, updateDoc } from "firebase/firestore"; // ✅ IMPORTS CORRIGIDOS
 import firebaseService from "../../lib/firebaseService";
 import moduleService from "../../lib/moduleService";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
@@ -12,13 +13,12 @@ const AuthContext = createContext();
 
 // ✅ CACHE PARA RESULTADOS DE VERIFICAÇÃO - MELHORADO
 const verificationCache = new Map();
-const CACHE_DURATION = 2 * 60 * 1000; // Reduzido para 2 minutos para dados mais frescos
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
 
-// ✅ FUNÇÃO AUXILIAR PARA CACHE COM TTL - MELHORADA
+// ✅ FUNÇÃO AUXILIAR PARA CACHE COM TTL
 const getCachedResult = (key, computeFn, duration = CACHE_DURATION) => {
     const cached = verificationCache.get(key);
 
-    // ✅ Verificar se cache expirou ou se foi invalidado
     if (cached && Date.now() - cached.timestamp < duration && !cached.invalidated) {
         return cached.value;
     }
@@ -36,14 +36,12 @@ const getCachedResult = (key, computeFn, duration = CACHE_DURATION) => {
 // ✅ FUNÇÃO PARA INVALIDAR CACHE ESPECÍFICO
 const invalidateVerificationCache = (pattern = null) => {
     if (pattern) {
-        // Invalidar chaves que contenham o padrão
         for (const [key, value] of verificationCache.entries()) {
             if (key.includes(pattern)) {
                 value.invalidated = true;
             }
         }
     } else {
-        // Invalidar todo o cache
         verificationCache.clear();
     }
 };
@@ -225,6 +223,7 @@ export const AuthProvider = ({ children }) => {
         });
     }, []);
 
+    // ✅ FUNÇÃO PARA OBTER CONTEXTO UNIFICADO - CORRIGIDA
     const getUserUnifiedContextCached = useCallback(async (userId, forceRefresh = false) => {
         const cacheKey = `userContext_${userId}`;
 
@@ -237,8 +236,33 @@ export const AuthProvider = ({ children }) => {
             console.log('🔍 Buscando novo contexto para:', userId);
 
             try {
-                // ✅ VERIFICAR SE É SECRETÁRIA PRIMEIRO (MAIS PROVÁVEL EM PRODUÇÃO)
-                const secretaryRef = doc(firestore, "secretaries", userId);
+                // ✅ PRIMEIRO VERIFICAR SE É MÉDICO (MAIS COMUM)
+                console.log('🔍 Verificando se é médico...');
+                let doctorData;
+
+                try {
+                    doctorData = await firebaseService.getUserData(userId);
+                } catch (error) {
+                    console.log('⚠️ Não encontrado na collection users:', error.message);
+                }
+
+                if (doctorData && doctorData.email) {
+                    console.log(`👨‍⚕️ Médico encontrado: ${doctorData.fullName || doctorData.email}`);
+
+                    const context = {
+                        userType: 'doctor',
+                        workingDoctorId: userId,
+                        userData: doctorData,
+                        permissions: 'full',
+                        isSecretary: false
+                    };
+
+                    return context;
+                }
+
+                // ✅ SE NÃO É MÉDICO, VERIFICAR SE É SECRETÁRIA
+                console.log('🔍 Não é médico, verificando se é secretária...');
+                const secretaryRef = doc(firebaseService.firestore, "secretaries", userId);
                 const secretarySnap = await getDoc(secretaryRef);
 
                 if (secretarySnap.exists()) {
@@ -276,24 +300,13 @@ export const AuthProvider = ({ children }) => {
                     return context;
                 }
 
-                // ✅ SE NÃO É SECRETÁRIA, VERIFICAR SE É MÉDICO
-                console.log('🔍 Não é secretária, verificando se é médico...');
-                const doctorData = await firebaseService.getUserData(userId);
-
-                const context = {
-                    userType: 'doctor',
-                    workingDoctorId: userId,
-                    userData: doctorData,
-                    permissions: 'full',
-                    isSecretary: false
-                };
-
-                console.log(`👨‍⚕️ Contexto de médico obtido: ${doctorData.fullName}`);
-                return context;
+                // ✅ SE NÃO É NEM MÉDICO NEM SECRETÁRIA, TENTAR CRIAR DADOS ÓRFÃOS
+                console.log('🔍 Não é secretária válida, pode ser usuário órfão...');
+                throw new Error("Usuário não encontrado - nem médico nem secretária válida");
 
             } catch (error) {
                 console.error("❌ Erro ao obter contexto unificado:", error);
-                throw new Error("Usuário não autorizado - não é médico nem secretária válida");
+                throw error;
             }
         }, forceRefresh ? 1000 : 5 * 60 * 1000);
     }, []);
@@ -376,6 +389,7 @@ export const AuthProvider = ({ children }) => {
         return true;
     }, [isSecretary, permissions]);
 
+    // ✅ FUNÇÃO PARA CRIAR CONTA DE SECRETÁRIA - CORRIGIDA
     const createSecretaryAccount = useCallback(async (secretaryData) => {
         if (!user || isSecretary) {
             throw new Error("Apenas médicos podem criar contas de secretária");
@@ -399,7 +413,7 @@ export const AuthProvider = ({ children }) => {
                 globalCache.invalidate('profileData', doctorId);
                 invalidateVerificationCache(doctorId);
 
-                // ✅ NÃO PRECISA MAIS DE RE-LOGIN, RECARREGAR CONTEXTO IMEDIATAMENTE
+                // ✅ RECARREGAR CONTEXTO APÓS CRIAÇÃO
                 setTimeout(async () => {
                     try {
                         console.log('🔄 Recarregando contexto após criação de secretária...');
@@ -407,7 +421,7 @@ export const AuthProvider = ({ children }) => {
                     } catch (error) {
                         console.warn('⚠️ Erro ao recarregar contexto após criação:', error);
                     }
-                }, 2000); // Dar tempo para propagação dos dados
+                }, 2000);
             }
 
             return result;
@@ -417,7 +431,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, [user, isSecretary, workingDoctorId]);
 
-// ✅ AUTHENTICATION STATE CHECK MELHORADO
+    // ✅ AUTHENTICATION STATE CHECK MELHORADO
     useEffect(() => {
         let isMounted = true;
         let unsubscribe = null;
@@ -441,7 +455,7 @@ export const AuthProvider = ({ children }) => {
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 }
 
-                // ✅ OBTER CONTEXTO COM RETRY PARA SECRETÁRIAS RECÉM-CRIADAS
+                // ✅ OBTER CONTEXTO COM RETRY PARA CASOS COMPLEXOS
                 let context;
                 let retries = 0;
                 const maxRetries = 3;
@@ -449,7 +463,7 @@ export const AuthProvider = ({ children }) => {
                 while (retries < maxRetries) {
                     try {
                         const timeoutPromise = new Promise((_, reject) =>
-                            setTimeout(() => reject(new Error('Context timeout')), 10000)
+                            setTimeout(() => reject(new Error('Context timeout')), 15000)
                         );
 
                         const contextPromise = getUserUnifiedContextCached(authUser.uid, forceRefresh || retries > 0);
@@ -459,6 +473,24 @@ export const AuthProvider = ({ children }) => {
                     } catch (error) {
                         retries++;
                         console.warn(`⚠️ Tentativa ${retries}/${maxRetries} falhou:`, error.message);
+
+                        // ✅ SE É USUÁRIO ÓRFÃO, TENTAR CRIAR DADOS
+                        if (error.message.includes('Usuário não encontrado') && retries === 1) {
+                            console.log('🔧 Tentando criar dados para usuário órfão...');
+                            try {
+                                const orphanData = await createOrphanUserData(authUser);
+                                context = {
+                                    userType: 'doctor',
+                                    workingDoctorId: authUser.uid,
+                                    userData: orphanData,
+                                    permissions: 'full',
+                                    isSecretary: false
+                                };
+                                break;
+                            } catch (orphanError) {
+                                console.error('❌ Erro ao criar usuário órfão:', orphanError);
+                            }
+                        }
 
                         if (retries < maxRetries) {
                             console.log(`🔄 Aguardando ${retries * 1000}ms antes da próxima tentativa...`);
@@ -866,198 +898,6 @@ export const AuthProvider = ({ children }) => {
             }
         }
     }, [searchParams, hasFreeTrialOffer]);
-
-    // ✅ AUTHENTICATION STATE CHECK - OTIMIZADO COM MELHOR SUPORTE A SECRETÁRIAS
-    useEffect(() => {
-        let isMounted = true;
-        let unsubscribe = null;
-
-        console.log('🔐 Auth state check initialized for path:', pathname);
-
-        // ✅ FUNÇÃO PARA PROCESSAR USUÁRIO AUTENTICADO (MELHORADA)
-        const handleAuthenticatedUser = async (authUser) => {
-            if (!isMounted || processingRef.current) return;
-
-            try {
-                processingRef.current = true;
-                console.log('👤 Processing authenticated user:', authUser.uid);
-
-                // ✅ VERIFICAR SE É UM RE-LOGIN APÓS CRIAÇÃO DE SECRETÁRIA
-                const isPostSecretaryCreation = localStorage.getItem('tempDoctorSession');
-                const forceRefresh = !!isPostSecretaryCreation;
-
-                if (isPostSecretaryCreation) {
-                    console.log('🔄 Re-login detectado após criação de secretária, forçando refresh');
-                    localStorage.removeItem('tempDoctorSession');
-                }
-
-                // ✅ TIMEOUT PARA EVITAR TRAVAMENTOS
-                const contextPromise = getUserUnifiedContextCached(authUser.uid, forceRefresh);
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Context timeout')), 10000)
-                );
-
-                const context = await Promise.race([contextPromise, timeoutPromise]);
-
-                if (!isMounted) return;
-
-                console.log('🎯 Contexto unificado obtido:', context.userType);
-
-                // ✅ ATUALIZAR ESTADOS EM BATCH
-                const newState = {
-                    userContext: context,
-                    isSecretary: context.isSecretary,
-                    workingDoctorId: context.workingDoctorId,
-                    permissions: context.permissions
-                };
-
-                // Aplicar todas as mudanças de uma vez
-                setUserContext(newState.userContext);
-                setIsSecretary(newState.isSecretary);
-                setWorkingDoctorId(newState.workingDoctorId);
-                setPermissions(newState.permissions);
-
-                // ✅ PREPARAR DADOS DO USUÁRIO PARA EXIBIÇÃO
-                const displayUserData = {
-                    uid: authUser.uid,
-                    ...context.userData,
-                    isSecretary: context.isSecretary,
-                    workingDoctorId: context.workingDoctorId,
-                    permissions: context.permissions
-                };
-
-                // Se é secretária, adicionar dados específicos
-                if (context.isSecretary) {
-                    displayUserData.secretaryData = context.secretaryData;
-                    displayUserData.secretaryName = context.secretaryData.name;
-                    displayUserData.secretaryEmail = context.secretaryData.email;
-                    console.log(`👩‍💼 Secretária logada: ${context.secretaryData.name} -> Médico: ${context.userData.fullName}`);
-                }
-
-                setUser(displayUserData);
-
-                // ✅ REGISTRAR LOGIN (NÃO BLOQUEANTE)
-                firebaseService.registerDetailedLogin(
-                    authUser.uid,
-                    authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email'
-                ).catch((loginError) => {
-                    console.warn('⚠️ Erro ao registrar login detalhado (não crítico):', loginError);
-                });
-
-                // ✅ REDIRECIONAMENTO OTIMIZADO
-                setTimeout(() => {
-                    if (!isMounted) return;
-
-                    // Usar dados já carregados ao invés de recalcular
-                    const userData = context.userData;
-
-                    if (shouldRedirectToApp(userData, pathname)) {
-                        console.log('✅ Redirecting authenticated user to /app');
-                        router.push('/app');
-                    } else {
-                        const authRedirect = shouldRedirectToAuth(userData, pathname);
-                        if (authRedirect) {
-                            console.log(`❌ Redirecting user to ${authRedirect.redirect} (reason: ${authRedirect.reason})`);
-                            router.push(authRedirect.redirect);
-                        }
-                    }
-                }, context.isSecretary ? 500 : 200); // Secretárias precisam de mais tempo
-
-            } catch (error) {
-                console.error("❌ Auth processing error:", error);
-
-                if (isMounted) {
-                    // ✅ RESET LIMPO EM CASO DE ERRO
-                    setUser(null);
-                    setUserContext(null);
-                    setIsSecretary(false);
-                    setWorkingDoctorId(null);
-                    setPermissions('full');
-                    globalCache.invalidate('userContext');
-                    verificationCache.clear();
-
-                    // Se erro crítico, redirecionar
-                    if (error.message.includes('timeout') || error.message.includes('unauthorized')) {
-                        router.push('/');
-                    }
-                }
-            } finally {
-                processingRef.current = false;
-            }
-        };
-
-        // ✅ FUNÇÃO PARA PROCESSAR USUÁRIO DESLOGADO (MELHORADA)
-        const handleUnauthenticatedUser = async () => {
-            if (!isMounted) return;
-
-            console.log('🚫 Processing unauthenticated user');
-
-            // ✅ PARAR PRESENÇA SE ATIVA
-            if (presenceInitialized) {
-                try {
-                    await presenceService.stopPresence();
-                    setPresenceInitialized(false);
-                } catch (error) {
-                    console.warn('⚠️ Erro ao parar presença:', error);
-                }
-            }
-
-            // ✅ RESET COMPLETO COM LIMPEZA DE CACHE
-            setUser(null);
-            setUserContext(null);
-            setIsSecretary(false);
-            setWorkingDoctorId(null);
-            setPermissions('full');
-            globalCache.invalidate('userContext');
-            globalCache.invalidate('secretaryInfo');
-            globalCache.invalidate('profileData');
-            verificationCache.clear();
-
-            // ✅ REDIRECIONAR SE NECESSÁRIO
-            const authRedirect = shouldRedirectToAuth(null, pathname);
-            if (authRedirect) {
-                console.log(`🚫 Unauthenticated user trying to access protected route, redirecting to ${authRedirect.redirect}`);
-                router.push(authRedirect.redirect);
-            }
-        };
-
-        // ✅ CONFIGURAR LISTENER
-        try {
-            unsubscribe = onAuthStateChanged(firebaseService.auth, async (authUser) => {
-                if (!isMounted) return;
-
-                try {
-                    if (authUser) {
-                        await handleAuthenticatedUser(authUser);
-                    } else {
-                        await handleUnauthenticatedUser();
-                    }
-                } catch (error) {
-                    console.error("❌ Auth listener error:", error);
-                } finally {
-                    if (isMounted) {
-                        setLoading(false);
-                    }
-                }
-            });
-        } catch (error) {
-            console.error("❌ Auth listener setup error:", error);
-            if (isMounted) {
-                setLoading(false);
-            }
-        }
-
-        // ✅ CLEANUP
-        return () => {
-            isMounted = false;
-            processingRef.current = false;
-            if (unsubscribe) {
-                unsubscribe();
-            }
-        };
-
-        // ✅ DEPENDÊNCIAS MÍNIMAS (CRÍTICO!)
-    }, [pathname]); // Apenas pathname - outras funções são estáveis
 
     // ✅ VERIFICAÇÃO DE TAMANHO DE TELA
     useEffect(() => {

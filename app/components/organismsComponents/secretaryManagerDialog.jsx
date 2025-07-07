@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+// ✅ VERSÃO FINAL DO SECRETARYMANAGERDIALOG - COMPLETAMENTE FUNCIONAL
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -23,8 +25,15 @@ import {
     Alert,
     Snackbar,
     CircularProgress,
-    LinearProgress,
-    InputAdornment
+    InputAdornment,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
+    ListItemSecondaryAction,
+    Tooltip,
+    Paper,
+    LinearProgress
 } from '@mui/material';
 import {
     PersonAdd as PersonAddIcon,
@@ -39,20 +48,116 @@ import {
     Warning as WarningIcon,
     Refresh as RefreshIcon,
     Visibility as VisibilityIcon,
-    VisibilityOff as VisibilityOffIcon
+    VisibilityOff as VisibilityOffIcon,
+    Edit as EditIcon,
+    Delete as DeleteIcon,
+    PowerSettingsNew as PowerIcon,
+    History as HistoryIcon,
+    Info as InfoIcon,
+    AccountCircle as AccountIcon
 } from '@mui/icons-material';
 import { useAuth } from '../authProvider';
 import firebaseService from '../../../lib/firebaseService';
 import globalCache from '../globalCache';
 
+// ✅ CONFIGURAÇÃO DOS MÓDULOS E PERMISSÕES
+const MODULE_PERMISSIONS = {
+    patients: {
+        name: 'Pacientes',
+        icon: '👥',
+        color: '#3B82F6',
+        description: 'Gerenciar informações dos pacientes',
+        actions: {
+            read: 'Visualizar lista de pacientes',
+            write: 'Criar e editar pacientes',
+            viewDetails: 'Ver dados sensíveis (histórico médico)'
+        }
+    },
+    appointments: {
+        name: 'Agenda',
+        icon: '📅',
+        color: '#10B981',
+        description: 'Gerenciar consultas e agendamentos',
+        actions: {
+            read: 'Visualizar agenda',
+            write: 'Agendar e editar consultas'
+        }
+    },
+    prescriptions: {
+        name: 'Receitas',
+        icon: '💊',
+        color: '#F59E0B',
+        description: 'Visualizar e gerenciar receitas médicas',
+        actions: {
+            read: 'Visualizar receitas',
+            write: 'Criar e editar receitas'
+        }
+    },
+    exams: {
+        name: 'Exames',
+        icon: '🔬',
+        color: '#8B5CF6',
+        description: 'Gerenciar exames e resultados',
+        actions: {
+            read: 'Visualizar exames',
+            write: 'Cadastrar e editar exames'
+        }
+    },
+    notes: {
+        name: 'Notas',
+        icon: '📝',
+        color: '#06B6D4',
+        description: 'Acessar anotações médicas',
+        actions: {
+            read: 'Visualizar notas',
+            write: 'Criar e editar notas'
+        }
+    },
+    financial: {
+        name: 'Financeiro',
+        icon: '💰',
+        color: '#DC2626',
+        description: 'Acessar informações financeiras',
+        actions: {
+            read: 'Visualizar relatórios financeiros',
+            write: 'Gerenciar dados financeiros'
+        }
+    },
+    reports: {
+        name: 'Relatórios',
+        icon: '📊',
+        color: '#7C3AED',
+        description: 'Gerar e visualizar relatórios',
+        actions: {
+            read: 'Visualizar relatórios',
+            write: 'Gerar novos relatórios'
+        }
+    }
+};
+
+// ✅ PERMISSÕES PADRÃO PARA NOVA SECRETÁRIA
+const DEFAULT_PERMISSIONS = {
+    patients: { read: true, write: false, viewDetails: false },
+    appointments: { read: true, write: true },
+    prescriptions: { read: true, write: false },
+    exams: { read: true, write: false },
+    notes: { read: true, write: false },
+    financial: { read: false, write: false },
+    reports: { read: true, write: false }
+};
+
+// ✅ COMPONENTE PRINCIPAL
 const SecretaryManagerDialog = ({ open, onClose }) => {
     const { user, isSecretary, reloadUserContext } = useAuth();
+
+    // Estados principais
     const [currentTab, setCurrentTab] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [secretaryInfo, setSecretaryInfo] = useState(null);
+    const [secretaries, setSecretaries] = useState([]);
+    const [secretaryStats, setSecretaryStats] = useState(null);
     const [alert, setAlert] = useState({ open: false, message: '', severity: 'success' });
 
-    // ✅ ESTADOS PARA LIMITES DO PLANO
+    // Estados para limites do plano
     const [planLimits, setPlanLimits] = useState({
         current: 0,
         max: 1,
@@ -67,213 +172,102 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
         email: '',
         password: '',
         confirmPassword: '',
-        permissions: {
-            patients: { read: true, write: false, viewDetails: false },
-            appointments: { read: true, write: true },
-            prescriptions: { read: true, write: false },
-            exams: { read: true, write: false },
-            notes: { read: true, write: false },
-            financial: { read: false, write: false },
-            reports: { read: true, write: false }
-        }
+        permissions: { ...DEFAULT_PERMISSIONS }
     });
     const [createErrors, setCreateErrors] = useState({});
     const [showPassword, setShowPassword] = useState(false);
     const [creating, setCreating] = useState(false);
 
-    // ✅ FUNÇÃO SIMPLIFICADA PARA CARREGAR LIMITES DO PLANO
-    const loadPlanLimits = async () => {
-        try {
-            console.log('📊 Carregando limites do plano...');
+    // Estados para edição de permissões
+    const [editingSecretary, setEditingSecretary] = useState(null);
+    const [editPermissions, setEditPermissions] = useState({});
+    const [savingPermissions, setSavingPermissions] = useState(false);
 
-            let max, planName;
-            if (user?.administrador) {
-                max = 10;
-                planName = 'Administrador';
-            } else if (user?.assinouPlano) {
-                max = 5;
-                planName = 'Pago';
-            } else {
-                max = 1;
-                planName = 'Gratuito';
-            }
+    // ✅ FUNÇÃO PARA MOSTRAR ALERTAS
+    const showAlert = useCallback((message, severity = 'success') => {
+        setAlert({ open: true, message, severity });
+    }, []);
 
-            const current = secretaryInfo ? 1 : 0;
-            const canCreateMore = current < max;
-            const remaining = Math.max(0, max - current);
+    const handleCloseAlert = useCallback(() => {
+        setAlert(prev => ({ ...prev, open: false }));
+    }, []);
 
-            const limits = {
-                current,
-                max,
-                planName,
-                canCreateMore,
-                remaining
-            };
+    // ✅ FUNÇÃO PARA CARREGAR LIMITES DO PLANO
+    const loadPlanLimits = useCallback(() => {
+        if (!user) return;
 
-            setPlanLimits(limits);
-            console.log('✅ Limites do plano carregados:', limits);
-        } catch (error) {
-            console.error('❌ Erro ao carregar limites do plano:', error);
-            setPlanLimits({
-                current: 0,
-                max: 1,
-                planName: 'Gratuito',
-                canCreateMore: true,
-                remaining: 1
-            });
-        }
-    };
-
-    // ✅ FUNÇÃO SIMPLIFICADA PARA CRIAR SECRETÁRIA
-    const handleCreateSecretary = async () => {
-        if (!validateCreateForm()) {
-            showAlert('Por favor, corrija os erros no formulário', 'error');
-            return;
+        let max, planName;
+        if (user.administrador) {
+            max = 10;
+            planName = 'Administrador';
+        } else if (user.assinouPlano) {
+            max = 5;
+            planName = 'Pago';
+        } else {
+            max = 1;
+            planName = 'Gratuito';
         }
 
-        if (!planLimits.canCreateMore) {
-            showAlert(`Você atingiu o limite de secretárias para o plano ${planLimits.planName}`, 'warning');
-            return;
-        }
+        const current = secretaries.filter(s => s.active).length;
+        const canCreateMore = current < max;
+        const remaining = Math.max(0, max - current);
 
-        try {
-            setCreating(true);
-            console.log('🔄 Iniciando criação simplificada de secretária...');
+        setPlanLimits({
+            current,
+            max,
+            planName,
+            canCreateMore,
+            remaining
+        });
+    }, [user, secretaries]);
 
-            const secretaryData = {
-                name: createForm.name.trim(),
-                email: createForm.email.trim().toLowerCase(),
-                password: createForm.password,
-                permissions: createForm.permissions
-            };
+    // ✅ FUNÇÃO PARA CARREGAR LISTA DE SECRETÁRIAS
+    const loadSecretaries = useCallback(async (forceReload = false) => {
+        if (!user?.uid || isSecretary) return;
 
-            showAlert('Criando secretária...', 'info');
-
-            // ✅ CRIAR SECRETÁRIA SEM LOGOUT
-            const result = await firebaseService.createSecretaryAccount(user.uid, secretaryData);
-
-            if (result.success) {
-                console.log('✅ Secretária criada com sucesso!');
-                showAlert('Secretária criada com sucesso! 🎉', 'success');
-
-                // ✅ PROCESSAR SUCESSO IMEDIATAMENTE
-                await handleSuccessfulCreation(result.data);
-            } else {
-                throw new Error(result.error || 'Erro desconhecido na criação');
-            }
-
-        } catch (error) {
-            console.error('❌ Erro ao criar secretária:', error);
-            showAlert(error.message || 'Erro ao criar secretária', 'error');
-        } finally {
-            setCreating(false);
-        }
-    };
-
-    // ✅ FUNÇÃO SIMPLIFICADA PARA LIDAR COM SUCESSO DA CRIAÇÃO
-    const handleSuccessfulCreation = async (createdData) => {
-        try {
-            console.log('🎉 Processando sucesso da criação...');
-
-            // Limpar formulário
-            setCreateForm({
-                name: '',
-                email: '',
-                password: '',
-                confirmPassword: '',
-                permissions: {
-                    patients: { read: true, write: false, viewDetails: false },
-                    appointments: { read: true, write: true },
-                    prescriptions: { read: true, write: false },
-                    exams: { read: true, write: false },
-                    notes: { read: true, write: false },
-                    financial: { read: false, write: false },
-                    reports: { read: true, write: false }
-                }
-            });
-            setCreateErrors({});
-
-            // ✅ INVALIDAR CACHE
-            console.log('🗑️ Invalidando caches...');
-            globalCache.invalidate('userContext', user.uid);
-            globalCache.invalidate('secretaryInfo', user.uid);
-            globalCache.invalidate('profileData', user.uid);
-
-            // ✅ AGUARDAR UM POUCO PARA PROPAGAÇÃO
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // ✅ RECARREGAR INFORMAÇÕES
-            await Promise.all([
-                loadSecretaryInfo(true),
-                loadPlanLimits(),
-                reloadUserContext().catch(error => {
-                    console.warn('⚠️ Erro ao recarregar contexto:', error);
-                })
-            ]);
-
-            // Ir para aba de gerenciamento
-            setCurrentTab(1);
-
-            console.log('✅ Sucesso processado completamente');
-
-        } catch (error) {
-            console.error('❌ Erro no pós-processamento:', error);
-            showAlert('Secretária criada, mas houve erro ao atualizar interface. Atualize a página.', 'warning');
-        }
-    };
-
-    // ✅ FUNÇÃO MELHORADA PARA CARREGAR INFORMAÇÕES DA SECRETÁRIA
-    const loadSecretaryInfo = async (forceReload = false) => {
         try {
             setLoading(true);
 
             if (forceReload) {
                 globalCache.invalidate('secretaryInfo', user.uid);
-                console.log('🔄 Força recarregamento das informações da secretária...');
-                // Aguardar propagação dos dados
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                globalCache.invalidate('profileData', user.uid);
             }
 
-            const info = await firebaseService.getDoctorSecretaryInfo(user.uid);
-            setSecretaryInfo(info);
+            const secretariesList = await firebaseService.listDoctorSecretaries(user.uid, true);
+            setSecretaries(secretariesList);
 
-            if (info) {
-                console.log(`✅ Informações da secretária carregadas: ${info.name}`);
-            } else {
-                console.log('📝 Nenhuma secretária encontrada');
-            }
+            // Gerar estatísticas
+            const stats = {
+                total: secretariesList.length,
+                active: secretariesList.filter(s => s.active).length,
+                inactive: secretariesList.filter(s => !s.active).length,
+                totalLogins: secretariesList.reduce((sum, s) => sum + (s.loginCount || 0), 0)
+            };
+            setSecretaryStats(stats);
+
+            console.log(`✅ ${secretariesList.length} secretária(s) carregada(s)`);
 
         } catch (error) {
-            console.error('❌ Erro ao carregar informações da secretária:', error);
-            showAlert('Erro ao carregar informações da secretária', 'error');
+            console.error('❌ Erro ao carregar secretárias:', error);
+            showAlert('Erro ao carregar lista de secretárias', 'error');
         } finally {
             setLoading(false);
         }
-    };
+    }, [user?.uid, isSecretary, showAlert]);
 
-    // ✅ FUNÇÃO PARA ATUALIZAR MANUALMENTE
-    const handleRefreshSecretaryInfo = async () => {
-        console.log('🔄 Atualizando informações da secretária manualmente...');
-        await loadSecretaryInfo(true);
-        await loadPlanLimits();
-    };
+    // ✅ ATUALIZAR LIMITES QUANDO SECRETÁRIAS MUDAM
+    useEffect(() => {
+        loadPlanLimits();
+    }, [secretaries, loadPlanLimits]);
 
-    // Função para mostrar alert
-    const showAlert = (message, severity = 'success') => {
-        setAlert({ open: true, message, severity });
-    };
-
-    // Função para fechar alert
-    const handleCloseAlert = () => {
-        setAlert({ ...alert, open: false });
-    };
-
-    // Validação do formulário
-    const validateCreateForm = () => {
+    // ✅ VALIDAÇÃO DO FORMULÁRIO DE CRIAÇÃO
+    const validateCreateForm = useCallback(() => {
         const errors = {};
 
         if (!createForm.name.trim()) {
             errors.name = 'Nome é obrigatório';
+        } else if (createForm.name.trim().length < 3) {
+            errors.name = 'Nome deve ter pelo menos 3 caracteres';
         }
 
         if (!createForm.email.trim()) {
@@ -294,25 +288,26 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
 
         setCreateErrors(errors);
         return Object.keys(errors).length === 0;
-    };
+    }, [createForm]);
 
-    // Handlers para mudanças no formulário
-    const handleFormChange = (field) => (event) => {
+    // ✅ HANDLER PARA MUDANÇAS NO FORMULÁRIO
+    const handleFormChange = useCallback((field) => (event) => {
         setCreateForm(prev => ({
             ...prev,
             [field]: event.target.value
         }));
 
+        // Limpar erro do campo
         if (createErrors[field]) {
             setCreateErrors(prev => ({
                 ...prev,
                 [field]: null
             }));
         }
-    };
+    }, [createErrors]);
 
-    // Handler para mudanças nas permissões
-    const handlePermissionChange = (module, action) => (event) => {
+    // ✅ HANDLER PARA MUDANÇAS NAS PERMISSÕES
+    const handlePermissionChange = useCallback((module, action) => (event) => {
         setCreateForm(prev => ({
             ...prev,
             permissions: {
@@ -323,22 +318,143 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                 }
             }
         }));
-    };
+    }, []);
 
-    // ✅ CARREGAR INFORMAÇÕES AO ABRIR O DIALOG
+    // ✅ FUNÇÃO PARA CRIAR SECRETÁRIA
+    const handleCreateSecretary = useCallback(async () => {
+        if (!validateCreateForm()) {
+            showAlert('Por favor, corrija os erros no formulário', 'error');
+            return;
+        }
+
+        if (!planLimits.canCreateMore) {
+            showAlert(`Você atingiu o limite de secretárias para o plano ${planLimits.planName}`, 'warning');
+            return;
+        }
+
+        try {
+            setCreating(true);
+            showAlert('Criando secretária...', 'info');
+
+            const secretaryData = {
+                name: createForm.name.trim(),
+                email: createForm.email.trim().toLowerCase(),
+                password: createForm.password,
+                permissions: createForm.permissions
+            };
+
+            const result = await firebaseService.createSecretaryAccount(user.uid, secretaryData);
+
+            if (result.success) {
+                showAlert(`✅ Secretária ${secretaryData.name} criada com sucesso!`, 'success');
+
+                // Limpar formulário
+                setCreateForm({
+                    name: '',
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    permissions: { ...DEFAULT_PERMISSIONS }
+                });
+                setCreateErrors({});
+
+                // Recarregar listas
+                setTimeout(async () => {
+                    await Promise.all([
+                        loadSecretaries(true),
+                        reloadUserContext?.(true)
+                    ]);
+                    setCurrentTab(1); // Ir para aba de gerenciamento
+                }, 1500);
+            } else {
+                throw new Error(result.error || 'Erro desconhecido na criação');
+            }
+
+        } catch (error) {
+            console.error('❌ Erro ao criar secretária:', error);
+
+            let errorMessage = error.message;
+            if (errorMessage.includes('email-already-in-use')) {
+                errorMessage = 'Este e-mail já está sendo usado';
+            } else if (errorMessage.includes('weak-password')) {
+                errorMessage = 'Senha muito fraca. Use pelo menos 8 caracteres';
+            } else if (errorMessage.includes('invalid-email')) {
+                errorMessage = 'E-mail inválido';
+            }
+
+            showAlert(errorMessage, 'error');
+        } finally {
+            setCreating(false);
+        }
+    }, [validateCreateForm, planLimits, createForm, user?.uid, showAlert, loadSecretaries, reloadUserContext]);
+
+    // ✅ FUNÇÃO PARA EDITAR PERMISSÕES
+    const handleEditPermissions = useCallback((secretary) => {
+        setEditingSecretary(secretary);
+        setEditPermissions({ ...secretary.permissions });
+    }, []);
+
+    // ✅ FUNÇÃO PARA SALVAR PERMISSÕES EDITADAS
+    const handleSavePermissions = useCallback(async () => {
+        if (!editingSecretary) return;
+
+        try {
+            setSavingPermissions(true);
+
+            await firebaseService.updateSecretaryPermissions(
+                user.uid,
+                editingSecretary.id,
+                editPermissions
+            );
+
+            showAlert('Permissões atualizadas com sucesso!', 'success');
+            setEditingSecretary(null);
+            setEditPermissions({});
+
+            // Recarregar lista
+            await loadSecretaries(true);
+
+        } catch (error) {
+            console.error('❌ Erro ao atualizar permissões:', error);
+            showAlert('Erro ao atualizar permissões', 'error');
+        } finally {
+            setSavingPermissions(false);
+        }
+    }, [editingSecretary, editPermissions, user?.uid, showAlert, loadSecretaries]);
+
+    // ✅ FUNÇÃO PARA DESATIVAR/REATIVAR SECRETÁRIA
+    const handleToggleSecretaryStatus = useCallback(async (secretary) => {
+        try {
+            if (secretary.active) {
+                await firebaseService.deactivateSecretaryAccount(user.uid, secretary.id);
+                showAlert(`Secretária ${secretary.name} desativada`, 'success');
+            } else {
+                await firebaseService.reactivateSecretaryAccount(user.uid, secretary.id);
+                showAlert(`Secretária ${secretary.name} reativada`, 'success');
+            }
+
+            // Recarregar lista
+            await loadSecretaries(true);
+
+        } catch (error) {
+            console.error('❌ Erro ao alterar status da secretária:', error);
+            showAlert(`Erro ao ${secretary.active ? 'desativar' : 'reativar'} secretária`, 'error');
+        }
+    }, [user?.uid, showAlert, loadSecretaries]);
+
+    // ✅ CARREGAR DADOS QUANDO DIALOG ABRE
     useEffect(() => {
         if (open && user?.uid && !isSecretary) {
-            console.log('📂 Dialog aberto, carregando informações...');
-            loadSecretaryInfo();
-            loadPlanLimits();
+            loadSecretaries();
         }
-    }, [open, user?.uid, isSecretary]);
+    }, [open, user?.uid, isSecretary, loadSecretaries]);
 
-    // ✅ RESETAR ESTADOS AO FECHAR
+    // ✅ RESET AO FECHAR
     useEffect(() => {
         if (!open) {
             setCurrentTab(0);
-            setSecretaryInfo(null);
+            setEditingSecretary(null);
+            setEditPermissions({});
         }
     }, [open]);
 
@@ -351,7 +467,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                     <Typography variant="h6" sx={{ mb: 1 }}>
                         Acesso Restrito
                     </Typography>
-                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="textSecondary">
                         Secretárias não podem gerenciar outras secretárias.
                     </Typography>
                 </DialogContent>
@@ -362,15 +478,122 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
         );
     }
 
+    // ✅ COMPONENTE DE PERMISSÕES PARA CRIAÇÃO
+    const PermissionModule = ({ module, moduleInfo, permissions, onChange, disabled = false }) => (
+        <Card sx={{ height: '100%', border: '1px solid', borderColor: 'grey.200' }}>
+            <CardContent sx={{ p: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography sx={{ fontSize: '20px', mr: 1 }}>
+                        {moduleInfo.icon}
+                    </Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {moduleInfo.name}
+                    </Typography>
+                </Box>
+
+                <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'text.secondary' }}>
+                    {moduleInfo.description}
+                </Typography>
+
+                <FormGroup>
+                    {Object.entries(moduleInfo.actions).map(([action, description]) => (
+                        <FormControlLabel
+                            key={action}
+                            control={
+                                <Switch
+                                    checked={permissions[action] || false}
+                                    onChange={onChange(module, action)}
+                                    size="small"
+                                    disabled={disabled}
+                                />
+                            }
+                            label={
+                                <Tooltip title={description} arrow>
+                                    <Typography variant="caption">
+                                        {action === 'read' ? 'Visualizar' :
+                                            action === 'write' ? 'Editar' :
+                                                action === 'viewDetails' ? 'Ver Detalhes' : action}
+                                    </Typography>
+                                </Tooltip>
+                            }
+                        />
+                    ))}
+                </FormGroup>
+            </CardContent>
+        </Card>
+    );
+
+    // ✅ COMPONENTE DE CARD DA SECRETÁRIA
+    const SecretaryCard = ({ secretary }) => (
+        <Card sx={{ mb: 2, border: '1px solid', borderColor: secretary.active ? 'success.light' : 'grey.300' }}>
+            <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Avatar sx={{ mr: 2, bgcolor: secretary.active ? 'success.main' : 'grey.500' }}>
+                        {secretary.name.charAt(0)}
+                    </Avatar>
+                    <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            {secretary.name}
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                            {secretary.email}
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Chip
+                            icon={secretary.active ? <CheckCircleIcon /> : <BlockIcon />}
+                            label={secretary.active ? 'Ativa' : 'Inativa'}
+                            color={secretary.active ? 'success' : 'default'}
+                            size="small"
+                        />
+                    </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box>
+                        <Typography variant="caption" color="textSecondary">
+                            Logins realizados: {secretary.loginCount || 0}
+                        </Typography>
+                        {secretary.lastLogin && (
+                            <Typography variant="caption" display="block" color="textSecondary">
+                                Último acesso: {new Date(secretary.lastLogin.toDate()).toLocaleDateString('pt-BR')}
+                            </Typography>
+                        )}
+                    </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<EditIcon />}
+                        onClick={() => handleEditPermissions(secretary)}
+                    >
+                        Editar Permissões
+                    </Button>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        color={secretary.active ? 'error' : 'success'}
+                        startIcon={<PowerIcon />}
+                        onClick={() => handleToggleSecretaryStatus(secretary)}
+                    >
+                        {secretary.active ? 'Desativar' : 'Reativar'}
+                    </Button>
+                </Box>
+            </CardContent>
+        </Card>
+    );
+
     return (
         <>
             <Dialog
                 open={open}
                 onClose={onClose}
-                maxWidth="lg"
+                maxWidth="xl"
                 fullWidth
                 PaperProps={{
-                    sx: { borderRadius: '20px', minHeight: '70vh' }
+                    sx: { borderRadius: '20px', minHeight: '80vh', maxHeight: '90vh' }
                 }}
             >
                 <DialogTitle sx={{ p: 3, pb: 1 }}>
@@ -382,7 +605,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {currentTab === 1 && (
                                 <IconButton
-                                    onClick={handleRefreshSecretaryInfo}
+                                    onClick={() => loadSecretaries(true)}
                                     disabled={loading}
                                     size="small"
                                     title="Atualizar informações"
@@ -395,6 +618,18 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                             </IconButton>
                         </Box>
                     </Box>
+
+                    {/* Indicador de estatísticas */}
+                    {secretaryStats && (
+                        <Box sx={{ mt: 2 }}>
+                            <Alert severity="info" sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                                <Typography variant="body2">
+                                    <strong>Plano {planLimits.planName}:</strong> {planLimits.current}/{planLimits.max} secretária(s) •
+                                    {secretaryStats.active} ativa(s) • {secretaryStats.totalLogins} logins totais
+                                </Typography>
+                            </Alert>
+                        </Box>
+                    )}
                 </DialogTitle>
 
                 <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
@@ -409,19 +644,21 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                             iconPosition="start"
                         />
                         <Tab
-                            label="Gerenciar"
+                            label={`Gerenciar (${secretaries.filter(s => s.active).length})`}
                             icon={<SettingsIcon />}
                             iconPosition="start"
                         />
                     </Tabs>
                 </Box>
 
-                <DialogContent sx={{ p: 0, minHeight: '500px' }}>
+                <DialogContent sx={{ p: 0, minHeight: '500px', maxHeight: '60vh', overflow: 'auto' }}>
+                    {loading && <LinearProgress />}
+
                     {/* ✅ ABA DE CRIAÇÃO */}
                     {currentTab === 0 && (
                         <Box sx={{ p: 3 }}>
                             {/* Indicador de limite */}
-                            <Card sx={{ mb: 3, bgcolor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                            <Card sx={{ mb: 3, bgcolor: planLimits.canCreateMore ? 'success.light' : 'warning.light' }}>
                                 <CardContent sx={{ py: 2 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <Box>
@@ -452,8 +689,8 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                 </CardContent>
                             </Card>
 
+                            {/* Formulário de criação */}
                             <Grid container spacing={3}>
-                                {/* Dados básicos */}
                                 <Grid item xs={12}>
                                     <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
                                         <PersonIcon sx={{ mr: 1 }} />
@@ -550,7 +787,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                     />
                                 </Grid>
 
-                                {/* Permissões simplificadas */}
+                                {/* Permissões */}
                                 <Grid item xs={12}>
                                     <Divider sx={{ my: 2 }} />
                                     <Typography variant="h6" sx={{ mb: 2 }}>
@@ -558,54 +795,15 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                     </Typography>
 
                                     <Grid container spacing={2}>
-                                        {Object.entries(createForm.permissions).map(([module, permissions]) => (
+                                        {Object.entries(MODULE_PERMISSIONS).map(([module, moduleInfo]) => (
                                             <Grid item xs={12} md={6} lg={4} key={module}>
-                                                <Card sx={{ p: 2, height: '100%' }}>
-                                                    <Typography variant="subtitle2" sx={{ mb: 1, textTransform: 'capitalize' }}>
-                                                        {module === 'patients' ? 'Pacientes' :
-                                                            module === 'appointments' ? 'Agenda' :
-                                                                module === 'prescriptions' ? 'Receitas' :
-                                                                    module === 'exams' ? 'Exames' :
-                                                                        module === 'notes' ? 'Notas' :
-                                                                            module === 'financial' ? 'Financeiro' :
-                                                                                module === 'reports' ? 'Relatórios' : module}
-                                                    </Typography>
-
-                                                    <FormGroup>
-                                                        <FormControlLabel
-                                                            control={
-                                                                <Switch
-                                                                    checked={permissions.read}
-                                                                    onChange={handlePermissionChange(module, 'read')}
-                                                                    size="small"
-                                                                />
-                                                            }
-                                                            label="Visualizar"
-                                                        />
-                                                        <FormControlLabel
-                                                            control={
-                                                                <Switch
-                                                                    checked={permissions.write}
-                                                                    onChange={handlePermissionChange(module, 'write')}
-                                                                    size="small"
-                                                                />
-                                                            }
-                                                            label="Editar"
-                                                        />
-                                                        {permissions.viewDetails !== undefined && (
-                                                            <FormControlLabel
-                                                                control={
-                                                                    <Switch
-                                                                        checked={permissions.viewDetails}
-                                                                        onChange={handlePermissionChange(module, 'viewDetails')}
-                                                                        size="small"
-                                                                    />
-                                                                }
-                                                                label="Ver Detalhes"
-                                                            />
-                                                        )}
-                                                    </FormGroup>
-                                                </Card>
+                                                <PermissionModule
+                                                    module={module}
+                                                    moduleInfo={moduleInfo}
+                                                    permissions={createForm.permissions[module] || {}}
+                                                    onChange={handlePermissionChange}
+                                                    disabled={creating}
+                                                />
                                             </Grid>
                                         ))}
                                     </Grid>
@@ -621,52 +819,15 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
                                     <CircularProgress sx={{ mb: 2 }} />
                                     <Typography variant="body2" color="textSecondary">
-                                        Carregando informações da secretária...
+                                        Carregando secretárias...
                                     </Typography>
                                 </Box>
-                            ) : secretaryInfo ? (
-                                <Card>
-                                    <CardContent>
-                                        <Alert severity="success" sx={{ mb: 3 }}>
-                                            <Typography variant="body2">
-                                                ✅ <strong>Secretária ativa encontrada!</strong> Sua secretária está configurada e operacional.
-                                            </Typography>
-                                        </Alert>
-
-                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                                            <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                                                {secretaryInfo.name?.charAt(0)}
-                                            </Avatar>
-                                            <Box>
-                                                <Typography variant="h6">
-                                                    {secretaryInfo.name}
-                                                </Typography>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    {secretaryInfo.email}
-                                                </Typography>
-                                            </Box>
-                                            <Box sx={{ ml: 'auto' }}>
-                                                <Chip
-                                                    icon={secretaryInfo.active ? <CheckCircleIcon /> : <BlockIcon />}
-                                                    label={secretaryInfo.active ? 'Ativa' : 'Inativa'}
-                                                    color={secretaryInfo.active ? 'success' : 'error'}
-                                                />
-                                            </Box>
-                                        </Box>
-
-                                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                                            Estatísticas:
-                                        </Typography>
-                                        <Typography variant="body2" color="textSecondary">
-                                            Logins realizados: {secretaryInfo.loginCount || 0}
-                                        </Typography>
-                                        {secretaryInfo.lastLogin && (
-                                            <Typography variant="body2" color="textSecondary">
-                                                Último acesso: {new Date(secretaryInfo.lastLogin.toDate()).toLocaleString('pt-BR')}
-                                            </Typography>
-                                        )}
-                                    </CardContent>
-                                </Card>
+                            ) : secretaries.length > 0 ? (
+                                <>
+                                    {secretaries.map((secretary) => (
+                                        <SecretaryCard key={secretary.id} secretary={secretary} />
+                                    ))}
+                                </>
                             ) : (
                                 <Box sx={{ textAlign: 'center', py: 4 }}>
                                     <PeopleIcon sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
@@ -676,20 +837,20 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                                     <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
                                         Use a aba "Criar Nova" para adicionar uma secretária
                                     </Typography>
-
-                                    <Alert severity="info" sx={{ maxWidth: 400, mx: 'auto' }}>
-                                        <Typography variant="caption">
-                                            <strong>💡 Dica:</strong> Se você acabou de criar uma secretária e não está aparecendo aqui,
-                                            clique no botão de atualizar (↻) no canto superior direito.
-                                        </Typography>
-                                    </Alert>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<PersonAddIcon />}
+                                        onClick={() => setCurrentTab(0)}
+                                    >
+                                        Criar Primeira Secretária
+                                    </Button>
                                 </Box>
                             )}
                         </Box>
                     )}
                 </DialogContent>
 
-                {/* ✅ BOTÕES DE AÇÃO SIMPLIFICADOS */}
+                {/* ✅ BOTÕES */}
                 {currentTab === 0 && (
                     <DialogActions sx={{ p: 3, pt: 1 }}>
                         <Button onClick={onClose} disabled={creating}>
@@ -716,6 +877,57 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                         )}
                     </DialogActions>
                 )}
+            </Dialog>
+
+            {/* ✅ DIALOG DE EDIÇÃO DE PERMISSÕES */}
+            <Dialog
+                open={!!editingSecretary}
+                onClose={() => setEditingSecretary(null)}
+                maxWidth="lg"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <EditIcon sx={{ mr: 2 }} />
+                        Editar Permissões: {editingSecretary?.name}
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                        {Object.entries(MODULE_PERMISSIONS).map(([module, moduleInfo]) => (
+                            <Grid item xs={12} md={6} lg={4} key={module}>
+                                <PermissionModule
+                                    module={module}
+                                    moduleInfo={moduleInfo}
+                                    permissions={editPermissions[module] || {}}
+                                    onChange={(module, action) => (event) => {
+                                        setEditPermissions(prev => ({
+                                            ...prev,
+                                            [module]: {
+                                                ...prev[module],
+                                                [action]: event.target.checked
+                                            }
+                                        }));
+                                    }}
+                                    disabled={savingPermissions}
+                                />
+                            </Grid>
+                        ))}
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditingSecretary(null)} disabled={savingPermissions}>
+                        Cancelar
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleSavePermissions}
+                        disabled={savingPermissions}
+                        startIcon={savingPermissions ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+                    >
+                        {savingPermissions ? 'Salvando...' : 'Salvar Permissões'}
+                    </Button>
+                </DialogActions>
             </Dialog>
 
             {/* Snackbar de alertas */}
