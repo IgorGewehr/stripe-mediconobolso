@@ -4,14 +4,11 @@ import React, { useState, useMemo } from "react";
 import { Box, Button, Typography, Avatar, Tooltip } from "@mui/material";
 import { useResponsiveScale } from "./useScale";
 import { useAuth } from "./authProvider";
-import useModuleAccess from "./useModuleAccess";
-import ModuleProtection from "./ModuleProtection";
 import LockIcon from "@mui/icons-material/Lock";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 // ✨ IMPORTAR ÍCONE PARA O DOCTOR AI
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import PsychologyIcon from "@mui/icons-material/Psychology";
-import { MODULES } from "../../lib/moduleConfig";
 import SecretaryIndicator from "./organismsComponents/secretaryIndicator";
 
 const Sidebar = ({
@@ -24,100 +21,74 @@ const Sidebar = ({
                  }) => {
     const [selected, setSelected] = useState(initialSelected);
     const { user } = useAuth();
-    const { hasAccess, isAdmin, getUnavailableModules, isLegacyUser } = useModuleAccess();
+    // Simplificar verificação de acesso - todos têm acesso básico
+    const hasAccess = () => true;
+    const isAdmin = user?.administrador === true;
     const { scaleStyle } = useResponsiveScale();
     const { isSecretary, userContext } = useAuth();
 
-    // Definir itens do menu com lógica híbrida
+    // Definir itens do menu simplificado
     const menuItems = useMemo(() => ({
         principal: [
             {
                 label: "Dashboard",
-                icon: "/dashboardico.svg",
-                moduleId: MODULES.DASHBOARD
+                icon: "/dashboardico.svg"
             },
             {
                 label: "Pacientes",
-                icon: "/pacientes.svg",
-                moduleId: MODULES.PATIENTS
+                icon: "/pacientes.svg"
             },
             {
                 label: "Receitas",
-                icon: "/receitas.svg",
-                moduleId: MODULES.PRESCRIPTIONS
+                icon: "/receitas.svg"
             },
             {
                 label: "Agenda",
-                icon: "/agenda.svg",
-                moduleId: MODULES.APPOINTMENTS
+                icon: "/agenda.svg"
             },
             {
                 label: "Métricas",
                 icon: "/metricas.svg",
-                disabled: true,
-                moduleId: null
+                disabled: true
             },
             {
                 label: "Financeiro",
                 icon: "/financeiro.svg",
-                disabled: true,
-                moduleId: null
+                disabled: true
             }
         ],
         admin: [
             ...(user && user.administrador === true ? [{
                 label: "Dados",
-                iconComponent: AdminPanelSettingsIcon,
-                moduleId: null
+                iconComponent: AdminPanelSettingsIcon
             }] : [])
         ],
         ia: [
             {
                 label: "Doctor AI",
                 iconComponent: PsychologyIcon,
-                moduleId: null,
                 special: true
             }
         ],
         suporte: [
             {
                 label: "Central de Ajuda",
-                icon: "/centralajuda.svg",
-                moduleId: null
+                icon: "/centralajuda.svg"
             },
             {
                 label: "Reportar",
-                icon: "/reportar.svg",
-                moduleId: null
+                icon: "/reportar.svg"
             }
         ]
     }), [user]);
 
-    // Filtrar itens baseado no acesso (híbrido)
+    // Filtrar itens baseado no acesso simplificado
     const visibleItems = useMemo(() => {
-        const filterItems = (items) => items.map(item => {
-            if (item.hasOwnProperty('disabled')) {
-                return {
-                    ...item,
-                    hasAccess: !item.disabled,
-                    disabled: item.disabled
-                };
-            }
-
-            if (!item.moduleId) {
-                return {
-                    ...item,
-                    hasAccess: true,
-                    disabled: false
-                };
-            }
-
-            return {
-                ...item,
-                hasAccess: hasAccess(item.moduleId),
-                disabled: !hasAccess(item.moduleId)
-            };
-        });
+        const filterItems = (items) => items.map(item => ({
+            ...item,
+            hasAccess: !item.disabled,
+            disabled: item.disabled || false
+        }));
 
         return {
             principal: filterItems(menuItems.principal),
@@ -125,11 +96,9 @@ const Sidebar = ({
             ia: filterItems(menuItems.ia),
             suporte: filterItems(menuItems.suporte)
         };
-    }, [menuItems, hasAccess]);
+    }, [menuItems]);
 
-    const unavailableModules = isLegacyUser ? [] : getUnavailableModules();
-
-    const handleMenuClick = (label, isLogout = false, disabled = false, moduleId = null) => {
+    const handleMenuClick = (label, isLogout = false, disabled = false) => {
         if (disabled) {
             if (label === "Métricas" || label === "Financeiro") {
                 return;

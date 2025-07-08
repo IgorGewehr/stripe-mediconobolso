@@ -32,7 +32,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../authProvider';
 
-// ✅ CONFIGURAÇÃO DE MÓDULOS E SUAS DESCRIÇÕES
+// ✅ CONFIGURAÇÃO LOCAL DE MÓDULOS E SUAS DESCRIÇÕES (removido moduleConfig)
 const MODULE_CONFIG = {
     patients: {
         name: 'Pacientes',
@@ -613,7 +613,7 @@ export const usePermissionManager = () => {
         checkMultiplePermissions,
         getModuleInfo,
         getUserPermissionLevel,
-        moduleConfig: MODULE_CONFIG
+        modules: MODULE_CONFIG
     };
 };
 

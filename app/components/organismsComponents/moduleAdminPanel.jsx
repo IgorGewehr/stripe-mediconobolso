@@ -51,13 +51,79 @@ import {
 
 import firebaseService from '../../../lib/firebaseService';
 import moduleService from '../../../lib/moduleService';
-import {
-    MODULES,
-    MODULE_INFO,
-    PLAN_MODULES,
-    getModulesByPlan,
-    getLimitationsByPlan
-} from '../../../lib/moduleConfig';
+// Definições locais dos módulos - removido moduleConfig
+const MODULE_INFO = {
+    'receitas': {
+        icon: '💊',
+        name: 'Receitas Médicas',
+        description: 'Criar e gerenciar receitas digitais'
+    },
+    'agenda': {
+        icon: '📅',
+        name: 'Agenda Médica',
+        description: 'Agendar e gerenciar consultas'
+    },
+    'pacientes': {
+        icon: '👥',
+        name: 'Pacientes',
+        description: 'Gerenciar cadastro de pacientes'
+    },
+    'metricas': {
+        icon: '📊',
+        name: 'Métricas e Relatórios',
+        description: 'Acessar relatórios detalhados'
+    },
+    'financeiro': {
+        icon: '💰',
+        name: 'Financeiro',
+        description: 'Controle financeiro da clínica'
+    },
+    'ai_analysis': {
+        icon: '🤖',
+        name: 'Análise por IA',
+        description: 'Análise automatizada de exames e relatórios clínicos'
+    },
+    'dados': {
+        icon: '⚙️',
+        name: 'Administração',
+        description: 'Painel administrativo avançado'
+    }
+};
+
+const PLAN_MODULES = {
+    'free': {
+        name: 'Gratuito',
+        modules: ['receitas', 'agenda', 'pacientes']
+    },
+    'monthly': {
+        name: 'Mensal',
+        modules: ['receitas', 'agenda', 'pacientes', 'metricas', 'ai_analysis']
+    },
+    'quarterly': {
+        name: 'Trimestral',
+        modules: ['receitas', 'agenda', 'pacientes', 'metricas', 'ai_analysis', 'financeiro']
+    },
+    'annual': {
+        name: 'Anual',
+        modules: ['receitas', 'agenda', 'pacientes', 'metricas', 'ai_analysis', 'financeiro', 'dados']
+    }
+};
+
+// Funções auxiliares locais
+const getModulesByPlan = (plan) => {
+    return PLAN_MODULES[plan]?.modules || [];
+};
+
+const getLimitationsByPlan = (plan) => {
+    // Definir limitações básicas por plano
+    const limitations = {
+        'free': { maxPatients: 50, maxPrescriptions: 100 },
+        'monthly': { maxPatients: 200, maxPrescriptions: 500 },
+        'quarterly': { maxPatients: 500, maxPrescriptions: 1000 },
+        'annual': { maxPatients: -1, maxPrescriptions: -1 }
+    };
+    return limitations[plan] || limitations.free;
+};
 import useModuleAccess from '../useModuleAccess';
 
 const ModuleAdminPanel = () => {
