@@ -12,8 +12,8 @@ export function useResponsiveScale() {
             setWidth(screenWidth);
 
             // Ajuste os valores conforme necessário para seus dispositivos específicos
-            if (screenWidth <= 1366) { // Cerca de 13-14"
-                setScale(0.85); // Menor para telas pequenas
+            if (screenWidth <= 1366) { // Notebooks de 14" ou menos
+                setScale(1.0); // Escala normal para notebooks pequenos
             } else if (screenWidth <= 1536) { // Cerca de 15"
                 setScale(0.95); // Seu valor original
             } else if (screenWidth <= 1920) { // Cerca de 16"

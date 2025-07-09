@@ -2,6 +2,7 @@
 import React from "react";
 import { Box, Typography, Button } from "@mui/material";
 import NotificationComponent from "./organismsComponents/notificationComponent";
+import { useAuth } from "./authProvider";
 
 // Atualiza o ActionButton para aceitar onClick
 const ActionButton = ({ label, icon, isPrimary = false, onClick }) => {
@@ -105,6 +106,7 @@ const TopAppBar = ({
                        onReceitaClick,
                        onNotificationClick
                    }) => {
+    const { isSecretary, hasModulePermission } = useAuth();
     const handlePacienteClick = () => {
         if (onPacienteClick) {
             onPacienteClick();
@@ -135,7 +137,9 @@ const TopAppBar = ({
                 return (
                     <>
                         <ActionButton label="Receita" icon="newreceita" isPrimary={true} onClick={handleReceitaClick} />
-                        <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
+                        {(!isSecretary || hasModulePermission('patients', 'create')) && (
+                            <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
+                        )}
                         <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} />
                     </>
                 );
@@ -147,7 +151,9 @@ const TopAppBar = ({
                 return (
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <ActionButton label="Receita" icon="newreceita" isPrimary={true} onClick={handleReceitaClick} />
-                        <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
+                        {(!isSecretary || hasModulePermission('patients', 'create')) && (
+                            <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
+                        )}
                         <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} />
                     </Box>
                 );

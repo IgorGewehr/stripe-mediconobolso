@@ -15,39 +15,110 @@ import {
     Chip,
     Alert,
     useTheme,
-    alpha
+    alpha,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from '@mui/material';
 import {
     Send as SendIcon,
     Psychology as PsychologyIcon,
     Person as PersonIcon,
-    AutoAwesome as AutoAwesomeIcon
+    AutoAwesome as AutoAwesomeIcon,
+    Mic as MicIcon,
+    MicOff as MicOffIcon,
+    TrendingUp as TrendingUpIcon,
+    Lock as LockIcon
 } from '@mui/icons-material';
+import AudioProcessingDialog from './audioProcessingDialog';
+import { useAuth } from '../authProvider';
 
 const MiniChatCard = () => {
     const theme = useTheme();
+    const { user, isFreeUser } = useAuth();
 
     // Estados do chat
     const [messages, setMessages] = useState([]);
     const [currentMessage, setCurrentMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [audioDialogOpen, setAudioDialogOpen] = useState(false);
+    const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+
+    // ✅ CONTROLE DE LIMITE PARA USUÁRIOS FREE
+    const [freeUsageCount, setFreeUsageCount] = useState(0);
+    const FREE_USAGE_LIMIT = 5;
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
-    // Auto scroll para a última mensagem
+    // Auto scroll para a última mensagem (apenas dentro do container do chat)
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (messagesEndRef.current) {
+            const chatContainer = messagesEndRef.current.closest('[data-chat-messages]');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            } else {
+                messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+        }
     };
 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
+    // ✅ CARREGAR CONTADOR DE USOS FREE
+    useEffect(() => {
+        if (user?.uid && isFreeUser) {
+            loadFreeUsageCount();
+        }
+    }, [user, isFreeUser]);
+
+    // ✅ CARREGAR CONTADOR DE USOS FREE
+    const loadFreeUsageCount = async () => {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const usageKey = `miniChat_${user.uid}_${today}`;
+            const currentUsage = localStorage.getItem(usageKey) || '0';
+            setFreeUsageCount(parseInt(currentUsage));
+        } catch (error) {
+            console.error("Erro ao carregar contador de usos:", error);
+        }
+    };
+
+    // ✅ INCREMENTAR CONTADOR DE USOS FREE
+    const incrementFreeUsage = () => {
+        if (!isFreeUser) return;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const usageKey = `miniChat_${user.uid}_${today}`;
+        const newCount = freeUsageCount + 1;
+        
+        localStorage.setItem(usageKey, newCount.toString());
+        setFreeUsageCount(newCount);
+        
+        console.log(`🔢 Uso incrementado: ${newCount}/${FREE_USAGE_LIMIT}`);
+    };
+
+    // ✅ VERIFICAR SE PODE USAR CHAT IA
+    const canUseChatAI = () => {
+        if (!isFreeUser) return true;
+        return freeUsageCount < FREE_USAGE_LIMIT;
+    };
+
     // Enviar mensagem
     const handleSendMessage = async () => {
         if (!currentMessage.trim() || isLoading) return;
+
+        // ✅ VERIFICAR LIMITE PARA USUÁRIOS FREE
+        if (isFreeUser && !canUseChatAI()) {
+            console.log(`❌ Limite de uso atingido: ${freeUsageCount}/${FREE_USAGE_LIMIT}`);
+            setUpgradeDialogOpen(true);
+            return;
+        }
 
         const userMessage = currentMessage.trim();
         setCurrentMessage('');
@@ -79,7 +150,8 @@ const MiniChatCard = () => {
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    conversationHistory: conversationHistory
+                    conversationHistory: conversationHistory,
+                    userId: user?.uid
                 }),
             });
 
@@ -99,6 +171,9 @@ const MiniChatCard = () => {
             };
 
             setMessages([...updatedMessages, aiMessage]);
+
+            // ✅ INCREMENTAR CONTADOR DE USOS FREE APÓS SUCESSO
+            incrementFreeUsage();
 
         } catch (error) {
             console.error('Erro ao enviar mensagem:', error);
@@ -122,6 +197,21 @@ const MiniChatCard = () => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             handleSendMessage();
+        }
+    };
+
+    // Handle audio processing result
+    const handleAudioResult = (result) => {
+        if (result && result.transcription) {
+            setCurrentMessage(result.transcription);
+            setAudioDialogOpen(false);
+            // Auto-send if it's just transcription, or let user review if there's analysis
+            if (!result.analysis) {
+                // Simulate user message with transcription
+                setTimeout(() => {
+                    handleSendMessage();
+                }, 100);
+            }
         }
     };
 
@@ -165,21 +255,43 @@ const MiniChatCard = () => {
                             Doctor AI
                         </Typography>
                     </Box>
-                    <Chip
-                        label="Beta"
-                        size="small"
-                        sx={{
-                            fontSize: '0.65rem',
-                            height: '20px',
-                            backgroundColor: alpha('#1852FE', 0.1),
-                            color: '#1852FE',
-                            fontWeight: 600
-                        }}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                            label="Beta"
+                            size="small"
+                            sx={{
+                                fontSize: '0.65rem',
+                                height: '20px',
+                                backgroundColor: alpha('#1852FE', 0.1),
+                                color: '#1852FE',
+                                fontWeight: 600
+                            }}
+                        />
+                        {isFreeUser && (
+                            <Chip
+                                label={`${freeUsageCount}/${FREE_USAGE_LIMIT}`}
+                                size="small"
+                                icon={freeUsageCount >= FREE_USAGE_LIMIT ? <LockIcon /> : undefined}
+                                onClick={freeUsageCount >= FREE_USAGE_LIMIT ? () => setUpgradeDialogOpen(true) : undefined}
+                                sx={{
+                                    fontSize: '0.65rem',
+                                    height: '20px',
+                                    backgroundColor: freeUsageCount >= FREE_USAGE_LIMIT ? '#FEF2F2' : '#F0F9FF',
+                                    color: freeUsageCount >= FREE_USAGE_LIMIT ? '#EF4444' : '#1976D2',
+                                    fontWeight: 600,
+                                    cursor: freeUsageCount >= FREE_USAGE_LIMIT ? 'pointer' : 'default',
+                                    '&:hover': freeUsageCount >= FREE_USAGE_LIMIT ? {
+                                        backgroundColor: '#FEE2E2'
+                                    } : {}
+                                }}
+                            />
+                        )}
+                    </Box>
                 </Box>
 
                 {/* Área das Mensagens */}
                 <Box
+                    data-chat-messages
                     sx={{
                         flex: 1,
                         overflowY: 'auto',
@@ -422,6 +534,26 @@ const MiniChatCard = () => {
                         }}
                     />
                     <IconButton
+                        onClick={() => setAudioDialogOpen(true)}
+                        disabled={isLoading}
+                        sx={{
+                            bgcolor: '#22C55E',
+                            color: 'white',
+                            width: 32,
+                            height: 32,
+                            mr: 0.5,
+                            '&:hover': {
+                                bgcolor: '#16A34A'
+                            },
+                            '&:disabled': {
+                                bgcolor: '#E5E7EB',
+                                color: '#9CA3AF'
+                            }
+                        }}
+                    >
+                        <MicIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
                         onClick={handleSendMessage}
                         disabled={!currentMessage.trim() || isLoading}
                         sx={{
@@ -441,8 +573,171 @@ const MiniChatCard = () => {
                         <SendIcon fontSize="small" />
                     </IconButton>
                 </Box>
+
+                {/* Audio Processing Dialog */}
+                <AudioProcessingDialog
+                    open={audioDialogOpen}
+                    onClose={() => setAudioDialogOpen(false)}
+                    onResult={handleAudioResult}
+                />
+
+                {/* Dialog de Upgrade */}
+                <AccessDeniedDialog
+                    open={upgradeDialogOpen}
+                    onClose={() => setUpgradeDialogOpen(false)}
+                    feature="Mini Chat"
+                    usageCount={freeUsageCount}
+                    usageLimit={FREE_USAGE_LIMIT}
+                />
             </CardContent>
         </Card>
+    );
+};
+
+// Componente AccessDeniedDialog
+const AccessDeniedDialog = ({ open, onClose, feature, usageCount, usageLimit }) => {
+    const theme = useTheme();
+
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: '12px',
+                    p: 2
+                }
+            }}
+        >
+            <DialogTitle sx={{ pb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box
+                        sx={{
+                            width: 48,
+                            height: 48,
+                            bgcolor: '#FEF2F2',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <TrendingUpIcon sx={{ color: '#EF4444', fontSize: 24 }} />
+                    </Box>
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
+                            Limite de Uso Atingido
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                            Plano Gratuito
+                        </Typography>
+                    </Box>
+                </Box>
+            </DialogTitle>
+
+            <DialogContent>
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="body1" sx={{ mb: 2, color: '#374151' }}>
+                        Você atingiu o limite de {usageLimit} usos diários do {feature}.
+                    </Typography>
+                    
+                    <Card sx={{ bgcolor: '#FEF2F2', border: '1px solid #FECACA', mb: 3 }}>
+                        <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="body2" color="textSecondary">
+                                    Uso atual:
+                                </Typography>
+                                <Typography variant="h6" sx={{ color: '#EF4444', fontWeight: 600 }}>
+                                    {usageCount}/{usageLimit}
+                                </Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
+
+                    <Typography variant="body1" sx={{ mb: 2, color: '#374151' }}>
+                        Para continuar usando todas as funcionalidades do {feature}, faça upgrade para um plano pago:
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Card sx={{ border: '1px solid #E5E7EB' }}>
+                            <CardContent sx={{ p: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Box>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#111827' }}>
+                                            Plano Mensal
+                                        </Typography>
+                                        <Typography variant="body2" color="textSecondary">
+                                            Uso ilimitado + recursos avançados
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="h6" sx={{ color: '#059669', fontWeight: 600 }}>
+                                        R$ 29,90/mês
+                                    </Typography>
+                                </Box>
+                            </CardContent>
+                        </Card>
+
+                        <Card sx={{ border: '2px solid #059669', bgcolor: '#F0FDF4' }}>
+                            <CardContent sx={{ p: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Box>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#111827' }}>
+                                            Plano Anual
+                                        </Typography>
+                                        <Typography variant="body2" color="textSecondary">
+                                            Economia de 30% + todos os recursos
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ textAlign: 'right' }}>
+                                        <Typography variant="h6" sx={{ color: '#059669', fontWeight: 600 }}>
+                                            R$ 299,90/ano
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                                            (~R$ 25/mês)
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    </Box>
+                </Box>
+
+                <Typography variant="body2" sx={{ color: '#6B7280', textAlign: 'center', mt: 2 }}>
+                    O limite será renovado automaticamente amanhã às 00:00.
+                </Typography>
+            </DialogContent>
+
+            <DialogActions sx={{ p: 2, pt: 0 }}>
+                <Button
+                    onClick={onClose}
+                    sx={{ 
+                        color: '#6B7280',
+                        textTransform: 'none',
+                        fontWeight: 500
+                    }}
+                >
+                    Fechar
+                </Button>
+                <Button
+                    variant="contained"
+                    onClick={() => window.open('/assinatura', '_blank')}
+                    sx={{
+                        bgcolor: '#059669',
+                        color: 'white',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        px: 3,
+                        '&:hover': {
+                            bgcolor: '#047857'
+                        }
+                    }}
+                >
+                    Fazer Upgrade
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 

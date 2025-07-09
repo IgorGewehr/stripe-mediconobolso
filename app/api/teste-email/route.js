@@ -21,6 +21,19 @@ function corsResponse(data, status = 200) {
 
 // GET para testes rápidos via navegador
 export async function GET(request) {
+    // Security check: Only allow in development or with proper authorization
+    if (process.env.NODE_ENV === 'production') {
+        const authHeader = request.headers.get('authorization');
+        const adminSecret = process.env.ADMIN_SECRET_KEY;
+        
+        if (!adminSecret || authHeader !== `Bearer ${adminSecret}`) {
+            return NextResponse.json({
+                success: false,
+                error: 'Unauthorized access. This endpoint is for development only.'
+            }, { status: 401 });
+        }
+    }
+
     console.log('🚀 [TEST-EMAIL] Iniciando teste via GET...');
 
     try {
@@ -39,12 +52,11 @@ export async function GET(request) {
                 message: 'Teste de configuração',
                 config: configResult,
                 env: {
-                    EMAIL_HOST: process.env.EMAIL_HOST || 'NÃO DEFINIDO',
-                    EMAIL_PORT: process.env.EMAIL_PORT || 'NÃO DEFINIDO',
-                    EMAIL_USER: process.env.EMAIL_USER || 'NÃO DEFINIDO',
-                    EMAIL_FROM: process.env.EMAIL_FROM || 'NÃO DEFINIDO',
-                    // Não expor a senha completa
-                    EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? '***DEFINIDO***' : 'NÃO DEFINIDO'
+                    EMAIL_HOST: process.env.EMAIL_HOST ? '***CONFIGURED***' : 'NOT CONFIGURED',
+                    EMAIL_PORT: process.env.EMAIL_PORT ? '***CONFIGURED***' : 'NOT CONFIGURED',
+                    EMAIL_USER: process.env.EMAIL_USER ? '***CONFIGURED***' : 'NOT CONFIGURED',
+                    EMAIL_FROM: process.env.EMAIL_FROM ? '***CONFIGURED***' : 'NOT CONFIGURED',
+                    EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? '***CONFIGURED***' : 'NOT CONFIGURED'
                 }
             });
         }
@@ -131,6 +143,19 @@ export async function GET(request) {
 
 // POST para testes via código/Postman
 export async function POST(request) {
+    // Security check: Only allow in development or with proper authorization
+    if (process.env.NODE_ENV === 'production') {
+        const authHeader = request.headers.get('authorization');
+        const adminSecret = process.env.ADMIN_SECRET_KEY;
+        
+        if (!adminSecret || authHeader !== `Bearer ${adminSecret}`) {
+            return NextResponse.json({
+                success: false,
+                error: 'Unauthorized access. This endpoint is for development only.'
+            }, { status: 401 });
+        }
+    }
+
     console.log('🚀 [TEST-EMAIL] Iniciando teste via POST...');
 
     try {

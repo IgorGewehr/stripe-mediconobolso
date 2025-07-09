@@ -27,7 +27,11 @@ import {
     Fade,
     Skeleton,
     InputAdornment,
-    Alert
+    Alert,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from "@mui/material";
 import {
     Send as SendIcon,
@@ -40,15 +44,19 @@ import {
     Clear as ClearIcon,
     TrendingUp as TrendingUpIcon,
     CleaningServices as CleaningServicesIcon,
-    Analytics as AnalyticsIcon
+    Analytics as AnalyticsIcon,
+    Mic as MicIcon,
+    MicOff as MicOffIcon
 } from "@mui/icons-material";
 import { useAuth } from "./authProvider";
 import FirebaseService from "../../lib/firebaseService";
 import { format, isToday, isYesterday, isThisWeek, isThisMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import AudioProcessingDialog from './organismsComponents/audioProcessingDialog';
+import AccessDeniedDialog from './organismsComponents/accessDeniedDialog';
 
 const DoctorAITemplate = () => {
-    const { user } = useAuth();
+    const { user, isFreeUser } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -70,6 +78,12 @@ const DoctorAITemplate = () => {
     const [isSearching, setIsSearching] = useState(false);
     const [stats, setStats] = useState(null);
     const [showStats, setShowStats] = useState(false);
+    const [audioDialogOpen, setAudioDialogOpen] = useState(false);
+    const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+
+    // ✅ CONTROLE DE LIMITE PARA USUÁRIOS FREE
+    const [freeUsageCount, setFreeUsageCount] = useState(0);
+    const FREE_USAGE_LIMIT = 5;
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
@@ -92,6 +106,13 @@ const DoctorAITemplate = () => {
 
         return isValid(date) ? date : new Date();
     };
+
+    // ✅ CARREGAR CONTADOR DE USOS FREE
+    useEffect(() => {
+        if (user?.uid && isFreeUser) {
+            loadFreeUsageCount();
+        }
+    }, [user, isFreeUser]);
 
     // Carregar dados ao montar componente
     useEffect(() => {
@@ -118,6 +139,38 @@ const DoctorAITemplate = () => {
             }, 100);
         }
     }, []);
+
+    // ✅ CARREGAR CONTADOR DE USOS FREE
+    const loadFreeUsageCount = async () => {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const usageKey = `doctorAI_${user.uid}_${today}`;
+            const currentUsage = localStorage.getItem(usageKey) || '0';
+            setFreeUsageCount(parseInt(currentUsage));
+        } catch (error) {
+            console.error("Erro ao carregar contador de usos:", error);
+        }
+    };
+
+    // ✅ INCREMENTAR CONTADOR DE USOS FREE
+    const incrementFreeUsage = () => {
+        if (!isFreeUser) return;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const usageKey = `doctorAI_${user.uid}_${today}`;
+        const newCount = freeUsageCount + 1;
+        
+        localStorage.setItem(usageKey, newCount.toString());
+        setFreeUsageCount(newCount);
+        
+        console.log(`🔢 Uso incrementado: ${newCount}/${FREE_USAGE_LIMIT}`);
+    };
+
+    // ✅ VERIFICAR SE PODE USAR CHAT IA
+    const canUseChatAI = () => {
+        if (!isFreeUser) return true;
+        return freeUsageCount < FREE_USAGE_LIMIT;
+    };
 
     // Carregar estatísticas
     const loadStats = async () => {
@@ -277,6 +330,13 @@ const DoctorAITemplate = () => {
     const handleSendMessage = async () => {
         if (!currentMessage.trim() || isLoading) return;
 
+        // ✅ VERIFICAR LIMITE PARA USUÁRIOS FREE
+        if (isFreeUser && !canUseChatAI()) {
+            console.log(`❌ Limite de uso atingido: ${freeUsageCount}/${FREE_USAGE_LIMIT}`);
+            setUpgradeDialogOpen(true);
+            return;
+        }
+
         const userMessage = currentMessage.trim();
         setCurrentMessage('');
         setError('');
@@ -307,7 +367,8 @@ const DoctorAITemplate = () => {
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    conversationHistory: conversationHistory
+                    conversationHistory: conversationHistory,
+                    userId: user?.uid
                 }),
             });
 
@@ -328,6 +389,9 @@ const DoctorAITemplate = () => {
 
             const finalMessages = [...updatedMessages, aiMessage];
             setMessages(finalMessages);
+
+            // ✅ INCREMENTAR CONTADOR DE USOS FREE APÓS SUCESSO
+            incrementFreeUsage();
 
             // Salvar conversa automaticamente
             const savedId = await saveConversation(finalMessages, currentConversationId);
@@ -357,6 +421,21 @@ const DoctorAITemplate = () => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             handleSendMessage();
+        }
+    };
+
+    // Handle audio processing result
+    const handleAudioResult = (result) => {
+        if (result && result.transcription) {
+            setCurrentMessage(result.transcription);
+            setAudioDialogOpen(false);
+            // Auto-send if it's just transcription, or let user review if there's analysis
+            if (!result.analysis) {
+                // Simulate user message with transcription
+                setTimeout(() => {
+                    handleSendMessage();
+                }, 100);
+            }
         }
     };
 
@@ -468,6 +547,38 @@ const DoctorAITemplate = () => {
                                     <span>{stats.totalConversations} conversas</span>
                                     <span>{stats.totalMessages} mensagens</span>
                                     <span>{stats.totalTokens} tokens</span>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Contador de Usos Free */}
+                    {isFreeUser && (
+                        <Card sx={{ mb: 2, backgroundColor: freeUsageCount >= FREE_USAGE_LIMIT ? '#FEF2F2' : '#F0F9FF' }}>
+                            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
+                                    Plano Gratuito
+                                </Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                                    <span style={{ color: freeUsageCount >= FREE_USAGE_LIMIT ? '#EF4444' : '#1976D2' }}>
+                                        {freeUsageCount}/{FREE_USAGE_LIMIT} usos hoje
+                                    </span>
+                                    {freeUsageCount >= FREE_USAGE_LIMIT && (
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            onClick={() => setUpgradeDialogOpen(true)}
+                                            sx={{
+                                                fontSize: '0.6rem',
+                                                py: 0.5,
+                                                px: 1,
+                                                bgcolor: '#EF4444',
+                                                '&:hover': { bgcolor: '#DC2626' }
+                                            }}
+                                        >
+                                            Upgrade
+                                        </Button>
+                                    )}
                                 </Box>
                             </CardContent>
                         </Card>
@@ -960,6 +1071,25 @@ const DoctorAITemplate = () => {
                             }}
                         />
                         <IconButton
+                            onClick={() => setAudioDialogOpen(true)}
+                            disabled={isLoading}
+                            sx={{
+                                bgcolor: '#22C55E',
+                                color: 'white',
+                                width: 44,
+                                height: 44,
+                                '&:hover': {
+                                    bgcolor: '#16A34A'
+                                },
+                                '&:disabled': {
+                                    bgcolor: '#E5E7EB',
+                                    color: '#9CA3AF'
+                                }
+                            }}
+                        >
+                            <MicIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
                             onClick={handleSendMessage}
                             disabled={!currentMessage.trim() || isLoading}
                             sx={{
@@ -979,6 +1109,13 @@ const DoctorAITemplate = () => {
                             <SendIcon fontSize="small" />
                         </IconButton>
                     </Box>
+
+                    {/* Audio Processing Dialog */}
+                    <AudioProcessingDialog
+                        open={audioDialogOpen}
+                        onClose={() => setAudioDialogOpen(false)}
+                        onResult={handleAudioResult}
+                    />
                 </Box>
             </Box>
 
@@ -999,8 +1136,18 @@ const DoctorAITemplate = () => {
                     Excluir
                 </MenuItem>
             </Menu>
+
+            {/* Dialog de Upgrade */}
+            <AccessDeniedDialog
+                open={upgradeDialogOpen}
+                onClose={() => setUpgradeDialogOpen(false)}
+                feature="Doctor AI"
+                usageCount={freeUsageCount}
+                usageLimit={FREE_USAGE_LIMIT}
+            />
         </Box>
     );
 };
+
 
 export default DoctorAITemplate;

@@ -1,15 +1,13 @@
 // app/api/audio-processing/route.js
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
-import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 
 // Configurações da rota API para Next.js 15
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const preferredRegion = 'auto';
-export const maxDuration = 300; // 5 minutos para processamento de audio
+export const maxDuration = 600; // 10 minutos para processamento de audio longo (anamnese)
 
 // Prompt especializado para análise médica de áudio
 const MEDICAL_AUDIO_SYSTEM_PROMPT = `Você é um assistente médico especializado em transcrição e análise de áudio médico.
@@ -30,7 +28,7 @@ FORMATO DE RESPOSTA:
 IMPORTANTE: Este é um auxílio para profissionais médicos. Todas as informações devem ser validadas por um médico qualificado.`;
 
 // Função para processar áudio com OpenAI Whisper
-async function transcribeAudio(audioBuffer, originalFilename) {
+async function transcribeAudio(audioBuffer, originalFilename, audioContentType = 'audio/mpeg') {
     try {
         console.log(`[AUDIO_API] Iniciando transcrição de áudio: ${originalFilename}`);
         
@@ -45,44 +43,31 @@ async function transcribeAudio(audioBuffer, originalFilename) {
             apiKey: process.env.OPENAI_KEY
         });
 
-        // Criar diretório temporário para o arquivo de áudio
-        const tempDir = path.join(os.tmpdir(), `audio-${Date.now()}`);
-        await fs.promises.mkdir(tempDir, { recursive: true });
-        
-        // Determinar extensão do arquivo baseada no tipo
-        const fileExtension = path.extname(originalFilename).toLowerCase() || '.mp3';
-        const tempFilePath = path.join(tempDir, `audio${fileExtension}`);
-
-        // Salvar o buffer como arquivo temporário
-        await fs.promises.writeFile(tempFilePath, audioBuffer);
-        console.log(`[AUDIO_API] Arquivo temporário criado: ${tempFilePath}`);
-
         // Verificar tamanho do arquivo (limite OpenAI: 25MB)
-        const stats = await fs.promises.stat(tempFilePath);
-        const fileSizeInMB = stats.size / (1024 * 1024);
+        const fileSizeInMB = audioBuffer.length / (1024 * 1024);
         console.log(`[AUDIO_API] Tamanho do arquivo: ${fileSizeInMB.toFixed(2)}MB`);
 
         if (fileSizeInMB > 25) {
             throw new Error('Arquivo de áudio muito grande. O limite máximo é 25MB.');
         }
 
+        // Determinar extensão do arquivo baseada no tipo
+        const fileExtension = path.extname(originalFilename).toLowerCase() || '.mp3';
+        
+        // Criar um Blob a partir do buffer de áudio
+        const audioBlob = new Blob([audioBuffer], { type: audioContentType });
+        
+        // Criar um objeto File a partir do Blob
+        const audioFile = new File([audioBlob], `audio${fileExtension}`, { type: audioContentType });
+
         // Transcrever áudio usando Whisper
         const transcription = await openai.audio.transcriptions.create({
-            file: fs.createReadStream(tempFilePath),
+            file: audioFile,
             model: "whisper-1",
             language: "pt", // Português
             response_format: "json",
             temperature: 0.2 // Baixa temperatura para maior precisão
         });
-
-        // Limpar arquivo temporário
-        try {
-            await fs.promises.unlink(tempFilePath);
-            await fs.promises.rmdir(tempDir);
-            console.log('[AUDIO_API] Arquivo temporário removido');
-        } catch (cleanupError) {
-            console.error('[AUDIO_API] Erro ao limpar arquivo temporário:', cleanupError);
-        }
 
         console.log(`[AUDIO_API] Transcrição concluída: ${transcription.text.length} caracteres`);
         return transcription.text;
@@ -123,6 +108,67 @@ async function analyzeMedicalContent(transcription, analysisType = 'general') {
                         "retorno": "Informações sobre retorno/seguimento",
                         "observacoes": "Observações adicionais importantes"
                     }
+                `;
+                break;
+            
+            case 'anamnese':
+                analysisPrompt = `
+                    Analise esta transcrição de anamnese médica e extraia TODAS as informações relevantes para preencher uma ficha de anamnese completa.
+                    
+                    FORMATO ESPERADO (preencha todos os campos possíveis com base na transcrição):
+                    {
+                        "queixaPrincipal": "Motivo principal da consulta",
+                        "historiaDoencaAtual": "História detalhada da doença atual",
+                        "historiaPatologicaPregressa": ["doenças prévias", "cirurgias", "internações"],
+                        "historicoFamiliar": "Doenças hereditárias ou familiares",
+                        "habitosDeVida": {
+                            "tabagismo": "Se fuma, quantos cigarros por dia, há quanto tempo",
+                            "alcoolismo": "Se consome álcool, frequência e quantidade",
+                            "drogas": "Uso de drogas ilícitas",
+                            "atividadeFisica": "Prática de exercícios físicos",
+                            "alimentacao": "Hábitos alimentares",
+                            "ocupacao": "Profissão e ambiente de trabalho"
+                        },
+                        "medicamentosEmUso": ["lista de medicamentos atuais com dosagens"],
+                        "alergias": ["alergias medicamentosas", "alergias alimentares", "outras alergias"],
+                        "revisaoDeSistemas": {
+                            "cardiovascular": "Sintomas cardiovasculares",
+                            "respiratorio": "Sintomas respiratórios",
+                            "gastrointestinal": "Sintomas gastrointestinais",
+                            "genitourinario": "Sintomas genitourinários",
+                            "neurologico": "Sintomas neurológicos",
+                            "musculoesqueletico": "Sintomas musculoesqueléticos",
+                            "endocrino": "Sintomas endócrinos",
+                            "hematologico": "Sintomas hematológicos",
+                            "psiquiatrico": "Sintomas psiquiátricos",
+                            "dermatologico": "Sintomas dermatológicos"
+                        },
+                        "exameFisico": {
+                            "aspectoGeral": "Aparência geral do paciente",
+                            "sinaisVitais": {
+                                "pressaoArterial": "PA em mmHg",
+                                "frequenciaCardiaca": "FC em bpm",
+                                "temperatura": "Temperatura em °C",
+                                "frequenciaRespiratoria": "FR em rpm",
+                                "saturacaoO2": "SpO2 em %"
+                            },
+                            "cabecaPescoco": "Achados do exame de cabeça e pescoço",
+                            "cardiovascular": "Achados do exame cardiovascular",
+                            "respiratorio": "Achados do exame respiratório",
+                            "abdome": "Achados do exame abdominal",
+                            "extremidades": "Achados do exame de extremidades",
+                            "neurologico": "Achados do exame neurológico"
+                        },
+                        "hipoteseDiagnostica": "Hipóteses diagnósticas",
+                        "planoTerapeutico": "Plano de tratamento proposto",
+                        "observacoesAdicionais": "Outras informações relevantes"
+                    }
+                    
+                    IMPORTANTE: 
+                    - Extraia o máximo de informações possível da transcrição
+                    - Se alguma informação não estiver disponível, use null
+                    - Mantenha a linguagem médica apropriada
+                    - Seja detalhado e completo em cada campo
                 `;
                 break;
             
@@ -174,8 +220,12 @@ async function analyzeMedicalContent(transcription, analysisType = 'general') {
                 `;
         }
 
+        // Use o modelo mais poderoso para anamnese devido à complexidade
+        const modelToUse = analysisType === 'anamnese' ? "gpt-4o" : "gpt-4";
+        const maxTokensToUse = analysisType === 'anamnese' ? 4000 : 2000;
+        
         const response = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: modelToUse,
             messages: [
                 {
                     role: "system",
@@ -195,7 +245,7 @@ async function analyzeMedicalContent(transcription, analysisType = 'general') {
             ],
             response_format: { type: "json_object" },
             temperature: 0.3,
-            max_tokens: 2000
+            max_tokens: maxTokensToUse
         });
 
         const analysisResult = JSON.parse(response.choices[0].message.content);
@@ -236,6 +286,7 @@ export async function POST(req) {
         let originalFilename = '';
         let analysisType = 'general';
         let transcriptionOnly = false;
+        let mimetype = 'audio/mpeg';
 
         // Processar FormData (upload de arquivo)
         try {
@@ -260,7 +311,7 @@ export async function POST(req) {
             }
 
             originalFilename = audioFile.name || 'audio.mp3';
-            const mimetype = audioFile.type || '';
+            mimetype = audioFile.type || 'audio/mpeg';
 
             console.log(`[AUDIO_API] Processando arquivo: ${originalFilename}, tipo: ${mimetype}, tamanho: ${audioFile.size} bytes`);
 
@@ -296,7 +347,7 @@ export async function POST(req) {
         }
 
         // Transcrever áudio
-        const transcription = await transcribeAudio(audioBuffer, originalFilename);
+        const transcription = await transcribeAudio(audioBuffer, originalFilename, mimetype);
 
         // Verificar se há texto transcrito
         if (!transcription || transcription.trim().length === 0) {

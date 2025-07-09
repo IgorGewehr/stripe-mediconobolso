@@ -45,11 +45,16 @@ import AccessibilityNewIcon from "@mui/icons-material/AccessibilityNew";
 import TextIncreaseIcon from "@mui/icons-material/TextIncrease";
 import TextDecreaseIcon from "@mui/icons-material/TextDecrease";
 import FormatSizeIcon from "@mui/icons-material/FormatSize";
+import MicIcon from "@mui/icons-material/Mic";
+import LockIcon from "@mui/icons-material/Lock";
 // Firebase service
 import firebaseService from "../../../lib/firebaseService";
 import { parse } from 'date-fns';
 import DescriptionIcon from "@mui/icons-material/Description";
 import AnamneseNotesPanel from "./anamneseNotesPanel";
+import AudioProcessingDialog from "./audioProcessingDialog";
+import AccessDeniedDialog from "./accessDeniedDialog";
+import {useAuth} from "../authProvider";
 
 
 // ------------------ ESTILOS ------------------
@@ -318,6 +323,11 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
     const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
     const [selectedNote, setSelectedNote] = useState(null);
     const [patientNotes, setPatientNotes] = useState([]);
+    const [audioDialogOpen, setAudioDialogOpen] = useState(false);
+    const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+    
+    // ✅ VERIFICAÇÃO DE USUÁRIO FREE
+    const { isFreeUser } = useAuth();
 
     const MIN_SCALE = 1;
     const MAX_SCALE = 2;
@@ -340,6 +350,192 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
     // Função para resetar a fonte
     const resetFontSize = useCallback(() => {
         setFontSizeScale(1);
+    }, []);
+
+    // ✅ FUNÇÃO PARA VERIFICAR ACESSO À FUNCIONALIDADE DE ÁUDIO
+    const checkAudioAccess = useCallback(() => {
+        console.log("🔐 Verificando acesso ao processamento de áudio. É usuário gratuito?", isFreeUser);
+        return !isFreeUser;
+    }, [isFreeUser]);
+
+    // ✅ HANDLER PARA ABRIR DIALOG DE ÁUDIO COM VERIFICAÇÃO
+    const handleAudioRecording = useCallback(() => {
+        if (isFreeUser) {
+            console.log("❌ Acesso negado - usuário gratuito tentando usar processamento de áudio");
+            setUpgradeDialogOpen(true);
+            return;
+        }
+        setAudioDialogOpen(true);
+    }, [isFreeUser]);
+
+    // Função para processar resultado do áudio e preencher a anamnese
+    const handleAudioResult = useCallback((audioResult) => {
+        if (!audioResult.analysis) {
+            setSnackbar({
+                open: true,
+                message: "Não foi possível analisar o áudio. Tente novamente.",
+                severity: "error"
+            });
+            return;
+        }
+
+        const analysis = audioResult.analysis;
+        
+        // Atualizar anamnese com os dados extraídos do áudio
+        setAnamneseData(prev => {
+            const updated = { ...prev };
+            
+            // Informações principais
+            if (analysis.queixaPrincipal) {
+                updated.chiefComplaint = analysis.queixaPrincipal;
+            }
+            if (analysis.historiaDoencaAtual) {
+                updated.illnessHistory = analysis.historiaDoencaAtual;
+            }
+            
+            // Históricos
+            if (analysis.historiaPatologicaPregressa && Array.isArray(analysis.historiaPatologicaPregressa)) {
+                const medicalHistory = [];
+                const surgicalHistory = [];
+                
+                analysis.historiaPatologicaPregressa.forEach(item => {
+                    if (item.toLowerCase().includes('cirurgia') || item.toLowerCase().includes('operação')) {
+                        surgicalHistory.push(item);
+                    } else {
+                        medicalHistory.push(item);
+                    }
+                });
+                
+                if (medicalHistory.length > 0) {
+                    updated.medicalHistory = [...prev.medicalHistory, ...medicalHistory];
+                }
+                if (surgicalHistory.length > 0) {
+                    updated.surgicalHistory = [...prev.surgicalHistory, ...surgicalHistory];
+                }
+            }
+            
+            if (analysis.historicoFamiliar) {
+                updated.familyHistory = analysis.historicoFamiliar;
+            }
+            
+            // Hábitos de vida
+            if (analysis.habitosDeVida) {
+                const habits = analysis.habitosDeVida;
+                
+                if (habits.tabagismo) {
+                    updated.socialHistory.isSmoker = habits.tabagismo.toLowerCase().includes('sim') || 
+                                                    habits.tabagismo.toLowerCase().includes('fuma');
+                    // Extrair quantidade de cigarros se mencionado
+                    const cigarrosMatch = habits.tabagismo.match(/(\d+)\s*(cigarros?|maços?)/i);
+                    if (cigarrosMatch) {
+                        updated.socialHistory.cigarettesPerDay = parseInt(cigarrosMatch[1]);
+                    }
+                }
+                
+                if (habits.alcoolismo) {
+                    updated.socialHistory.isAlcoholConsumer = habits.alcoolismo.toLowerCase().includes('sim') || 
+                                                             habits.alcoolismo.toLowerCase().includes('bebe');
+                    updated.socialHistory.alcoholFrequency = habits.alcoolismo;
+                }
+                
+                if (habits.drogas) {
+                    updated.socialHistory.isDrugUser = habits.drogas.toLowerCase().includes('sim') || 
+                                                      habits.drogas.toLowerCase().includes('usa');
+                    updated.socialHistory.drugDetails = habits.drogas;
+                }
+                
+                if (habits.atividadeFisica) {
+                    updated.socialHistory.physicalActivity = habits.atividadeFisica;
+                }
+                
+                if (habits.alimentacao) {
+                    updated.socialHistory.dietHabits = habits.alimentacao;
+                }
+                
+                if (habits.ocupacao) {
+                    updated.socialHistory.occupation = habits.ocupacao;
+                }
+            }
+            
+            // Medicamentos e alergias
+            if (analysis.medicamentosEmUso && Array.isArray(analysis.medicamentosEmUso)) {
+                updated.currentMedications = [...prev.currentMedications, ...analysis.medicamentosEmUso];
+            }
+            
+            if (analysis.alergias && Array.isArray(analysis.alergias)) {
+                updated.allergies = [...prev.allergies, ...analysis.alergias];
+            }
+            
+            // Revisão de sistemas
+            if (analysis.revisaoDeSistemas) {
+                Object.keys(analysis.revisaoDeSistemas).forEach(sistema => {
+                    if (updated.systemsReview[sistema] !== undefined && analysis.revisaoDeSistemas[sistema]) {
+                        updated.systemsReview[sistema] = analysis.revisaoDeSistemas[sistema];
+                    }
+                });
+            }
+            
+            // Exame físico
+            if (analysis.exameFisico) {
+                if (analysis.exameFisico.aspectoGeral) {
+                    updated.physicalExam.generalAppearance = analysis.exameFisico.aspectoGeral;
+                }
+                
+                // Sinais vitais
+                if (analysis.exameFisico.sinaisVitais) {
+                    const vitals = analysis.exameFisico.sinaisVitais;
+                    if (vitals.pressaoArterial) updated.physicalExam.vitalSigns.bloodPressure = vitals.pressaoArterial;
+                    if (vitals.frequenciaCardiaca) updated.physicalExam.vitalSigns.heartRate = vitals.frequenciaCardiaca;
+                    if (vitals.temperatura) updated.physicalExam.vitalSigns.temperature = vitals.temperatura;
+                    if (vitals.frequenciaRespiratoria) updated.physicalExam.vitalSigns.respiratoryRate = vitals.frequenciaRespiratoria;
+                    if (vitals.saturacaoO2) updated.physicalExam.vitalSigns.oxygenSaturation = vitals.saturacaoO2;
+                }
+                
+                // Outros exames físicos
+                if (analysis.exameFisico.cabecaPescoco) updated.physicalExam.headAndNeck = analysis.exameFisico.cabecaPescoco;
+                if (analysis.exameFisico.cardiovascular) updated.physicalExam.cardiovascular = analysis.exameFisico.cardiovascular;
+                if (analysis.exameFisico.respiratorio) updated.physicalExam.respiratory = analysis.exameFisico.respiratorio;
+                if (analysis.exameFisico.abdome) updated.physicalExam.abdomen = analysis.exameFisico.abdome;
+                if (analysis.exameFisico.extremidades) updated.physicalExam.extremities = analysis.exameFisico.extremidades;
+                if (analysis.exameFisico.neurologico) updated.physicalExam.neurological = analysis.exameFisico.neurologico;
+            }
+            
+            // Conclusões
+            if (analysis.hipoteseDiagnostica) {
+                updated.diagnosis = analysis.hipoteseDiagnostica;
+            }
+            
+            if (analysis.planoTerapeutico) {
+                updated.treatmentPlan = analysis.planoTerapeutico;
+            }
+            
+            if (analysis.observacoesAdicionais) {
+                updated.additionalNotes = analysis.observacoesAdicionais;
+            }
+            
+            return updated;
+        });
+        
+        // Fechar o dialog de áudio
+        setAudioDialogOpen(false);
+        
+        // Mostrar mensagem de sucesso
+        setSnackbar({
+            open: true,
+            message: "Anamnese preenchida com sucesso a partir do áudio!",
+            severity: "success"
+        });
+        
+        // Expandir todas as seções para o usuário revisar
+        setExpandedSections({
+            mainInfo: true,
+            histories: true,
+            lifestyle: true,
+            medicationsAllergies: true,
+            systemsReview: true,
+            physicalExam: true,
+            conclusions: true
+        });
     }, []);
 
     // Estilo dinâmico com base no tamanho da fonte (memoizado)
@@ -1582,6 +1778,53 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {/* Audio Recording Button */}
+                    <Tooltip title={
+                        isFreeUser 
+                            ? "Funcionalidade Premium - Faça upgrade para gravar áudio da consulta" 
+                            : "Gravar áudio da consulta para preencher automaticamente a anamnese"
+                    } placement="bottom">
+                        <Button
+                            variant="contained"
+                            onClick={handleAudioRecording}
+                            startIcon={
+                                isFreeUser ? (
+                                    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <MicIcon sx={{ opacity: 0.5 }} />
+                                        <LockIcon
+                                            sx={{
+                                                position: 'absolute',
+                                                fontSize: 16,
+                                                color: '#f59e0b',
+                                                top: '50%',
+                                                left: '50%',
+                                                transform: 'translate(-50%, -50%)'
+                                            }}
+                                        />
+                                    </Box>
+                                ) : (
+                                    <MicIcon />
+                                )
+                            }
+                            sx={{
+                                mr: 2,
+                                backgroundColor: isFreeUser ? "rgba(160, 174, 192, 0.12)" : "rgba(239, 68, 68, 0.12)",
+                                color: isFreeUser ? "#94A3B8" : "#EF4444",
+                                borderRadius: "50px",
+                                padding: "8px 16px",
+                                textTransform: "none",
+                                fontWeight: 600,
+                                boxShadow: "none",
+                                opacity: isFreeUser ? 0.6 : 1,
+                                "&:hover": {
+                                    backgroundColor: isFreeUser ? "rgba(160, 174, 192, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                                    boxShadow: isFreeUser ? "none" : "0px 2px 6px rgba(239, 68, 68, 0.2)",
+                                }
+                            }}
+                        >
+                            {isFreeUser ? "Gravar Consulta (Premium)" : "Gravar Consulta"}
+                        </Button>
+                    </Tooltip>
                     {/* Notes Button */}
                     <Tooltip title="Ver histórico de anotações" placement="bottom">
                         <Button
@@ -2292,6 +2535,26 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                         {snackbar.message}
                     </Alert>
                 </Snackbar>
+                
+                {/* Audio Processing Dialog */}
+                <AudioProcessingDialog
+                    open={audioDialogOpen}
+                    onClose={() => setAudioDialogOpen(false)}
+                    defaultAnalysisType="anamnese"
+                    onResult={handleAudioResult}
+                />
+
+                {/* ✅ UPGRADE DIALOG PARA USUÁRIOS FREE */}
+                <AccessDeniedDialog
+                    open={upgradeDialogOpen}
+                    onClose={() => setUpgradeDialogOpen(false)}
+                    moduleName="ai_analysis"
+                    onUpgrade={() => {
+                        setUpgradeDialogOpen(false);
+                        // Opcional: adicionar lógica adicional após upgrade
+                    }}
+                    title="Funcionalidade Premium"
+                />
             </>
         </FullScreenDialog>
     );

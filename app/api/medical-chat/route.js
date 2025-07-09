@@ -5,6 +5,51 @@ import { OpenAI } from 'openai';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute per user
+const userRequestCounts = new Map();
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [userId, data] of userRequestCounts.entries()) {
+        if (now - data.lastReset > RATE_LIMIT_WINDOW) {
+            userRequestCounts.delete(userId);
+        }
+    }
+}, 5 * 60 * 1000);
+
+function checkRateLimit(userId) {
+    const now = Date.now();
+    const userKey = userId || 'anonymous';
+    
+    if (!userRequestCounts.has(userKey)) {
+        userRequestCounts.set(userKey, {
+            count: 1,
+            lastReset: now
+        });
+        return true;
+    }
+    
+    const userData = userRequestCounts.get(userKey);
+    
+    // Reset if window has passed
+    if (now - userData.lastReset > RATE_LIMIT_WINDOW) {
+        userData.count = 1;
+        userData.lastReset = now;
+        return true;
+    }
+    
+    // Check if under limit
+    if (userData.count < RATE_LIMIT_MAX_REQUESTS) {
+        userData.count++;
+        return true;
+    }
+    
+    return false;
+}
+
 const MEDICAL_SYSTEM_PROMPT = `Você é um assistente médico especializado, desenvolvido para apoiar profissionais de saúde com informações precisas e baseadas em evidências.
 
 DIRETRIZES OBRIGATÓRIAS:
@@ -27,7 +72,16 @@ IMPORTANTE: Este é um auxílio para profissionais médicos qualificados. Decis�
 
 export async function POST(req) {
     try {
-        const { message, conversationHistory = [] } = await req.json();
+        const { message, conversationHistory = [], userId } = await req.json();
+
+        // Rate limiting check
+        if (!checkRateLimit(userId)) {
+            return NextResponse.json({
+                success: false,
+                error: 'Muitas solicitações. Aguarde um momento antes de tentar novamente.',
+                retryAfter: 60
+            }, { status: 429 });
+        }
 
         if (!message || typeof message !== 'string' || message.trim() === '') {
             return NextResponse.json({

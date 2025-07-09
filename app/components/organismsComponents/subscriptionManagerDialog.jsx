@@ -41,7 +41,7 @@ import {
     Payment as PaymentIcon,
     Info as InfoIcon,
     Star as StarIcon,
-    Crown as CrownIcon,
+    WorkspacePremium as CrownIcon,
     Diamond as DiamondIcon,
     AccountCircle as AccountCircleIcon,
     SwapHoriz as SwapHorizIcon,

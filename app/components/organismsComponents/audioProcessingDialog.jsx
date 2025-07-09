@@ -38,7 +38,7 @@ import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 
-const AudioProcessingDialog = ({ open, onClose, onResult }) => {
+const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 'general' }) => {
     const [isRecording, setIsRecording] = useState(false);
     const [audioBlob, setAudioBlob] = useState(null);
     const [audioUrl, setAudioUrl] = useState(null);
@@ -47,7 +47,7 @@ const AudioProcessingDialog = ({ open, onClose, onResult }) => {
     const [processingStep, setProcessingStep] = useState('');
     const [result, setResult] = useState(null);
     const [error, setError] = useState('');
-    const [analysisType, setAnalysisType] = useState('general');
+    const [analysisType, setAnalysisType] = useState(defaultAnalysisType);
     const [transcriptionOnly, setTranscriptionOnly] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [dragActive, setDragActive] = useState(false);
@@ -59,7 +59,7 @@ const AudioProcessingDialog = ({ open, onClose, onResult }) => {
     const timerRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // Cleanup on unmount
+    // Cleanup on unmount and audio URL changes
     useEffect(() => {
         return () => {
             if (timerRef.current) {
@@ -70,6 +70,15 @@ const AudioProcessingDialog = ({ open, onClose, onResult }) => {
             }
         };
     }, [audioUrl]);
+
+    // Cleanup previous audio URL when new one is created
+    useEffect(() => {
+        return () => {
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+            }
+        };
+    }, []);
 
     // Reset state when dialog opens/closes
     useEffect(() => {
@@ -102,26 +111,69 @@ const AudioProcessingDialog = ({ open, onClose, onResult }) => {
         onClose();
     };
 
-    // Start recording
+    // Check microphone permissions
+    const checkMicrophonePermissions = async () => {
+        try {
+            const result = await navigator.permissions.query({ name: 'microphone' });
+            return result.state;
+        } catch (error) {
+            return 'unknown';
+        }
+    };
+
+    // Start recording with better error handling
     const startRecording = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
+            // Check permissions first
+            const permissionState = await checkMicrophonePermissions();
+            if (permissionState === 'denied') {
+                setError('Permissão de microfone negada. Ative nas configurações do navegador.');
+                return;
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                } 
+            });
+            
+            // Use better codec if available
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+                ? 'audio/webm;codecs=opus'
+                : MediaRecorder.isTypeSupported('audio/webm')
+                ? 'audio/webm'
+                : 'audio/mp4';
+
+            const mediaRecorder = new MediaRecorder(stream, { mimeType });
             mediaRecorderRef.current = mediaRecorder;
 
             const chunks = [];
             mediaRecorder.ondataavailable = (event) => {
-                chunks.push(event.data);
+                if (event.data.size > 0) {
+                    chunks.push(event.data);
+                }
             };
 
             mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'audio/webm' });
+                const blob = new Blob(chunks, { type: mimeType });
+                // Cleanup previous audio URL
+                if (audioUrl) {
+                    URL.revokeObjectURL(audioUrl);
+                }
                 setAudioBlob(blob);
                 setAudioUrl(URL.createObjectURL(blob));
                 stream.getTracks().forEach(track => track.stop());
             };
 
-            mediaRecorder.start();
+            mediaRecorder.onerror = (event) => {
+                console.error('MediaRecorder error:', event.error);
+                setError('Erro durante a gravação. Tente novamente.');
+                setIsRecording(false);
+            };
+
+            mediaRecorder.start(1000); // Collect data every second
             setIsRecording(true);
             setError('');
             setRecordingTime(0);
@@ -133,7 +185,13 @@ const AudioProcessingDialog = ({ open, onClose, onResult }) => {
 
         } catch (error) {
             console.error('Error accessing microphone:', error);
-            setError('Erro ao acessar microfone. Verifique as permissões.');
+            if (error.name === 'NotAllowedError') {
+                setError('Permissão de microfone negada. Ative nas configurações do navegador.');
+            } else if (error.name === 'NotFoundError') {
+                setError('Nenhum microfone encontrado. Conecte um microfone e tente novamente.');
+            } else {
+                setError('Erro ao acessar microfone. Verifique as permissões e tente novamente.');
+            }
         }
     };
 
@@ -161,15 +219,41 @@ const AudioProcessingDialog = ({ open, onClose, onResult }) => {
         }
     };
 
-    // Handle file upload
+    // Handle file upload with validation
     const handleFileUpload = (file) => {
-        if (file && file.type.startsWith('audio/')) {
-            setAudioBlob(file);
-            setAudioUrl(URL.createObjectURL(file));
-            setError('');
-        } else {
-            setError('Por favor, selecione um arquivo de áudio válido');
+        if (!file) {
+            setError('Nenhum arquivo selecionado');
+            return;
         }
+
+        // Validate file type
+        const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/webm', 'audio/mp4'];
+        const validExtensions = ['.mp3', '.wav', '.m4a', '.webm', '.mp4', '.mpeg'];
+        const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+        
+        const isValidType = validTypes.some(type => file.type.includes(type)) || file.type.startsWith('audio/');
+        const isValidExtension = validExtensions.includes(fileExtension);
+
+        if (!isValidType && !isValidExtension) {
+            setError('Formato de arquivo não suportado. Use MP3, WAV, M4A, WEBM ou MP4.');
+            return;
+        }
+
+        // Validate file size (25MB limit)
+        const maxSize = 25 * 1024 * 1024; // 25MB
+        if (file.size > maxSize) {
+            setError('Arquivo muito grande. O tamanho máximo é 25MB.');
+            return;
+        }
+
+        // Cleanup previous audio URL
+        if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+        }
+
+        setAudioBlob(file);
+        setAudioUrl(URL.createObjectURL(file));
+        setError('');
     };
 
     // Handle drag and drop
@@ -317,6 +401,7 @@ const AudioProcessingDialog = ({ open, onClose, onResult }) => {
                             >
                                 <MenuItem value="general">Geral</MenuItem>
                                 <MenuItem value="consultation">Consulta Médica</MenuItem>
+                                <MenuItem value="anamnese">Anamnese Completa</MenuItem>
                                 <MenuItem value="dictation">Ditado Médico</MenuItem>
                                 <MenuItem value="symptoms">Sintomas</MenuItem>
                             </Select>

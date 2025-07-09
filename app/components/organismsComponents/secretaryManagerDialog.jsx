@@ -69,7 +69,8 @@ const MODULE_PERMISSIONS = {
         description: 'Gerenciar informações dos pacientes',
         actions: {
             read: 'Visualizar lista de pacientes',
-            write: 'Criar e editar pacientes',
+            create: 'Criar novos pacientes',
+            write: 'Editar informações de pacientes',
             viewDetails: 'Ver dados sensíveis (histórico médico)'
         }
     },
@@ -137,7 +138,7 @@ const MODULE_PERMISSIONS = {
 
 // ✅ PERMISSÕES PADRÃO PARA NOVA SECRETÁRIA
 const DEFAULT_PERMISSIONS = {
-    patients: { read: true, write: false, viewDetails: false },
+    patients: { read: true, create: true, write: false, viewDetails: false },
     appointments: { read: true, write: true },
     prescriptions: { read: true, write: false },
     exams: { read: true, write: false },

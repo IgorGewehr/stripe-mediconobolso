@@ -6,6 +6,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import InfoIcon from '@mui/icons-material/Info';
 import useModuleAccess from './useModuleAccess';
 import AccessDeniedDialog from './organismsComponents/accessDeniedDialog';
+import { useAuth } from './authProvider';
 
 /**
  * Componente para proteger conteúdo baseado em módulos
@@ -17,7 +18,7 @@ const ModuleProtection = ({
                               fallback = null,
                               showDialog = true,
                               showTooltip = false,
-                              action = null,
+                              action = 'read',
                               context = {},
                               className = "",
                               style = {},
@@ -25,12 +26,13 @@ const ModuleProtection = ({
                               onUpgrade = null
                           }) => {
     const { hasAccess, canPerformAction, getLimitInfo, MODULES } = useModuleAccess();
+    const { isSecretary } = useAuth();
     const [dialogOpen, setDialogOpen] = useState(false);
 
     // Verificar acesso
     const accessCheck = action
         ? canPerformAction(moduleId, action, context)
-        : { allowed: hasAccess(moduleId), reason: hasAccess(moduleId) ? null : 'module_access_denied' };
+        : { allowed: hasAccess(moduleId), reason: hasAccess(moduleId) ? null : (isSecretary ? 'secretary_access_denied' : 'module_access_denied') };
 
     // Se tem acesso, renderizar normalmente
     if (accessCheck.allowed) {
@@ -44,6 +46,12 @@ const ModuleProtection = ({
         }
 
         if (showDialog) {
+            // Para secretárias, mostrar dialog específico de permissões
+            if (isSecretary) {
+                // Redirecionar para a página de acesso negado para secretárias
+                window.location.href = `/app?denied_module=${moduleId}&denied_action=${action}`;
+                return;
+            }
             setDialogOpen(true);
         }
     };
