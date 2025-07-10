@@ -87,7 +87,48 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
         }
     }, [open]);
 
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            // Ensure everything is cleaned up when component unmounts
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+            }
+        };
+    }, []);
+
     const handleReset = () => {
+        // Stop recording if active
+        if (mediaRecorderRef.current) {
+            if (mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+            mediaRecorderRef.current = null;
+        }
+        
+        // Stop all tracks in the stream
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => {
+                track.stop();
+            });
+            streamRef.current = null;
+        }
+        
+        // Clear timer
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        
         setIsRecording(false);
         setAudioBlob(null);
         if (audioUrl) {
@@ -101,9 +142,6 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
         setError('');
         setRecordingTime(0);
         setDragActive(false);
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-        }
     };
 
     const handleClose = () => {

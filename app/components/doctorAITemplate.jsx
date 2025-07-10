@@ -52,7 +52,7 @@ import { useAuth } from "./authProvider";
 import FirebaseService from "../../lib/firebaseService";
 import { format, isToday, isYesterday, isThisWeek, isThisMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import AudioProcessingDialog from './organismsComponents/audioProcessingDialog';
+import FloatingVoiceRecorder from './organismsComponents/FloatingVoiceRecorder';
 import AccessDeniedDialog from './organismsComponents/accessDeniedDialog';
 
 const DoctorAITemplate = () => {
@@ -78,7 +78,7 @@ const DoctorAITemplate = () => {
     const [isSearching, setIsSearching] = useState(false);
     const [stats, setStats] = useState(null);
     const [showStats, setShowStats] = useState(false);
-    const [audioDialogOpen, setAudioDialogOpen] = useState(false);
+    const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
     // ✅ CONTROLE DE LIMITE PARA USUÁRIOS FREE
@@ -424,19 +424,14 @@ const DoctorAITemplate = () => {
         }
     };
 
-    // Handle audio processing result
-    const handleAudioResult = (result) => {
-        if (result && result.transcription) {
-            setCurrentMessage(result.transcription);
-            setAudioDialogOpen(false);
-            // Auto-send if it's just transcription, or let user review if there's analysis
-            if (!result.analysis) {
-                // Simulate user message with transcription
-                setTimeout(() => {
-                    handleSendMessage();
-                }, 100);
-            }
-        }
+    // Handle voice transcription
+    const handleVoiceTranscription = (transcription) => {
+        setCurrentMessage(transcription);
+        setShowVoiceRecorder(false);
+        // Auto-send the transcribed message
+        setTimeout(() => {
+            handleSendMessage();
+        }, 100);
     };
 
     // Formatizar tempo relativo
@@ -1071,7 +1066,7 @@ const DoctorAITemplate = () => {
                             }}
                         />
                         <IconButton
-                            onClick={() => setAudioDialogOpen(true)}
+                            onClick={() => setShowVoiceRecorder(true)}
                             disabled={isLoading}
                             sx={{
                                 bgcolor: '#22C55E',
@@ -1109,13 +1104,6 @@ const DoctorAITemplate = () => {
                             <SendIcon fontSize="small" />
                         </IconButton>
                     </Box>
-
-                    {/* Audio Processing Dialog */}
-                    <AudioProcessingDialog
-                        open={audioDialogOpen}
-                        onClose={() => setAudioDialogOpen(false)}
-                        onResult={handleAudioResult}
-                    />
                 </Box>
             </Box>
 
@@ -1145,6 +1133,16 @@ const DoctorAITemplate = () => {
                 usageCount={freeUsageCount}
                 usageLimit={FREE_USAGE_LIMIT}
             />
+
+            {/* Floating Voice Recorder */}
+            {showVoiceRecorder && (
+                <FloatingVoiceRecorder
+                    onTranscription={handleVoiceTranscription}
+                    onClose={() => setShowVoiceRecorder(false)}
+                    position="top-right"
+                    context="medical-chat"
+                />
+            )}
         </Box>
     );
 };

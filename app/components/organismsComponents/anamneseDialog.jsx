@@ -52,7 +52,7 @@ import firebaseService from "../../../lib/firebaseService";
 import { parse } from 'date-fns';
 import DescriptionIcon from "@mui/icons-material/Description";
 import AnamneseNotesPanel from "./anamneseNotesPanel";
-import AudioProcessingDialog from "./audioProcessingDialog";
+import FloatingVoiceRecorder from "./FloatingVoiceRecorder";
 import AccessDeniedDialog from "./accessDeniedDialog";
 import {useAuth} from "../authProvider";
 
@@ -323,7 +323,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
     const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
     const [selectedNote, setSelectedNote] = useState(null);
     const [patientNotes, setPatientNotes] = useState([]);
-    const [audioDialogOpen, setAudioDialogOpen] = useState(false);
+    const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
     
     // ✅ VERIFICAÇÃO DE USUÁRIO FREE
@@ -365,7 +365,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             setUpgradeDialogOpen(true);
             return;
         }
-        setAudioDialogOpen(true);
+        setShowVoiceRecorder(true);
     }, [isFreeUser]);
 
     // Função para processar resultado do áudio e preencher a anamnese
@@ -516,8 +516,8 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             return updated;
         });
         
-        // Fechar o dialog de áudio
-        setAudioDialogOpen(false);
+        // Fechar o gravador de voz
+        setShowVoiceRecorder(false);
         
         // Mostrar mensagem de sucesso
         setSnackbar({
@@ -2536,13 +2536,18 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     </Alert>
                 </Snackbar>
                 
-                {/* Audio Processing Dialog */}
-                <AudioProcessingDialog
-                    open={audioDialogOpen}
-                    onClose={() => setAudioDialogOpen(false)}
-                    defaultAnalysisType="anamnese"
-                    onResult={handleAudioResult}
-                />
+                {/* Floating Voice Recorder */}
+                {showVoiceRecorder && (
+                    <FloatingVoiceRecorder
+                        onTranscription={(transcription) => {
+                            // Processar a transcrição como resultado da anamnese
+                            handleAudioResult({ transcription, analysis: transcription });
+                        }}
+                        onClose={() => setShowVoiceRecorder(false)}
+                        position="top-right"
+                        context="anamnese"
+                    />
+                )}
 
                 {/* ✅ UPGRADE DIALOG PARA USUÁRIOS FREE */}
                 <AccessDeniedDialog
