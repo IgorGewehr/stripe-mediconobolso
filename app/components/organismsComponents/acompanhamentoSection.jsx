@@ -8,6 +8,7 @@ import {
     IconButton,
     Grid,
     useTheme,
+    useMediaQuery,
     Snackbar,
     Alert,
     CircularProgress,
@@ -49,7 +50,7 @@ const themeColors = {
 
 // Card melhorado de Relatório Clínico com proteção de módulos (MANTÉM CONTROLE DE ACESSO)
 // Card melhorado de Relatório Clínico com controle de acesso SIMPLIFICADO
-function RelatorioCard({ onClick, isLoading }) {
+function RelatorioCard({ onClick, isLoading, isMobile, isTablet }) {
     const { isFreeUser } = useAuth(); // Usar apenas isFreeUser do contexto
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
@@ -83,8 +84,8 @@ function RelatorioCard({ onClick, isLoading }) {
             <Card
                 sx={{
                     width: "100%",
-                    maxWidth: "200px",
-                    height: "200px",
+                    maxWidth: isMobile ? "100%" : isTablet ? "180px" : "200px",
+                    height: isMobile ? "160px" : isTablet ? "180px" : "200px",
                     borderRadius: "20px",
                     boxShadow: canUseAI ? themeColors.cardInsightShadow : themeColors.cardShadow,
                     position: "relative",
@@ -186,7 +187,7 @@ function RelatorioCard({ onClick, isLoading }) {
                                 <LockIcon
                                     sx={{
                                         position: 'absolute',
-                                        fontSize: 24,
+                                        fontSize: isMobile ? 18 : isTablet ? 20 : 24,
                                         color: '#f59e0b',
                                         top: '50%',
                                         left: '50%',
@@ -214,7 +215,7 @@ function RelatorioCard({ onClick, isLoading }) {
                             sx={{
                                 color: canUseAI ? themeColors.insight : "#9e9e9e",
                                 fontFamily: "Gellix",
-                                fontSize: 22,
+                                fontSize: isMobile ? 16 : isTablet ? 18 : 22,
                                 fontWeight: 600,
                                 textAlign: "start",
                                 flexGrow: 1,
@@ -258,7 +259,7 @@ function RelatorioCard({ onClick, isLoading }) {
     );
 }
 // Card de acompanhamento SEM controle de acesso (REMOVIDO CONTROLE DE ACESSO)
-function AcompanhamentoCard({ tipo, icone, onClick, variant = "default" }) {
+function AcompanhamentoCard({ tipo, icone, onClick, variant = "default", isMobile, isTablet }) {
     // Variante especial para o card de Resumo Clínico
     const isInsightVariant = variant === "insight";
 
@@ -275,8 +276,8 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default" }) {
         <Card
             sx={{
                 width: "100%",
-                maxWidth: "200px",
-                height: "200px",
+                maxWidth: isMobile ? "100%" : isTablet ? "180px" : "200px",
+                height: isMobile ? "160px" : isTablet ? "180px" : "200px",
                 borderRadius: "20px",
                 boxShadow: shadowBase,
                 position: "relative",
@@ -312,9 +313,9 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default" }) {
                         src={icone}
                         alt={tipo}
                         sx={{
-                            mt: "10px",
-                            width: 115,
-                            height: 125,
+                            mt: isMobile ? "5px" : "10px",
+                            width: isMobile ? 80 : isTablet ? 100 : 115,
+                            height: isMobile ? 90 : isTablet ? 110 : 125,
                             mb: 1,
                             transition: "transform 0.3s ease",
                             "&:hover": {
@@ -325,15 +326,15 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default" }) {
                 ) : (
                     <Box
                         sx={{
-                            mt: "10px",
-                            width: 115,
-                            height: 125,
+                            mt: isMobile ? "5px" : "10px",
+                            width: isMobile ? 80 : isTablet ? 100 : 115,
+                            height: isMobile ? 90 : isTablet ? 110 : 125,
                             mb: 1,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             color: isInsightVariant ? themeColors.insight : themeColors.primary,
-                            fontSize: 80,
+                            fontSize: isMobile ? 60 : isTablet ? 70 : 80,
                             transition: "transform 0.3s ease",
                             "&:hover": {
                                 transform: "scale(1.05)"
@@ -361,7 +362,7 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default" }) {
                         sx={{
                             color: isInsightVariant ? themeColors.insight : themeColors.textPrimary,
                             fontFamily: "Gellix",
-                            fontSize: 24,
+                            fontSize: isMobile ? 16 : isTablet ? 18 : 24,
                             fontWeight: 500,
                             textAlign: "start",
                             flexGrow: 1,
@@ -432,6 +433,9 @@ const formatDateString = (dateValue) => {
 // Componente principal aprimorado
 export default function AcompanhamentoSection({ pacienteId, doctorId, patientData = null, onNotaUpdated, forceUpdateNotas }) {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const isMedium = useMediaQuery(theme.breakpoints.down('md'));
 
     const [openAnamneseDialog, setOpenAnamneseDialog] = useState(false);
     const [openReceitaDialog, setOpenReceitaDialog] = useState(false);
@@ -1197,32 +1201,40 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
             </Typography>
 
             {/* Grid of cards with improved layout */}
-            <Grid container spacing={3}>
-                <Grid item xs={12} sm={6} md={3}>
+            <Grid container spacing={isMobile ? 2 : isTablet ? 2.5 : 3}>
+                <Grid item xs={6} sm={6} md={3}>
                     <AcompanhamentoCard
                         tipo="Anamnese"
                         icone="/anamnesecard.svg"
                         onClick={handleAnamneseClick}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
                     />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={6} sm={6} md={3}>
                     <AcompanhamentoCard
                         tipo="Receitas"
                         icone="/receitascard.svg"
                         onClick={handleReceitasClick}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
                     />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={6} sm={6} md={3}>
                     <AcompanhamentoCard
                         tipo="Exames"
                         icone="/examescard.png"
                         onClick={handleExamesClick}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
                     />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={6} sm={6} md={3}>
                     <RelatorioCard
                         onClick={handleRelatorioClick}
                         isLoading={isLoadingRelatorio}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
                     />
                 </Grid>
             </Grid>

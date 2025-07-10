@@ -338,7 +338,7 @@ export const AuthProvider = ({ children }) => {
 
     // ✅ VERIFICAR SE DEVE REDIRECIONAR PARA LOGIN/CHECKOUT - OTIMIZADO
     const shouldRedirectToAuth = useCallback((userData, currentPath) => {
-        const protectedRoutes = ['/app', '/mobile'];
+        const protectedRoutes = ['/app'];
         const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
 
         if (!isProtectedRoute) return false;
@@ -907,10 +907,6 @@ export const AuthProvider = ({ children }) => {
         if (!isLegacy && !userHasAccess(user)) return;
 
         const checkScreenSize = () => {
-            if (typeof window !== "undefined" && window.innerWidth < 900) {
-                console.log(`📱 Tela pequena detectada (${window.innerWidth}px), redirecionando para /mobile`);
-                router.push("/mobile");
-            }
         };
 
         checkScreenSize();
@@ -1048,7 +1044,7 @@ export const AuthProvider = ({ children }) => {
 
     // ✅ FUNÇÕES AUXILIARES
     const isProtectedRoute = useCallback((path) => {
-        return path.startsWith('/app') || path.startsWith('/mobile');
+        return path.startsWith('/app');
     }, []);
 
     const isPublicRoute = useCallback((path) => {

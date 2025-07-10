@@ -15,6 +15,7 @@ import {
     Chip,
     Alert,
     useTheme,
+    useMediaQuery,
     alpha,
     Button,
     Dialog,
@@ -37,6 +38,9 @@ import { useAuth } from '../authProvider';
 
 const MiniChatCard = () => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const isMedium = useMediaQuery(theme.breakpoints.down('md'));
     const { user, isFreeUser } = useAuth();
 
     // Estados do chat
@@ -220,8 +224,8 @@ const MiniChatCard = () => {
             elevation={0}
             sx={{
                 width: '100%',
-                height: '600px', // Altura fixa - ajuste conforme necessário
-                borderRadius: '20px',
+                height: isMobile ? '400px' : isTablet ? '500px' : '600px', // Altura responsiva
+                borderRadius: isMobile ? '16px' : '20px',
                 border: '1px solid',
                 borderColor: theme.palette.divider,
                 backgroundColor: 'white',
@@ -231,7 +235,7 @@ const MiniChatCard = () => {
             }}
         >
             <CardContent sx={{
-                p: 2.5,
+                p: isMobile ? 1.5 : 2.5,
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
@@ -251,6 +255,7 @@ const MiniChatCard = () => {
                             variant="h6"
                             fontWeight={700}
                             color="#1852FE"
+                            sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}
                         >
                             Doctor AI
                         </Typography>

@@ -10,7 +10,9 @@ import {
   Box,
   Tooltip,
   Grow,
-  LinearProgress
+  LinearProgress,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Mic,
@@ -28,6 +30,10 @@ const FloatingVoiceRecorder = ({
   position = 'top-right',
   context = 'chat' 
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -43,11 +49,14 @@ const FloatingVoiceRecorder = ({
   const analyserRef = useRef(null);
   const animationFrameRef = useRef(null);
 
-  const positionStyles = {
-    'top-right': { top: 20, right: 20 },
-    'top-left': { top: 20, left: 20 },
-    'bottom-right': { bottom: 20, right: 20 },
-    'bottom-left': { bottom: 20, left: 20 }
+  const getPositionStyles = () => {
+    const spacing = isMobile ? 10 : 20;
+    return {
+      'top-right': { top: spacing, right: spacing },
+      'top-left': { top: spacing, left: spacing },
+      'bottom-right': { bottom: spacing, right: spacing },
+      'bottom-left': { bottom: spacing, left: spacing }
+    };
   };
 
   const updateAudioLevel = useCallback(() => {
@@ -197,31 +206,44 @@ const FloatingVoiceRecorder = ({
         transition={{ duration: 0.2 }}
         style={{
           position: 'fixed',
-          ...positionStyles[position],
+          ...getPositionStyles()[position],
           zIndex: 1300,
         }}
       >
         <Paper
           elevation={6}
           sx={{
-            p: 2,
-            borderRadius: 3,
-            minWidth: isRecording || isProcessing ? 280 : 200,
+            p: isMobile ? 1.5 : 2,
+            borderRadius: isMobile ? 2 : 3,
+            minWidth: isMobile 
+              ? (isRecording || isProcessing ? 250 : 180) 
+              : isTablet 
+                ? (isRecording || isProcessing ? 260 : 190)
+                : (isRecording || isProcessing ? 280 : 200),
+            maxWidth: isMobile ? 'calc(100vw - 20px)' : 'none',
             background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(10px)',
             border: '1px solid rgba(0, 0, 0, 0.1)',
           }}
         >
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-            <Typography variant="subtitle2" color="textSecondary">
+            <Typography 
+              variant={isMobile ? "caption" : "subtitle2"} 
+              color="textSecondary"
+              sx={{ fontSize: isMobile ? '0.75rem' : undefined }}
+            >
               Gravação de Voz
             </Typography>
-            <IconButton size="small" onClick={handleClose} sx={{ ml: 1 }}>
-              <Close fontSize="small" />
+            <IconButton 
+              size={isMobile ? "small" : "medium"} 
+              onClick={handleClose} 
+              sx={{ ml: 1 }}
+            >
+              <Close fontSize={isMobile ? "small" : "medium"} />
             </IconButton>
           </Box>
 
-          <Box display="flex" alignItems="center" gap={2}>
+          <Box display="flex" alignItems="center" gap={isMobile ? 1 : 2}>
             {!isRecording && !isProcessing && !success && (
               <Tooltip title="Iniciar gravação">
                 <IconButton
@@ -231,11 +253,11 @@ const FloatingVoiceRecorder = ({
                     bgcolor: 'primary.main',
                     color: 'white',
                     '&:hover': { bgcolor: 'primary.dark' },
-                    width: 56,
-                    height: 56,
+                    width: isMobile ? 48 : isTablet ? 52 : 56,
+                    height: isMobile ? 48 : isTablet ? 52 : 56,
                   }}
                 >
-                  <Mic />
+                  <Mic sx={{ fontSize: isMobile ? '1.2rem' : '1.5rem' }} />
                 </IconButton>
               </Tooltip>
             )}
@@ -249,16 +271,16 @@ const FloatingVoiceRecorder = ({
                       bgcolor: 'error.main',
                       color: 'white',
                       '&:hover': { bgcolor: 'error.dark' },
-                      width: 56,
-                      height: 56,
+                      width: isMobile ? 48 : isTablet ? 52 : 56,
+                      height: isMobile ? 48 : isTablet ? 52 : 56,
                     }}
                   >
-                    <Stop />
+                    <Stop sx={{ fontSize: isMobile ? '1.2rem' : '1.5rem' }} />
                   </IconButton>
                   <Box
                     sx={{
                       position: 'absolute',
-                      inset: -4,
+                      inset: isMobile ? -3 : -4,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -268,7 +290,7 @@ const FloatingVoiceRecorder = ({
                     <CircularProgress
                       variant="determinate"
                       value={audioLevel * 100}
-                      size={68}
+                      size={isMobile ? 58 : isTablet ? 64 : 68}
                       thickness={2}
                       sx={{
                         color: 'primary.main',
@@ -278,14 +300,19 @@ const FloatingVoiceRecorder = ({
                   </Box>
                 </Box>
                 <Box flex={1}>
-                  <Typography variant="h6" color="error" gutterBottom>
+                  <Typography 
+                    variant={isMobile ? "subtitle1" : "h6"} 
+                    color="error" 
+                    gutterBottom
+                    sx={{ fontSize: isMobile ? '1rem' : undefined }}
+                  >
                     {formatTime(recordingTime)}
                   </Typography>
                   <LinearProgress
                     variant="determinate"
                     value={audioLevel * 100}
                     sx={{
-                      height: 4,
+                      height: isMobile ? 3 : 4,
                       borderRadius: 2,
                       bgcolor: 'grey.200',
                       '& .MuiLinearProgress-bar': {
@@ -299,8 +326,12 @@ const FloatingVoiceRecorder = ({
 
             {isProcessing && (
               <>
-                <CircularProgress size={40} />
-                <Typography variant="body2" color="textSecondary">
+                <CircularProgress size={isMobile ? 32 : 40} />
+                <Typography 
+                  variant={isMobile ? "caption" : "body2"} 
+                  color="textSecondary"
+                  sx={{ fontSize: isMobile ? '0.75rem' : undefined }}
+                >
                   Processando...
                 </Typography>
               </>
@@ -309,8 +340,15 @@ const FloatingVoiceRecorder = ({
             {success && (
               <Grow in={success}>
                 <Box display="flex" alignItems="center" gap={1}>
-                  <CheckCircle color="success" sx={{ fontSize: 40 }} />
-                  <Typography variant="body2" color="success.main">
+                  <CheckCircle 
+                    color="success" 
+                    sx={{ fontSize: isMobile ? 32 : 40 }} 
+                  />
+                  <Typography 
+                    variant={isMobile ? "caption" : "body2"} 
+                    color="success.main"
+                    sx={{ fontSize: isMobile ? '0.75rem' : undefined }}
+                  >
                     Transcrito com sucesso!
                   </Typography>
                 </Box>
@@ -320,9 +358,16 @@ const FloatingVoiceRecorder = ({
 
           {error && (
             <Fade in={!!error}>
-              <Box display="flex" alignItems="center" gap={1} mt={2}>
-                <ErrorIcon color="error" fontSize="small" />
-                <Typography variant="caption" color="error">
+              <Box display="flex" alignItems="center" gap={1} mt={isMobile ? 1 : 2}>
+                <ErrorIcon 
+                  color="error" 
+                  fontSize={isMobile ? "small" : "medium"} 
+                />
+                <Typography 
+                  variant="caption" 
+                  color="error"
+                  sx={{ fontSize: isMobile ? '0.7rem' : undefined }}
+                >
                   {error}
                 </Typography>
               </Box>

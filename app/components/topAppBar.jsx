@@ -1,21 +1,23 @@
 "use client";
 import React from "react";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Typography, Button, IconButton, useTheme, useMediaQuery } from "@mui/material";
+import MenuIcon from '@mui/icons-material/Menu';
 import NotificationComponent from "./organismsComponents/notificationComponent";
 import { useAuth } from "./authProvider";
 
 // Atualiza o ActionButton para aceitar onClick
-const ActionButton = ({ label, icon, isPrimary = false, onClick }) => {
+const ActionButton = ({ label, icon, isPrimary = false, onClick, isMobile = false }) => {
     return (
         <Button
             onClick={onClick}
             variant="contained"
             aria-label={label}
             sx={{
-                height: "40px",
+                height: isMobile ? "36px" : "40px",
                 textTransform: "none",
                 borderRadius: "999px",
-                px: 3,
+                px: isMobile ? 2 : 3,
+                minWidth: isMobile && label === "+" ? "36px" : "auto",
                 backgroundColor: isPrimary ? "#1852FE" : "#4C515C",
                 color: "#FFF",
                 display: "flex",
@@ -31,13 +33,13 @@ const ActionButton = ({ label, icon, isPrimary = false, onClick }) => {
             <Box
                 component="span"
                 sx={{
-                    display: "flex",
+                    display: label === "+" && isMobile ? "none" : "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     ml: -1.0,
                     mr: 1,
-                    width: "28px",
-                    height: "28px",
+                    width: isMobile ? "24px" : "28px",
+                    height: isMobile ? "24px" : "28px",
                     borderRadius: "50%",
                     backgroundColor: "#FFF",
                     boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
@@ -46,16 +48,17 @@ const ActionButton = ({ label, icon, isPrimary = false, onClick }) => {
                 <img
                     src={`/${icon}.svg`}
                     alt={`${label} icon`}
-                    width="20"
-                    height="20"
+                    width={isMobile ? "16" : "20"}
+                    height={isMobile ? "16" : "20"}
                 />
             </Box>
 
             <Typography
                 sx={{
                     fontFamily: "Gellix, sans-serif",
-                    fontSize: "16px",
+                    fontSize: isMobile ? "14px" : "16px",
                     fontWeight: 500,
+                    display: isMobile && label !== "+" ? "none" : "block",
                 }}
             >
                 {label}
@@ -104,8 +107,12 @@ const TopAppBar = ({
                        onBackClick,
                        onAgendamentoClick,
                        onReceitaClick,
-                       onNotificationClick
+                       onNotificationClick,
+                       onMenuToggle,
+                       isMobile = false
                    }) => {
+    const theme = useTheme();
+    const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
     const { isSecretary, hasModulePermission } = useAuth();
     const handlePacienteClick = () => {
         if (onPacienteClick) {
@@ -136,25 +143,25 @@ const TopAppBar = ({
             case "patient-profile":
                 return (
                     <>
-                        <ActionButton label="Receita" icon="newreceita" isPrimary={true} onClick={handleReceitaClick} />
+                        <ActionButton label="Receita" icon="newreceita" isPrimary={true} onClick={handleReceitaClick} isMobile={isMobile} />
                         {(!isSecretary || hasModulePermission('patients', 'create')) && (
-                            <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
+                            <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} isMobile={isMobile} />
                         )}
-                        <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} />
+                        <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} isMobile={isMobile} />
                     </>
                 );
             case "import":
                 return (
-                    <ActionButton label="Importar Ficha" icon="import" />
+                    <ActionButton label="Importar Ficha" icon="import" isMobile={isMobile} />
                 );
             default:
                 return (
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <ActionButton label="Receita" icon="newreceita" isPrimary={true} onClick={handleReceitaClick} />
+                    <Box sx={{ display: 'flex', gap: isMobile ? 1 : 2 }}>
+                        <ActionButton label="Receita" icon="newreceita" isPrimary={true} onClick={handleReceitaClick} isMobile={isMobile} />
                         {(!isSecretary || hasModulePermission('patients', 'create')) && (
-                            <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} />
+                            <ActionButton label="Paciente" icon="newpaciente" onClick={handlePacienteClick} isMobile={isMobile} />
                         )}
-                        <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} />
+                        <ActionButton label="Agendamento" icon="newagendamento" onClick={handleAgendamentoClick} isMobile={isMobile} />
                     </Box>
                 );
         }
@@ -163,41 +170,66 @@ const TopAppBar = ({
     return (
         <Box
             sx={{
-                height: "80px",
+                height: isMobile ? "60px" : "80px",
                 width: "100%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "0 40px",
+                padding: isMobile ? "0 16px" : isTablet ? "0 24px" : "0 40px",
                 boxSizing: "border-box",
                 backgroundColor: "#FFF",
                 borderBottom: "1px solid #F0F0F0",
             }}
         >
             <Box sx={{ display: "flex", alignItems: "center" }}>
-                {/* BackButton sempre visível e sempre usa onBackClick */}
-                <BackButton onClick={onBackClick} />
+                {/* Menu button for mobile */}
+                {isMobile && onMenuToggle && (
+                    <IconButton
+                        onClick={onMenuToggle}
+                        sx={{
+                            mr: 1,
+                            p: 1,
+                            color: '#111E5A'
+                        }}
+                    >
+                        <MenuIcon />
+                    </IconButton>
+                )}
+                
+                {/* BackButton - hidden on mobile if there's a menu button */}
+                {!isMobile && (
+                    <BackButton onClick={onBackClick} />
+                )}
+                
                 <Typography
                     sx={{
                         color: "#111E5A",
                         fontFamily: "Gellix, sans-serif",
-                        fontSize: "30px",
+                        fontSize: isMobile ? "18px" : isTablet ? "24px" : "30px",
                         fontWeight: 500,
                         lineHeight: 1.2,
+                        ml: isMobile ? 0 : 2,
                     }}
                 >
                     {title}
                 </Typography>
             </Box>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: isMobile ? "8px" : "12px" }}>
                 {/* Componente de notificação */}
                 <NotificationComponent onMessageClick={handleNotificationClick} />
 
-                {/* Botões de ação */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    {renderButtons()}
-                </Box>
+                {/* Botões de ação - ocultos no mobile ou simplificados */}
+                {!isMobile && (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        {renderButtons()}
+                    </Box>
+                )}
+                
+                {/* Versão mobile - apenas o botão mais importante */}
+                {isMobile && (
+                    <ActionButton label="+" icon="newpaciente" isPrimary={true} onClick={handlePacienteClick} isMobile={isMobile} />
+                )}
             </Box>
         </Box>
     );

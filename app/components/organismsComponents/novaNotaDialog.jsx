@@ -21,7 +21,9 @@ import {
     Chip,
     FormControl,
     InputLabel,
-    Select
+    Select,
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -156,47 +158,56 @@ const theme = createTheme({
 });
 
 // Styled Dialog with smoother transitions
-const StyledDialog = ({ open, onClose, children, ...props }) => (
-    <Dialog
-        open={open}
-        onClose={onClose}
-        fullWidth
-        maxWidth="md"
-        sx={{
-            '& .MuiDialog-paper': {
-                borderRadius: '16px',
-                border: '1px solid #EAECEF',
-                background: '#FFF',
-                boxShadow: '0px 4px 40px 0px rgba(0, 0, 0, 0.1)',
-                maxHeight: '90vh',
-                margin: '16px',
-                width: 'calc(100% - 32px)',
-                maxWidth: '900px',
-                overflow: 'hidden',
-            },
+const StyledDialog = ({ open, onClose, children, ...props }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            fullWidth
+            fullScreen={isMobile}
+            maxWidth={isMobile ? false : "md"}
+            sx={{
+                '& .MuiDialog-paper': {
+                    borderRadius: isMobile ? 0 : '16px',
+                    border: isMobile ? 'none' : '1px solid #EAECEF',
+                    background: '#FFF',
+                    maxHeight: isMobile ? '100vh' : '90vh',
+                    height: isMobile ? '100vh' : 'auto',
+                    margin: isMobile ? 0 : '16px',
+                    width: isMobile ? '100%' : 'calc(100% - 32px)',
+                    boxShadow: isMobile ? 'none' : '0px 4px 40px 0px rgba(0, 0, 0, 0.1)',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                },
             '& .MuiBackdrop-root': {
                 backdropFilter: 'blur(4px)',
                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
             },
-        }}
-        TransitionComponent={Fade}
-        transitionDuration={250}
-        {...props}
-    >
-        {children}
-    </Dialog>
-);
+            }}
+            TransitionComponent={Fade}
+            transitionDuration={250}
+            {...props}
+        >
+            {children}
+        </Dialog>
+    );
+};
 
 // Custom styled buttons
-const PrimaryButton = ({ children, loading, success, ...props }) => (
+const PrimaryButton = ({ children, loading, success, isMobile, ...props }) => (
     <Button
         variant="contained"
         color="primary"
+        size={isMobile ? "medium" : "large"}
         sx={{
-            height: 44,
-            px: 3,
+            height: isMobile ? 40 : 44,
+            px: isMobile ? 2 : 3,
             fontWeight: 600,
-            fontSize: '15px',
+            fontSize: isMobile ? '14px' : '15px',
             boxShadow: 'none',
             '&:hover': { boxShadow: '0 4px 8px rgba(24, 82, 254, 0.2)' },
             position: 'relative',
@@ -217,14 +228,15 @@ const PrimaryButton = ({ children, loading, success, ...props }) => (
     </Button>
 );
 
-const SecondaryButton = ({ children, ...props }) => (
+const SecondaryButton = ({ children, isMobile, ...props }) => (
     <Button
         variant="outlined"
+        size={isMobile ? "medium" : "large"}
         sx={{
-            height: 44,
-            px: 3,
+            height: isMobile ? 40 : 44,
+            px: isMobile ? 2 : 3,
             fontWeight: 600,
-            fontSize: '15px',
+            fontSize: isMobile ? '14px' : '15px',
             borderColor: '#D0D5DD',
             color: theme.palette.grey[800],
             '&:hover': {
@@ -324,7 +336,7 @@ const AttachmentChip = ({ file, onOpen, onRemove, disabled }) => {
 
 
 // Enhanced consultation dropdown component
-const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }) => {
+const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading, isMobile }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
@@ -354,12 +366,13 @@ const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading }
                 endIcon={<KeyboardArrowDownIcon />}
                 onClick={handleClick}
                 disabled={loading}
+                size={isMobile ? "medium" : "large"}
                 sx={{
-                    height: 44,
-                    px: 3,
-                    minWidth: '220px',
+                    height: isMobile ? 40 : 44,
+                    px: isMobile ? 2 : 3,
+                    minWidth: isMobile ? '180px' : '220px',
                     fontWeight: 600,
-                    fontSize: '15px',
+                    fontSize: isMobile ? '14px' : '15px',
                     borderRadius: '50px',
                     backgroundColor: selectedDate ? undefined : 'transparent',
                 }}
@@ -464,6 +477,10 @@ const PatientNoteDialog = ({
                                onDelete
                            }) => {
     const { user } = useAuth();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    
     const isEditMode = !!note;
     const fileInputRef = useRef(null);
     const dropAreaRef = useRef(null);
@@ -497,7 +514,12 @@ const PatientNoteDialog = ({
 
     // Get category color
     const getCategoryColor = (category) => {
-        return theme.palette.noteCategory[category] || theme.palette.noteCategory.Geral;
+        return theme.palette.noteCategory?.[category] || theme.palette.noteCategory?.Geral || {
+            main: '#1852FE',
+            light: '#ECF1FF',
+            dark: '#0A3CC9',
+            background: '#F0F5FF',
+        };
     };
 
     useEffect(() => {
@@ -872,8 +894,11 @@ const PatientNoteDialog = ({
             <StyledDialog open={open} onClose={isLoading ? null : onClose}>
                 <DialogContent sx={{
                     p: 0,
-                    maxHeight: '90vh',
+                    flex: 1,
+                    maxHeight: isMobile ? 'calc(100vh - 0px)' : '90vh',
+                    height: isMobile ? 'auto' : 'auto',
                     overflowY: 'auto',
+                    overflowX: 'hidden',
                     scrollbarWidth: 'thin',
                     scrollbarColor: '#B0B0B0 #E0E0E0',
                     '&::-webkit-scrollbar': {
@@ -980,19 +1005,22 @@ const PatientNoteDialog = ({
                     <Box sx={{
                         display: 'flex',
                         flexDirection: 'column',
-                        height: 'calc(100% - 65px)',
+                        height: isMobile ? 'calc(100vh - 65px)' : 'calc(100% - 65px)',
                         overflow: 'hidden',
+                        flex: 1,
                     }}>
                         <Box sx={{
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            px: { xs: 2.5, sm: 4 },
-                            pt: 4,
-                            pb: 3,
+                            px: isMobile ? 2 : isTablet ? 3 : 4,
+                            pt: isMobile ? 3 : 4,
+                            pb: isMobile ? 2 : 3,
                             width: '100%',
                             maxWidth: '900px',
                             mx: 'auto',
+                            overflowY: isMobile ? 'auto' : 'visible',
+                            flex: 1,
                         }}>
                             {/* Icon and Title */}
                             <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -1015,9 +1043,9 @@ const PatientNoteDialog = ({
                                     })}
                                 </Box>
                                 <Typography
-                                    variant="h4"
+                                    variant={isMobile ? "h5" : "h4"}
                                     sx={{
-                                        fontSize: '28px',
+                                        fontSize: isMobile ? '20px' : isTablet ? '24px' : '28px',
                                         fontWeight: 600,
                                         color: '#101828'
                                     }}
@@ -1029,12 +1057,12 @@ const PatientNoteDialog = ({
                             {/* Note Type and Category Selectors */}
                             <Box sx={{
                                 display: 'flex',
-                                flexDirection: { xs: 'column', sm: 'row' },
+                                flexDirection: isMobile ? 'column' : 'row',
                                 alignItems: 'center',
-                                mb: 4,
+                                mb: isMobile ? 3 : 4,
                                 width: '100%',
                                 justifyContent: 'center',
-                                gap: { xs: 2, sm: 3 }
+                                gap: isMobile ? 2 : isTablet ? 2.5 : 3
                             }}>
                                 {/* Note Type */}
                                 <Button
@@ -1045,12 +1073,13 @@ const PatientNoteDialog = ({
                                         setConsultationDate(null);
                                     }}
                                     disabled={isLoading}
+                                    size={isMobile ? "medium" : "large"}
                                     sx={{
-                                        height: 44,
-                                        px: 3,
-                                        minWidth: '130px',
+                                        height: isMobile ? 40 : 44,
+                                        px: isMobile ? 2 : 3,
+                                        minWidth: isMobile ? '120px' : '130px',
                                         fontWeight: 600,
-                                        fontSize: '15px',
+                                        fontSize: isMobile ? '14px' : '15px',
                                         borderRadius: '50px',
                                         position: 'relative',
                                     }}
@@ -1078,7 +1107,7 @@ const PatientNoteDialog = ({
                                     </Box>
                                 </Button>
 
-                                <Typography sx={{ color: '#94A3B8', mx: { xs: 0, sm: 2 }, fontWeight: 500, fontSize: '15px' }}>
+                                <Typography sx={{ color: '#94A3B8', mx: isMobile ? 0 : 2, fontWeight: 500, fontSize: isMobile ? '14px' : '15px' }}>
                                     ou
                                 </Typography>
 
@@ -1089,6 +1118,7 @@ const PatientNoteDialog = ({
                                         selectedDate={consultationDate}
                                         onSelect={handleSelectConsultation}
                                         loading={isLoadingConsultations}
+                                        isMobile={isMobile}
                                     />
                                 </Box>
                             </Box>
@@ -1203,7 +1233,7 @@ const PatientNoteDialog = ({
                                             InputProps={{
                                                 disableUnderline: true,
                                                 sx: {
-                                                    fontSize: '18px',
+                                                    fontSize: isMobile ? '16px' : '18px',
                                                     fontWeight: 500,
                                                     color: '#101828',
                                                     '&::placeholder': {
@@ -1376,9 +1406,9 @@ const PatientNoteDialog = ({
                                                 disableUnderline: true,
                                             }}
                                             sx={{
-                                                minHeight: '200px',
+                                                minHeight: isMobile ? '150px' : '200px',
                                                 '& .MuiInputBase-root': {
-                                                    fontSize: '15px',
+                                                    fontSize: isMobile ? '14px' : '15px',
                                                     lineHeight: 1.6,
                                                     color: '#475467'
                                                 }
@@ -1583,15 +1613,24 @@ const PatientNoteDialog = ({
                                     {/* Actions Footer */}
                                     <Box sx={{
                                         display: 'flex',
+                                        flexDirection: isMobile ? 'column' : 'row',
                                         justifyContent: 'space-between',
-                                        p: 3,
+                                        gap: isMobile ? 1.5 : 0,
+                                        p: isMobile ? 2 : 3,
                                         borderTop: '1px solid #EAECEF',
-                                        bgcolor: '#fff'
+                                        bgcolor: '#fff',
+                                        position: isMobile ? 'sticky' : 'static',
+                                        bottom: isMobile ? 0 : 'auto',
+                                        zIndex: 10,
+                                        marginTop: 'auto',
+                                        flexShrink: 0
                                     }}>
                                         <SecondaryButton
                                             onClick={handleFileUpload}
                                             disabled={isLoading}
                                             startIcon={<AttachFileOutlinedIcon />}
+                                            isMobile={isMobile}
+                                            fullWidth={isMobile}
                                         >
                                             Adicionar Anexo
                                         </SecondaryButton>
@@ -1601,6 +1640,8 @@ const PatientNoteDialog = ({
                                             disabled={isLoading || !title.trim()}
                                             loading={isLoading}
                                             success={isSaved}
+                                            isMobile={isMobile}
+                                            fullWidth={isMobile}
                                             sx={{
                                                 backgroundColor: categoryColor.main,
                                                 '&:hover': {

@@ -5,6 +5,7 @@ import {
     Box,
     Typography,
     useTheme,
+    useMediaQuery,
     alpha,
     Skeleton,
     Card,
@@ -15,6 +16,8 @@ import { TrendingUp, Timeline, People } from '@mui/icons-material';
 
 const MetricsCard = ({ metrics, loading }) => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
     const [timeFrame, setTimeFrame] = useState('hoje');
 
     const handleTimeFrameChange = (period) => {

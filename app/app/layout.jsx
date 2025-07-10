@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Box, CircularProgress, Typography, Button, Alert } from "@mui/material";
+import { Box, CircularProgress, Typography, Button, Alert, useTheme, useMediaQuery, Drawer, IconButton } from "@mui/material";
+import MenuIcon from '@mui/icons-material/Menu';
 import LockIcon from '@mui/icons-material/Lock';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TopAppBar from "../components/topAppBar";
@@ -101,12 +102,18 @@ export default function AppLayout({ children }) {
     const userContext = auth?.userContext;
     const hasModulePermission = auth?.hasModulePermission;
     const router = useRouter();
+    
+    // Responsive design
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
 
     // Estados de navegação
     const [activePage, setActivePage] = useState("Dashboard");
     const [selectedPatientId, setSelectedPatientId] = useState(null);
     const [agendaConsultationId, setAgendaConsultationId] = useState(null);
     const [selectedMessageId, setSelectedMessageId] = useState(null);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     // Verificar se o usuário é administrador
     const isAdmin = user && user.administrador === true;
@@ -166,6 +173,14 @@ export default function AppLayout({ children }) {
 
     const handleProfileClick = useCallback(() => {
         setActivePage("Meu Perfil");
+    }, []);
+
+    const handleMobileMenuToggle = useCallback(() => {
+        setMobileMenuOpen(!mobileMenuOpen);
+    }, [mobileMenuOpen]);
+
+    const handleMobileMenuClose = useCallback(() => {
+        setMobileMenuOpen(false);
     }, []);
 
     // ✅ HANDLER PARA NOTIFICAÇÕES MELHORADO
@@ -481,15 +496,48 @@ export default function AppLayout({ children }) {
 
     return (
         <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF"}}>
-            {/* ✅ SIDEBAR COM SISTEMA DE PERMISSÕES */}
-            <Sidebar
-                initialSelected={activePage}
-                onMenuSelect={handleMenuSelect}
-                onLogout={logout}
-                onProfileClick={handleProfileClick}
-                userName={user?.fullName?.split(' ')[0] || "Médico"}
-                userRole={user?.especialidade || ""}
-            />
+            {/* ✅ SIDEBAR PARA DESKTOP */}
+            {!isMobile && (
+                <Sidebar
+                    initialSelected={activePage}
+                    onMenuSelect={handleMenuSelect}
+                    onLogout={logout}
+                    onProfileClick={handleProfileClick}
+                    userName={user?.fullName?.split(' ')[0] || "Médico"}
+                    userRole={user?.especialidade || ""}
+                />
+            )}
+
+            {/* ✅ SIDEBAR MÓVEL (DRAWER) */}
+            {isMobile && (
+                <Drawer
+                    anchor="left"
+                    open={mobileMenuOpen}
+                    onClose={handleMobileMenuClose}
+                    sx={{
+                        '& .MuiDrawer-paper': {
+                            width: '280px',
+                            backgroundColor: '#F4F9FF',
+                        }
+                    }}
+                >
+                    <Sidebar
+                        initialSelected={activePage}
+                        onMenuSelect={(page, consultationId) => {
+                            handleMenuSelect(page, consultationId);
+                            handleMobileMenuClose();
+                        }}
+                        onLogout={logout}
+                        onProfileClick={() => {
+                            handleProfileClick();
+                            handleMobileMenuClose();
+                        }}
+                        userName={user?.fullName?.split(' ')[0] || "Médico"}
+                        userRole={user?.especialidade || ""}
+                        isMobile={true}
+                    />
+                </Drawer>
+            )}
 
             {/* ✅ ÁREA PRINCIPAL */}
             <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
@@ -503,6 +551,8 @@ export default function AppLayout({ children }) {
                         onReceitaClick={handleReceitaClick}
                         onProfileClick={handleProfileClick}
                         onNotificationClick={handleNotificationClick}
+                        onMenuToggle={isMobile ? handleMobileMenuToggle : undefined}
+                        isMobile={isMobile}
                     />
                 </Box>
 
@@ -510,7 +560,7 @@ export default function AppLayout({ children }) {
                 <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
                     <Box sx={{
                         height: 'auto',
-                        padding: '10px',
+                        padding: isMobile ? '8px' : isTablet ? '8px' : '10px',
                         boxSizing: 'border-box',
                         ...scaleStyle
                     }}>

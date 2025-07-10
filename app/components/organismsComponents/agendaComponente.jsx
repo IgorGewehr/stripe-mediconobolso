@@ -1213,10 +1213,13 @@ const AgendaMedica = ({initialConsultationId}) => {
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                 {/* Day header */}
                 <Box sx={{
-                    p: 2,
+                    p: isMobile ? 1.5 : 2,
                     borderBottom: '1px solid #EAECEF',
                     display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
                     justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    gap: isMobile ? 1 : 0,
                     bgcolor: 'white'
                 }}>
                     <Box>
@@ -1338,6 +1341,62 @@ const AgendaMedica = ({initialConsultationId}) => {
 
     // Week view - improved to properly show events
     const renderWeekView = () => {
+        if (isMobile) {
+            // Mobile week view - simplified list
+            return (
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    height: '100%', 
+                    overflow: 'hidden',
+                    bgcolor: '#F8FAFF'
+                }}>
+                    <Box sx={{ 
+                        overflowY: 'auto', 
+                        p: 2,
+                        '&::-webkit-scrollbar': { width: '4px' },
+                        '&::-webkit-scrollbar-thumb': { backgroundColor: '#ccc', borderRadius: '4px' }
+                    }}>
+                        {currentWeek.map((day, dayIndex) => {
+                            const dayEvents = weekEvents[dayIndex] || [];
+                            if (dayEvents.length === 0) return null;
+                            
+                            return (
+                                <Box key={dayIndex} sx={{ mb: 3 }}>
+                                    <Typography 
+                                        variant="h6" 
+                                        sx={{ 
+                                            mb: 2, 
+                                            fontWeight: 600,
+                                            color: 'text.primary',
+                                            borderBottom: '2px solid',
+                                            borderColor: isSameDay(day, new Date()) ? 'primary.main' : 'divider',
+                                            pb: 1
+                                        }}
+                                    >
+                                        {format(day, 'EEEE, dd/MM', { locale: ptBR })}
+                                        {isSameDay(day, new Date()) && (
+                                            <Chip 
+                                                label="Hoje" 
+                                                size="small" 
+                                                color="primary" 
+                                                sx={{ ml: 1, fontSize: '0.7rem' }}
+                                            />
+                                        )}
+                                    </Typography>
+                                    {dayEvents.map(event => (
+                                        <Box key={event.id} sx={{ mb: 1 }}>
+                                            <EventCard event={event} onClick={handleEventClick} />
+                                        </Box>
+                                    ))}
+                                </Box>
+                            );
+                        })}
+                    </Box>
+                </Box>
+            );
+        }
+
         return (
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                 {/* Week header */}
@@ -1781,17 +1840,25 @@ const AgendaMedica = ({initialConsultationId}) => {
             }}>
                 {/* Calendar header */}
                 <Box sx={{
-                    p: 2,
+                    p: isMobile ? 1.5 : 2,
                     display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    gap: isMobile ? 1.5 : 0,
                     borderBottom: '1px solid #EAECEF',
                     bgcolor: 'white',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: isMobile ? 1 : 2,
+                        justifyContent: isMobile ? 'space-between' : 'flex-start',
+                        width: isMobile ? '100%' : 'auto'
+                    }}>
                         {isMobile && (
-                            <IconButton onClick={toggleSidebar}>
+                            <IconButton onClick={toggleSidebar} size="small">
                                 <MenuIcon />
                             </IconButton>
                         )}
@@ -1800,21 +1867,28 @@ const AgendaMedica = ({initialConsultationId}) => {
                             variant="outlined"
                             startIcon={<Today />}
                             onClick={handleCalendarOpen}
+                            size={isMobile ? "small" : "medium"}
                             sx={{
                                 borderRadius: '50px',
                                 textTransform: 'none',
-                                fontWeight: 500
+                                fontWeight: 500,
+                                fontSize: isMobile ? '0.8rem' : '0.875rem'
                             }}
                         >
                             Hoje
                         </Button>
 
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            gap: isMobile ? 0.5 : 1,
+                            alignItems: 'center'
+                        }}>
                             <IconButton
                                 onClick={goToPrevious}
+                                size={isMobile ? "small" : "medium"}
                                 sx={{
-                                    width: 36,
-                                    height: 36,
+                                    width: isMobile ? 32 : 36,
+                                    height: isMobile ? 32 : 36,
                                     border: '1px solid #CED4DA',
                                     borderRadius: '50%'
                                 }}
@@ -1823,9 +1897,10 @@ const AgendaMedica = ({initialConsultationId}) => {
                             </IconButton>
                             <IconButton
                                 onClick={goToNext}
+                                size={isMobile ? "small" : "medium"}
                                 sx={{
-                                    width: 36,
-                                    height: 36,
+                                    width: isMobile ? 32 : 36,
+                                    height: isMobile ? 32 : 36,
                                     border: '1px solid #CED4DA',
                                     borderRadius: '50%'
                                 }}
@@ -1834,12 +1909,26 @@ const AgendaMedica = ({initialConsultationId}) => {
                             </IconButton>
                         </Box>
 
-                        <Typography variant="h6" fontWeight={600}>
+                        <Typography 
+                            variant={isMobile ? "body1" : "h6"} 
+                            fontWeight={600}
+                            sx={{ 
+                                fontSize: isMobile ? '1rem' : '1.25rem',
+                                textAlign: isMobile ? 'center' : 'left',
+                                flex: isMobile ? 1 : 'initial'
+                            }}
+                        >
                             {currentMonthName}
                         </Typography>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: isMobile ? 1 : 2,
+                        width: isMobile ? '100%' : 'auto',
+                        justifyContent: isMobile ? 'center' : 'flex-end'
+                    }}>
                         <PeriodSelector changeView={changeView} />
 
                         {!isMobile && (
@@ -1922,8 +2011,8 @@ const AgendaMedica = ({initialConsultationId}) => {
             {isMobile && (
                 <Box sx={{
                     position: 'fixed',
-                    bottom: 24,
-                    right: 24,
+                    bottom: 20,
+                    right: 20,
                     zIndex: 1200
                 }}>
                     <Button
@@ -1933,11 +2022,17 @@ const AgendaMedica = ({initialConsultationId}) => {
                         onClick={handleCreateEvent}
                         sx={{
                             borderRadius: '50px',
-                            boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+                            boxShadow: '0 8px 24px rgba(24, 82, 254, 0.3)',
                             textTransform: 'none',
-                            fontWeight: 500,
-                            px: 3,
-                            py: 1.5
+                            fontWeight: 600,
+                            px: 2.5,
+                            py: 1.5,
+                            fontSize: '0.9rem',
+                            '&:hover': {
+                                boxShadow: '0 12px 32px rgba(24, 82, 254, 0.4)',
+                                transform: 'translateY(-2px)'
+                            },
+                            transition: 'all 0.3s ease'
                         }}
                     >
                         Nova Consulta

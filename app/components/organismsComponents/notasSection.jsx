@@ -13,7 +13,9 @@ import {
     Fade,
     ButtonGroup,
     Badge,
-    Divider, CardContent
+    Divider, CardContent,
+    useTheme,
+    useMediaQuery
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
@@ -56,7 +58,7 @@ const themeColors = {
 };
 
 // Action button component
-function ActionButton({ onClick, disabled, color, startIcon, children, variant = "contained" }) {
+function ActionButton({ onClick, disabled, color, startIcon, children, variant = "contained", sx = {} }) {
     return (
         <Button
             variant={variant}
@@ -82,7 +84,8 @@ function ActionButton({ onClick, disabled, color, startIcon, children, variant =
                     backgroundColor: variant === "contained" ? "#A0AEC0" : "transparent",
                     color: variant === "contained" ? "#FFF" : "#A0AEC0",
                     borderColor: variant === "outlined" ? "#A0AEC0" : "transparent",
-                }
+                },
+                ...sx
             }}
         >
             {children}
@@ -91,7 +94,7 @@ function ActionButton({ onClick, disabled, color, startIcon, children, variant =
 }
 
 // Note card component
-function NotaCard({ nota, onOpen }) {
+function NotaCard({ nota, onOpen, isMobile, isTablet }) {
     // Check if it's an anamnese note, prescription or exam
     const isAnamneseNote = nota.noteType === "Anamnese";
     const isReceitaNote = nota.noteType === "Receita";
@@ -234,14 +237,16 @@ function NotaCard({ nota, onOpen }) {
         >
             <Box sx={{
                 display: "flex",
+                flexDirection: isMobile ? "column" : "row",
                 width: "100%",
                 p: 0,
-                minHeight: "72px"
+                minHeight: isMobile ? "auto" : "72px"
             }}>
                 {/* Left column - Consultation date */}
                 <Box sx={{
-                    width: "130px",
-                    borderRight: "1px solid #EAECEF",
+                    width: isMobile ? "100%" : isTablet ? "120px" : "130px",
+                    borderRight: isMobile ? "none" : "1px solid #EAECEF",
+                    borderBottom: isMobile ? "1px solid #EAECEF" : "none",
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "center",
@@ -350,8 +355,9 @@ function NotaCard({ nota, onOpen }) {
                 {/* Right column - Attachments */}
                 {nota.attachments && nota.attachments.length > 0 && (
                     <Box sx={{
-                        width: "100px",
-                        borderLeft: "1px solid #EAECEF",
+                        width: isMobile ? "100%" : isTablet ? "90px" : "100px",
+                        borderLeft: isMobile ? "none" : "1px solid #EAECEF",
+                        borderTop: isMobile ? "1px solid #EAECEF" : "none",
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "center",
@@ -593,6 +599,11 @@ function EmptyState({ onCreate }) {
 
 // Main notes section component
 export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const isMedium = useMediaQuery(theme.breakpoints.down('md'));
+    
     // Estados
     const [notasData, setNotasData] = useState([]);
     const [filteredNotas, setFilteredNotas] = useState([]);
@@ -1010,7 +1021,7 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                     sx={{
                         color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: "30px",
+                        fontSize: isMobile ? "24px" : "30px",
                         fontWeight: 600,
                     }}
                 >
@@ -1018,30 +1029,51 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                 </Typography>
             </Box>
 
-            {/* Filters, View All and New Note buttons in one line */}
+            {/* Filters, View All and New Note buttons - mobile optimized */}
             <Box sx={{
                 display: "flex",
-                alignItems: "center",
+                flexDirection: isMobile ? "column" : "row",
+                alignItems: isMobile ? "stretch" : "center",
                 justifyContent: "space-between",
                 mb: 2,
-                mt: 2
+                mt: 2,
+                gap: isMobile ? 2 : 0
             }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <FilterAltIcon sx={{ mr: 1, color: themeColors.primary, fontSize: 18 }} />
-                    <Typography variant="body2" sx={{ color: themeColors.textSecondary, mr: 2, fontWeight: 500 }}>
-                        Filtrar por:
-                    </Typography>
+                <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    flexDirection: isMobile ? "column" : "row",
+                    gap: isMobile ? 1 : 0,
+                    width: isMobile ? "100%" : "auto"
+                }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        mb: isMobile ? 1 : 0,
+                        width: isMobile ? "100%" : "auto",
+                        justifyContent: isMobile ? "flex-start" : "center"
+                    }}>
+                        <FilterAltIcon sx={{ mr: 1, color: themeColors.primary, fontSize: 18 }} />
+                        <Typography variant="body2" sx={{ color: themeColors.textSecondary, mr: 2, fontWeight: 500 }}>
+                            Filtrar por:
+                        </Typography>
+                    </Box>
 
                     <ButtonGroup
                         variant="outlined"
                         aria-label="Filtro de visualização"
+                        orientation={isMobile ? "vertical" : "horizontal"}
+                        size={isMobile ? "small" : "medium"}
                         sx={{
+                            width: isMobile ? "100%" : "auto",
                             '& .MuiButton-root': {
                                 borderColor: '#E2E8F0',
                                 color: themeColors.textSecondary,
                                 fontWeight: 500,
-                                fontSize: '14px',
-                                height: '36px',
+                                fontSize: isMobile ? '13px' : '14px',
+                                height: isMobile ? '44px' : '36px',
+                                textTransform: 'none',
+                                fontFamily: 'Gellix',
 
                                 '&.Mui-selected, &.active': {
                                     backgroundColor: themeColors.primary,
@@ -1050,12 +1082,19 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                                 },
 
                                 '&:first-of-type': {
-                                    borderTopLeftRadius: '50px',
-                                    borderBottomLeftRadius: '50px',
+                                    borderTopLeftRadius: isMobile ? '12px' : '50px',
+                                    borderBottomLeftRadius: isMobile ? '12px' : '50px',
+                                    borderTopRightRadius: isMobile ? '12px' : '0px',
+                                    borderBottomRightRadius: isMobile ? '12px' : '0px',
                                 },
                                 '&:last-of-type': {
-                                    borderTopRightRadius: '50px',
-                                    borderBottomRightRadius: '50px',
+                                    borderTopRightRadius: isMobile ? '12px' : '50px',
+                                    borderBottomRightRadius: isMobile ? '12px' : '50px',
+                                    borderTopLeftRadius: isMobile ? '12px' : '0px',
+                                    borderBottomLeftRadius: isMobile ? '12px' : '0px',
+                                },
+                                '&:not(:first-of-type):not(:last-of-type)': {
+                                    borderRadius: isMobile ? '12px' : '0px',
                                 }
                             }
                         }}
@@ -1188,7 +1227,12 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                     </ButtonGroup>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    gap: isMobile ? 1 : 2,
+                    flexDirection: isMobile ? "column" : "row",
+                    width: isMobile ? "100%" : "auto"
+                }}>
                     {/* View All Expanded button */}
                     <Button
                         variant="outlined"
@@ -1197,13 +1241,14 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                         sx={{
                             height: 44,
                             padding: "0 20px",
-                            borderRadius: "99px",
+                            borderRadius: isMobile ? "12px" : "99px",
                             borderColor: themeColors.primary,
                             color: themeColors.primary,
                             fontFamily: "Gellix",
-                            fontSize: 14,
+                            fontSize: isMobile ? 13 : 14,
                             fontWeight: 500,
                             textTransform: "none",
+                            flex: isMobile ? 1 : 'initial',
                             '&:hover': {
                                 backgroundColor: `${themeColors.primaryLight}20`,
                                 borderColor: themeColors.primary,
@@ -1219,6 +1264,11 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                         color={themeColors.primary}
                         startIcon={<AddIcon />}
                         disabled={isLoading}
+                        sx={{
+                            borderRadius: isMobile ? "12px" : "99px",
+                            fontSize: isMobile ? 13 : 14,
+                            flex: isMobile ? 1 : 'initial',
+                        }}
                     >
                         {getActionButtonText()}
                     </ActionButton>
@@ -1324,6 +1374,8 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                             key={nota.id}
                             nota={nota}
                             onOpen={handleOpenNota}
+                            isMobile={isMobile}
+                            isTablet={isTablet}
                         />
                     ))
                 )}

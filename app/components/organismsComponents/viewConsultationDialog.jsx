@@ -262,7 +262,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 });
 
 // Componente de item de informação - melhorado
-const InfoItem = ({ icon, label, value, sx }) => {
+const InfoItem = ({ icon, label, value, sx, isMobile }) => {
     return (
         <Box
             sx={{
@@ -278,8 +278,8 @@ const InfoItem = ({ icon, label, value, sx }) => {
         >
             <Box
                 sx={{
-                    width: 42,
-                    height: 42,
+                    width: isMobile ? 36 : 42,
+                    height: isMobile ? 36 : 42,
                     borderRadius: '12px',
                     backgroundColor: alpha(theme.palette.primary.main, 0.1),
                     display: 'flex',
@@ -305,11 +305,12 @@ const InfoItem = ({ icon, label, value, sx }) => {
                     {label}
                 </Typography>
                 <Typography
-                    variant="body1"
+                    variant={isMobile ? "body2" : "body1"}
                     sx={{
                         fontWeight: 600,
                         color: 'text.primary',
-                        wordBreak: 'break-word'
+                        wordBreak: 'break-word',
+                        fontSize: isMobile ? '14px' : '16px'
                     }}
                 >
                     {value || '-'}
@@ -651,7 +652,9 @@ const ViewConsultationDialog = ({
     const [statusChangeConfirm, setStatusChangeConfirm] = useState(null);
 
     const muiTheme = useTheme();
-    const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const fullScreen = isMobile;
 
     // Cores por tipo de status
     const getStatusColor = (status) => {
@@ -1304,16 +1307,18 @@ const ViewConsultationDialog = ({
                 open={open}
                 onClose={onClose}
                 fullWidth
-                maxWidth="md"
+                maxWidth={isMobile ? false : isTablet ? "md" : "lg"}
                 fullScreen={fullScreen}
                 TransitionComponent={Transition}
                 PaperProps={{
                     sx: {
-                        borderRadius: '24px',
+                        borderRadius: isMobile ? 0 : isTablet ? '16px' : '24px',
                         overflow: 'hidden',
                         boxShadow: '0px 10px 40px rgba(0, 0, 0, 0.15)',
                         height: fullScreen ? '100%' : 'auto',
                         maxHeight: fullScreen ? '100%' : '90vh',
+                        margin: isMobile ? 0 : 1,
+                        width: isMobile ? '100%' : 'auto'
                     }
                 }}
             >
@@ -1325,7 +1330,7 @@ const ViewConsultationDialog = ({
                         justifyContent: 'space-between',
                         borderBottom: `1px solid ${alpha(statusColor.main, 0.2)}`,
                         background: statusColor.gradient,
-                        p: { xs: 2.5, sm: 3.5 },
+                        p: isMobile ? 2 : isTablet ? 2.5 : 3.5,
                         transition: 'all 0.3s'
                     }}
                 >
@@ -1335,8 +1340,8 @@ const ViewConsultationDialog = ({
                                 sx={{
                                     bgcolor: statusColor.main,
                                     color: 'white',
-                                    width: 56,
-                                    height: 56,
+                                    width: isMobile ? 40 : isTablet ? 48 : 56,
+                                    height: isMobile ? 40 : isTablet ? 48 : 56,
                                     mr: 2.5,
                                     display: { xs: 'none', sm: 'flex' },
                                     boxShadow: `0 8px 16px ${alpha(statusColor.main, 0.4)}`,
@@ -1349,7 +1354,15 @@ const ViewConsultationDialog = ({
                         </Fade>
                         <Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 0.8 }}>
-                                <Typography variant="h5" sx={{ fontWeight: 700, color: statusColor.dark, letterSpacing: '-0.02em' }}>
+                                <Typography 
+                                    variant={isMobile ? "h6" : "h5"} 
+                                    sx={{ 
+                                        fontWeight: 700, 
+                                        color: statusColor.dark, 
+                                        letterSpacing: '-0.02em',
+                                        fontSize: isMobile ? '14px' : isTablet ? '16px' : '20px'
+                                    }}
+                                >
                                     Consulta: {getPatientName()}
                                 </Typography>
                                 <Chip
@@ -1432,7 +1445,7 @@ const ViewConsultationDialog = ({
                 {/* Body - Melhorado */}
                 <DialogContent
                     sx={{
-                        p: 0,
+                        p: isMobile ? 0 : 0,
                         '&::-webkit-scrollbar': {
                             width: '10px',
                         },
@@ -1448,7 +1461,7 @@ const ViewConsultationDialog = ({
                     <Box
                         sx={{
                             height: '100%',
-                            p: { xs: 2.5, sm: 4 },
+                            p: isMobile ? 2 : isTablet ? 2.5 : 4,
                             overflow: 'auto',
                             backgroundColor: '#FBFCFF'
                         }}
@@ -1458,7 +1471,7 @@ const ViewConsultationDialog = ({
                         ) : (
                             <>
                                 {/* Metadados da consulta - Cards melhorados */}
-                                <Grid container spacing={3} sx={{ mb: 4 }}>
+                                <Grid container spacing={isMobile ? 2 : isTablet ? 2.5 : 3} sx={{ mb: isMobile ? 3 : 4 }}>
                                     <Grid item xs={12} sm={6} md={3}>
                                         <Paper
                                             elevation={0}
@@ -1485,6 +1498,7 @@ const ViewConsultationDialog = ({
                                                     value={
                                                         formatDate(consultationData.consultationDate) || "–"
                                                     }
+                                                    isMobile={isMobile}
                                                 />
                                             </Box>
                                         </Paper>
@@ -1514,6 +1528,7 @@ const ViewConsultationDialog = ({
                                                     icon={<AccessTimeIcon sx={{ color: statusColor.main }} />}
                                                     label="Horário"
                                                     value={consultationData.consultationTime || consultationData.horaInicio}
+                                                    isMobile={isMobile}
                                                 />
                                             </Box>
                                         </Paper>
@@ -1543,6 +1558,7 @@ const ViewConsultationDialog = ({
                                                     icon={<TimerIcon sx={{ color: statusColor.main }} />}
                                                     label="Duração"
                                                     value={formatDuration(consultationData.consultationDuration)}
+                                                    isMobile={isMobile}
                                                 />
                                             </Box>
                                         </Paper>
@@ -1574,6 +1590,7 @@ const ViewConsultationDialog = ({
                                                     })}
                                                     label="Tipo"
                                                     value={consultationData.consultationType || 'Presencial'}
+                                                    isMobile={isMobile}
                                                 />
                                             </Box>
                                         </Paper>
@@ -1638,8 +1655,8 @@ const ViewConsultationDialog = ({
                                                         borderBottom: `1px solid ${theme.palette.grey[200]}`
                                                     }}
                                                 >
-                                                    <Grid container spacing={3}>
-                                                        <Grid item xs={12} sm={7}>
+                                                    <Grid container spacing={isMobile ? 2 : isTablet ? 2.5 : 3}>
+                                                        <Grid item xs={12} sm={isMobile ? 12 : 7}>
                                                             <Box onClick={() => window.handlePatientClick && window.handlePatientClick(patientData.id)}
                                                                  sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                                                                 <Badge
@@ -1712,7 +1729,7 @@ const ViewConsultationDialog = ({
                                                             </Box>
                                                         </Grid>
 
-                                                        <Grid item xs={12} sm={5}>
+                                                        <Grid item xs={12} sm={isMobile ? 12 : 5}>
                                                             <Box sx={{
                                                                 display: 'flex',
                                                                 flexDirection: 'column',
@@ -1896,8 +1913,11 @@ const ViewConsultationDialog = ({
                 <Box
                     sx={{
                         display: 'flex',
+                        flexDirection: isMobile ? 'column' : 'row',
                         justifyContent: 'space-between',
-                        p: { xs: 2.5, sm: 3.5 },
+                        alignItems: isMobile ? 'stretch' : 'center',
+                        gap: isMobile ? 2 : 0,
+                        p: isMobile ? 2 : isTablet ? 2.5 : 3.5,
                         borderTop: '1px solid #EAECEF',
                         backgroundColor: 'white'
                     }}
@@ -1919,18 +1939,27 @@ const ViewConsultationDialog = ({
                             >
                                 <WarningIcon sx={{ color: theme.palette.primary.main, fontSize: '1.5rem' }} />
                             </Box>
-                            <Typography sx={{ color: theme.palette.primary.main, fontWeight: 600, mr: 'auto', letterSpacing: '-0.01em' }}>
+                            <Typography sx={{ 
+                                color: theme.palette.primary.main, 
+                                fontWeight: 600, 
+                                mr: 'auto', 
+                                letterSpacing: '-0.01em',
+                                fontSize: isMobile ? '14px' : '16px'
+                            }}>
                                 Alterar status da consulta para "{statusChangeConfirm}"?
                             </Typography>
                             <Button
                                 variant="outlined"
                                 onClick={handleStatusChangeCancel}
+                                size={isMobile ? "medium" : "large"}
+                                fullWidth={isMobile}
                                 sx={{
-                                    mr: 1.5,
+                                    mr: isMobile ? 0 : 1.5,
                                     borderColor: theme.palette.grey[300],
                                     color: theme.palette.grey[700],
-                                    minWidth: 100,
-                                    borderRadius: '12px'
+                                    minWidth: isMobile ? 'auto' : 100,
+                                    borderRadius: '12px',
+                                    fontSize: isMobile ? '14px' : '16px'
                                 }}
                             >
                                 Não
@@ -1939,10 +1968,14 @@ const ViewConsultationDialog = ({
                                 variant="contained"
                                 color="primary"
                                 onClick={handleStatusChangeConfirm}
+                                size={isMobile ? "medium" : "large"}
+                                fullWidth={isMobile}
                                 sx={{
                                     boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
-                                    minWidth: 120,
-                                    borderRadius: '12px'
+                                    minWidth: isMobile ? 'auto' : 120,
+                                    borderRadius: '12px',
+                                    fontSize: isMobile ? '14px' : '16px',
+                                    mt: isMobile ? 1 : 0
                                 }}
                             >
                                 Confirmar
@@ -1950,7 +1983,13 @@ const ViewConsultationDialog = ({
                         </Box>
                     ) : (
                         <>
-                            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
+                            <Box sx={{ 
+                                width: '100%', 
+                                display: 'flex', 
+                                flexDirection: isMobile ? 'column' : 'row',
+                                justifyContent: 'flex-end', 
+                                gap: isMobile ? 1.5 : 1.5 
+                            }}>
                                 {consultationData.status !== 'Concluída' && consultationData.status !== 'Cancelada' && (
                                     <Box sx={{ display: 'flex', gap: 1.5 }}>
                                         {consultationData.status !== 'Em Andamento' && (

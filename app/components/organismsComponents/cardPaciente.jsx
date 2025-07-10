@@ -458,6 +458,8 @@ function Card1({
                }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+    const isMedium = useMediaQuery(theme.breakpoints.down("md"));
     const [showAdditionalContactForm, setShowAdditionalContactForm] = useState(false);
 
     const handlePhotoChange = (e) => {
@@ -658,16 +660,19 @@ function Card1({
         <Box
             sx={{
                 position: "relative",
-                width: "350px",
+                width: isMobile ? "100%" : isTablet ? "100%" : "350px",
+                maxWidth: isMobile ? "none" : "350px",
                 boxSizing: "border-box",
                 backgroundColor: "#fff",
-                borderRadius: expanded ? "40px 0 0 40px" : "40px",
+                borderRadius: expanded && !isMedium ? (isMobile ? "16px 16px 0 0" : "40px 0 0 40px") : (isMobile ? "16px" : "40px"),
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                 zIndex: expanded ? 10 : 1,
                 display: "flex",
                 flexDirection: "column",
                 minHeight: "0",
                 boxShadow: isEditing ? '0 0 0 2px rgba(24, 82, 254, 0.2)' : 'none',
+                mx: isMobile ? 0 : "auto",
+                order: isMobile ? 1 : 'initial',
             }}
         >
             {/* Overlay image */}
@@ -679,11 +684,12 @@ function Card1({
                     position: "absolute",
                     top: 0,
                     right: 0,
-                    width: "200px",
-                    height: "170px",
+                    width: isMobile ? "150px" : "200px",
+                    height: isMobile ? "130px" : "170px",
                     zIndex: 0,
                     opacity: isEditing ? 0.3 : 1,
                     transition: "opacity 0.3s ease",
+                    display: isMobile ? "none" : "block",
                 }}
             />
 
@@ -760,7 +766,7 @@ function Card1({
                 )}
             </Box>
 
-            <Box sx={{p: 3, pb: 3, flexGrow: 0, height: "max-content"}}>
+            <Box sx={{p: isMobile ? 2 : 3, pb: isMobile ? 2 : 3, flexGrow: 0, height: "max-content"}}>
                 {/* Avatar/Photo */}
                 <Box
                     sx={{
@@ -787,8 +793,8 @@ function Card1({
                                 src={formData.photoPreview || formData.fotoPerfil || formData.photoURL}
                                 alt={formData.nome || formData.patientName}
                                 sx={{
-                                    width: 110,
-                                    height: 110,
+                                    width: isMobile ? 90 : 110,
+                                    height: isMobile ? 90 : 110,
                                     border: `3px solid ${themeColors.primary}`,
                                     position: "relative",
                                     transition: "transform 0.3s ease, box-shadow 0.3s ease",
@@ -800,7 +806,7 @@ function Card1({
                                 }}
                             >
                                 {!(formData.photoPreview || formData.fotoPerfil || formData.photoURL) && (
-                                    <PersonIcon sx={{color: "#B9D6FF", fontSize: 60}}/>
+                                    <PersonIcon sx={{color: "#B9D6FF", fontSize: isMobile ? 50 : 60}}/>
                                 )}
                             </Avatar>
 
@@ -2652,6 +2658,10 @@ export default function PacienteCard({paciente}) {
     const [alert, setAlert] = useState({open: false, message: '', severity: 'success'});
     const [validationErrors, setValidationErrors] = useState({});
     const {user} = useAuth();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+    const isMedium = useMediaQuery(theme.breakpoints.down("md"));
 
     // Update formData when paciente changes
     useEffect(() => {
@@ -2837,26 +2847,29 @@ export default function PacienteCard({paciente}) {
         <>
             <Box
                 sx={{
-                    position: expanded ? "absolute" : "relative",
-                    width: expanded ? "1170px" : "350px", // Aumente a largura para acomodar os três cards
+                    position: "relative",
+                    width: expanded ? 
+                        (isMobile ? "100%" : isTablet ? "95vw" : "1170px") : 
+                        (isMobile ? "100%" : isTablet ? "100%" : "350px"),
                     transition: "width 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                     marginBottom: "20px",
                     display: 'flex',
                     flexShrink: 0,
-                    height: 'max-content',
+                    height: 'auto',
                     minHeight: "0",
                     maxHeight: "none",
                     alignSelf: "flex-start",
-                    zIndex: expanded ? 10 : 1,
+                    overflow: "visible",
+                    zIndex: expanded ? 2 : 1,
                 }}
             >
                 <Paper
                     elevation={expanded ? 8 : 3}
                     sx={{
                         display: "flex",
-                        flexDirection: "row",
+                        flexDirection: expanded && isMobile ? "column" : "row",
                         backgroundColor: "#fff",
-                        borderRadius: "40px",
+                        borderRadius: expanded && isMobile ? "16px" : (isMobile ? "16px" : isTablet ? "24px" : "40px"),
                         overflow: "visible",
                         border: isEditing
                             ? `1px solid ${themeColors.primary}`
@@ -2891,7 +2904,7 @@ export default function PacienteCard({paciente}) {
                     {expanded && (
                         <Box
                             sx={{
-                                width: "400px",
+                                width: isMobile ? "100%" : "400px",
                                 visibility: "visible",
                                 transform: "translateX(0)",
                                 opacity: expanded ? 1 : 0,
@@ -2900,11 +2913,12 @@ export default function PacienteCard({paciente}) {
                                 transitionDelay: "0s, 0.25s",
                                 display: "flex",
                                 flexDirection: "column",
-                                borderRadius: "0", // Alterado para 0 já que agora é o do meio
+                                borderRadius: isMobile ? "0" : "0", // Alterado para 0 já que agora é o do meio
                                 flexGrow: 1,
                                 height: 'auto',
                                 minHeight: "0",
                                 maxHeight: "none",
+                                order: isMobile ? 2 : 'initial',
                             }}
                         >
                             <Card2
@@ -2920,7 +2934,7 @@ export default function PacienteCard({paciente}) {
                     {expanded && (
                         <Box
                             sx={{
-                                width: "400px",
+                                width: isMobile ? "100%" : "400px",
                                 visibility: "visible",
                                 transform: "translateX(0)",
                                 opacity: expanded ? 1 : 0,
@@ -2929,11 +2943,12 @@ export default function PacienteCard({paciente}) {
                                 transitionDelay: "0s, 0.25s",
                                 display: "flex",
                                 flexDirection: "column",
-                                borderRadius: "0 40px 40px 0", // Alterado para ser a borda da direita
+                                borderRadius: isMobile ? "0" : "0 40px 40px 0", // Alterado para ser a borda da direita
                                 flexGrow: 1,
                                 height: 'auto',
                                 minHeight: "0",
                                 maxHeight: "none",
+                                order: isMobile ? 3 : 'initial',
                             }}
                         >
                             <Card3

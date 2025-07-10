@@ -53,11 +53,14 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
     const [dragActive, setDragActive] = useState(false);
 
     const theme = useTheme();
-    const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const fullScreen = isMobile;
     const mediaRecorderRef = useRef(null);
     const audioRef = useRef(null);
     const timerRef = useRef(null);
     const fileInputRef = useRef(null);
+    const streamRef = useRef(null);
 
     // Cleanup on unmount and audio URL changes
     useEffect(() => {
@@ -377,21 +380,23 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
             open={open}
             onClose={handleClose}
             fullWidth
-            maxWidth="md"
+            maxWidth={isMobile ? false : isTablet ? "sm" : "md"}
             fullScreen={fullScreen}
             PaperProps={{
                 sx: {
-                    borderRadius: '20px',
+                    borderRadius: isMobile ? 0 : isTablet ? '16px' : '20px',
                     overflow: 'hidden',
                     height: fullScreen ? '100vh' : 'auto',
-                    minHeight: '600px'
+                    minHeight: isMobile ? '100vh' : isTablet ? '500px' : '600px',
+                    margin: isMobile ? 0 : isTablet ? 1 : 2,
+                    width: isMobile ? '100%' : 'auto'
                 }
             }}
         >
             {/* Header */}
             <Box
                 sx={{
-                    p: 3,
+                    p: isMobile ? 2 : isTablet ? 2.5 : 3,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -404,18 +409,25 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                         sx={{
                             bgcolor: '#1976D2',
                             color: 'white',
-                            width: 40,
-                            height: 40,
-                            mr: 2
+                            width: isMobile ? 32 : 40,
+                            height: isMobile ? 32 : 40,
+                            mr: isMobile ? 1.5 : 2
                         }}
                     >
                         <RecordVoiceOverIcon />
                     </Avatar>
                     <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976D2' }}>
+                        <Typography 
+                            variant={isMobile ? "subtitle1" : "h6"} 
+                            sx={{ fontWeight: 600, color: '#1976D2', fontSize: isMobile ? '16px' : '20px' }}
+                        >
                             Processamento de Áudio
                         </Typography>
-                        <Typography variant="body2" color="textSecondary">
+                        <Typography 
+                            variant="body2" 
+                            color="textSecondary"
+                            sx={{ fontSize: isMobile ? '12px' : '14px' }}
+                        >
                             Transcrição e análise médica por IA
                         </Typography>
                     </Box>
@@ -425,11 +437,16 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                 </IconButton>
             </Box>
 
-            <DialogContent sx={{ p: 3 }}>
+            <DialogContent sx={{ p: isMobile ? 2 : isTablet ? 2.5 : 3 }}>
                 {/* Configuration */}
-                <Box sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                        <FormControl size="small" sx={{ minWidth: 200 }}>
+                <Box sx={{ mb: isMobile ? 2 : 3 }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: isMobile ? 'column' : 'row',
+                        gap: isMobile ? 1.5 : 2, 
+                        mb: 2 
+                    }}>
+                        <FormControl size="small" sx={{ minWidth: isMobile ? '100%' : 200 }}>
                             <InputLabel>Tipo de Análise</InputLabel>
                             <Select
                                 value={analysisType}
@@ -459,11 +476,11 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                 {/* Recording/Upload Area */}
                 <Paper
                     sx={{
-                        p: 3,
-                        mb: 3,
+                        p: isMobile ? 2 : isTablet ? 2.5 : 3,
+                        mb: isMobile ? 2 : 3,
                         backgroundColor: dragActive ? '#F0F8FF' : '#FAFAFA',
                         border: dragActive ? '2px dashed #1976D2' : '2px dashed #E0E0E0',
-                        borderRadius: '12px',
+                        borderRadius: isMobile ? '8px' : '12px',
                         textAlign: 'center',
                         transition: 'all 0.2s ease'
                     }}
@@ -477,10 +494,10 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                             <Avatar
                                 sx={{
                                     bgcolor: isRecording ? '#F44336' : '#1976D2',
-                                    width: 60,
-                                    height: 60,
+                                    width: isMobile ? 48 : 60,
+                                    height: isMobile ? 48 : 60,
                                     mx: 'auto',
-                                    mb: 2
+                                    mb: isMobile ? 1.5 : 2
                                 }}
                             >
                                 {isRecording ? <MicIcon /> : <AudioFileIcon />}
@@ -488,10 +505,16 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                             
                             {isRecording ? (
                                 <Box>
-                                    <Typography variant="h6" sx={{ mb: 1, color: '#F44336' }}>
+                                    <Typography 
+                                        variant={isMobile ? "subtitle1" : "h6"} 
+                                        sx={{ mb: 1, color: '#F44336', fontSize: isMobile ? '16px' : '18px' }}
+                                    >
                                         Gravando...
                                     </Typography>
-                                    <Typography variant="h4" sx={{ mb: 2, color: '#F44336' }}>
+                                    <Typography 
+                                        variant={isMobile ? "h5" : "h4"} 
+                                        sx={{ mb: 2, color: '#F44336', fontSize: isMobile ? '24px' : '32px' }}
+                                    >
                                         {formatTime(recordingTime)}
                                     </Typography>
                                     <Button
@@ -499,22 +522,35 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                                         color="error"
                                         onClick={stopRecording}
                                         startIcon={<StopIcon />}
-                                        size="large"
+                                        size={isMobile ? "medium" : "large"}
+                                        sx={{ fontSize: isMobile ? '14px' : '16px' }}
                                     >
                                         Parar Gravação
                                     </Button>
                                 </Box>
                             ) : (
                                 <Box>
-                                    <Typography variant="h6" sx={{ mb: 2 }}>
+                                    <Typography 
+                                        variant={isMobile ? "subtitle1" : "h6"} 
+                                        sx={{ mb: isMobile ? 1.5 : 2, fontSize: isMobile ? '16px' : '18px' }}
+                                    >
                                         Grave ou faça upload de áudio
                                     </Typography>
-                                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 2 }}>
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        flexDirection: isMobile ? 'column' : 'row',
+                                        gap: isMobile ? 1.5 : 2, 
+                                        justifyContent: 'center', 
+                                        mb: isMobile ? 1.5 : 2,
+                                        alignItems: 'center'
+                                    }}>
                                         <Button
                                             variant="contained"
                                             onClick={startRecording}
                                             startIcon={<MicIcon />}
-                                            size="large"
+                                            size={isMobile ? "medium" : "large"}
+                                            fullWidth={isMobile}
+                                            sx={{ fontSize: isMobile ? '14px' : '16px' }}
                                         >
                                             Gravar
                                         </Button>
@@ -522,12 +558,18 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                                             variant="outlined"
                                             onClick={() => fileInputRef.current?.click()}
                                             startIcon={<CloudUploadIcon />}
-                                            size="large"
+                                            size={isMobile ? "medium" : "large"}
+                                            fullWidth={isMobile}
+                                            sx={{ fontSize: isMobile ? '14px' : '16px' }}
                                         >
                                             Upload
                                         </Button>
                                     </Box>
-                                    <Typography variant="body2" color="textSecondary">
+                                    <Typography 
+                                        variant="body2" 
+                                        color="textSecondary"
+                                        sx={{ fontSize: isMobile ? '12px' : '14px' }}
+                                    >
                                         Formatos suportados: MP3, WAV, M4A, WEBM (máx. 25MB)
                                     </Typography>
                                 </Box>
@@ -538,22 +580,35 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                             <Avatar
                                 sx={{
                                     bgcolor: '#22C55E',
-                                    width: 60,
-                                    height: 60,
+                                    width: isMobile ? 48 : 60,
+                                    height: isMobile ? 48 : 60,
                                     mx: 'auto',
-                                    mb: 2
+                                    mb: isMobile ? 1.5 : 2
                                 }}
                             >
                                 <CheckCircleIcon />
                             </Avatar>
-                            <Typography variant="h6" sx={{ mb: 2 }}>
+                            <Typography 
+                                variant={isMobile ? "subtitle1" : "h6"} 
+                                sx={{ mb: isMobile ? 1.5 : 2, fontSize: isMobile ? '16px' : '18px' }}
+                            >
                                 Áudio Pronto
                             </Typography>
-                            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 2 }}>
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: isMobile ? 'column' : 'row',
+                                gap: isMobile ? 1.5 : 2, 
+                                justifyContent: 'center', 
+                                mb: isMobile ? 1.5 : 2,
+                                alignItems: 'center'
+                            }}>
                                 <Button
                                     variant="outlined"
                                     onClick={toggleAudioPlayback}
                                     startIcon={isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                                    size={isMobile ? "medium" : "large"}
+                                    fullWidth={isMobile}
+                                    sx={{ fontSize: isMobile ? '14px' : '16px' }}
                                 >
                                     {isPlaying ? 'Pausar' : 'Reproduzir'}
                                 </Button>
@@ -562,6 +617,9 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                                     onClick={handleReset}
                                     startIcon={<DeleteOutlineIcon />}
                                     color="error"
+                                    size={isMobile ? "medium" : "large"}
+                                    fullWidth={isMobile}
+                                    sx={{ fontSize: isMobile ? '14px' : '16px' }}
                                 >
                                     Remover
                                 </Button>
@@ -570,9 +628,13 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                                 variant="contained"
                                 onClick={processAudio}
                                 disabled={isProcessing}
-                                startIcon={isProcessing ? <CircularProgress size={20} /> : <SmartToyIcon />}
-                                size="large"
-                                sx={{ mt: 1 }}
+                                startIcon={isProcessing ? <CircularProgress size={isMobile ? 16 : 20} /> : <SmartToyIcon />}
+                                size={isMobile ? "medium" : "large"}
+                                fullWidth={isMobile}
+                                sx={{ 
+                                    mt: isMobile ? 1 : 1.5, 
+                                    fontSize: isMobile ? '14px' : '16px'
+                                }}
                             >
                                 {isProcessing ? 'Processando...' : 'Processar com IA'}
                             </Button>
@@ -582,9 +644,14 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
 
                 {/* Processing Status */}
                 {isProcessing && (
-                    <Box sx={{ mb: 3 }}>
-                        <LinearProgress sx={{ mb: 2 }} />
-                        <Typography variant="body2" color="textSecondary" textAlign="center">
+                    <Box sx={{ mb: isMobile ? 2 : 3 }}>
+                        <LinearProgress sx={{ mb: isMobile ? 1.5 : 2 }} />
+                        <Typography 
+                            variant="body2" 
+                            color="textSecondary" 
+                            textAlign="center"
+                            sx={{ fontSize: isMobile ? '12px' : '14px' }}
+                        >
                             {processingStep}
                         </Typography>
                     </Box>
@@ -592,7 +659,13 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
 
                 {/* Error Display */}
                 {error && (
-                    <Alert severity="error" sx={{ mb: 3 }}>
+                    <Alert 
+                        severity="error" 
+                        sx={{ 
+                            mb: isMobile ? 2 : 3,
+                            fontSize: isMobile ? '12px' : '14px'
+                        }}
+                    >
                         {error}
                     </Alert>
                 )}
@@ -600,18 +673,48 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                 {/* Results */}
                 {result && (
                     <Fade in={true}>
-                        <Paper sx={{ p: 3, backgroundColor: '#F8FAFC', borderRadius: '12px' }}>
-                            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                                <CheckCircleIcon sx={{ mr: 1, color: '#22C55E' }} />
+                        <Paper sx={{ 
+                            p: isMobile ? 2 : isTablet ? 2.5 : 3, 
+                            backgroundColor: '#F8FAFC', 
+                            borderRadius: isMobile ? '8px' : '12px' 
+                        }}>
+                            <Typography 
+                                variant={isMobile ? "subtitle1" : "h6"} 
+                                sx={{ 
+                                    mb: isMobile ? 1.5 : 2, 
+                                    display: 'flex', 
+                                    alignItems: 'center',
+                                    fontSize: isMobile ? '16px' : '18px'
+                                }}
+                            >
+                                <CheckCircleIcon sx={{ mr: 1, color: '#22C55E', fontSize: isMobile ? '20px' : '24px' }} />
                                 Resultado do Processamento
                             </Typography>
                             
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                            <Box sx={{ mb: isMobile ? 2 : 3 }}>
+                                <Typography 
+                                    variant="subtitle2" 
+                                    sx={{ 
+                                        mb: 1, 
+                                        fontWeight: 600,
+                                        fontSize: isMobile ? '12px' : '14px'
+                                    }}
+                                >
                                     Transcrição:
                                 </Typography>
-                                <Paper sx={{ p: 2, backgroundColor: 'white', borderRadius: '8px' }}>
-                                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                                <Paper sx={{ 
+                                    p: isMobile ? 1.5 : 2, 
+                                    backgroundColor: 'white', 
+                                    borderRadius: isMobile ? '6px' : '8px' 
+                                }}>
+                                    <Typography 
+                                        variant="body2" 
+                                        sx={{ 
+                                            whiteSpace: 'pre-wrap', 
+                                            lineHeight: 1.6,
+                                            fontSize: isMobile ? '12px' : '14px'
+                                        }}
+                                    >
                                         {result.transcription}
                                     </Typography>
                                 </Paper>
@@ -619,14 +722,25 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
 
                             {result.analysis && (
                                 <Box>
-                                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                    <Typography 
+                                        variant="subtitle2" 
+                                        sx={{ 
+                                            mb: 1, 
+                                            fontWeight: 600,
+                                            fontSize: isMobile ? '12px' : '14px'
+                                        }}
+                                    >
                                         Análise Médica:
                                     </Typography>
-                                    <Paper sx={{ p: 2, backgroundColor: 'white', borderRadius: '8px' }}>
+                                    <Paper sx={{ 
+                                        p: isMobile ? 1.5 : 2, 
+                                        backgroundColor: 'white', 
+                                        borderRadius: isMobile ? '6px' : '8px' 
+                                    }}>
                                         <pre style={{ 
                                             whiteSpace: 'pre-wrap', 
                                             fontFamily: 'inherit', 
-                                            fontSize: '0.875rem',
+                                            fontSize: isMobile ? '0.75rem' : '0.875rem',
                                             lineHeight: 1.6,
                                             margin: 0
                                         }}>
@@ -636,16 +750,24 @@ const AudioProcessingDialog = ({ open, onClose, onResult, defaultAnalysisType = 
                                 </Box>
                             )}
 
-                            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                            <Box sx={{ 
+                                mt: isMobile ? 1.5 : 2, 
+                                display: 'flex', 
+                                flexDirection: isMobile ? 'column' : 'row',
+                                gap: isMobile ? 1 : 1,
+                                alignItems: isMobile ? 'flex-start' : 'center'
+                            }}>
                                 <Chip 
                                     label={`Tipo: ${result.analysisType || 'Geral'}`} 
                                     size="small" 
-                                    variant="outlined" 
+                                    variant="outlined"
+                                    sx={{ fontSize: isMobile ? '10px' : '12px' }}
                                 />
                                 <Chip 
                                     label={`${result.transcriptionLength} caracteres`} 
                                     size="small" 
-                                    variant="outlined" 
+                                    variant="outlined"
+                                    sx={{ fontSize: isMobile ? '10px' : '12px' }}
                                 />
                             </Box>
                         </Paper>

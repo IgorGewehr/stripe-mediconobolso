@@ -1,30 +1,38 @@
-import { Box, Grid, FormControl, InputLabel, TextField, Select, MenuItem, RadioGroup, FormControlLabel, Radio, InputAdornment, FormLabel } from '@mui/material';
+import { Box, Grid, FormControl, InputLabel, TextField, Select, MenuItem, RadioGroup, FormControlLabel, Radio, InputAdornment, FormLabel, useTheme, useMediaQuery } from '@mui/material';
 
 function NewPacienteForm() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    
     return (
         <Box
             sx={{
-                width: 1536,
-                height: 498,
-                borderRadius: '40px',
+                width: '100%',
+                maxWidth: isMobile ? '100vw' : isTablet ? '700px' : '900px',
+                height: 'auto',
+                minHeight: isMobile ? '100vh' : '400px',
+                borderRadius: isMobile ? '16px' : isTablet ? '24px' : '32px',
                 border: '1px solid #EAECEF',
                 background: '#FFF',
                 flexShrink: 0,
-                padding: 4,
+                padding: isMobile ? 2 : isTablet ? 2.5 : 3,
+                margin: isMobile ? '8px' : 'auto',
+                overflowY: isMobile ? 'auto' : 'visible',
             }}
         >
             <Grid container spacing={2}>
                 {/* Coluna Esquerda */}
-                <Grid item xs={6}>
+                <Grid item xs={12} md={6}>
                     <Grid container spacing={2}>
                         {/* Nome Completo */}
-                        <Grid item xs={6}>
+                        <Grid item xs={12} sm={6} md={6}>
                             <FormControl fullWidth>
                                 <InputLabel
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -36,7 +44,8 @@ function NewPacienteForm() {
                                     placeholder="Digite seu nome completo"
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
-                                            borderRadius: '999px',
+                                            borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                            fontSize: isMobile ? '14px' : '16px',
                                             '& fieldset': { borderColor: 'rgba(17, 30, 90, 0.30)' },
                                         },
                                     }}
@@ -45,13 +54,13 @@ function NewPacienteForm() {
                         </Grid>
 
                         {/* Data de Nascimento */}
-                        <Grid item xs={6}>
+                        <Grid item xs={12} sm={6} md={6}>
                             <FormControl fullWidth>
                                 <InputLabel
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -70,7 +79,8 @@ function NewPacienteForm() {
                                     }}
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
-                                            borderRadius: '999px',
+                                            borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                            fontSize: isMobile ? '14px' : '16px',
                                             '& fieldset': { borderColor: 'rgba(17, 30, 90, 0.30)' },
                                         },
                                     }}
@@ -79,13 +89,13 @@ function NewPacienteForm() {
                         </Grid>
 
                         {/* Tipo Sanguíneo */}
-                        <Grid item xs={6}>
+                        <Grid item xs={12} sm={6} md={6}>
                             <FormControl fullWidth>
                                 <InputLabel
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -97,7 +107,8 @@ function NewPacienteForm() {
                                     value=""
                                     displayEmpty
                                     sx={{
-                                        borderRadius: '999px',
+                                        borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                        fontSize: isMobile ? '14px' : '16px',
                                         '& .MuiOutlinedInput-notchedOutline': {
                                             borderColor: 'rgba(17, 30, 90, 0.30)',
                                         },
@@ -119,13 +130,13 @@ function NewPacienteForm() {
                         </Grid>
 
                         {/* Gênero */}
-                        <Grid item xs={6}>
+                        <Grid item xs={12}>
                             <FormControl component="fieldset">
                                 <FormLabel
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -133,7 +144,7 @@ function NewPacienteForm() {
                                 >
                                     Gênero*
                                 </FormLabel>
-                                <RadioGroup row>
+                                <RadioGroup row={!isMobile} sx={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 1 : 2 }}>
                                     <FormControlLabel
                                         value="masculino"
                                         control={<Radio />}
@@ -167,13 +178,13 @@ function NewPacienteForm() {
                         </Grid>
 
                         {/* Endereço */}
-                        <Grid item xs={6}>
+                        <Grid item xs={12} sm={6} md={6}>
                             <FormControl fullWidth>
                                 <InputLabel
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -185,7 +196,8 @@ function NewPacienteForm() {
                                     placeholder="Digite seu endereço"
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
-                                            borderRadius: '999px',
+                                            borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                            fontSize: isMobile ? '14px' : '16px',
                                             '& fieldset': { borderColor: 'rgba(17, 30, 90, 0.30)' },
                                         },
                                     }}
@@ -194,13 +206,13 @@ function NewPacienteForm() {
                         </Grid>
 
                         {/* Cidade */}
-                        <Grid item xs={6}>
+                        <Grid item xs={12} sm={6} md={6}>
                             <FormControl fullWidth>
                                 <InputLabel
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -212,7 +224,8 @@ function NewPacienteForm() {
                                     placeholder="Digite sua cidade"
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
-                                            borderRadius: '999px',
+                                            borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                            fontSize: isMobile ? '14px' : '16px',
                                             '& fieldset': { borderColor: 'rgba(17, 30, 90, 0.30)' },
                                         },
                                     }}
@@ -221,13 +234,13 @@ function NewPacienteForm() {
                         </Grid>
 
                         {/* Estado */}
-                        <Grid item xs={6}>
+                        <Grid item xs={12} sm={6} md={6}>
                             <FormControl fullWidth>
                                 <InputLabel
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -239,7 +252,8 @@ function NewPacienteForm() {
                                     value=""
                                     displayEmpty
                                     sx={{
-                                        borderRadius: '999px',
+                                        borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                        fontSize: isMobile ? '14px' : '16px',
                                         '& .MuiOutlinedInput-notchedOutline': {
                                             borderColor: 'rgba(17, 30, 90, 0.30)',
                                         },
@@ -257,13 +271,13 @@ function NewPacienteForm() {
                         </Grid>
 
                         {/* CPF */}
-                        <Grid item xs={6}>
+                        <Grid item xs={12} sm={6} md={6}>
                             <FormControl fullWidth>
                                 <InputLabel
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -275,7 +289,8 @@ function NewPacienteForm() {
                                     placeholder="000.000.000-00"
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
-                                            borderRadius: '999px',
+                                            borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                            fontSize: isMobile ? '14px' : '16px',
                                             '& fieldset': { borderColor: 'rgba(17, 30, 90, 0.30)' },
                                         },
                                     }}
@@ -286,7 +301,7 @@ function NewPacienteForm() {
                 </Grid>
 
                 {/* Coluna Direita */}
-                <Grid item xs={6}>
+                <Grid item xs={12} md={6}>
                     <Grid container direction="column" spacing={2}>
                         {/* Email */}
                         <Grid item>
@@ -295,7 +310,7 @@ function NewPacienteForm() {
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -307,7 +322,8 @@ function NewPacienteForm() {
                                     placeholder="contato@popolente.com"
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
-                                            borderRadius: '999px',
+                                            borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                            fontSize: isMobile ? '14px' : '16px',
                                             '& fieldset': { borderColor: 'rgba(17, 30, 90, 0.30)' },
                                         },
                                     }}
@@ -322,7 +338,7 @@ function NewPacienteForm() {
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -341,7 +357,8 @@ function NewPacienteForm() {
                                     }}
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
-                                            borderRadius: '999px',
+                                            borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                            fontSize: isMobile ? '14px' : '16px',
                                             '& fieldset': { borderColor: 'rgba(17, 30, 90, 0.30)' },
                                         },
                                     }}
@@ -356,7 +373,7 @@ function NewPacienteForm() {
                                     sx={{
                                         color: '#111E5A',
                                         fontFamily: 'Gellix',
-                                        fontSize: '16px',
+                                        fontSize: isMobile ? '14px' : isTablet ? '15px' : '16px',
                                         fontWeight: 500,
                                         lineHeight: '150%',
                                         textTransform: 'capitalize',
@@ -368,7 +385,8 @@ function NewPacienteForm() {
                                     placeholder="00000-000"
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
-                                            borderRadius: '999px',
+                                            borderRadius: isMobile ? '8px' : isTablet ? '16px' : '999px',
+                                            fontSize: isMobile ? '14px' : '16px',
                                             '& fieldset': { borderColor: 'rgba(17, 30, 90, 0.30)' },
                                         },
                                     }}

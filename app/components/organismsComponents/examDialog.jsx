@@ -30,7 +30,9 @@ import {
     Skeleton,
     Badge,
     Backdrop,
-    LinearProgress
+    LinearProgress,
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -212,21 +214,35 @@ const theme = createTheme({
     }
 });
 
-const OcrTipsDialog = ({ open, onClose }) => (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogContent sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+const OcrTipsDialog = ({ open, onClose }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    
+    return (
+        <Dialog 
+            open={open} 
+            onClose={onClose} 
+            maxWidth={isMobile ? false : isTablet ? "xs" : "sm"} 
+            fullWidth
+            fullScreen={isMobile}
+        >
+            <DialogContent sx={{ p: isMobile ? 2 : isTablet ? 2.5 : 3 }}>
+            <Typography 
+                variant={isMobile ? "subtitle1" : "h6"} 
+                sx={{ mb: 2, fontWeight: 600, fontSize: isMobile ? '16px' : isTablet ? '18px' : '20px' }}
+            >
                 Dicas para melhorar o reconhecimento de texto
             </Typography>
 
             <Box component="ul" sx={{ pl: 3 }}>
-                <Typography component="li" sx={{ mb: 1 }}>Certifique-se que o texto está bem iluminado e nítido</Typography>
-                <Typography component="li" sx={{ mb: 1 }}>Evite reflexos, dobras ou sombras no documento</Typography>
-                <Typography component="li" sx={{ mb: 1 }}>Posicione a câmera diretamente acima do documento</Typography>
-                <Typography component="li" sx={{ mb: 1 }}>Use um fundo com contraste com o documento</Typography>
-                <Typography component="li" sx={{ mb: 1 }}>Para PDFs escaneados, use uma resolução mínima de 300 DPI</Typography>
-                <Typography component="li" sx={{ mb: 1 }}>Documentos impressos geralmente funcionam melhor que manuscritos</Typography>
-                <Typography component="li" sx={{ mb: 1 }}>Tente recortar apenas a área que contém os resultados do exame</Typography>
+                <Typography component="li" sx={{ mb: 1, fontSize: isMobile ? '14px' : '16px' }}>Certifique-se que o texto está bem iluminado e nítido</Typography>
+                <Typography component="li" sx={{ mb: 1, fontSize: isMobile ? '14px' : '16px' }}>Evite reflexos, dobras ou sombras no documento</Typography>
+                <Typography component="li" sx={{ mb: 1, fontSize: isMobile ? '14px' : '16px' }}>Posicione a câmera diretamente acima do documento</Typography>
+                <Typography component="li" sx={{ mb: 1, fontSize: isMobile ? '14px' : '16px' }}>Use um fundo com contraste com o documento</Typography>
+                <Typography component="li" sx={{ mb: 1, fontSize: isMobile ? '14px' : '16px' }}>Para PDFs escaneados, use uma resolução mínima de 300 DPI</Typography>
+                <Typography component="li" sx={{ mb: 1, fontSize: isMobile ? '14px' : '16px' }}>Documentos impressos geralmente funcionam melhor que manuscritos</Typography>
+                <Typography component="li" sx={{ mb: 1, fontSize: isMobile ? '14px' : '16px' }}>Tente recortar apenas a área que contém os resultados do exame</Typography>
             </Box>
 
             <Button
@@ -234,44 +250,53 @@ const OcrTipsDialog = ({ open, onClose }) => (
                 fullWidth
                 onClick={onClose}
                 sx={{ mt: 2 }}
+                size={isMobile ? "medium" : "large"}
             >
                 Entendi
             </Button>
         </DialogContent>
     </Dialog>
-);
+    );
+};
 
 // Styled Dialog with smoother transitions
-const StyledDialog = ({ open, onClose, children, ...props }) => (
-    <Dialog
-        open={open}
-        onClose={onClose}
-        fullWidth
-        maxWidth="md"
-        sx={{
-            '& .MuiDialog-paper': {
-                borderRadius: '16px',
-                border: '1px solid #EAECEF',
-                background: '#FFF',
-                boxShadow: '0px 4px 40px 0px rgba(0, 0, 0, 0.1)',
-                maxHeight: '90vh',
-                margin: '16px',
-                width: 'calc(100% - 32px)',
-                maxWidth: '900px',
+const StyledDialog = ({ open, onClose, children, ...props }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            fullWidth
+            fullScreen={isMobile}
+            maxWidth={isMobile ? false : isTablet ? "sm" : "md"}
+            sx={{
+                '& .MuiDialog-paper': {
+                    borderRadius: isMobile ? 0 : isTablet ? '12px' : '16px',
+                    border: isMobile ? 'none' : '1px solid #EAECEF',
+                    background: '#FFF',
+                    boxShadow: isMobile ? 'none' : '0px 4px 40px 0px rgba(0, 0, 0, 0.1)',
+                    maxHeight: isMobile ? '100vh' : '90vh',
+                    margin: isMobile ? 0 : '16px',
+                    width: isMobile ? '100%' : 'calc(100% - 32px)',
+                    maxWidth: isMobile ? '100%' : isTablet ? '700px' : '900px',
                 overflow: 'hidden',
             },
             '& .MuiBackdrop-root': {
                 backdropFilter: 'blur(4px)',
                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
             },
-        }}
-        TransitionComponent={Fade}
-        transitionDuration={250}
-        {...props}
-    >
-        {children}
-    </Dialog>
-);
+            }}
+            TransitionComponent={Fade}
+            transitionDuration={250}
+            {...props}
+        >
+            {children}
+        </Dialog>
+    );
+};
 
 // Custom styled buttons
 const PrimaryButton = ({ children, loading, success, ...props }) => (
@@ -394,6 +419,10 @@ const ExamDialog = ({
                         onDelete
                     }) => {
     const { user } = useAuth();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    
     const isEditMode = !!exam;
     const fileInputRef = useRef(null);
     const dropAreaRef = useRef(null);
@@ -1836,7 +1865,20 @@ const ExamDialog = ({
 
     // Get category color from theme
     const getCategoryColor = (categoryId) => {
-        return theme.palette.examCategory[categoryId] || theme.palette.examCategory.Default;
+        if (theme.palette.examCategory && theme.palette.examCategory[categoryId]) {
+            return theme.palette.examCategory[categoryId];
+        }
+        if (theme.palette.examCategory && theme.palette.examCategory.Default) {
+            return theme.palette.examCategory.Default;
+        }
+        // Fallback color if examCategory is not defined
+        return {
+            main: '#1852FE',
+            light: '#ECF1FF',
+            dark: '#0A3AA8',
+            background: '#F0F5FF',
+            icon: '🔬',
+        };
     };
 
     const categoryColor = getCategoryColor(examCategory);
@@ -1872,7 +1914,7 @@ const ExamDialog = ({
             <StyledDialog open={open} onClose={isLoading ? null : onClose}>
                 <DialogContent sx={{
                     p: 0,
-                    maxHeight: '90vh',
+                    maxHeight: isMobile ? '100vh' : '90vh',
                     overflowY: 'auto',
                     scrollbarWidth: 'thin',
                     scrollbarColor: '#B0B0B0 #E0E0E0',
@@ -1892,7 +1934,7 @@ const ExamDialog = ({
                 >
                     {/* Header */}
                     <Box sx={{
-                        p: 2.5,
+                        p: isMobile ? 1.5 : isTablet ? 2 : 2.5,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -1918,7 +1960,14 @@ const ExamDialog = ({
                                 <ArrowBackIcon />
                             </IconButton>
 
-                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#101828' }}>
+                            <Typography 
+                                variant={isMobile ? "subtitle1" : "h6"} 
+                                sx={{ 
+                                    fontWeight: 600, 
+                                    color: '#101828',
+                                    fontSize: isMobile ? '16px' : isTablet ? '18px' : '20px'
+                                }}
+                            >
                                 {isEditMode ? 'Editar exame' : 'Novo exame'}
                             </Typography>
 

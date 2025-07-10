@@ -18,6 +18,7 @@ const Sidebar = ({
                      onMenuSelect,
                      onLogout,
                      onProfileClick,
+                     isMobile = false,
                  }) => {
     const [selected, setSelected] = useState(initialSelected);
     const { user } = useAuth();
@@ -129,13 +130,13 @@ const Sidebar = ({
         alignItems: "center",
         justifyContent: "flex-start",
         fontFamily: "Gellix, sans-serif",
-        fontSize: "12px",
+        fontSize: isMobile ? "14px" : "12px",
         fontWeight: 500,
         textTransform: "none",
-        width: label === "Central de Ajuda" ? "180px" : "150px",
-        height: "28px",
-        px: 2,
-        py: 1,
+        width: isMobile ? "100%" : label === "Central de Ajuda" ? "180px" : "150px",
+        height: isMobile ? "36px" : "28px",
+        px: isMobile ? 2.5 : 2,
+        py: isMobile ? 1.5 : 1,
         my: 0.5,
         borderRadius: "18px",
         transition: "background-color 0.2s ease, color 0.2s ease",
@@ -166,12 +167,12 @@ const Sidebar = ({
         alignItems: "center",
         justifyContent: "flex-start",
         fontFamily: "Gellix, sans-serif",
-        fontSize: "12px",
+        fontSize: isMobile ? "14px" : "12px",
         fontWeight: 600,
         textTransform: "none",
-        width: "180px",
-        height: "44px",
-        px: 2.5,
+        width: isMobile ? "100%" : "180px",
+        height: isMobile ? "52px" : "44px",
+        px: isMobile ? 3 : 2.5,
         py: 1.5,
         borderRadius: "16px",
         transition: "all 0.2s ease",
@@ -198,15 +199,15 @@ const Sidebar = ({
         },
     });
 
-    const iconStyles = { width: "18px", height: "18px", mr: 1.2 };
+    const iconStyles = { width: isMobile ? "20px" : "18px", height: isMobile ? "20px" : "18px", mr: 1.2 };
     const lockIconStyles = { width: "14px", height: "14px", ml: 0.8, color: "#8A94A6" };
     const categoryLabelStyle = {
         color: "#8A94A6",
         fontFamily: "Gellix, sans-serif",
-        fontSize: "12px",
+        fontSize: isMobile ? "14px" : "12px",
         fontWeight: 500,
         mb: 0.8,
-        mt: 2.5,
+        mt: isMobile ? 2 : 2.5,
         ml: 1.5,
     };
 
@@ -379,12 +380,12 @@ const Sidebar = ({
         <Box
             sx={{
                 backgroundColor: "#F8FAFF",
-                height: "100vh",
-                width: "240px",
+                height: isMobile ? "100%" : "100vh",
+                width: isMobile ? "100%" : "240px",
                 position: "relative",
-                pl: "30px",
-                pr: "16px",
-                pt: "30px",
+                pl: isMobile ? "20px" : "30px",
+                pr: isMobile ? "20px" : "16px",
+                pt: isMobile ? "20px" : "30px",
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",

@@ -17,7 +17,9 @@ import MiniChatCard from "./organismsComponents/miniChatCard";
 
 const Dashboard = ({ onClickPatients }) => {
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const isMedium = useMediaQuery(theme.breakpoints.down('md'));
     const { user } = useAuth();
 
     const [loading, setLoading] = useState(true);
@@ -228,11 +230,23 @@ const Dashboard = ({ onClickPatients }) => {
     };
 
     return (
-        <Box sx={{ width: '100%', pt: 2, pb: 4 }}>
-            <Grid container spacing={3}>
+        <Box sx={{ 
+            width: '100%', 
+            pt: isMobile ? 1 : isTablet ? 1.5 : 2, 
+            pb: isMobile ? 2 : isTablet ? 3 : 4,
+            px: isMobile ? 1 : isTablet ? 2 : 0
+        }}>
+            <Grid container spacing={isMobile ? 1.5 : isTablet ? 2 : 3}>
+                {/* Ordem alterada para mobile - MiniChat primeiro em mobile */}
+                {isMobile && (
+                    <Grid item xs={12}>
+                        <MiniChatCard />
+                    </Grid>
+                )}
+                
                 {/* Lado esquerdo - Layout em coluna com Consulta (acima) e Lista de Pacientes (abaixo) */}
-                <Grid item xs={12} md={8}>
-                    <Grid container direction="column" spacing={3}>
+                <Grid item xs={12} sm={12} md={8} lg={8}>
+                    <Grid container direction="column" spacing={isMobile ? 1.5 : isTablet ? 2 : 3}>
                         {/* Próxima consulta */}
                         <Grid item xs={12}>
                             <ConsultationCard
@@ -255,10 +269,17 @@ const Dashboard = ({ onClickPatients }) => {
                     </Grid>
                 </Grid>
 
-                {/* Lado direito - Métricas */}
-                <Grid item xs={12} md={4}>
-                    <MiniChatCard />
-                </Grid>
+                {/* Lado direito - MiniChat (desktop e tablet) */}
+                {!isMobile && (
+                    <Grid item xs={12} sm={12} md={4} lg={4}>
+                        <Box sx={{ 
+                            position: isTablet ? 'relative' : 'sticky', 
+                            top: isTablet ? 0 : 20 
+                        }}>
+                            <MiniChatCard />
+                        </Box>
+                    </Grid>
+                )}
             </Grid>
         </Box>
     );

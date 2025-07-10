@@ -15,7 +15,9 @@ import {
     Divider,
     Button,
     Avatar,
-    Chip
+    Chip,
+    useMediaQuery,
+    useTheme
 } from "@mui/material";
 import {
     Notifications as NotificationsIcon,
@@ -36,6 +38,10 @@ const NotificationComponent = ({ onMessageClick }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
+    
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
 
     const open = Boolean(anchorEl);
 
@@ -216,8 +222,8 @@ const NotificationComponent = ({ onMessageClick }) => {
             <IconButton
                 onClick={handleClick}
                 sx={{
-                    width: 40,
-                    height: 40,
+                    width: isMobile ? 36 : 40,
+                    height: isMobile ? 36 : 40,
                     borderRadius: '50%',
                     backgroundColor: 'rgba(24, 82, 254, 0.1)',
                     border: '1px solid rgba(24, 82, 254, 0.2)',
@@ -231,15 +237,15 @@ const NotificationComponent = ({ onMessageClick }) => {
                     color="error"
                     sx={{
                         '& .MuiBadge-badge': {
-                            fontSize: '0.75rem',
-                            minWidth: '18px',
-                            height: '18px'
+                            fontSize: isMobile ? '0.65rem' : '0.75rem',
+                            minWidth: isMobile ? '16px' : '18px',
+                            height: isMobile ? '16px' : '18px'
                         }
                     }}
                 >
                     <NotificationsIcon
                         sx={{
-                            fontSize: 22,
+                            fontSize: isMobile ? 20 : 22,
                             color: '#1852FE'
                         }}
                     />
@@ -252,27 +258,34 @@ const NotificationComponent = ({ onMessageClick }) => {
                 onClose={handleClose}
                 anchorOrigin={{
                     vertical: 'bottom',
-                    horizontal: 'right',
+                    horizontal: isMobile ? 'left' : 'right',
                 }}
                 transformOrigin={{
                     vertical: 'top',
-                    horizontal: 'right',
+                    horizontal: isMobile ? 'left' : 'right',
                 }}
                 PaperProps={{
                     sx: {
-                        borderRadius: '12px',
+                        borderRadius: isMobile ? '8px' : '12px',
                         boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.12)',
                         border: '1px solid rgba(0, 0, 0, 0.05)',
-                        maxWidth: '380px',
-                        width: '100%',
-                        maxHeight: '500px'
+                        maxWidth: isMobile ? '320px' : isTablet ? '350px' : '380px',
+                        width: isMobile ? 'calc(100vw - 32px)' : '100%',
+                        maxHeight: isMobile ? '400px' : '500px',
+                        ...(isMobile && {
+                            position: 'fixed',
+                            top: '16px',
+                            right: '16px',
+                            left: '16px',
+                            zIndex: 9999
+                        })
                     }
                 }}
             >
                 <Paper sx={{ p: 0 }}>
                     {/* Header */}
                     <Box sx={{
-                        p: 2,
+                        p: isMobile ? 1.5 : 2,
                         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
                         backgroundColor: '#f8f9fa'
                     }}>
@@ -284,7 +297,7 @@ const NotificationComponent = ({ onMessageClick }) => {
                             <Typography variant="h6" sx={{
                                 fontWeight: 600,
                                 color: '#111E5A',
-                                fontSize: '16px'
+                                fontSize: isMobile ? '14px' : '16px'
                             }}>
                                 Notificações
                             </Typography>
@@ -296,9 +309,11 @@ const NotificationComponent = ({ onMessageClick }) => {
                                     onClick={handleMarkAllAsRead}
                                     disabled={loading}
                                     sx={{
-                                        fontSize: '12px',
+                                        fontSize: isMobile ? '10px' : '12px',
                                         color: '#1852FE',
-                                        textTransform: 'none'
+                                        textTransform: 'none',
+                                        minWidth: 'auto',
+                                        px: isMobile ? 1 : 2
                                     }}
                                 >
                                     Marcar como lidas
@@ -328,7 +343,7 @@ const NotificationComponent = ({ onMessageClick }) => {
                     </Box>
 
                     {/* Lista de reports */}
-                    <List sx={{ p: 0, maxHeight: '400px', overflow: 'auto' }}>
+                    <List sx={{ p: 0, maxHeight: isMobile ? '300px' : '400px', overflow: 'auto' }}>
                         {reports.length === 0 ? (
                             <ListItem>
                                 <ListItemText
@@ -350,8 +365,8 @@ const NotificationComponent = ({ onMessageClick }) => {
                                         button
                                         onClick={() => handleReportClick(report)}
                                         sx={{
-                                            py: 1.5,
-                                            px: 2,
+                                            py: isMobile ? 1 : 1.5,
+                                            px: isMobile ? 1.5 : 2,
                                             backgroundColor: report.hasUnreadResponses
                                                 ? 'rgba(24, 82, 254, 0.04)'
                                                 : 'transparent',
@@ -366,7 +381,7 @@ const NotificationComponent = ({ onMessageClick }) => {
                                             }
                                         }}
                                     >
-                                        <ListItemIcon sx={{ minWidth: 36 }}>
+                                        <ListItemIcon sx={{ minWidth: isMobile ? 28 : 36 }}>
                                             {getMessageIcon(report.type)}
                                         </ListItemIcon>
 
@@ -378,7 +393,8 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                         sx={{
                                                             fontWeight: report.hasUnreadResponses ? 600 : 500,
                                                             color: '#111E5A',
-                                                            flex: 1
+                                                            flex: 1,
+                                                            fontSize: isMobile ? '13px' : '14px'
                                                         }}
                                                         noWrap
                                                     >
@@ -391,7 +407,7 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                     <Typography
                                                         variant="caption"
                                                         color="text.secondary"
-                                                        sx={{ fontSize: '11px' }}
+                                                        sx={{ fontSize: isMobile ? '10px' : '11px' }}
                                                     >
                                                         {formatMessageDate(report.updatedAt)}
                                                     </Typography>
@@ -414,14 +430,14 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                         {report.content}
                                                     </Typography>
 
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1, mt: 0.5, flexWrap: 'wrap' }}>
                                                         <Chip
                                                             label={getMessageTypeLabel(report.type)}
                                                             size="small"
                                                             variant="outlined"
                                                             sx={{
-                                                                fontSize: '10px',
-                                                                height: '20px',
+                                                                fontSize: isMobile ? '9px' : '10px',
+                                                                height: isMobile ? '18px' : '20px',
                                                                 borderColor: 'rgba(0, 0, 0, 0.12)',
                                                                 // ✨ COR ESPECIAL PARA admin_chat
                                                                 ...(report.type === 'admin_chat' && {
@@ -435,8 +451,8 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                             label={getStatusLabel(report.status)}
                                                             size="small"
                                                             sx={{
-                                                                fontSize: '10px',
-                                                                height: '20px',
+                                                                fontSize: isMobile ? '9px' : '10px',
+                                                                height: isMobile ? '18px' : '20px',
                                                                 backgroundColor: getStatusColor(report.status),
                                                                 color: 'white',
                                                                 fontWeight: 500
@@ -447,7 +463,7 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                             <Typography
                                                                 variant="caption"
                                                                 color="primary"
-                                                                sx={{ fontSize: '10px', fontWeight: 500 }}
+                                                                sx={{ fontSize: isMobile ? '9px' : '10px', fontWeight: 500 }}
                                                             >
                                                                 {report.responses.length} resposta{report.responses.length !== 1 ? 's' : ''}
                                                             </Typography>
@@ -459,8 +475,8 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                                 label="Mensagem do Admin!"
                                                                 size="small"
                                                                 sx={{
-                                                                    fontSize: '9px',
-                                                                    height: '18px',
+                                                                    fontSize: isMobile ? '8px' : '9px',
+                                                                    height: isMobile ? '16px' : '18px',
                                                                     backgroundColor: '#9c27b0',
                                                                     color: 'white',
                                                                     fontWeight: 600,
@@ -481,8 +497,8 @@ const NotificationComponent = ({ onMessageClick }) => {
                                                                 size="small"
                                                                 color="error"
                                                                 sx={{
-                                                                    fontSize: '9px',
-                                                                    height: '18px',
+                                                                    fontSize: isMobile ? '8px' : '9px',
+                                                                    height: isMobile ? '16px' : '18px',
                                                                     fontWeight: 600,
                                                                     animation: 'pulse 2s infinite'
                                                                 }}
@@ -503,7 +519,7 @@ const NotificationComponent = ({ onMessageClick }) => {
 
                     {/* Footer */}
                     <Divider />
-                    <Box sx={{ p: 1.5, textAlign: 'center' }}>
+                    <Box sx={{ p: isMobile ? 1 : 1.5, textAlign: 'center' }}>
                         <Button
                             variant="text"
                             size="small"
@@ -518,7 +534,7 @@ const NotificationComponent = ({ onMessageClick }) => {
                                 }
                             }}
                             sx={{
-                                fontSize: '12px',
+                                fontSize: isMobile ? '11px' : '12px',
                                 color: '#1852FE',
                                 textTransform: 'none',
                                 fontWeight: 500

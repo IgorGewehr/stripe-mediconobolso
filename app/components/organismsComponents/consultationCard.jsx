@@ -10,6 +10,7 @@ import {
     Skeleton,
     IconButton,
     useTheme,
+    useMediaQuery,
     Chip,
     Grid,
     alpha,
@@ -37,6 +38,9 @@ import WeatherContainer from "./weatherContainer";
 
 const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgenda, onSelectPatient }) => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const isMedium = useMediaQuery(theme.breakpoints.down('md'));
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [patientData, setPatientData] = useState(null);
     const [weatherData, setWeatherData] = useState({
@@ -255,33 +259,42 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
     const consultationDate = getConsultationDate();
 
     return (
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ 
+            display: 'flex', 
+            gap: isMobile ? 0.5 : 1,
+            flexDirection: isMobile ? 'column' : 'row'
+        }}>
             {/* Card de Clima (à esquerda) */}
-            <Box sx={{ width: '25%', height: 180 }}>
-                <WeatherContainer/>
-            </Box>
+            {!isMobile && (
+                <Box sx={{ width: '25%', height: 180 }}>
+                    <WeatherContainer/>
+                </Box>
+            )}
 
             <Card
                 elevation={0}
                 sx={{
-                    borderRadius: '20px',
+                    borderRadius: isMobile ? '16px' : '20px',
                     border: '1px solid',
                     borderColor: theme.palette.divider,
                     overflow: 'hidden',
-                    height: 180,
+                    height: isMobile ? 'auto' : 180,
+                    minHeight: isMobile ? 150 : 180,
                     display: 'flex',
-                    width: '75%'
+                    flexDirection: isMobile ? 'column' : 'row',
+                    width: isMobile ? '100%' : '75%'
                 }}
             >
                 {/* Calendário – Lado Esquerdo (agora mais estreito) */}
-                <Box sx={{
-                    flex: '1 1 35%',  // Mantido em 35%
-                    borderRight: `1px solid ${theme.palette.divider}`,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    bgcolor: '#f8f9fa',
-                    p: 1.5,
-                }}>
+                {!isMobile && (
+                    <Box sx={{
+                        flex: '1 1 35%',  // Mantido em 35%
+                        borderRight: `1px solid ${theme.palette.divider}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        bgcolor: '#f8f9fa',
+                        p: 1.5,
+                    }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                         <Typography variant="subtitle1" fontWeight={600} fontSize="0.9rem">
                             {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
@@ -361,17 +374,18 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                         })}
                     </Grid>
                 </Box>
+                )}
 
                 {/* Área da Próxima Consulta – Lado Direito - Fontes aumentadas */}
                 <Box sx={{
-                    flex: '1 1 65%',  // Mantido em 65%
+                    flex: isMobile ? '1' : '1 1 65%',  // Mantido em 65%
                     bgcolor: '#1852FE',
                     color: 'white',
                     position: 'relative',
                     overflow: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
-                    p: 1.5,
+                    p: isMobile ? 2 : 1.5,
                 }}>
                     {/* Elementos decorativos */}
                     <Box

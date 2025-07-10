@@ -208,7 +208,8 @@ const SortableHeaderCell = React.memo(({ label, field, sortConfig, onSortChange 
 const PatientsListCard = ({ patients: initialPatients, consultations, loading, onPatientClick }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const isMedium = useMediaQuery(theme.breakpoints.down('md'));
     const { user } = useAuth();
 
     // Estados básicos
@@ -818,9 +819,9 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
                         </Box>
                     </Box>
 
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: 2 }}>
                         {/* Cards de métricas clicáveis */}
-                        <Grid item xs={4}>
+                        <Grid item xs={isMobile ? 12 : 4} sm={4}>
                             <MetricCard
                                 icon={<PersonIcon fontSize="small" />}
                                 title="Total de Pacientes"
@@ -834,7 +835,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
                                 loading={isLoadingData}
                             />
                         </Grid>
-                        <Grid item xs={4}>
+                        <Grid item xs={isMobile ? 12 : 4} sm={4}>
                             <MetricCard
                                 icon={<EventIcon fontSize="small" />}
                                 title="Consultas Hoje"
@@ -848,7 +849,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
                                 loading={isLoadingData}
                             />
                         </Grid>
-                        <Grid item xs={4}>
+                        <Grid item xs={isMobile ? 12 : 4} sm={4}>
                             <MetricCard
                                 icon={<EventAvailableIcon fontSize="small" />}
                                 title="Próximas"

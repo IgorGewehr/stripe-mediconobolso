@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Box, CircularProgress, Typography, Button } from "@mui/material";
+import { Box, CircularProgress, Typography, Button, useTheme, useMediaQuery } from "@mui/material";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PacienteCard from "./organismsComponents/cardPaciente";
 import AcompanhamentoSection from "./organismsComponents/acompanhamentoSection";
@@ -11,6 +11,11 @@ import FirebaseService from "../../lib/firebaseService";
 // Main component
 export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
     const { user } = useAuth();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const isMedium = useMediaQuery(theme.breakpoints.down('md'));
+    
     const [pacienteData, setPacienteData] = useState(null);
     const [notasData, setNotasData] = useState([]);
     const [loading, setLoading] = useState(!!pacienteId);
@@ -183,17 +188,17 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
         <Box
             sx={{
                 display: "flex",
-                flexDirection: "row",
-                gap: 2,
+                flexDirection: isMedium ? "column" : "row",
+                gap: isMobile ? 1.5 : isTablet ? 2 : 3,
                 width: "100%",
                 backgroundColor: "#F4F9FF",
-                p: "10px",
+                p: isMobile ? 1 : isTablet ? 2 : 3,
                 boxSizing: "border-box",
-                position: "relative", // Importante para posicionar os elementos filhos
-                alignItems: "flex-start",
+                position: "relative",
+                alignItems: isMedium ? "stretch" : "flex-start",
                 height: "auto",
-                minHeight: "0",
-                overflow: "visible", // Permite que o conteúdo ultrapasse sem scroll
+                minHeight: isMobile ? "100vh" : "auto",
+                overflow: "visible",
             }}
         >
             <Box
@@ -201,10 +206,12 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                     position: "relative",
                     flexShrink: 0,
                     zIndex: 2,
-                    alignSelf: "flex-start",
+                    alignSelf: isMedium ? "stretch" : "flex-start",
                     height: "max-content",
                     maxHeight: "none",
-                    width: "350px", // Define uma largura fixa para o espaço ocupado pelo card
+                    width: isMedium ? "100%" : "380px",
+                    maxWidth: isMedium ? "none" : "380px",
+                    mb: isMedium ? 2 : 0,
                 }}
             >
                 <PacienteCard paciente={pacienteData} />
@@ -214,15 +221,16 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                 sx={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 3,
-                    p: 3,
+                    gap: isMobile ? 2 : isTablet ? 2.5 : 3,
+                    p: isMobile ? 1.5 : isTablet ? 2 : 3,
                     width: "100%",
                     boxSizing: "border-box",
                     alignSelf: "flex-start",
                     zIndex: 1,
                     height: "auto",
                     minHeight: "0",
-                    marginLeft: "0px", // Mantem a margem fixa quando o card se expande
+                    marginLeft: "0px",
+                    flex: 1,
                 }}
             >
                 {/* Passa a função de atualização para AcompanhamentoSection */}
