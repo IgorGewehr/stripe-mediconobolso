@@ -10,7 +10,7 @@ import FirebaseService from "../../lib/firebaseService";
 
 // Main component
 export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -22,12 +22,12 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
     const [error, setError] = useState(null);
     const [notasUpdated, setNotasUpdated] = useState(false); // Estado para controlar atualizações
 
-    const doctorId = user.uid;
+    const doctorId = getEffectiveUserId();
 
     const forceUpdateNotas = async () => {
         console.log("Forçando atualização de notas...");
         try {
-            const notes = await FirebaseService.listNotes(user.uid, pacienteId);
+            const notes = await FirebaseService.listNotes(getEffectiveUserId(), pacienteId);
             // Ordena as notas por data (mais recentes primeiro)
             const sortedNotes = notes.sort((a, b) => {
                 const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
@@ -47,7 +47,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
     const fetchNotas = async () => {
         if (pacienteId && user?.uid) {
             try {
-                const notes = await FirebaseService.listNotes(user.uid, pacienteId);
+                const notes = await FirebaseService.listNotes(getEffectiveUserId(), pacienteId);
                 setNotasData(notes);
             } catch (err) {
                 console.error("Erro ao carregar anotações:", err);
@@ -68,7 +68,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
             const fetchPacienteData = async () => {
                 try {
                     setLoading(true);
-                    const doctorId = user.uid;
+                    const doctorId = getEffectiveUserId();
                     const patientData = await FirebaseService.getPatient(doctorId, pacienteId);
 
                     if (!patientData) {

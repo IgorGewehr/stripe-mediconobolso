@@ -51,7 +51,7 @@ import ViewConsultationDialog from "./viewConsultationDialog";
 const AgendaMedica = ({initialConsultationId}) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
 
     // States
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -208,7 +208,7 @@ const AgendaMedica = ({initialConsultationId}) => {
 
             setIsLoading(true);
             try {
-                const doctorId = user.uid;
+                const doctorId = getEffectiveUserId();
                 const consultationsData = await FirebaseService.listAllConsultations(doctorId);
 
                 // Get patient information
@@ -261,7 +261,7 @@ const AgendaMedica = ({initialConsultationId}) => {
                 return;
             }
 
-            const doctorId = user.uid;
+            const doctorId = getEffectiveUserId();
             const patientId = consultationData.patientId;
 
             // Garantir que a data está formatada corretamente antes de salvar
@@ -328,7 +328,7 @@ const AgendaMedica = ({initialConsultationId}) => {
                 return;
             }
 
-            const doctorId = user.uid;
+            const doctorId = getEffectiveUserId();
             const patientId = consultationData.patientId;
             const consultationId = consultationData.id;
 
@@ -418,7 +418,7 @@ const AgendaMedica = ({initialConsultationId}) => {
                 return;
             }
 
-            const doctorId = user.uid;
+            const doctorId = getEffectiveUserId();
 
             // Encontrar a consulta no estado atual
             const consultationToUpdate = eventos.find(e => e.id === consultationId);

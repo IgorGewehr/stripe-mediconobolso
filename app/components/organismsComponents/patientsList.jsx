@@ -210,7 +210,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
     const isMedium = useMediaQuery(theme.breakpoints.down('md'));
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
 
     // Estados básicos
     const [searchTerm, setSearchTerm] = useState('');
@@ -325,7 +325,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
 
             setLoadingConsultations(true);
             try {
-                const consultationsData = await FirebaseService.listAllConsultations(user.uid);
+                const consultationsData = await FirebaseService.listAllConsultations(getEffectiveUserId());
                 setLocalConsultations(consultationsData);
             } catch (error) {
                 console.error("Erro ao carregar consultas:", error);

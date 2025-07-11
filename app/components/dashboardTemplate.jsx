@@ -22,7 +22,7 @@ const Dashboard = ({ onClickPatients }) => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
     const isMedium = useMediaQuery(theme.breakpoints.down('md'));
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
 
     const [loading, setLoading] = useState(true);
     const [consultations, setConsultations] = useState([]);
@@ -43,11 +43,11 @@ const Dashboard = ({ onClickPatients }) => {
             setLoading(true);
             try {
                 // Carregar consultas
-                const consultationsData = await FirebaseService.listAllConsultations(user.uid);
+                const consultationsData = await FirebaseService.listAllConsultations(getEffectiveUserId());
                 setConsultations(consultationsData);
 
                 // Carregar pacientes
-                const patientsData = await FirebaseService.getPatientsByDoctor(user.uid);
+                const patientsData = await FirebaseService.getPatientsByDoctor(getEffectiveUserId());
                 setPatients(patientsData);
 
                 // Calcular métricas

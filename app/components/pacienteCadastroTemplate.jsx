@@ -124,7 +124,7 @@ const LoadingOverlay = styled(Box)(({ theme }) => ({
 
 export default function PacienteCadastroTemplate() {
     // Obtenha o id do usuário (doctorId) a partir do AuthProvider
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
     const [patientId, setPatientId] = useState(null);
 
     // Estado para controlar seções expandidas
@@ -279,7 +279,7 @@ export default function PacienteCadastroTemplate() {
 
         setIsSubmitting(true);
         try {
-            const doctorId = user.uid;
+            const doctorId = getEffectiveUserId();
 
             // Gere o docRef para o paciente e obtenha seu ID
             const patientRef = doc(
@@ -475,7 +475,7 @@ export default function PacienteCadastroTemplate() {
                                 <HistoricoCondutaForm
                                     formData={formData.historicoConduta}
                                     updateFormData={(data) => updateFormData("historicoConduta", data)}
-                                    doctorId={patientId ? user?.uid : null}  // Só passa doctorId se já tiver um paciente (caso de edição)
+                                    doctorId={patientId ? getEffectiveUserId() : null}  // Só passa doctorId se já tiver um paciente (caso de edição)
                                     patientId={patientId}
                                     onFileUpload={async (file) => {
                                         try {
