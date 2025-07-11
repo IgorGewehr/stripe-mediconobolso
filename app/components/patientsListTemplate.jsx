@@ -973,7 +973,7 @@ const PatientsListPage = ({onPatientClick}) => {
     const [filteredPatients, setFilteredPatients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [viewMode, setViewMode] = useState(VIEWS.TABLE);
+    const [viewMode, setViewMode] = useState(isMobile ? VIEWS.GRID : VIEWS.TABLE);
     const [currentTab, setCurrentTab] = useState(TABS.ALL);
     const [page, setPage] = useState(1);
     const [favoritePatients, setFavoritePatients] = useState([]);
@@ -1288,6 +1288,12 @@ const PatientsListPage = ({onPatientClick}) => {
         setPage(1); // Resetar para primeira página quando os filtros mudam
     }, [patients, searchTerm, sortConfig, activeFilters, currentTab, favoritePatients]);
 
+    // Auto-switch para grid view em mobile
+    useEffect(() => {
+        if (isMobile && viewMode !== VIEWS.GRID) {
+            setViewMode(VIEWS.GRID);
+        }
+    }, [isMobile, viewMode]);
 
     const determinePatientStatus = (patient) => {
         if (!patient) return 'pendente'; // Proteção adicional
@@ -2102,7 +2108,11 @@ const PatientsListPage = ({onPatientClick}) => {
                             Filtrar
                         </Button>
 
-                        <ButtonGroup variant="outlined" sx={{borderRadius: '50px', overflow: 'hidden'}}>
+                        <ButtonGroup variant="outlined" sx={{
+                            borderRadius: '50px', 
+                            overflow: 'hidden',
+                            display: isMobile ? 'none' : 'flex'
+                        }}>
                             <Button
                                 size="small"
                                 onClick={() => handleViewModeChange(VIEWS.TABLE)}

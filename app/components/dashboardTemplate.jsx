@@ -10,6 +10,8 @@ import {
 import MetricsCard from "./organismsComponents/metricsCard";
 import ConsultationCard from "./organismsComponents/consultationCard";
 import PatientsListCard from "./organismsComponents/patientsList";
+import MobileConsultationCard from "./organismsComponents/MobileConsultationCard";
+import MobilePatientsListCard from "./organismsComponents/MobilePatientsListCard";
 import { useAuth } from "./authProvider";
 import FirebaseService from "../../lib/firebaseService";
 import { format, addDays, subDays, startOfDay, isAfter } from 'date-fns';
@@ -231,16 +233,20 @@ const Dashboard = ({ onClickPatients }) => {
 
     return (
         <Box sx={{ 
-            width: '100%', 
+            width: '100%',
+            maxWidth: '100vw',
+            overflow: 'hidden',
             pt: isMobile ? 1 : isTablet ? 1.5 : 2, 
-            pb: isMobile ? 2 : isTablet ? 3 : 4,
-            px: isMobile ? 1 : isTablet ? 2 : 0
+            pb: isMobile ? 8 : isTablet ? 3 : 4, // Extra bottom padding for mobile to account for bottom navigation
+            px: isMobile ? 2 : isTablet ? 2 : 0
         }}>
             <Grid container spacing={isMobile ? 1.5 : isTablet ? 2 : 3}>
                 {/* Ordem alterada para mobile - MiniChat primeiro em mobile */}
                 {isMobile && (
-                    <Grid item xs={12}>
-                        <MiniChatCard />
+                    <Grid item xs={12} sx={{ px: 0 }}>
+                        <Box sx={{ mx: -1 }}>
+                            <MiniChatCard />
+                        </Box>
                     </Grid>
                 )}
                 
@@ -248,23 +254,50 @@ const Dashboard = ({ onClickPatients }) => {
                 <Grid item xs={12} sm={12} md={8} lg={8}>
                     <Grid container direction="column" spacing={isMobile ? 1.5 : isTablet ? 2 : 3}>
                         {/* Próxima consulta */}
-                        <Grid item xs={12}>
-                            <ConsultationCard
-                                nextConsultation={getNextConsultation()}
-                                consultations={consultations}
-                                loading={loading}
-                                onViewAgenda={handleViewAgenda}
-                                onSelectPatient={handlePatientClick}
-                            />
+                        <Grid item xs={12} sx={{ px: 0 }}>
+                            <Box sx={{ mx: isMobile ? -1 : 0 }}>
+                                {isMobile ? (
+                                    <MobileConsultationCard
+                                        nextConsultation={getNextConsultation()}
+                                        consultations={consultations}
+                                        loading={loading}
+                                        onViewAgenda={handleViewAgenda}
+                                        onSelectPatient={handlePatientClick}
+                                    />
+                                ) : (
+                                    <ConsultationCard
+                                        nextConsultation={getNextConsultation()}
+                                        consultations={consultations}
+                                        loading={loading}
+                                        onViewAgenda={handleViewAgenda}
+                                        onSelectPatient={handlePatientClick}
+                                    />
+                                )}
+                            </Box>
                         </Grid>
 
                         {/* Lista de pacientes */}
-                        <Grid item xs={12}>
-                            <PatientsListCard
-                                patients={patients}
-                                loading={loading}
-                                onPatientClick={handlePatientClick}
-                            />
+                        <Grid item xs={12} sx={{ px: 0 }}>
+                            <Box sx={{ mx: isMobile ? -1 : 0 }}>
+                                {isMobile ? (
+                                    <MobilePatientsListCard
+                                        patients={patients}
+                                        loading={loading}
+                                        onPatientClick={handlePatientClick}
+                                        onAddPatient={() => {
+                                            if (window.handleMenuSelect) {
+                                                window.handleMenuSelect('Criar novo paciente');
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <PatientsListCard
+                                        patients={patients}
+                                        loading={loading}
+                                        onPatientClick={handlePatientClick}
+                                    />
+                                )}
+                            </Box>
                         </Grid>
                     </Grid>
                 </Grid>

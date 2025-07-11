@@ -142,14 +142,14 @@ const theme = createTheme({
 // Styled Dialog com transições suaves
 const StyledDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
-        borderRadius: '16px',
-        border: '1px solid #EAECEF',
+        borderRadius: theme.breakpoints.down('sm') ? '0' : '16px',
+        border: theme.breakpoints.down('sm') ? 'none' : '1px solid #EAECEF',
         background: '#FFF',
-        boxShadow: '0px 4px 40px 0px rgba(0, 0, 0, 0.1)',
-        maxHeight: '90vh',
-        margin: '16px',
-        width: 'calc(100% - 32px)',
-        maxWidth: '900px',
+        boxShadow: theme.breakpoints.down('sm') ? 'none' : '0px 4px 40px 0px rgba(0, 0, 0, 0.1)',
+        maxHeight: theme.breakpoints.down('sm') ? '100vh' : '90vh',
+        margin: theme.breakpoints.down('sm') ? '0' : '16px',
+        width: theme.breakpoints.down('sm') ? '100%' : 'calc(100% - 32px)',
+        maxWidth: theme.breakpoints.down('sm') ? '100%' : '900px',
         overflow: 'hidden',
     },
     '& .MuiBackdrop-root': {
@@ -251,6 +251,8 @@ const AddMedicationButton = styled(Button)(({ theme }) => ({
 // Formulário principal
 const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId = null }) => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const { user } = useAuth();
     const isEditMode = !!receitaId;
@@ -962,12 +964,12 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 open={open}
                 onClose={isSubmitting ? null : onClose}
                 TransitionComponent={Transition}
-                fullScreen={fullScreen}
-                maxWidth="md"
+                fullScreen={isMobile || isTablet}
+                maxWidth={isMobile ? false : isTablet ? "sm" : "md"}
             >
                 {/* Header */}
                 <Box sx={{
-                    p: 2.5,
+                    p: isMobile ? 2 : 2.5,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',

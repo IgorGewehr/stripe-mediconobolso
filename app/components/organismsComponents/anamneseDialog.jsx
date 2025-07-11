@@ -60,12 +60,13 @@ import {useAuth} from "../authProvider";
 // ------------------ ESTILOS ------------------
 const FullScreenDialog = styled(Dialog)(({ theme }) => ({
     "& .MuiDialog-paper": {
-        margin: 0,
-        borderRadius: "24px",
+        margin: theme.breakpoints.down('sm') ? 0 : "24px",
+        borderRadius: theme.breakpoints.down('sm') ? "0" : "24px",
         maxWidth: "100vw",
         maxHeight: "100vh",
         backgroundColor: "#F4F9FF",
         overflowY: "hidden",
+        width: theme.breakpoints.down('sm') ? "100%" : "calc(100% - 48px)",
     },
     "& .MuiBackdrop-root": {
         backgroundColor: "rgba(255, 255, 255, 0.10)",
@@ -314,6 +315,8 @@ const MemoizedVitalSignCard = React.memo(({ icon, title, name, value, onChange, 
 // ------------------ COMPONENTE PRINCIPAL DE DIÁLOGO ------------------
 export default function AnamneseDialog({ open, onClose, patientId, doctorId, anamneseId, onSave }) {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [loading, setLoading] = useState(true);
     const [patientData, setPatientData] = useState(null);
@@ -1734,20 +1737,20 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
     return (
         <FullScreenDialog
-            fullScreen={fullScreen}
+            fullScreen={isMobile || isTablet}
             open={open}
             onClose={() => onClose()}
             TransitionComponent={Transition}
-            maxWidth="lg"
+            maxWidth={isMobile ? false : isTablet ? "md" : "lg"}
             PaperProps={{
                 sx: {
-                    maxWidth: "1200px",
-                    width: "calc(100% - 48px)",
-                    margin: "24px",
+                    maxWidth: isMobile ? "100%" : "1200px",
+                    width: isMobile ? "100%" : "calc(100% - 48px)",
+                    margin: isMobile ? "0" : "24px",
                     overflowY: "hidden",
                     display: "flex",
                     flexDirection: "column",
-                    height: fullScreen ? "100%" : "calc(100% - 48px)",
+                    height: (isMobile || isTablet) ? "100%" : "calc(100% - 48px)",
                 }
             }}
         >
@@ -1761,7 +1764,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                             fontFamily: "Gellix, sans-serif",
                             fontWeight: 600,
                             color: "#111E5A",
-                            fontSize: `${1.5 * fontSizeScale}rem`
+                            fontSize: isMobile ? `${1.2 * fontSizeScale}rem` : `${1.5 * fontSizeScale}rem`
                         }}
                     >
                         Nova Anamnese

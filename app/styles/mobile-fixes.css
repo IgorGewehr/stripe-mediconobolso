@@ -1,0 +1,57 @@
+/* Mobile fixes for width issues */
+
+/* Prevent horizontal scroll on mobile */
+html,
+body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* Fix for app container */
+#__next,
+[data-nextjs-scroll-focus-boundary] {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* Ensure all containers respect viewport width */
+.MuiContainer-root {
+  max-width: 100% !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+/* Fix for Grid components */
+.MuiGrid-container {
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+/* Fix for Cards on mobile */
+@media (max-width: 600px) {
+  .MuiCard-root {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  .MuiBox-root {
+    max-width: 100vw !important;
+  }
+  
+  /* Specific fixes for consultation card */
+  .consultation-card-container {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+}
+
+/* Safe area insets for iOS */
+@supports (padding: max(0px)) {
+  .bottom-navigation-container {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}

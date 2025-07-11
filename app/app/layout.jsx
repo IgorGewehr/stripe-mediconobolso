@@ -23,6 +23,9 @@ import HelpCenter from "../components/helpCenter";
 import UserDataTemplate from "../components/userDataTemplate";
 import DoctorAITemplate from "../components/doctorAITemplate";
 import UnifiedUserManagement from "../components/organismsComponents/unifiedUserManagement";
+import BottomNavigation from "../components/organismsComponents/BottomNavigation";
+import SwipeableView from "../components/organismsComponents/SwipeableView";
+import '../styles/mobile-fixes.css';
 
 // ✅ COMPONENTE PARA PROTEGER ROTAS COM VERIFICAÇÃO DE PERMISSÕES
 const ProtectedRoute = ({ children, requiredModule, requiredAction = 'read', fallbackMessage }) => {
@@ -114,6 +117,16 @@ export default function AppLayout({ children }) {
     const [agendaConsultationId, setAgendaConsultationId] = useState(null);
     const [selectedMessageId, setSelectedMessageId] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [activeSwipeIndex, setActiveSwipeIndex] = useState(0);
+    
+    // Mapping between pages and swipe indexes for mobile
+    const mobilePages = ['dashboard', 'pacientes', 'receitas', 'agenda'];
+    const pageToIndex = {
+        'dashboard': 0,
+        'pacientes': 1,
+        'receitas': 2,
+        'agenda': 3
+    };
 
     // Verificar se o usuário é administrador
     const isAdmin = user && user.administrador === true;
@@ -144,7 +157,15 @@ export default function AppLayout({ children }) {
         if (page.toLowerCase() !== "central de ajuda") {
             setSelectedMessageId(null);
         }
-    }, []);
+        
+        // Update swipe index for mobile
+        if (isMobile) {
+            const pageIndex = pageToIndex[page.toLowerCase()];
+            if (pageIndex !== undefined) {
+                setActiveSwipeIndex(pageIndex);
+            }
+        }
+    }, [isMobile]);
 
     const handlePatientClick = useCallback((patientId) => {
         console.log(`👤 Selecionando paciente: ${patientId}`);
@@ -181,6 +202,44 @@ export default function AppLayout({ children }) {
 
     const handleMobileMenuClose = useCallback(() => {
         setMobileMenuOpen(false);
+    }, []);
+    
+    // Handler for swipe navigation
+    const handleSwipeIndexChange = useCallback((newIndex) => {
+        setActiveSwipeIndex(newIndex);
+        const pages = ['Dashboard', 'Pacientes', 'Receitas', 'Agenda'];
+        if (pages[newIndex]) {
+            setActivePage(pages[newIndex]);
+        }
+    }, []);
+    
+    // Handler for bottom navigation
+    const handleBottomNavigate = useCallback((value) => {
+        const pageMap = {
+            'dashboard': 'Dashboard',
+            'pacientes': 'Pacientes',
+            'receitas': 'Receitas',
+            'agenda': 'Agenda'
+        };
+        const page = pageMap[value];
+        if (page) {
+            handleMenuSelect(page);
+        }
+    }, [handleMenuSelect]);
+    
+    // Handler for FAB actions
+    const handleFabClick = useCallback((action) => {
+        switch (action) {
+            case 'patient':
+                setActivePage('Criar novo paciente');
+                break;
+            case 'prescription':
+                setActivePage('Receitas');
+                break;
+            case 'appointment':
+                setActivePage('Agenda');
+                break;
+        }
     }, []);
 
     // ✅ HANDLER PARA NOTIFICAÇÕES MELHORADO
@@ -557,16 +616,67 @@ export default function AppLayout({ children }) {
                 </Box>
 
                 {/* ✅ CONTEÚDO PRINCIPAL COM PROTEÇÃO */}
-                <Box flex={1} sx={{ position: 'relative', overflow: 'auto' }}>
-                    <Box sx={{
-                        height: 'auto',
-                        padding: isMobile ? '8px' : isTablet ? '8px' : '10px',
-                        boxSizing: 'border-box',
-                        ...scaleStyle
-                    }}>
-                        {renderContent()}
-                    </Box>
+                <Box flex={1} sx={{ 
+                    position: 'relative', 
+                    overflow: isMobile ? 'hidden' : 'auto',
+                    pb: isMobile ? '56px' : 0 // Space for bottom navigation
+                }}>
+                    {isMobile && mobilePages.includes(activePage.toLowerCase()) ? (
+                        <SwipeableView
+                            activeIndex={activeSwipeIndex}
+                            onIndexChange={handleSwipeIndexChange}
+                        >
+                            <Box sx={{ height: '100%', overflow: 'auto', padding: '8px' }}>
+                                <Dashboard onClickPatients={handlePatientClick} />
+                            </Box>
+                            <Box sx={{ height: '100%', overflow: 'auto', padding: '8px' }}>
+                                <ProtectedRoute
+                                    requiredModule="patients"
+                                    requiredAction="read"
+                                    fallbackMessage="Você precisa de permissão para visualizar a lista de pacientes."
+                                >
+                                    <PatientsListPage onPatientClick={handlePatientClick} />
+                                </ProtectedRoute>
+                            </Box>
+                            <Box sx={{ height: '100%', overflow: 'auto', padding: '8px' }}>
+                                <ProtectedRoute
+                                    requiredModule="prescriptions"
+                                    requiredAction="read"
+                                    fallbackMessage="Você precisa de permissão para visualizar receitas médicas."
+                                >
+                                    <PrescriptionsPage />
+                                </ProtectedRoute>
+                            </Box>
+                            <Box sx={{ height: '100%', overflow: 'auto', padding: '8px' }}>
+                                <ProtectedRoute
+                                    requiredModule="appointments"
+                                    requiredAction="read"
+                                    fallbackMessage="Você precisa de permissão para acessar a agenda médica."
+                                >
+                                    <AgendaMedica initialConsultationId={agendaConsultationId} />
+                                </ProtectedRoute>
+                            </Box>
+                        </SwipeableView>
+                    ) : (
+                        <Box sx={{
+                            height: 'auto',
+                            padding: isMobile ? '8px' : isTablet ? '8px' : '10px',
+                            boxSizing: 'border-box',
+                            ...scaleStyle
+                        }}>
+                            {renderContent()}
+                        </Box>
+                    )}
                 </Box>
+                
+                {/* ✅ BOTTOM NAVIGATION FOR MOBILE */}
+                {isMobile && (
+                    <BottomNavigation
+                        activePage={activePage.toLowerCase()}
+                        onNavigate={handleBottomNavigate}
+                        onFabClick={handleFabClick}
+                    />
+                )}
             </Box>
         </Box>
     );
