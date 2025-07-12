@@ -23,6 +23,7 @@ import { collection, doc, setDoc } from "firebase/firestore";
 
 // Importa o AuthProvider (useAuth) para obter o id do usuário autenticado
 import { useAuth } from "./authProvider";
+import useModuleAccess from "./useModuleAccess";
 
 // ------------------ ESTILOS ------------------
 const PageContainer = styled(Box)(({ theme }) => ({
@@ -125,6 +126,7 @@ const LoadingOverlay = styled(Box)(({ theme }) => ({
 export default function PacienteCadastroTemplate() {
     // Obtenha o id do usuário (doctorId) a partir do AuthProvider
     const { user, getEffectiveUserId } = useAuth();
+    const { canPerformAction } = useModuleAccess();
     const [patientId, setPatientId] = useState(null);
 
     // Estado para controlar seções expandidas
@@ -182,6 +184,36 @@ export default function PacienteCadastroTemplate() {
 
     // Estado para controle de loading ao submeter
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Verificar se o usuário tem permissão para criar pacientes
+    const canCreatePatients = canPerformAction('patients', 'create');
+    
+    // Se não tem permissão, mostrar acesso negado
+    if (!canCreatePatients.allowed) {
+        return (
+            <PageContainer>
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100vh',
+                    textAlign: 'center',
+                    p: 3
+                }}>
+                    <Typography variant="h5" color="error" gutterBottom>
+                        Acesso Negado
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        Você não tem permissão para criar novos pacientes.
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Entre em contato com o médico responsável para solicitar essa permissão.
+                    </Typography>
+                </Box>
+            </PageContainer>
+        );
+    }
 
     const resetForm = () => {
         setFormData({

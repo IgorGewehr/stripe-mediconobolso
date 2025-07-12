@@ -100,6 +100,7 @@ import {
 import {ptBR} from 'date-fns/locale';
 import FirebaseService from "../../lib/firebaseService";
 import {useAuth} from "./authProvider";
+import useModuleAccess from "./useModuleAccess";
 import SearchField from "./basicComponents/searchField";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
@@ -967,6 +968,35 @@ const PatientsListPage = ({onPatientClick}) => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
     const {user} = useAuth();
+    const { hasAccess, canPerformAction } = useModuleAccess();
+
+    // Verificar se o usuário tem acesso ao módulo de pacientes
+    const canViewPatients = hasAccess('patients');
+    
+    // Se não tem permissão de visualizar pacientes, mostrar acesso negado
+    if (!canViewPatients) {
+        return (
+            <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100vh',
+                textAlign: 'center',
+                p: 3
+            }}>
+                <Typography variant="h5" color="error" gutterBottom>
+                    Acesso Negado
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                    Você não tem permissão para visualizar a lista de pacientes.
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Entre em contato com o médico responsável para solicitar essa permissão.
+                </Typography>
+            </Box>
+        );
+    }
 
     // Estados principais
     const [patients, setPatients] = useState([]);

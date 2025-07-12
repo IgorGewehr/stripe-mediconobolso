@@ -20,7 +20,7 @@ const useModuleAccess = () => {
         patients: {
             name: 'Pacientes',
             description: 'Gerenciar informações dos pacientes',
-            actions: ['read', 'write', 'viewDetails']
+            actions: ['read', 'create', 'write', 'viewDetails']
         },
         appointments: {
             name: 'Agenda',

@@ -34,6 +34,7 @@ import {
 import FirebaseService from '../../../lib/firebaseService';
 import { consultationModel } from '../../../lib/modelObjects';
 import { useAuth } from '../authProvider';
+import useModuleAccess from '../useModuleAccess';
 
 // Estilos personalizados
 const StyledDialog = styled(Dialog)(({ theme }) => ({
@@ -166,6 +167,7 @@ const DialogTitleText = styled(Typography)(({ theme }) => ({
 // Modal para criar/editar eventos de consulta
 const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     const { user } = useAuth();
+    const { hasAccess, canPerformAction } = useModuleAccess();
     const [formData, setFormData] = useState({
         patientId: '',
         consultationDate: new Date(),
@@ -187,6 +189,14 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     useEffect(() => {
         const loadPatients = async () => {
             if (!isOpen || !user) return;
+            
+            // Verificar se tem permissão para visualizar pacientes
+            if (!hasAccess('patients')) {
+                console.warn('Usuário não tem permissão para visualizar pacientes');
+                setPacientes([]);
+                setPatientOptions([]);
+                return;
+            }
 
             setLoading(true);
             try {
@@ -223,7 +233,7 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
         };
 
         loadPatients();
-    }, [isOpen, user, evento]);
+    }, [isOpen, user, evento, hasAccess]);
 
     // Efeito para preencher o formulário em caso de edição
     useEffect(() => {
@@ -458,40 +468,58 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                     <Grid container spacing={3}>
                         <Grid item xs={12}>
                             <Box sx={{ position: 'relative' }}>
-                                <StyledAutocomplete
-                                    value={selectedPatient}
-                                    onChange={handlePatientSelect}
-                                    options={patientOptions}
-                                    getOptionLabel={(option) => option.name || ''}
-                                    loading={loading}
-                                    renderOption={renderPatientOption}
-                                    getOptionKey={(option) => option.id}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Paciente"
-                                            required
-                                            error={!!errors.patientId}
-                                            InputProps={{
-                                                ...params.InputProps,
-                                                startAdornment: (
-                                                    <>
-                                                        <InputAdornment position="start">
-                                                            <PersonIcon color="action" />
-                                                        </InputAdornment>
-                                                        {params.InputProps.startAdornment}
-                                                    </>
-                                                ),
-                                                endAdornment: (
-                                                    <>
-                                                        {loading ? <CircularProgress color="inherit" size={20} /> : null}
-                                                        {params.InputProps.endAdornment}
-                                                    </>
-                                                ),
-                                            }}
-                                        />
-                                    )}
-                                />
+                                {!hasAccess('patients') ? (
+                                    <Box sx={{
+                                        p: 2,
+                                        bgcolor: alpha('#f44336', 0.1),
+                                        borderRadius: 2,
+                                        border: `1px solid ${alpha('#f44336', 0.3)}`,
+                                        textAlign: 'center'
+                                    }}>
+                                        <PersonIcon sx={{ color: '#f44336', fontSize: 40, mb: 1 }} />
+                                        <Typography color="error" variant="body2" fontWeight={500}>
+                                            Sem permissão para visualizar pacientes
+                                        </Typography>
+                                        <Typography color="text.secondary" variant="caption" sx={{ mt: 0.5, display: 'block' }}>
+                                            Entre em contato com o médico responsável para solicitar acesso aos pacientes
+                                        </Typography>
+                                    </Box>
+                                ) : (
+                                    <StyledAutocomplete
+                                        value={selectedPatient}
+                                        onChange={handlePatientSelect}
+                                        options={patientOptions}
+                                        getOptionLabel={(option) => option.name || ''}
+                                        loading={loading}
+                                        renderOption={renderPatientOption}
+                                        getOptionKey={(option) => option.id}
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
+                                                label="Paciente"
+                                                required
+                                                error={!!errors.patientId}
+                                                InputProps={{
+                                                    ...params.InputProps,
+                                                    startAdornment: (
+                                                        <>
+                                                            <InputAdornment position="start">
+                                                                <PersonIcon color="action" />
+                                                            </InputAdornment>
+                                                            {params.InputProps.startAdornment}
+                                                        </>
+                                                    ),
+                                                    endAdornment: (
+                                                        <>
+                                                            {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                                                            {params.InputProps.endAdornment}
+                                                        </>
+                                                    ),
+                                                }}
+                                            />
+                                        )}
+                                    />
+                                )}
                                 {errors.patientId && <ErrorMessage>{errors.patientId}</ErrorMessage>}
                             </Box>
                         </Grid>

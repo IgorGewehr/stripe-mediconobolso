@@ -42,6 +42,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import FirebaseService from "../../../lib/firebaseService";
 import {useAuth} from "../authProvider";
+import useModuleAccess from "../useModuleAccess";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 
 // Enhanced color palette
@@ -746,23 +747,25 @@ function Card1({
                         </Tooltip>
                     </Box>
                 ) : (
-                    <Tooltip title="Editar informações">
-                        <IconButton
-                            onClick={() => setIsEditing(true)}
-                            size="small"
-                            sx={{
-                                backgroundColor: '#F8F9FB',
-                                color: themeColors.primary,
-                                '&:hover': {
-                                    backgroundColor: themeColors.primaryLight,
-                                },
-                                width: 36,
-                                height: 36,
-                            }}
-                        >
-                            <EditIcon/>
-                        </IconButton>
-                    </Tooltip>
+                    canPerformAction('patients', 'write').allowed && (
+                        <Tooltip title="Editar informações">
+                            <IconButton
+                                onClick={() => setIsEditing(true)}
+                                size="small"
+                                sx={{
+                                    backgroundColor: '#F8F9FB',
+                                    color: themeColors.primary,
+                                    '&:hover': {
+                                        backgroundColor: themeColors.primaryLight,
+                                    },
+                                    width: 36,
+                                    height: 36,
+                                }}
+                            >
+                                <EditIcon/>
+                            </IconButton>
+                        </Tooltip>
+                    )
                 )}
             </Box>
 
@@ -2658,6 +2661,7 @@ export default function PacienteCard({paciente}) {
     const [alert, setAlert] = useState({open: false, message: '', severity: 'success'});
     const [validationErrors, setValidationErrors] = useState({});
     const {user} = useAuth();
+    const { canPerformAction } = useModuleAccess();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
