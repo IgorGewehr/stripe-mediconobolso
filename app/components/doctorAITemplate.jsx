@@ -46,7 +46,9 @@ import {
     CleaningServices as CleaningServicesIcon,
     Analytics as AnalyticsIcon,
     Mic as MicIcon,
-    MicOff as MicOffIcon
+    MicOff as MicOffIcon,
+    Menu as MenuIcon,
+    Close as CloseIcon
 } from "@mui/icons-material";
 import { useAuth } from "./authProvider";
 import FirebaseService from "../../lib/firebaseService";
@@ -80,6 +82,7 @@ const DoctorAITemplate = () => {
     const [showStats, setShowStats] = useState(false);
     const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(!isMobile); // Controle da sidebar mobile
 
     // ✅ CONTROLE DE LIMITE PARA USUÁRIOS FREE
     const [freeUsageCount, setFreeUsageCount] = useState(0);
@@ -87,6 +90,11 @@ const DoctorAITemplate = () => {
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
+
+    // Atualizar sidebar quando mudar de mobile para desktop
+    useEffect(() => {
+        setSidebarOpen(!isMobile);
+    }, [isMobile]);
 
     // Função para validar e converter data
     const validateDate = (dateInput) => {
@@ -239,9 +247,17 @@ const DoctorAITemplate = () => {
 
     // Criar nova conversa
     const createNewConversation = () => {
+        console.log('💬 Creating new conversation, isMobile:', isMobile);
         setMessages([]);
         setCurrentConversationId(null);
         setError('');
+        
+        // Fechar sidebar no mobile após criar nova conversa
+        if (isMobile) {
+            console.log('📱 Closing sidebar on mobile');
+            setSidebarOpen(false);
+        }
+        
         if (inputRef.current) {
             inputRef.current.focus();
         }
@@ -255,6 +271,11 @@ const DoctorAITemplate = () => {
                 setMessages(conversation.messages || []);
                 setCurrentConversationId(conversationId);
                 setError('');
+                
+                // Fechar sidebar no mobile após carregar conversa
+                if (isMobile) {
+                    setSidebarOpen(false);
+                }
             }
         } catch (error) {
             console.error("Erro ao carregar conversa:", error);
@@ -498,12 +519,29 @@ const DoctorAITemplate = () => {
             backgroundColor: '#FAFBFC',
             borderRadius: '12px',
             overflow: 'hidden',
-            border: '1px solid #E5E7EB'
+            border: '1px solid #E5E7EB',
+            position: 'relative'
         }}>
+            {/* Backdrop para mobile */}
+            {isMobile && sidebarOpen && (
+                <Box
+                    onClick={() => setSidebarOpen(false)}
+                    sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        zIndex: 999,
+                    }}
+                />
+            )}
+
             {/* Sidebar do Histórico */}
             <Box
                 sx={{
-                    width: isMobile ? '100%' : '300px',
+                    width: isMobile ? '280px' : '300px',
                     backgroundColor: 'white',
                     borderRight: '1px solid #E5E7EB',
                     display: 'flex',
@@ -511,7 +549,12 @@ const DoctorAITemplate = () => {
                     position: isMobile ? 'absolute' : 'relative',
                     zIndex: isMobile ? 1000 : 1,
                     height: '100%',
-                    overflow: 'hidden' /* Adicionado */
+                    overflow: 'hidden',
+                    transform: isMobile ? 
+                        (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') : 
+                        'translateX(0)',
+                    transition: isMobile ? 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+                    visibility: !isMobile || sidebarOpen ? 'visible' : 'hidden',
                 }}
             >
                 {/* Header do Histórico */}
@@ -520,15 +563,28 @@ const DoctorAITemplate = () => {
                         <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
                             Doctor AI
                         </Typography>
-                        <Tooltip title="Ver estatísticas">
-                            <IconButton
-                                size="small"
-                                onClick={() => setShowStats(!showStats)}
-                                sx={{ color: '#6B7280' }}
-                            >
-                                <AnalyticsIcon fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Tooltip title="Ver estatísticas">
+                                <IconButton
+                                    size="small"
+                                    onClick={() => setShowStats(!showStats)}
+                                    sx={{ color: '#6B7280' }}
+                                >
+                                    <AnalyticsIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                            {isMobile && (
+                                <Tooltip title="Fechar">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => setSidebarOpen(false)}
+                                        sx={{ color: '#6B7280' }}
+                                    >
+                                        <CloseIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                        </Box>
                     </Box>
 
                     {/* Estatísticas */}
@@ -800,7 +856,9 @@ const DoctorAITemplate = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: 'white',
-                overflow: 'hidden' /* Adicionado */
+                overflow: 'hidden',
+                width: isMobile ? '100%' : 'calc(100% - 300px)',
+                position: 'relative'
             }}>
                 {/* Header do Chat */}
                 <Box
@@ -810,10 +868,23 @@ const DoctorAITemplate = () => {
                         backgroundColor: 'white',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: isMobile ? 'space-between' : 'center'
                     }}
                 >
-                    <Box sx={{ textAlign: 'center' }}>
+                    {/* Botão de menu para mobile */}
+                    {isMobile && (
+                        <IconButton
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            sx={{
+                                color: '#6B7280',
+                                '&:hover': { backgroundColor: '#F9FAFB' }
+                            }}
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                    )}
+
+                    <Box sx={{ textAlign: 'center', flex: isMobile ? 1 : 'none' }}>
                         <Typography variant="h5" sx={{ fontWeight: 600, color: '#111827', mb: 0.5 }}>
                             Assistente Médico
                         </Typography>
@@ -821,6 +892,9 @@ const DoctorAITemplate = () => {
                             Dúvidas clínicas, dosagens e protocolos médicos
                         </Typography>
                     </Box>
+
+                    {/* Espaço vazio para balance visual no mobile */}
+                    {isMobile && <Box sx={{ width: 48 }} />}
                 </Box>
 
                 {/* Área das Mensagens */}

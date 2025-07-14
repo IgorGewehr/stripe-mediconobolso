@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import {
     Box,
     Typography,
@@ -145,7 +145,7 @@ const convertToDate = (value) => {
 };
 
 // Componente principal da página
-const PrescriptionsPage = () => {
+const PrescriptionsPage = forwardRef((props, ref) => {
     const theme = useTheme();
     const { user } = useAuth();
     const doctorId = user?.uid;
@@ -550,12 +550,18 @@ const PrescriptionsPage = () => {
     };
 
     const handleOpenReceitaDialog = () => {
+        console.log('🔵 Opening new prescription dialog via FAB');
         setReceitaDialogOpen(true);
     };
 
     const handleCloseReceitaDialog = () => {
         setReceitaDialogOpen(false);
     };
+
+    // Expose functions to parent component via ref
+    useImperativeHandle(ref, () => ({
+        openNewPrescriptionDialog: handleOpenReceitaDialog
+    }));
 
     const handleSaveReceita = (receitaId) => {
         // Recarregar os dados após criar uma nova receita
@@ -3304,6 +3310,6 @@ const PrescriptionsPage = () => {
             </Snackbar>
         </Box>
     );
-};
+});
 
 export default PrescriptionsPage;

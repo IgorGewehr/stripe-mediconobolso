@@ -1,19 +1,25 @@
 "use client";
 import React from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, useTheme, useMediaQuery } from "@mui/material";
 
 const AnamneseCard = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
     return (
         <Box
             sx={{
-                width: "270px",
-                height: "240px",
-                borderRadius: "30px",
+                width: { xs: "100%", sm: "270px" },
+                minWidth: { xs: "280px", sm: "270px" },
+                maxWidth: { xs: "100%", sm: "270px" },
+                height: { xs: "200px", sm: "240px" },
+                borderRadius: { xs: "20px", sm: "30px" },
                 border: "1px solid #EAECEF",
                 backgroundColor: "#FFF",
                 position: "relative",
                 flexShrink: 0,
-                padding: "21px 24px 18px 24px",
+                padding: { xs: "16px 20px", sm: "21px 24px 18px 24px" },
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
@@ -27,10 +33,10 @@ const AnamneseCard = () => {
                 src="/anamnesecard.svg"
                 alt="Anamnese"
                 sx={{
-                    width: "108.39px",
-                    height: "150px",
+                    width: { xs: "90px", sm: "108.39px" },
+                    height: { xs: "120px", sm: "150px" },
                     flexShrink: 0,
-                    marginBottom: "18px",
+                    marginBottom: { xs: "12px", sm: "18px" },
                 }}
             />
 
@@ -47,10 +53,10 @@ const AnamneseCard = () => {
                     sx={{
                         color: "#111E5A",
                         fontFamily: "Gellix",
-                        fontSize: "25px",
+                        fontSize: { xs: "18px", sm: "25px" },
                         fontStyle: "normal",
                         fontWeight: 500,
-                        lineHeight: "42.703px",
+                        lineHeight: { xs: "24px", sm: "42.703px" },
                     }}
                 >
                     Anamnese
@@ -62,12 +68,21 @@ const AnamneseCard = () => {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        width: "36.43px",
-                        height: "36.43px",
-                        borderRadius: "18.215px",
+                        width: { xs: "44px", sm: "36.43px" },
+                        height: { xs: "44px", sm: "36.43px" },
+                        borderRadius: { xs: "22px", sm: "18.215px" },
                         backgroundColor: "#1852FE",
-                        padding: "9.107px",
+                        padding: { xs: "10px", sm: "9.107px" },
                         flexShrink: 0,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease-in-out",
+                        "&:hover": {
+                            backgroundColor: "#1340E5",
+                            transform: "scale(1.05)",
+                        },
+                        "&:active": {
+                            transform: "scale(0.95)",
+                        },
                     }}
                 >
                     <Box
@@ -75,8 +90,8 @@ const AnamneseCard = () => {
                         src="/plusicon.svg"
                         alt="Adicionar"
                         sx={{
-                            width: "18.215px",
-                            height: "18.215px",
+                            width: { xs: "20px", sm: "18.215px" },
+                            height: { xs: "20px", sm: "18.215px" },
                             flexShrink: 0,
                         }}
                     />

@@ -346,24 +346,24 @@ const MobilePatientsListCard = ({ patients, loading, onPatientClick, onAddPatien
                                             </Typography>
                                         }
                                         secondary={
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                            <Typography variant="body2" color="text.secondary" component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                                 {patient.phone && (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                    <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                         <PhoneRounded sx={{ fontSize: 12, color: theme.palette.text.secondary }} />
-                                                        <Typography variant="caption" color="text.secondary">
+                                                        <Typography variant="caption" color="text.secondary" component="span">
                                                             {patient.phone}
                                                         </Typography>
-                                                    </Box>
+                                                    </Typography>
                                                 )}
                                                 {patient.lastVisit && (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                    <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                         <AccessTimeRounded sx={{ fontSize: 12, color: theme.palette.text.secondary }} />
-                                                        <Typography variant="caption" color="text.secondary">
+                                                        <Typography variant="caption" color="text.secondary" component="span">
                                                             {format(new Date(patient.lastVisit), 'dd/MM', { locale: ptBR })}
                                                         </Typography>
-                                                    </Box>
+                                                    </Typography>
                                                 )}
-                                            </Box>
+                                            </Typography>
                                         }
                                     />
                                     

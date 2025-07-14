@@ -55,3 +55,78 @@ body {
     padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
 }
+
+/* Enhanced mobile fixes for buttons and form elements */
+@media (max-width: 600px) {
+  /* Ensure buttons have proper touch targets */
+  .MuiButton-root {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* Fix for IconButton touch targets */
+  .MuiIconButton-root {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* Fix for text fields on mobile */
+  .MuiTextField-root {
+    width: 100% !important;
+  }
+  
+  /* Fix for dialogs on mobile */
+  .MuiDialog-paper {
+    margin: 8px !important;
+    max-width: calc(100% - 16px) !important;
+    max-height: calc(100vh - 32px) !important;
+  }
+  
+  /* Specific fixes for appointment modal */
+  .MuiDialog-paper[role="dialog"] {
+    margin: 4px !important;
+    max-width: calc(100vw - 8px) !important;
+    width: calc(100vw - 8px) !important;
+  }
+  
+  /* Fix for dialog content scrolling */
+  .MuiDialogContent-root {
+    padding: 16px !important;
+    overflow-y: auto !important;
+    max-height: calc(100vh - 200px) !important;
+  }
+  
+  /* Prescription dialog specific fixes */
+  .prescription-dialog .MuiDialog-paper {
+    height: calc(100vh - 32px) !important;
+    max-height: calc(100vh - 32px) !important;
+  }
+  
+  .prescription-dialog .MuiDialogContent-root {
+    flex: 1 !important;
+    padding: 8px !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Fix for tables on mobile */
+  .MuiTable-root {
+    min-width: 100% !important;
+  }
+  
+  /* Fix for card components */
+  .basic-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 280px !important;
+  }
+}
+
+/* Additional tablet fixes */
+@media (max-width: 960px) {
+  /* Fix for medium screens */
+  .MuiContainer-maxWidthLg {
+    max-width: 100% !important;
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+}

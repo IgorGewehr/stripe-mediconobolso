@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
     Box,
     Typography,
@@ -48,7 +48,7 @@ import PeriodSelector from "../basicComponents/periodSelector";
 import ViewConsultationDialog from "./viewConsultationDialog";
 
 // Main component
-const AgendaMedica = ({initialConsultationId}) => {
+const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { user, getEffectiveUserId } = useAuth();
@@ -251,18 +251,22 @@ const AgendaMedica = ({initialConsultationId}) => {
     const createConsultation = async (consultationData) => {
         try {
             setIsLoading(true);
+            console.log('🔄 createConsultation iniciada...');
 
             if (!user?.uid) {
+                console.log('❌ Usuário não autenticado');
                 setNotification({
                     open: true,
                     message: "Erro de autenticação. Faça login novamente.",
                     type: 'error'
                 });
-                return;
+                throw new Error('Usuário não autenticado');
             }
 
             const doctorId = getEffectiveUserId();
             const patientId = consultationData.patientId;
+
+            console.log('📋 Criando consulta para paciente:', patientId);
 
             // Garantir que a data está formatada corretamente antes de salvar
             const dataToSave = {
@@ -276,6 +280,8 @@ const AgendaMedica = ({initialConsultationId}) => {
                 patientId,
                 dataToSave
             );
+
+            console.log('🆔 Consulta criada com ID:', consultationId);
 
             // Get patient name
             const patient = await FirebaseService.getPatient(doctorId, patientId);
@@ -303,34 +309,44 @@ const AgendaMedica = ({initialConsultationId}) => {
                 message: "Consulta agendada com sucesso!",
                 type: 'success'
             });
+            
+            // Log para debug
+            console.log('✅ Consulta criada com sucesso, modal será fechado');
+            return consultationId; // Return the ID to indicate success
         } catch (error) {
-            console.error("Error creating consultation:", error);
+            console.error("❌ Error creating consultation:", error);
             setNotification({
                 open: true,
                 message: "Erro ao agendar consulta. Tente novamente.",
                 type: 'error'
             });
+            throw error; // Re-throw to allow caller to handle
         } finally {
             setIsLoading(false);
+            console.log('🔄 createConsultation finalizada');
         }
     };
 
     const updateConsultation = async (consultationData) => {
         try {
             setIsLoading(true);
+            console.log('🔄 updateConsultation iniciada...');
 
             if (!user?.uid || !consultationData.id || !consultationData.patientId) {
+                console.log('❌ Dados incompletos para atualização');
                 setNotification({
                     open: true,
                     message: "Dados incompletos para atualização.",
                     type: 'error'
                 });
-                return;
+                throw new Error('Dados incompletos');
             }
 
             const doctorId = getEffectiveUserId();
             const patientId = consultationData.patientId;
             const consultationId = consultationData.id;
+
+            console.log('📋 Atualizando consulta ID:', consultationId);
 
             // Garantir que a data está formatada corretamente antes de salvar
             const dataToSave = {
@@ -345,6 +361,8 @@ const AgendaMedica = ({initialConsultationId}) => {
                 consultationId,
                 dataToSave
             );
+
+            console.log('✅ Consulta atualizada no Firebase');
 
             // Crie o objeto de evento atualizado
             const patient = await FirebaseService.getPatient(doctorId, patientId);
@@ -375,6 +393,9 @@ const AgendaMedica = ({initialConsultationId}) => {
                 message: "Consulta atualizada com sucesso!",
                 type: 'success'
             });
+            
+            // Log para debug
+            console.log('✅ Consulta atualizada com sucesso, modal será fechado');
         } catch (error) {
             console.error("Error updating consultation:", error);
             setNotification({
@@ -598,26 +619,60 @@ const AgendaMedica = ({initialConsultationId}) => {
     }, []);
 
     const handleCreateEvent = useCallback(() => {
+        console.log('🟢 Opening new appointment modal via FAB');
         setEventoSelecionado(null);
         setShowEventoModal(true);
+        // Reset loading state para garantir UI limpa
+        setIsLoading(false);
     }, []);
 
-    const handleSaveEvent = useCallback((event) => {
+    // Close modal handler
+    const handleCloseEventModal = useCallback(() => {
+        console.log('❌ Closing appointment modal');
+        setShowEventoModal(false);
+        setEventoSelecionado(null);
+        setIsLoading(false);
+    }, []);
+
+    const handleSaveEvent = useCallback(async (event) => {
         // Clone o evento para evitar modificar o original
         const eventToSave = { ...event };
+        
+        console.log('💾 handleSaveEvent iniciado com dados:', eventToSave);
 
-        if (event.id) {
-            updateConsultation(eventToSave);
-        } else {
-            createConsultation(eventToSave);
+        try {
+            if (event.id) {
+                console.log('🔄 Atualizando consulta existente...');
+                await updateConsultation(eventToSave);
+            } else {
+                console.log('➕ Criando nova consulta...');
+                await createConsultation(eventToSave);
+            }
+            // Fechar o modal após salvar com sucesso
+            console.log('✅ Consulta salva com sucesso, fechando modal...');
+            setShowEventoModal(false);
+            setEventoSelecionado(null);
+            // Reset loading state for clean UI
+            setIsLoading(false);
+        } catch (error) {
+            console.error("❌ Erro ao salvar evento:", error);
+            // O modal permanece aberto em caso de erro para o usuário tentar novamente
+            // Ensure loading state is reset even on error
+            setIsLoading(false);
+            throw error; // Re-throw to allow the modal to handle the error
         }
-    }, []);
+    }, [createConsultation, updateConsultation]);
 
     const handleEditFromDialog = (consultation) => {
         setShowConsultationDialog(false);
         setEventoSelecionado(consultation);
         setShowEventoModal(true);
     };
+
+    // Expose functions to parent component via ref
+    useImperativeHandle(ref, () => ({
+        openNewAppointmentModal: handleCreateEvent
+    }));
 
     // Mini calendar
     const handleCalendarOpen = (event) => {
@@ -1982,7 +2037,7 @@ const AgendaMedica = ({initialConsultationId}) => {
             {/* Modal for creating/editing consultations */}
             <EventoModal
                 isOpen={showEventoModal}
-                onClose={() => setShowEventoModal(false)}
+                onClose={handleCloseEventModal}
                 onSave={handleSaveEvent}
                 evento={eventoSelecionado}
             />
@@ -2052,6 +2107,6 @@ const AgendaMedica = ({initialConsultationId}) => {
             />
         </Box>
     );
-};
+});
 
 export default AgendaMedica;

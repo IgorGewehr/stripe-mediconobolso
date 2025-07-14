@@ -209,8 +209,8 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                     alignSelf: isMedium ? "stretch" : "flex-start",
                     height: "max-content",
                     maxHeight: "none",
-                    width: isMedium ? "100%" : "380px",
-                    maxWidth: isMedium ? "none" : "380px",
+                    width: { xs: "100%", sm: "100%", md: "380px" },
+                    maxWidth: { xs: "100%", sm: "100%", md: "380px" },
                     mb: isMedium ? 2 : 0,
                 }}
             >

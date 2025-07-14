@@ -462,6 +462,7 @@ function Card1({
     const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
     const isMedium = useMediaQuery(theme.breakpoints.down("md"));
     const [showAdditionalContactForm, setShowAdditionalContactForm] = useState(false);
+    const { canPerformAction } = useModuleAccess();
 
     const handlePhotoChange = (e) => {
         if (e.target.files && e.target.files[0]) {

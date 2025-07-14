@@ -180,39 +180,47 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
 
     const [errors, setErrors] = useState({});
     const [pacientes, setPacientes] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loadingPatients, setLoadingPatients] = useState(false);
+    const [savingConsultation, setSavingConsultation] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [patientOptions, setPatientOptions] = useState([]);
     const [selectedPatient, setSelectedPatient] = useState(null);
 
     // Efeito para carregar pacientes ao abrir o modal
     useEffect(() => {
-        const loadPatients = async () => {
-            if (!isOpen || !user) return;
-            
-            // Verificar se tem permissão para visualizar pacientes
-            if (!hasAccess('patients')) {
-                console.warn('Usuário não tem permissão para visualizar pacientes');
-                setPacientes([]);
-                setPatientOptions([]);
-                return;
-            }
+        if (!isOpen) {
+            // Reset states when modal is closed
+            setLoadingPatients(false);
+            setSavingConsultation(false);
+            setErrors({});
+            setPacientes([]);
+            setPatientOptions([]);
+            setSelectedPatient(null);
+            return;
+        }
 
-            setLoading(true);
+        if (!user) {
+            setLoadingPatients(false);
+            return;
+        }
+
+        setLoadingPatients(true);
+
+        const loadPatients = async () => {
             try {
                 // Carregar pacientes do médico atual
                 const patientsData = await FirebaseService.getPatientsByDoctor(user.uid);
-                setPacientes(patientsData);
+                setPacientes(patientsData || []);
 
                 // Preparar opções para o Autocomplete
-                const options = patientsData.map(patient => ({
+                const options = (patientsData || []).map(patient => ({
                     id: patient.id,
                     name: patient.patientName,
-                    gender: patient.patientGender, // se necessário
+                    gender: patient.patientGender,
                     age: patient.patientAge,
                     phone: patient.phone,
                     email: patient.patientEmail,
-                    fotoPerfil: patient.patientPhotoUrl // adicionado
+                    fotoPerfil: patient.patientPhotoUrl
                 }));
 
                 setPatientOptions(options);
@@ -225,15 +233,15 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                     }
                 }
             } catch (error) {
-                console.error("Erro ao carregar pacientes:", error);
+                console.error("❌ Erro ao carregar pacientes:", error);
                 setErrors(prev => ({ ...prev, general: "Erro ao carregar lista de pacientes." }));
             } finally {
-                setLoading(false);
+                setLoadingPatients(false);
             }
         };
 
         loadPatients();
-    }, [isOpen, user, evento, hasAccess]);
+    }, [isOpen, user?.uid, evento?.patientId]);
 
     // Efeito para preencher o formulário em caso de edição
     useEffect(() => {
@@ -367,38 +375,64 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     };
 
     // Handler para envio do formulário
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log('🚀 Iniciando submit do agendamento...');
+
+        // Evitar múltiplas submissões
+        if (savingConsultation) {
+            console.log('⏳ Submit já em andamento, ignorando...');
+            return;
+        }
 
         if (!validateForm()) {
+            console.log('❌ Validação falhou');
             return;
         }
 
         if (!user) {
             setErrors({ general: "Usuário não autenticado. Faça login novamente." });
+            console.log('❌ Usuário não autenticado');
             return;
         }
 
-        // Criar formato de consulta para salvar
-        const consultationData = {
-            ...consultationModel,
-            patientId: formData.patientId,
-            doctorId: user.uid,
-            consultationDate: formData.consultationDate,
-            consultationTime: formData.consultationTime,
-            consultationDuration: parseInt(formData.consultationDuration),
-            consultationType: formData.consultationType,
-            status: formData.status,
-            reasonForVisit: formData.reasonForVisit
-        };
+        console.log('✅ Validação passou, criando dados da consulta...');
+        setSavingConsultation(true);
 
-        // Se for edição, manter o ID original
-        if (evento?.id) {
-            consultationData.id = evento.id;
+        try {
+            // Criar formato de consulta para salvar
+            const consultationData = {
+                ...consultationModel,
+                patientId: formData.patientId,
+                doctorId: user.uid,
+                consultationDate: formData.consultationDate,
+                consultationTime: formData.consultationTime,
+                consultationDuration: parseInt(formData.consultationDuration),
+                consultationType: formData.consultationType,
+                status: formData.status,
+                reasonForVisit: formData.reasonForVisit
+            };
+
+            // Se for edição, manter o ID original
+            if (evento?.id) {
+                consultationData.id = evento.id;
+                console.log('🔄 Modo edição, ID:', evento.id);
+            } else {
+                console.log('➕ Modo criação');
+            }
+
+            console.log('📋 Dados da consulta:', consultationData);
+            console.log('📞 Chamando onSave...');
+            
+            await onSave(consultationData);
+            console.log('✅ onSave completado com sucesso');
+            // Modal será fechado pelo componente pai após salvar com sucesso
+        } catch (error) {
+            console.error('❌ Erro durante onSave:', error);
+            setErrors(prev => ({ ...prev, general: "Erro ao salvar consulta. Tente novamente." }));
+        } finally {
+            setSavingConsultation(false);
         }
-
-        onSave(consultationData);
-        onClose();
     };
 
     // Formatação da data para display
@@ -490,7 +524,7 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                                         onChange={handlePatientSelect}
                                         options={patientOptions}
                                         getOptionLabel={(option) => option.name || ''}
-                                        loading={loading}
+                                        loading={loadingPatients}
                                         renderOption={renderPatientOption}
                                         getOptionKey={(option) => option.id}
                                         renderInput={(params) => (
@@ -511,7 +545,7 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                                                     ),
                                                     endAdornment: (
                                                         <>
-                                                            {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                                                            {loadingPatients ? <CircularProgress color="inherit" size={20} /> : null}
                                                             {params.InputProps.endAdornment}
                                                         </>
                                                     ),
@@ -670,9 +704,9 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                         type="submit"
                         variant="contained"
                         color="primary"
-                        disabled={loading}
+                        disabled={savingConsultation || loadingPatients}
                     >
-                        {loading ? <CircularProgress size={24} /> : evento ? 'Atualizar Consulta' : 'Agendar Consulta'}
+                        {(savingConsultation || loadingPatients) ? <CircularProgress size={24} /> : evento ? 'Atualizar Consulta' : 'Agendar Consulta'}
                     </ActionButton>
                 </DialogActions>
             </form>

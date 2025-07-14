@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Box, CircularProgress, Typography, Button, Alert, useTheme, useMediaQuery, Drawer, IconButton } from "@mui/material";
 import MenuIcon from '@mui/icons-material/Menu';
 import LockIcon from '@mui/icons-material/Lock';
@@ -227,20 +227,57 @@ export default function AppLayout({ children }) {
         }
     }, [handleMenuSelect]);
     
+    // Refs for accessing child component methods
+    const receitasTemplateRef = useRef(null);
+    const agendaComponenteRef = useRef(null);
+
     // Handler for FAB actions
     const handleFabClick = useCallback((action) => {
+        console.log('🎯 FAB clicked with action:', action, 'Current page:', activePage);
         switch (action) {
             case 'patient':
                 setActivePage('Criar novo paciente');
                 break;
             case 'prescription':
-                setActivePage('Receitas');
+                console.log('📋 Prescription action triggered');
+                // If we're already on prescriptions page, try to open the dialog
+                if (activePage.toLowerCase() === 'receitas' && receitasTemplateRef.current) {
+                    console.log('📋 Already on receitas page, opening dialog directly');
+                    receitasTemplateRef.current.openNewPrescriptionDialog?.();
+                } else {
+                    console.log('📋 Navigating to receitas page first');
+                    // Navigate to prescriptions page and store intent to open dialog
+                    setActivePage('Receitas');
+                    // Use a timeout to allow the page to load before opening dialog
+                    setTimeout(() => {
+                        console.log('📋 Attempting to open dialog after navigation, ref:', !!receitasTemplateRef.current);
+                        if (receitasTemplateRef.current) {
+                            receitasTemplateRef.current.openNewPrescriptionDialog?.();
+                        }
+                    }, 100);
+                }
                 break;
             case 'appointment':
-                setActivePage('Agenda');
+                console.log('📅 Appointment action triggered');
+                // If we're already on agenda page, try to open the modal
+                if (activePage.toLowerCase() === 'agenda' && agendaComponenteRef.current) {
+                    console.log('📅 Already on agenda page, opening modal directly');
+                    agendaComponenteRef.current.openNewAppointmentModal?.();
+                } else {
+                    console.log('📅 Navigating to agenda page first');
+                    // Navigate to agenda page and store intent to open modal
+                    setActivePage('Agenda');
+                    // Use a timeout to allow the page to load before opening modal
+                    setTimeout(() => {
+                        console.log('📅 Attempting to open modal after navigation, ref:', !!agendaComponenteRef.current);
+                        if (agendaComponenteRef.current) {
+                            agendaComponenteRef.current.openNewAppointmentModal?.();
+                        }
+                    }, 100);
+                }
                 break;
         }
-    }, []);
+    }, [activePage]);
 
     // ✅ HANDLER PARA NOTIFICAÇÕES MELHORADO
     const handleNotificationClick = useCallback((data) => {
@@ -317,7 +354,7 @@ export default function AppLayout({ children }) {
                         requiredAction="read"
                         fallbackMessage="Você precisa de permissão para visualizar receitas médicas."
                     >
-                        <PrescriptionsPage />
+                        <PrescriptionsPage ref={receitasTemplateRef} />
                     </ProtectedRoute>
                 );
 
@@ -328,7 +365,7 @@ export default function AppLayout({ children }) {
                         requiredAction="read"
                         fallbackMessage="Você precisa de permissão para acessar a agenda médica."
                     >
-                        <AgendaMedica initialConsultationId={agendaConsultationId} />
+                        <AgendaMedica ref={agendaComponenteRef} initialConsultationId={agendaConsultationId} />
                     </ProtectedRoute>
                 );
 
@@ -644,7 +681,7 @@ export default function AppLayout({ children }) {
                                     requiredAction="read"
                                     fallbackMessage="Você precisa de permissão para visualizar receitas médicas."
                                 >
-                                    <PrescriptionsPage />
+                                    <PrescriptionsPage ref={receitasTemplateRef} />
                                 </ProtectedRoute>
                             </Box>
                             <Box sx={{ height: '100%', overflow: 'auto', padding: '8px' }}>
@@ -653,7 +690,7 @@ export default function AppLayout({ children }) {
                                     requiredAction="read"
                                     fallbackMessage="Você precisa de permissão para acessar a agenda médica."
                                 >
-                                    <AgendaMedica initialConsultationId={agendaConsultationId} />
+                                    <AgendaMedica ref={agendaComponenteRef} initialConsultationId={agendaConsultationId} />
                                 </ProtectedRoute>
                             </Box>
                         </SwipeableView>

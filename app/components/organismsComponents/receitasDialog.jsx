@@ -970,17 +970,19 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 {/* Header */}
                 <Box sx={{
                     p: isMobile ? 2 : 2.5,
+                    pt: { xs: 'calc(16px + env(safe-area-inset-top))', sm: 2.5 },
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     borderBottom: '1px solid #EAECEF',
+                    minHeight: { xs: 56, sm: 'auto' }
                 }}>
                     <IconButton
                         onClick={onClose}
                         disabled={isSubmitting}
                         sx={{
-                            width: 40,
-                            height: 40,
+                            width: { xs: 44, sm: 40 },
+                            height: { xs: 44, sm: 40 },
                             borderRadius: '50%',
                             backgroundColor: '#F6F7F9',
                             color: '#64748B',
@@ -1056,12 +1058,12 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 {/* Conteúdo do Dialog */}
                 <DialogContent sx={{
                     p: 0,
-                    maxHeight: '90vh',
+                    maxHeight: { xs: 'calc(100vh - 160px)', sm: '90vh' },
                     overflowY: 'auto',
                     scrollbarWidth: 'thin',
                     scrollbarColor: '#B0B0B0 #E0E0E0',
                     '&::-webkit-scrollbar': {
-                        width: '8px',
+                        width: { xs: '4px', sm: '8px' },
                     },
                     '&::-webkit-scrollbar-track': {
                         backgroundColor: theme.palette.grey[100],
@@ -1084,15 +1086,15 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            px: { xs: 2.5, sm: 4 },
-                            pt: 4,
-                            pb: 3,
+                            px: { xs: 2, sm: 2.5, md: 4 },
+                            pt: { xs: 2, sm: 4 },
+                            pb: { xs: 2, sm: 3 },
                             width: '100%',
                             maxWidth: '900px',
                             mx: 'auto',
                         }}>
                             {/* Ícone e Título */}
-                            <Box sx={{ textAlign: 'center', mb: 4 }}>
+                            <Box sx={{ textAlign: 'center', mb: { xs: 2, sm: 4 } }}>
                                 <Box
                                     component="img"
                                     src="/receitaicon.svg"
@@ -1106,7 +1108,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                 <Typography
                                     variant="h4"
                                     sx={{
-                                        fontSize: '28px',
+                                        fontSize: { xs: '22px', sm: '28px' },
                                         fontWeight: 600,
                                         color: '#101828'
                                     }}
@@ -1826,11 +1828,15 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 {/* Footer com botões de ação */}
                 <Box sx={{
                     display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
                     justifyContent: 'space-between',
-                    p: 3,
+                    gap: { xs: 2, sm: 0 },
+                    p: { xs: 2, sm: 3 },
                     pt: 2,
                     borderTop: '1px solid #EAECEF',
-                    bgcolor: '#FCFCFD'
+                    bgcolor: '#FCFCFD',
+                    // Adicionar padding bottom para safe area no mobile
+                    pb: { xs: 'calc(16px + env(safe-area-inset-bottom))', sm: 3 }
                 }}>
                     <SecondaryButton
                         startIcon={<PictureAsPdfIcon />}
@@ -1847,8 +1853,12 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                             }
                         }}
                         disabled={isSubmitting || (!patientId && !selectedPatient)}
+                        sx={{
+                            width: { xs: '100%', sm: 'auto' },
+                            order: { xs: 2, sm: 1 }
+                        }}
                     >
-                        Visualizar PDF
+                        {isMobile ? 'PDF' : 'Visualizar PDF'}
                     </SecondaryButton>
 
                     <PrimaryButton
@@ -1856,8 +1866,12 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                         disabled={isSubmitting || (!patientId && !selectedPatient)}
                         loading={isSubmitting}
                         success={isSaved}
+                        sx={{
+                            width: { xs: '100%', sm: 'auto' },
+                            order: { xs: 1, sm: 2 }
+                        }}
                     >
-                        {isSaved ? "Salvo com sucesso!" : isEditMode ? "Atualizar Receita" : "Salvar Receita"}
+                        {isSaved ? "Salvo!" : isEditMode ? (isMobile ? "Atualizar" : "Atualizar Receita") : (isMobile ? "Salvar" : "Salvar Receita")}
                     </PrimaryButton>
                 </Box>
 

@@ -1,7 +1,11 @@
-import { Box, Paper, Typography } from "@mui/material";
+import { Box, Paper, Typography, useTheme, useMediaQuery } from "@mui/material";
 import React from "react";
 
 const AuthImage = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
     return (
         <Box
             sx={{
@@ -9,6 +13,7 @@ const AuthImage = () => {
                 width: "100%",
                 height: "100vh",
                 overflow: "hidden",
+                display: { xs: "none", md: "block" },
             }}
         >
             {/* Imagem de fundo */}
@@ -35,7 +40,7 @@ const AuthImage = () => {
                     bottom: 0,
                     left: "50%",
                     transform: "translateX(-50%)",
-                    maxWidth: "400px",
+                    maxWidth: { xs: "250px", sm: "300px", md: "400px" },
                     width: "auto",
                     height: "auto",
                 }}
@@ -45,11 +50,13 @@ const AuthImage = () => {
             <Box
                 sx={{
                     position: "absolute",
-                    bottom: 100,
+                    bottom: { xs: 50, sm: 80, md: 100 },
                     left: "50%",
                     transform: "translateX(-50%)",
-                    width: 656,
-                    height: 272,
+                    width: { xs: "90%", sm: "80%", md: 656 },
+                    maxWidth: { xs: "350px", sm: "500px", md: "656px" },
+                    height: "auto",
+                    minHeight: { xs: "180px", sm: "220px", md: "272px" },
                 }}
             >
                 <Paper
@@ -58,8 +65,8 @@ const AuthImage = () => {
                         position: "relative",
                         width: "100%",
                         height: "100%",
-                        borderRadius: 5,
-                        p: 3,
+                        borderRadius: { xs: 3, sm: 4, md: 5 },
+                        p: { xs: 2, sm: 2.5, md: 3 },
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
@@ -74,9 +81,9 @@ const AuthImage = () => {
                         alt="Aspas"
                         sx={{
                             position: "absolute",
-                            top: 16,
-                            left: 16,
-                            width: 32,
+                            top: { xs: 12, sm: 14, md: 16 },
+                            left: { xs: 12, sm: 14, md: 16 },
+                            width: { xs: 24, sm: 28, md: 32 },
                             height: "auto",
                         }}
                     />
@@ -84,7 +91,13 @@ const AuthImage = () => {
                     <Typography
                         variant="body1"
                         textAlign="center"
-                        sx={{ mt: 2, mb: 2, px: 2 }}
+                        sx={{ 
+                            mt: { xs: 1.5, sm: 2 }, 
+                            mb: { xs: 1.5, sm: 2 }, 
+                            px: { xs: 1, sm: 1.5, md: 2 },
+                            fontSize: { xs: "0.875rem", sm: "1rem" },
+                            lineHeight: { xs: 1.4, sm: 1.5 }
+                        }}
                     >
                         Plataforma muito intuitiva e prática. Facilita o acompanhamento dos pacientes e economiza tempo na organização das consultas e receitas. Excelente ferramenta!
                     </Typography>
