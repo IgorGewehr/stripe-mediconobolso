@@ -967,7 +967,7 @@ const PatientsListPage = ({onPatientClick}) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-    const {user} = useAuth();
+    const {user, getEffectiveUserId} = useAuth();
     const { hasAccess, canPerformAction } = useModuleAccess();
 
     // Verificar se o usuário tem acesso ao módulo de pacientes
@@ -1076,7 +1076,7 @@ const PatientsListPage = ({onPatientClick}) => {
 
         try {
             // Chamada para a função real do FirebaseService
-            const history = await FirebaseService.getPatientStatusHistory(user.uid, patientId);
+            const history = await FirebaseService.getPatientStatusHistory(getEffectiveUserId(), patientId);
 
             // Se chegamos aqui, temos dados reais ou um array vazio
             setStatusHistory(history || []);
@@ -1172,7 +1172,8 @@ const PatientsListPage = ({onPatientClick}) => {
     const [statusUpdateError, setStatusUpdateError] = useState(null);
 
     const handleStatusSave = useCallback(() => {
-        if (!selectedPatient || !user?.uid) return;
+        const effectiveUserId = getEffectiveUserId();
+        if (!selectedPatient || !effectiveUserId) return;
         setStatusUpdateLoading(true);
         setStatusUpdateError(null);
         setStatusUpdateSuccess(false);
@@ -1185,10 +1186,10 @@ const PatientsListPage = ({onPatientClick}) => {
         );
 
         // dispara atualização no Firebase
-        FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus])
+        FirebaseService.updatePatientStatus(effectiveUserId, selectedPatient.id, [newStatus])
             .then(() =>
                 FirebaseService.addPatientStatusHistory(
-                    user.uid,
+                    effectiveUserId,
                     selectedPatient.id,
                     newStatus,
                     ''
@@ -1208,12 +1209,13 @@ const PatientsListPage = ({onPatientClick}) => {
             .finally(() => {
                 setStatusUpdateLoading(false);
             });
-    }, [selectedPatient, newStatus, user]);
+    }, [selectedPatient, newStatus, getEffectiveUserId]);
 
 
     // Carregar dados iniciais
     useEffect(() => {
-        if (!user?.uid) return;
+        const effectiveUserId = getEffectiveUserId();
+        if (!effectiveUserId) return;
 
         const loadData = async () => {
             setLoading(true);
@@ -1222,17 +1224,17 @@ const PatientsListPage = ({onPatientClick}) => {
 
                 // Se tem filtros ativos, usa a API de filtragem
                 if (hasActiveFilters) {
-                    patients = await FirebaseService.filterPatients(user.uid, activeFilters);
+                    patients = await FirebaseService.filterPatients(getEffectiveUserId(), activeFilters);
                 } else {
                     // Carrega todos os pacientes normalmente
-                    patients = await FirebaseService.getPatientsByDoctor(user.uid);
+                    patients = await FirebaseService.getPatientsByDoctor(getEffectiveUserId());
                 }
 
                 // Atualiza o estado dos pacientes
                 setPatients(patients);
 
                 // Carrega as consultas para referência
-                const consultationsData = await FirebaseService.listAllConsultations(user.uid);
+                const consultationsData = await FirebaseService.listAllConsultations(getEffectiveUserId());
                 setConsultations(consultationsData);
 
                 // Calcula métricas
@@ -1252,7 +1254,7 @@ const PatientsListPage = ({onPatientClick}) => {
         };
 
         loadData();
-    }, [user, hasActiveFilters, activeFilters]);
+    }, [getEffectiveUserId, hasActiveFilters, activeFilters]);
 
     // Calcula métricas baseadas nos dados
     const calculateMetrics = (patientsData, consultationsData) => {
@@ -1721,7 +1723,7 @@ const PatientsListPage = ({onPatientClick}) => {
 
         try {
             // Atualiza o status no Firebase
-            await FirebaseService.updateFavoriteStatus(user.uid, patientId, newFavoriteStatus);
+            await FirebaseService.updateFavoriteStatus(getEffectiveUserId(), patientId, newFavoriteStatus);
         } catch (error) {
             console.error("Erro ao atualizar favorito no Firebase:", error);
             // Se necessário, reverta o estado local

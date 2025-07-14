@@ -166,8 +166,8 @@ const DialogTitleText = styled(Typography)(({ theme }) => ({
 
 // Modal para criar/editar eventos de consulta
 const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
-    const { user } = useAuth();
-    const { hasAccess, canPerformAction } = useModuleAccess();
+    const { user, isSecretary } = useAuth();
+    const { hasAccess, canPerformAction, getUserContext } = useModuleAccess();
     const [formData, setFormData] = useState({
         patientId: '',
         consultationDate: new Date(),
@@ -208,8 +208,19 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
 
         const loadPatients = async () => {
             try {
-                // Carregar pacientes do médico atual
-                const patientsData = await FirebaseService.getPatientsByDoctor(user.uid);
+                // Determinar o ID do médico correto
+                const doctorId = isSecretary ? user.workingDoctorId : user.uid;
+                
+                if (!doctorId) {
+                    console.error('❌ ID do médico não encontrado');
+                    setErrors(prev => ({ ...prev, general: "Erro: ID do médico não encontrado." }));
+                    return;
+                }
+
+                console.log('🏥 Carregando pacientes para médico:', doctorId, '(secretária:', isSecretary, ')');
+                
+                // Carregar pacientes do médico
+                const patientsData = await FirebaseService.getPatientsByDoctor(doctorId);
                 setPacientes(patientsData || []);
 
                 // Preparar opções para o Autocomplete
@@ -241,7 +252,7 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
         };
 
         loadPatients();
-    }, [isOpen, user?.uid, evento?.patientId]);
+    }, [isOpen, user?.uid, user?.workingDoctorId, isSecretary, evento?.patientId]);
 
     // Efeito para preencher o formulário em caso de edição
     useEffect(() => {
@@ -400,11 +411,14 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
         setSavingConsultation(true);
 
         try {
+            // Determinar o ID do médico correto
+            const doctorId = isSecretary ? user.workingDoctorId : user.uid;
+            
             // Criar formato de consulta para salvar
             const consultationData = {
                 ...consultationModel,
                 patientId: formData.patientId,
-                doctorId: user.uid,
+                doctorId: doctorId,
                 consultationDate: formData.consultationDate,
                 consultationTime: formData.consultationTime,
                 consultationDuration: parseInt(formData.consultationDuration),
