@@ -58,7 +58,7 @@ import FloatingVoiceRecorder from './organismsComponents/FloatingVoiceRecorder';
 import AccessDeniedDialog from './organismsComponents/accessDeniedDialog';
 
 const DoctorAITemplate = () => {
-    const { user, isFreeUser } = useAuth();
+    const { user, isFreeUser, getEffectiveUserId } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -152,7 +152,7 @@ const DoctorAITemplate = () => {
     const loadFreeUsageCount = async () => {
         try {
             const today = new Date().toISOString().split('T')[0];
-            const usageKey = `doctorAI_${user.uid}_${today}`;
+            const usageKey = `doctorAI_${getEffectiveUserId()}_${today}`;
             const currentUsage = localStorage.getItem(usageKey) || '0';
             setFreeUsageCount(parseInt(currentUsage));
         } catch (error) {
@@ -165,7 +165,7 @@ const DoctorAITemplate = () => {
         if (!isFreeUser) return;
         
         const today = new Date().toISOString().split('T')[0];
-        const usageKey = `doctorAI_${user.uid}_${today}`;
+        const usageKey = `doctorAI_${getEffectiveUserId()}_${today}`;
         const newCount = freeUsageCount + 1;
         
         localStorage.setItem(usageKey, newCount.toString());
@@ -183,7 +183,7 @@ const DoctorAITemplate = () => {
     // Carregar estatísticas
     const loadStats = async () => {
         try {
-            const conversationStats = await FirebaseService.getConversationStats(user.uid);
+            const conversationStats = await FirebaseService.getConversationStats(getEffectiveUserId());
             setStats(conversationStats);
         } catch (error) {
             console.error("Erro ao carregar estatísticas:", error);
@@ -194,7 +194,7 @@ const DoctorAITemplate = () => {
     const loadConversationHistory = async () => {
         try {
             setIsLoadingHistory(true);
-            const history = await FirebaseService.getConversations(user.uid);
+            const history = await FirebaseService.getConversations(getEffectiveUserId());
             setConversations(history || []);
         } catch (error) {
             console.error("Erro ao carregar histórico:", error);
@@ -213,7 +213,7 @@ const DoctorAITemplate = () => {
 
         try {
             setIsSearching(true);
-            const results = await FirebaseService.searchConversations(user.uid, searchTerm);
+            const results = await FirebaseService.searchConversations(getEffectiveUserId(), searchTerm);
             setConversations(results || []);
         } catch (error) {
             console.error("Erro na busca:", error);
@@ -232,7 +232,7 @@ const DoctorAITemplate = () => {
     // Limpar conversas antigas
     const cleanOldConversations = async () => {
         try {
-            const deleted = await FirebaseService.cleanOldConversations(user.uid, 30);
+            const deleted = await FirebaseService.cleanOldConversations(getEffectiveUserId(), 30);
             if (deleted > 0) {
                 await loadConversationHistory();
                 await loadStats();
@@ -266,7 +266,7 @@ const DoctorAITemplate = () => {
     // Carregar conversa específica
     const loadConversation = async (conversationId) => {
         try {
-            const conversation = await FirebaseService.getConversation(user.uid, conversationId);
+            const conversation = await FirebaseService.getConversation(getEffectiveUserId(), conversationId);
             if (conversation) {
                 setMessages(conversation.messages || []);
                 setCurrentConversationId(conversationId);
@@ -297,10 +297,10 @@ const DoctorAITemplate = () => {
 
             let savedId;
             if (conversationId) {
-                await FirebaseService.updateConversation(user.uid, conversationId, conversationData);
+                await FirebaseService.updateConversation(getEffectiveUserId(), conversationId, conversationData);
                 savedId = conversationId;
             } else {
-                savedId = await FirebaseService.saveConversation(user.uid, conversationData);
+                savedId = await FirebaseService.saveConversation(getEffectiveUserId(), conversationData);
             }
 
             // Recarregar histórico e stats
@@ -329,7 +329,7 @@ const DoctorAITemplate = () => {
     // Deletar conversa
     const deleteConversation = async (conversationId) => {
         try {
-            await FirebaseService.deleteConversation(user.uid, conversationId);
+            await FirebaseService.deleteConversation(getEffectiveUserId(), conversationId);
 
             // Se era a conversa atual, limpar
             if (currentConversationId === conversationId) {

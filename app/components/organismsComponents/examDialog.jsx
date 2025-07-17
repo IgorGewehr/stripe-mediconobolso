@@ -282,8 +282,23 @@ const StyledDialog = ({ open, onClose, children, ...props }) => {
                     margin: isMobile ? 0 : '16px',
                     width: isMobile ? '100%' : 'calc(100% - 32px)',
                     maxWidth: isMobile ? '100%' : isTablet ? '700px' : '900px',
-                overflow: 'hidden',
-            },
+                    overflow: 'hidden',
+                    // Melhorar responsividade mobile
+                    [theme.breakpoints.down('sm')]: {
+                        margin: 0,
+                        borderRadius: 0,
+                        width: '100%',
+                        height: '100%',
+                        maxHeight: '100vh',
+                        maxWidth: '100vw',
+                    },
+                    [theme.breakpoints.between('sm', 'md')]: {
+                        margin: '12px',
+                        borderRadius: '20px',
+                        width: 'calc(100% - 24px)',
+                        maxWidth: '800px',
+                    },
+                },
             '& .MuiBackdrop-root': {
                 backdropFilter: 'blur(4px)',
                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
@@ -418,7 +433,7 @@ const ExamDialog = ({
                         onSave,
                         onDelete
                     }) => {
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -1171,7 +1186,7 @@ const ExamDialog = ({
                         try {
                             const fileInfo = await FirebaseService.uploadExamAttachment(
                                 file,
-                                user.uid,
+                                getEffectiveUserId(),
                                 patientId,
                                 exam.id
                             );
@@ -1538,7 +1553,7 @@ const ExamDialog = ({
 
                     if (examId && fileName) {
                         // CORRECT PATH: users/{userId}/patients/{patientId}/exams/{examId}/{fileName}
-                        const examPath = `users/${user.uid}/patients/${patientId}/exams/${examId}/${fileName}`;
+                        const examPath = `users/${getEffectiveUserId()}/patients/${patientId}/exams/${examId}/${fileName}`;
                         console.log("Trying exam path:", examPath);
 
                         try {
@@ -1554,7 +1569,7 @@ const ExamDialog = ({
                     // Fallback to note path if exam path fails
                     const noteId = exam?.id || noteData?.id; // Use either exam ID or note ID
                     if (noteId && fileName) {
-                        const notePath = `users/${user.uid}/patients/${patientId}/notes/${noteId}/${fileName}`;
+                        const notePath = `users/${getEffectiveUserId()}/patients/${patientId}/notes/${noteId}/${fileName}`;
                         console.log("Trying note path as fallback:", notePath);
 
                         try {
@@ -1602,7 +1617,7 @@ const ExamDialog = ({
                 const attachment = attachments[index];
                 if (attachment.fileUrl) {
                     await FirebaseService.removeExamAttachment(
-                        user.uid,
+                        getEffectiveUserId(),
                         patientId,
                         exam.id,
                         attachment.fileUrl,
@@ -1658,7 +1673,7 @@ const ExamDialog = ({
                 // 1) Create or update the exam
                 if (isEditMode && exameId) {
                     console.log(`Updating exam with ID: ${exameId}`);
-                    await FirebaseService.updateExam(user.uid, patientId, exameId, {
+                    await FirebaseService.updateExam(getEffectiveUserId(), patientId, exameId, {
                         title,
                         examDate,
                         category: examCategory,
@@ -1687,7 +1702,7 @@ const ExamDialog = ({
                         createdAt: new Date(),
                         lastModified: new Date()
                     };
-                    exameId = await FirebaseService.createExam(user.uid, patientId, examData);
+                    exameId = await FirebaseService.createExam(getEffectiveUserId(), patientId, examData);
                     console.log(`Created new exam with ID: ${exameId}`);
                 }
 
@@ -1699,14 +1714,14 @@ const ExamDialog = ({
                         console.log(`Preparing to upload: ${att.fileName}`);
                         const uploadPromise = FirebaseService.uploadExamAttachment(
                             att.file,
-                            user.uid,
+                            getEffectiveUserId(),
                             patientId,
                             exameId
                         ).then(info => {
                             console.log(`Successfully uploaded: ${att.fileName}`, info);
                             // Add the storage path for future reference
                             if (!info.storagePath && exameId) {
-                                info.storagePath = `users/${user.uid}/patients/${patientId}/exams/${exameId}/${att.fileName}`;
+                                info.storagePath = `users/${getEffectiveUserId()}/patients/${patientId}/exams/${exameId}/${att.fileName}`;
                             }
                             return info;
                         }).catch(error => {
@@ -1740,7 +1755,7 @@ const ExamDialog = ({
                             .map(att => {
                                 // Ensure storage path is set correctly (fix for the path issue)
                                 if (!att.storagePath && exameId) {
-                                    att.storagePath = `users/${user.uid}/patients/${patientId}/exams/${exameId}/${att.fileName}`;
+                                    att.storagePath = `users/${getEffectiveUserId()}/patients/${patientId}/exams/${exameId}/${att.fileName}`;
                                 }
                                 return att;
                             });
@@ -1748,7 +1763,7 @@ const ExamDialog = ({
                         const updatedAttachments = [...existingAttachments, ...successfulUploads];
 
                         // Update the exam with the complete, corrected attachment list
-                        await FirebaseService.updateExam(user.uid, patientId, exameId, {
+                        await FirebaseService.updateExam(getEffectiveUserId(), patientId, exameId, {
                             attachments: updatedAttachments.map(att => {
                                 const { file, ...meta } = att;
                                 return meta;
@@ -1780,13 +1795,13 @@ const ExamDialog = ({
                     };
 
                     // 4) Create or update the note in Firestore
-                    const allNotes = await FirebaseService.listNotes(user.uid, patientId);
+                    const allNotes = await FirebaseService.listNotes(getEffectiveUserId(), patientId);
                     const existingNote = allNotes.find(n => n.exameId === exameId);
 
                     if (existingNote) {
                         console.log(`Updating existing note for exam: ${exameId}`);
                         await FirebaseService.updateNote(
-                            user.uid,
+                            getEffectiveUserId(),
                             patientId,
                             existingNote.id,
                             {
@@ -1800,7 +1815,7 @@ const ExamDialog = ({
                     } else {
                         console.log(`Creating new note for exam: ${exameId}`);
                         await FirebaseService.createNote(
-                            user.uid,
+                            getEffectiveUserId(),
                             patientId,
                             notePayload
                         );
@@ -1846,7 +1861,7 @@ const ExamDialog = ({
         setIsLoading(true);
         try {
             await FirebaseService.deleteExam(
-                user.uid,
+                getEffectiveUserId(),
                 patientId,
                 exam.id
             );

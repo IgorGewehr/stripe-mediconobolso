@@ -148,6 +148,21 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
         boxShadow: theme.breakpoints.down('sm') ? 'none' : '0px 4px 40px 0px rgba(0, 0, 0, 0.1)',
         maxHeight: theme.breakpoints.down('sm') ? '100vh' : '90vh',
         margin: theme.breakpoints.down('sm') ? '0' : '16px',
+        // Melhorar responsividade mobile
+        [theme.breakpoints.down('sm')]: {
+            margin: 0,
+            borderRadius: 0,
+            width: '100%',
+            height: '100%',
+            maxHeight: '100vh',
+            maxWidth: '100vw',
+        },
+        [theme.breakpoints.between('sm', 'md')]: {
+            margin: '12px',
+            borderRadius: '20px',
+            width: 'calc(100% - 24px)',
+            maxWidth: '800px',
+        },
         width: theme.breakpoints.down('sm') ? '100%' : 'calc(100% - 32px)',
         maxWidth: theme.breakpoints.down('sm') ? '100%' : '900px',
         overflow: 'hidden',

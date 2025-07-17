@@ -84,23 +84,24 @@ function RelatorioCard({ onClick, isLoading, isMobile, isTablet }) {
             <Card
                 sx={{
                     width: "100%",
-                    maxWidth: isMobile ? "100%" : isTablet ? "180px" : "200px",
-                    height: isMobile ? "160px" : isTablet ? "180px" : "200px",
-                    borderRadius: "20px",
+                    maxWidth: "100%",
+                    height: isMobile ? "140px" : isTablet ? "160px" : "180px",
+                    borderRadius: isMobile ? "16px" : "20px",
                     boxShadow: canUseAI ? themeColors.cardInsightShadow : themeColors.cardShadow,
                     position: "relative",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    p: 2,
+                    p: isMobile ? 1.5 : 2,
                     cursor: "pointer",
                     backgroundColor: canUseAI ? themeColors.insightLight : "#f5f5f5",
                     overflow: "hidden",
                     transition: "all 0.3s ease-in-out",
+                    minHeight: isMobile ? "140px" : "auto",
                     "&:hover": {
                         boxShadow: canUseAI ? themeColors.cardInsightShadowHover : themeColors.cardShadowHover,
-                        transform: "translateY(-4px)",
+                        transform: isMobile ? "scale(1.02)" : "translateY(-4px)",
                     },
                     "&::before": {
                         content: '""',
@@ -141,15 +142,15 @@ function RelatorioCard({ onClick, isLoading, isMobile, isTablet }) {
                     {/* Ícone central com animação suave */}
                     <Box
                         sx={{
-                            mt: "10px",
-                            width: 100,
-                            height: 100,
-                            mb: 1,
+                            mt: isMobile ? "2px" : "5px",
+                            width: isMobile ? 60 : isTablet ? 80 : 100,
+                            height: isMobile ? 60 : isTablet ? 80 : 100,
+                            mb: isMobile ? 0.5 : 1,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             color: canUseAI ? themeColors.insight : "#9e9e9e",
-                            fontSize: 80,
+                            fontSize: isMobile ? 40 : isTablet ? 50 : 60,
                             position: "relative",
                             "&::after": canUseAI ? {
                                 content: '""',
@@ -215,10 +216,11 @@ function RelatorioCard({ onClick, isLoading, isMobile, isTablet }) {
                             sx={{
                                 color: canUseAI ? themeColors.insight : "#9e9e9e",
                                 fontFamily: "Gellix",
-                                fontSize: isMobile ? 16 : isTablet ? 18 : 22,
+                                fontSize: isMobile ? 14 : isTablet ? 16 : 18,
                                 fontWeight: 600,
-                                textAlign: "start",
+                                textAlign: "center",
                                 flexGrow: 1,
+                                lineHeight: 1.2,
                             }}
                         >
                             Resumo Clínico
@@ -276,23 +278,25 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default", isMobil
         <Card
             sx={{
                 width: "100%",
-                maxWidth: isMobile ? "100%" : isTablet ? "180px" : "200px",
-                height: isMobile ? "160px" : isTablet ? "180px" : "200px",
-                borderRadius: "20px",
+                maxWidth: "100%",
+                height: isMobile ? "140px" : isTablet ? "160px" : "180px",
+                borderRadius: isMobile ? "16px" : "20px",
                 boxShadow: shadowBase,
                 position: "relative",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                p: 2,
+                p: isMobile ? 1.5 : 2,
                 cursor: "pointer",
                 backgroundColor: bgColor,
                 transition: "all 0.3s ease-in-out",
                 "&:hover": {
                     boxShadow: shadowHover,
-                    transform: "translateY(-4px)",
+                    transform: isMobile ? "scale(1.02)" : "translateY(-4px)",
                 },
+                // Garantir visibilidade em mobile
+                minHeight: isMobile ? "140px" : "auto",
             }}
             onClick={onClick}
         >
@@ -313,10 +317,10 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default", isMobil
                         src={icone}
                         alt={tipo}
                         sx={{
-                            mt: isMobile ? "5px" : "10px",
-                            width: isMobile ? 80 : isTablet ? 100 : 115,
-                            height: isMobile ? 90 : isTablet ? 110 : 125,
-                            mb: 1,
+                            mt: isMobile ? "2px" : "5px",
+                            width: isMobile ? 60 : isTablet ? 80 : 100,
+                            height: isMobile ? 60 : isTablet ? 80 : 100,
+                            mb: isMobile ? 0.5 : 1,
                             transition: "transform 0.3s ease",
                             "&:hover": {
                                 transform: "scale(1.05)"
@@ -326,15 +330,15 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default", isMobil
                 ) : (
                     <Box
                         sx={{
-                            mt: isMobile ? "5px" : "10px",
-                            width: isMobile ? 80 : isTablet ? 100 : 115,
-                            height: isMobile ? 90 : isTablet ? 110 : 125,
-                            mb: 1,
+                            mt: isMobile ? "2px" : "5px",
+                            width: isMobile ? 60 : isTablet ? 80 : 100,
+                            height: isMobile ? 60 : isTablet ? 80 : 100,
+                            mb: isMobile ? 0.5 : 1,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             color: isInsightVariant ? themeColors.insight : themeColors.primary,
-                            fontSize: isMobile ? 60 : isTablet ? 70 : 80,
+                            fontSize: isMobile ? 40 : isTablet ? 50 : 60,
                             transition: "transform 0.3s ease",
                             "&:hover": {
                                 transform: "scale(1.05)"
@@ -362,10 +366,11 @@ function AcompanhamentoCard({ tipo, icone, onClick, variant = "default", isMobil
                         sx={{
                             color: isInsightVariant ? themeColors.insight : themeColors.textPrimary,
                             fontFamily: "Gellix",
-                            fontSize: isMobile ? 16 : isTablet ? 18 : 24,
-                            fontWeight: 500,
-                            textAlign: "start",
+                            fontSize: isMobile ? 14 : isTablet ? 16 : 18,
+                            fontWeight: 600,
+                            textAlign: "center",
                             flexGrow: 1,
+                            lineHeight: 1.2,
                         }}
                     >
                         {tipo}
@@ -1186,22 +1191,23 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 }
             `}</style>
 
-            {/* Title with enhanced typography */}
+            {/* Title with enhanced typography - Mobile optimized */}
             <Typography
                 variant="h4"
                 sx={{
                     color: themeColors.textPrimary,
                     fontFamily: "Gellix",
-                    fontSize: "30px",
+                    fontSize: isMobile ? "20px" : isTablet ? "24px" : "30px",
                     fontWeight: 500,
-                    mb: 3,
+                    mb: isMobile ? 2 : 3,
+                    textAlign: isMobile ? "center" : "left",
                 }}
             >
                 Acompanhamento
             </Typography>
 
-            {/* Grid of cards with improved layout */}
-            <Grid container spacing={isMobile ? 2 : isTablet ? 2.5 : 3}>
+            {/* Grid of cards with improved mobile layout */}
+            <Grid container spacing={isMobile ? 1.5 : isTablet ? 2 : 3}>
                 <Grid item xs={6} sm={6} md={3}>
                     <AcompanhamentoCard
                         tipo="Anamnese"

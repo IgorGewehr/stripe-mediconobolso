@@ -67,6 +67,19 @@ const FullScreenDialog = styled(Dialog)(({ theme }) => ({
         backgroundColor: "#F4F9FF",
         overflowY: "hidden",
         width: theme.breakpoints.down('sm') ? "100%" : "calc(100% - 48px)",
+        // Melhorar responsividade mobile
+        [theme.breakpoints.down('sm')]: {
+            margin: 0,
+            borderRadius: 0,
+            width: "100%",
+            height: "100%",
+            maxHeight: "100vh",
+        },
+        [theme.breakpoints.between('sm', 'md')]: {
+            margin: "12px",
+            borderRadius: "20px",
+            width: "calc(100% - 24px)",
+        },
     },
     "& .MuiBackdrop-root": {
         backgroundColor: "rgba(255, 255, 255, 0.10)",

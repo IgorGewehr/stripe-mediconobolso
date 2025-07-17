@@ -507,7 +507,7 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
 
     // Estados principais
     const [prescriptions, setPrescriptions] = useState([]);
@@ -562,11 +562,11 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
             setLoading(true);
             try {
                 // Carrega a lista de prescrições
-                const prescriptionsData = await FirebaseService.listAllPrescriptions(user.uid);
+                const prescriptionsData = await FirebaseService.listAllPrescriptions(getEffectiveUserId());
                 setPrescriptions(prescriptionsData);
 
                 // Carrega informações de pacientes para referência
-                const patients = await FirebaseService.listPatients(user.uid);
+                const patients = await FirebaseService.listPatients(getEffectiveUserId());
                 const patientsMapData = {};
                 patients.forEach(patient => {
                     patientsMapData[patient.id] = patient;
@@ -931,7 +931,7 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
 
         try {
             // Em produção, atualizaria no Firebase
-            // await FirebaseService.updatePrescriptionFavoriteStatus(user.uid, prescriptionId, newFavoriteStatus);
+            // await FirebaseService.updatePrescriptionFavoriteStatus(getEffectiveUserId(), prescriptionId, newFavoriteStatus);
             console.log(`Prescrição ${prescriptionId} ${newFavoriteStatus ? 'adicionada aos' : 'removida dos'} favoritos`);
         } catch (error) {
             console.error("Erro ao atualizar favorito:", error);

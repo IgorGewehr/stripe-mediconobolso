@@ -555,7 +555,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         setStatusHistoryLoading(true);
 
         try {
-            const history = await FirebaseService.getPatientStatusHistory(user.uid, patientId);
+            const history = await FirebaseService.getPatientStatusHistory(getEffectiveUserId(), patientId);
             setStatusHistory(history || []);
             return history;
         } catch (error) {
@@ -620,7 +620,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         setStatusUpdateSuccess(false);
 
         try {
-            await FirebaseService.updatePatientStatus(user.uid, selectedPatient.id, [newStatus]);
+            await FirebaseService.updatePatientStatus(getEffectiveUserId(), selectedPatient.id, [newStatus]);
 
             // Atualizar o estado local dos pacientes para refletir a mudança
             setPatients(prevPatients =>
@@ -633,7 +633,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
 
             // Adicionar ao histórico
             await FirebaseService.addPatientStatusHistory(
-                user.uid,
+                getEffectiveUserId(),
                 selectedPatient.id,
                 newStatus,
                 ''

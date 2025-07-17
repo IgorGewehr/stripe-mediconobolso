@@ -476,7 +476,7 @@ const PatientNoteDialog = ({
                                onSave,
                                onDelete
                            }) => {
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -580,7 +580,7 @@ const PatientNoteDialog = ({
         setIsLoadingConsultations(true);
         try {
             console.log("Carregando consultas para paciente:", patientId);
-            const cons = await FirebaseService.listPatientConsultations(user.uid, patientId);
+            const cons = await FirebaseService.listPatientConsultations(getEffectiveUserId(), patientId);
             console.log("Consultas carregadas:", cons);
             setConsultations(cons);
         } catch (error) {
@@ -608,7 +608,7 @@ const PatientNoteDialog = ({
                 for (const file of fileList) {
                     const fileInfo = await FirebaseService.uploadNoteAttachment(
                         file,
-                        user.uid,
+                        getEffectiveUserId(),
                         patientId,
                         note.id
                     );
@@ -751,7 +751,7 @@ const PatientNoteDialog = ({
         if (attachment.fileName && user?.uid && patientId && note?.id) {
             try {
                 // Caminho padrão baseado no padrão de upload
-                const path = `users/${user.uid}/patients/${patientId}/notes/${note.id}/${attachment.fileName}`;
+                const path = `users/${getEffectiveUserId()}/patients/${patientId}/notes/${note.id}/${attachment.fileName}`;
                 console.log("Tentando reconstruir caminho para:", path);
 
                 FirebaseService.getStorageFileUrl(path)
@@ -781,7 +781,7 @@ const PatientNoteDialog = ({
                 const attachment = attachments[index];
                 if (attachment.fileUrl) {
                     await FirebaseService.removeNoteAttachment(
-                        user.uid,
+                        getEffectiveUserId(),
                         patientId,
                         note.id,
                         attachment.fileUrl,
@@ -870,7 +870,7 @@ const PatientNoteDialog = ({
         setIsLoading(true);
         try {
             await FirebaseService.deleteNote(
-                user.uid,
+                getEffectiveUserId(),
                 patientId,
                 note.id
             );

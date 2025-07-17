@@ -638,14 +638,15 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
     });
 
     // Context
-    const { user } = useAuth();
+    const { user, getEffectiveUserId } = useAuth();
 
     // Effect to fetch patient data
     useEffect(() => {
-        if (pacienteId && user?.uid) {
+        const effectiveUserId = getEffectiveUserId();
+        if (pacienteId && effectiveUserId) {
             const fetchPatientData = async () => {
                 try {
-                    const data = await FirebaseService.getPatient(user.uid, pacienteId);
+                    const data = await FirebaseService.getPatient(effectiveUserId, pacienteId);
                     setPatientData(data);
                 } catch (error) {
                     console.error("Erro ao buscar dados do paciente:", error);
@@ -658,10 +659,11 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
 
     // Effect to load notes
     useEffect(() => {
-        if (pacienteId && user?.uid) {
+        const effectiveUserId = getEffectiveUserId();
+        if (pacienteId && effectiveUserId) {
             fetchNotas();
         }
-    }, [pacienteId, user]);
+    }, [pacienteId, getEffectiveUserId]);
 
     // Effect to apply filters
     useEffect(() => {
@@ -672,7 +674,7 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
     const fetchNotas = async () => {
         try {
             setIsLoading(true);
-            const notes = await FirebaseService.listNotes(user.uid, pacienteId);
+            const notes = await FirebaseService.listNotes(getEffectiveUserId(), pacienteId);
 
             // Sort by creation date, newest first
             const sortedNotes = notes.sort((a, b) => {
@@ -850,11 +852,11 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
         try {
             if (selectedNota && selectedNota.id) {
                 // If editing, update note in Firebase
-                await FirebaseService.updateNote(user.uid, pacienteId, selectedNota.id, notaData);
+                await FirebaseService.updateNote(getEffectiveUserId(), pacienteId, selectedNota.id, notaData);
                 setSuccessAction("atualizada");
             } else {
                 // If new note, create in Firebase
-                await FirebaseService.createNote(user.uid, pacienteId, notaData);
+                await FirebaseService.createNote(getEffectiveUserId(), pacienteId, notaData);
                 setSuccessAction("criada");
             }
 
@@ -1021,8 +1023,9 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                     sx={{
                         color: themeColors.textPrimary,
                         fontFamily: "Gellix",
-                        fontSize: isMobile ? "24px" : "30px",
+                        fontSize: isMobile ? "20px" : isTablet ? "24px" : "30px",
                         fontWeight: 600,
+                        textAlign: isMobile ? "center" : "left",
                     }}
                 >
                     Anotações

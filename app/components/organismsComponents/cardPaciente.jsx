@@ -2661,7 +2661,7 @@ export default function PacienteCard({paciente}) {
     const [loading, setLoading] = useState(false);
     const [alert, setAlert] = useState({open: false, message: '', severity: 'success'});
     const [validationErrors, setValidationErrors] = useState({});
-    const {user} = useAuth();
+    const {user, getEffectiveUserId} = useAuth();
     const { canPerformAction } = useModuleAccess();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -2794,7 +2794,7 @@ export default function PacienteCard({paciente}) {
                 try {
                     // Define the storage path - add timestamp to avoid name collisions
                     const photoFileName = `${Date.now()}_${formData.photoFile.name}`;
-                    const photoPath = `users/${user.uid}/patients/${paciente.id}/profilePhoto/${photoFileName}`;
+                    const photoPath = `users/${getEffectiveUserId()}/patients/${paciente.id}/profilePhoto/${photoFileName}`;
 
                     // Upload the new photo
                     const photoURL = await FirebaseService.uploadFile(formData.photoFile, photoPath);
@@ -2820,7 +2820,7 @@ export default function PacienteCard({paciente}) {
             }
 
             // Update in Firebase
-            await FirebaseService.updatePatient(user.uid, paciente.id, dataToSave);
+            await FirebaseService.updatePatient(getEffectiveUserId(), paciente.id, dataToSave);
 
             // Update successful
             setIsEditing(false);

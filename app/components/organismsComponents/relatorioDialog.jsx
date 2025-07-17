@@ -327,17 +327,32 @@ const RelatorioDialog = ({
             fullScreen={fullScreen}
             PaperProps={{
                 sx: {
-                    borderRadius: '20px',
+                    borderRadius: fullScreen ? 0 : '20px',
                     overflow: 'hidden',
-                    boxShadow: '0px 4px 30px rgba(0, 0, 0, 0.08)',
-                    maxHeight: '90vh'
+                    boxShadow: fullScreen ? 'none' : '0px 4px 30px rgba(0, 0, 0, 0.08)',
+                    maxHeight: fullScreen ? '100vh' : '90vh',
+                    // Melhorar responsividade mobile
+                    [theme.breakpoints.down('sm')]: {
+                        margin: 0,
+                        borderRadius: 0,
+                        width: '100%',
+                        height: '100%',
+                        maxHeight: '100vh',
+                        maxWidth: '100vw',
+                    },
+                    [theme.breakpoints.between('sm', 'md')]: {
+                        margin: '12px',
+                        borderRadius: '20px',
+                        width: 'calc(100% - 24px)',
+                        maxWidth: '800px',
+                    },
                 }
             }}
         >
             {/* Header */}
             <Box
                 sx={{
-                    p: 3,
+                    p: { xs: 2, sm: 3 },
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -350,19 +365,30 @@ const RelatorioDialog = ({
                         sx={{
                             bgcolor: '#8B5CF6',
                             color: 'white',
-                            width: 40,
-                            height: 40,
-                            mr: 2
+                            width: { xs: 32, sm: 40 },
+                            height: { xs: 32, sm: 40 },
+                            mr: { xs: 1.5, sm: 2 }
                         }}
                     >
                         <PsychologyAltIcon />
                     </Avatar>
                     <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#8B5CF6' }}>
+                        <Typography 
+                            variant="h6" 
+                            sx={{ 
+                                fontWeight: 600, 
+                                color: '#8B5CF6',
+                                fontSize: { xs: '1rem', sm: '1.25rem' }
+                            }}
+                        >
                             Resumo Clínico Inteligente
                         </Typography>
                         {relatorioData?.generatedAt && (
-                            <Typography variant="body2" color="textSecondary">
+                            <Typography 
+                                variant="body2" 
+                                color="textSecondary"
+                                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                            >
                                 Gerado em: {formatDate(relatorioData.generatedAt)}
                             </Typography>
                         )}

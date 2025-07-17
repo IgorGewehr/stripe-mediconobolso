@@ -300,7 +300,8 @@ export default function PacienteCadastroTemplate() {
             return;
         }
 
-        if (!user || !user.uid) {
+        const effectiveUserId = getEffectiveUserId();
+        if (!user || !effectiveUserId) {
             setSnackbar({
                 open: true,
                 message: "Usuário não autenticado.",

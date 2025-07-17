@@ -189,48 +189,62 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
             sx={{
                 display: "flex",
                 flexDirection: isMedium ? "column" : "row",
-                gap: isMobile ? 1.5 : isTablet ? 2 : 3,
+                gap: isMobile ? 1 : isTablet ? 2 : 3,
                 width: "100%",
                 backgroundColor: "#F4F9FF",
                 p: isMobile ? 1 : isTablet ? 2 : 3,
                 boxSizing: "border-box",
                 position: "relative",
-                alignItems: isMedium ? "stretch" : "flex-start",
-                height: "auto",
+                alignItems: "stretch",
                 minHeight: isMobile ? "100vh" : "auto",
                 overflow: "visible",
             }}
         >
+            {/* Card do Paciente - Layout otimizado para mobile */}
             <Box
                 sx={{
                     position: "relative",
                     flexShrink: 0,
                     zIndex: 2,
-                    alignSelf: isMedium ? "stretch" : "flex-start",
-                    height: "max-content",
-                    maxHeight: "none",
-                    width: { xs: "100%", sm: "100%", md: "380px" },
-                    maxWidth: { xs: "100%", sm: "100%", md: "380px" },
-                    mb: isMedium ? 2 : 0,
+                    width: { 
+                        xs: "100%", 
+                        sm: "100%", 
+                        md: "380px" 
+                    },
+                    maxWidth: { 
+                        xs: "100%", 
+                        sm: "100%", 
+                        md: "380px" 
+                    },
+                    mb: isMedium ? 1.5 : 0,
+                    // Em mobile, tornar mais compacto
+                    ...(isMobile && {
+                        position: "sticky",
+                        top: 0,
+                        zIndex: 10,
+                        backgroundColor: "#F4F9FF",
+                        pb: 1,
+                    }),
                 }}
             >
                 <PacienteCard paciente={pacienteData} />
             </Box>
 
+            {/* Seções principais - Layout melhorado para mobile */}
             <Box
                 sx={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: isMobile ? 2 : isTablet ? 2.5 : 3,
-                    p: isMobile ? 1.5 : isTablet ? 2 : 3,
+                    gap: isMobile ? 1.5 : isTablet ? 2 : 3,
+                    p: isMobile ? 0 : isTablet ? 1 : 2,
                     width: "100%",
                     boxSizing: "border-box",
-                    alignSelf: "flex-start",
-                    zIndex: 1,
-                    height: "auto",
-                    minHeight: "0",
-                    marginLeft: "0px",
                     flex: 1,
+                    // Em mobile, garantir que o conteúdo seja visível
+                    ...(isMobile && {
+                        minHeight: "calc(100vh - 200px)",
+                        overflow: "visible",
+                    }),
                 }}
             >
                 {/* Passa a função de atualização para AcompanhamentoSection */}
