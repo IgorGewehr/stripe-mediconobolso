@@ -19,7 +19,9 @@
       "Bash(while read file)",
       "Bash(do mv \"app/components/organismsComponents/$file\" \"app/components/features/dialogs/$file^\")",
       "Bash(done)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
