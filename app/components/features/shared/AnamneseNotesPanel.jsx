@@ -52,7 +52,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {ChevronRightIcon} from "lucide-react";
 
 // Importar o AnamneseViewer
-import AnamneseViewer from "./anamneseViwer";
+import AnamneseViewer from "./anamneseViewer";
 
 // Tema com cores para cada tipo de nota
 const theme = createTheme({

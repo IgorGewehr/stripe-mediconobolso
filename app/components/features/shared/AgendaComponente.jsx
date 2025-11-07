@@ -44,7 +44,7 @@ import {
     parseISO,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import PeriodSelector from "../basicComponents/periodSelector";
+import PeriodSelector from "../ui/inputs/PeriodSelector";
 import ViewConsultationDialog from "./viewConsultationDialog";
 
 // Main component

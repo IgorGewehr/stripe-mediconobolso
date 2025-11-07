@@ -101,7 +101,7 @@ import {ptBR} from 'date-fns/locale';
 import FirebaseService from "../../lib/firebaseService";
 import {useAuth} from "./authProvider";
 import useModuleAccess from "./useModuleAccess";
-import SearchField from "./basicComponents/searchField";
+import SearchField from "./ui/inputs/SearchField";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import MaleIcon from "@mui/icons-material/Male";

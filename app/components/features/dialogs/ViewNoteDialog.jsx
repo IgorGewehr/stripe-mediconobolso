@@ -58,11 +58,10 @@ import { ptBR } from 'date-fns/locale';
 
 // Serviço Firebase
 import FirebaseService from "../../../lib/firebaseService";
-import AnamneseViewer from "./anamneseViwer";
-import ReceitaViewer from "./receitasViwer";
-import ExameViewer from "./examViwer"
+import AnamneseViewer from "./anamneseViewer";
+import ReceitaViewer from "./receitasViewer";
+import ExamViewer from "./examViewer";
 import jsPDF from "jspdf";
-import ExamViewer from "./examViwer";
 
 // Tema com cores para cada tipo de nota
 const theme = createTheme({

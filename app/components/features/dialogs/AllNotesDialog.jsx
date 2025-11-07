@@ -54,8 +54,8 @@ import BiotechIcon from "@mui/icons-material/Biotech";
 
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import AnamneseViewer from "./anamneseViwer";
-import ExamViewer from "./examViwer";
+import AnamneseViewer from "./anamneseViewer";
+import ExamViewer from "./examViewer";
 
 // Transition component for dialog animations
 const Transition = React.forwardRef(function Transition(props, ref) {

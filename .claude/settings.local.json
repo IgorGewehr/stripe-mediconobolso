@@ -10,7 +10,16 @@
       "Bash(node:*)",
       "Bash(npm run dev:*)",
       "Bash(npx next lint:*)",
-      "Bash(timeout 15s npm run dev)"
+      "Bash(timeout 15s npm run dev)",
+      "Bash(tree:*)",
+      "Bash(awk:*)",
+      "Bash(sort:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm install:*)",
+      "Bash(while read file)",
+      "Bash(do mv \"app/components/organismsComponents/$file\" \"app/components/features/dialogs/$file^\")",
+      "Bash(done)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

@@ -83,7 +83,7 @@ import FirebaseService from "../../lib/firebaseService";
 import { format, formatDistanceToNow, isToday, isYesterday, isValid, parse, isPast, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from "./authProvider";
-import SearchBar from "./basicComponents/searchBar";
+import SearchBar from "./ui/inputs/SearchBar";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { formatDistance } from 'date-fns';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
