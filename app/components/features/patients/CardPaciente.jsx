@@ -40,9 +40,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import FirebaseService from "../../../lib/firebaseService";
-import {useAuth} from "../authProvider";
-import useModuleAccess from "../useModuleAccess";
+import FirebaseService from "../../../../lib/firebaseService";
+import {useAuth} from "../../authProvider";
+import useModuleAccess from "../../useModuleAccess";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 
 // Enhanced color palette

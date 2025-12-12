@@ -55,8 +55,8 @@ import {
     Email as EmailIcon
 } from '@mui/icons-material';
 
-import firebaseService from "../../../lib/firebaseService";
-import { useAuth } from "../authProvider";
+import firebaseService from "../../../../lib/firebaseService";
+import { useAuth } from "../../authProvider";
 
 const AdminMessagesComponent = ({ open, onClose }) => {
     // Estados principais

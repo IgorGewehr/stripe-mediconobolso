@@ -21,7 +21,12 @@
       "Bash(done)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(git mv:*)",
+      "Bash(xargs:*)",
+      "Bash(timeout 30s npm run dev:*)"
     ],
     "deny": []
   }

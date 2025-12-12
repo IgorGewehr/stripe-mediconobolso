@@ -88,7 +88,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { formatDistance } from 'date-fns';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { styled } from '@mui/material/styles';
-import ReceitaDialog from "./organismsComponents/receitasDialog";
+import ReceitaDialog from "./features/dialogs/ReceitasDialog";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 

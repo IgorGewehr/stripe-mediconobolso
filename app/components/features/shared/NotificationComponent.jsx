@@ -29,8 +29,8 @@ import {
     AdminPanelSettings as AdminPanelSettingsIcon,
     MarkEmailRead as MarkReadIcon
 } from "@mui/icons-material";
-import firebaseService from "../../../lib/firebaseService";
-import { useAuth } from "../authProvider";
+import firebaseService from "../../../../lib/firebaseService";
+import { useAuth } from "../../authProvider";
 
 const NotificationComponent = ({ onMessageClick }) => {
     const [anchorEl, setAnchorEl] = useState(null);

@@ -13,9 +13,9 @@ import {
 } from "@mui/material";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import InfoBasicasForm from "./organismsComponents/informacoesBasicas";
-import CondicoesClinicasForm from "./organismsComponents/condicoesClinicas";
-import HistoricoCondutaForm from "./organismsComponents/historicoConduta";
+import InfoBasicasForm from "./features/patients/InformacoesBasicas";
+import CondicoesClinicasForm from "./features/patients/CondicoesClinicas";
+import ConductHistoryForm from "./features/shared/ConductHistory";
 
 // Importa o serviço do Firebase
 import firebaseService from "../../lib/firebaseService";
@@ -505,7 +505,7 @@ export default function PacienteCadastroTemplate() {
                         </SectionHeader>
                         {expandedSections.historicoConduta && (
                             <SectionContent>
-                                <HistoricoCondutaForm
+                                <ConductHistoryForm
                                     formData={formData.historicoConduta}
                                     updateFormData={(data) => updateFormData("historicoConduta", data)}
                                     doctorId={patientId ? getEffectiveUserId() : null}  // Só passa doctorId se já tiver um paciente (caso de edição)

@@ -48,13 +48,13 @@ import FormatSizeIcon from "@mui/icons-material/FormatSize";
 import MicIcon from "@mui/icons-material/Mic";
 import LockIcon from "@mui/icons-material/Lock";
 // Firebase service
-import firebaseService from "../../../lib/firebaseService";
+import firebaseService from "../../../../lib/firebaseService";
 import { parse } from 'date-fns';
 import DescriptionIcon from "@mui/icons-material/Description";
-import AnamneseNotesPanel from "./anamneseNotesPanel";
-import FloatingVoiceRecorder from "./FloatingVoiceRecorder";
-import AccessDeniedDialog from "./accessDeniedDialog";
-import {useAuth} from "../authProvider";
+import AnamneseNotesPanel from "../shared/AnamneseNotesPanel";
+import FloatingVoiceRecorder from "../shared/FloatingVoiceRecorder";
+import AccessDeniedDialog from "./AccessDeniedDialog";
+import {useAuth} from "../../authProvider";
 
 
 // ------------------ ESTILOS ------------------

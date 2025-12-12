@@ -56,9 +56,9 @@ import {
     Info as InfoIcon,
     AccountCircle as AccountIcon
 } from '@mui/icons-material';
-import { useAuth } from '../authProvider';
-import firebaseService from '../../../lib/firebaseService';
-import globalCache from '../globalCache';
+import { useAuth } from '../../authProvider';
+import firebaseService from '../../../../lib/firebaseService';
+import globalCache from '../../globalCache';
 
 // ✅ CONFIGURAÇÃO DOS MÓDULOS E PERMISSÕES
 const MODULE_PERMISSIONS = {

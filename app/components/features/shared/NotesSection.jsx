@@ -30,15 +30,15 @@ import ViewListIcon from "@mui/icons-material/ViewList";
 import BiotechIcon from "@mui/icons-material/Biotech";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import FirebaseService from "../../../lib/firebaseService";
-import { useAuth } from "../authProvider";
-import QuickDocumentsSection from "./quickDocumentsSection";
-import AnamneseDialog from "./anamneseDialog";
-import ViewNoteDialog from "./viewNoteDialog";
-import ReceitaDialog from "./receitasDialog";
-import PatientNoteDialog from "./novaNotaDialog";
-import AllNotesViewDialog from "./allNotesDialog";
-import ExamDialog from "./examDialog"; // Importando o Dialog de exames
+import FirebaseService from "../../../../lib/firebaseService";
+import { useAuth } from "../../authProvider";
+import QuickDocumentsSection from "./QuickDocumentsSection";
+import AnamneseDialog from "../dialogs/AnamneseDialog";
+import ViewNoteDialog from "../dialogs/ViewNoteDialog";
+import ReceitaDialog from "../dialogs/ReceitasDialog";
+import PatientNoteDialog from "../dialogs/NovaNotaDialog";
+import AllNotesViewDialog from "../dialogs/AllNotesDialog";
+import ExamDialog from "../dialogs/ExamDialog";
 
 // Theme colors
 const themeColors = {

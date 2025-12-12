@@ -5,7 +5,7 @@ import { Box, Tooltip, IconButton } from '@mui/material';
 import LockIcon from '@mui/icons-material/Lock';
 import InfoIcon from '@mui/icons-material/Info';
 import useModuleAccess from './useModuleAccess';
-import AccessDeniedDialog from './organismsComponents/accessDeniedDialog';
+import AccessDeniedDialog from './features/dialogs/AccessDeniedDialog';
 import { useAuth } from './authProvider';
 
 /**

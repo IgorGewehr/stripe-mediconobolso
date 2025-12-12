@@ -1,5 +1,5 @@
 // app/free/page.jsx
-import FreeSignupForm from '../components/organismsComponents/freeSignUpForm';
+import FreeSignupForm from '../components/features/forms/FreeSignUpForm';
 import { Box } from '@mui/material';
 
 export default function Page() {

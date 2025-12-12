@@ -49,8 +49,8 @@ import {
     Security as SecurityIcon
 } from '@mui/icons-material';
 
-import firebaseService from '../../../lib/firebaseService';
-import moduleService from '../../../lib/moduleService';
+import firebaseService from '../../../../lib/firebaseService';
+import moduleService from '../../../../lib/moduleService';
 // Definições locais dos módulos - removido moduleConfig
 const MODULE_INFO = {
     'receitas': {
@@ -124,7 +124,7 @@ const getLimitationsByPlan = (plan) => {
     };
     return limitations[plan] || limitations.free;
 };
-import useModuleAccess from '../useModuleAccess';
+import useModuleAccess from '../../useModuleAccess';
 
 const ModuleAdminPanel = () => {
     const [tabValue, setTabValue] = useState(0);

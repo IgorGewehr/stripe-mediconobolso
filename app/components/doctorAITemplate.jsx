@@ -54,8 +54,8 @@ import { useAuth } from "./authProvider";
 import FirebaseService from "../../lib/firebaseService";
 import { format, isToday, isYesterday, isThisWeek, isThisMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FloatingVoiceRecorder from './organismsComponents/FloatingVoiceRecorder';
-import AccessDeniedDialog from './organismsComponents/accessDeniedDialog';
+import FloatingVoiceRecorder from './features/shared/FloatingVoiceRecorder';
+import AccessDeniedDialog from './features/dialogs/AccessDeniedDialog';
 
 const DoctorAITemplate = () => {
     const { user, isFreeUser, getEffectiveUserId } = useAuth();

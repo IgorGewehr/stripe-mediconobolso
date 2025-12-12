@@ -75,9 +75,9 @@ import {
     AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 
-import firebaseService from '../../../lib/firebaseService';
-import presenceService from '../../../lib/presenceService';
-import useModuleAccess from '../useModuleAccess';
+import firebaseService from '../../../../lib/firebaseService';
+import presenceService from '../../../../lib/presenceService';
+import useModuleAccess from '../../useModuleAccess';
 
 const AdminDashboard = () => {
     const [tabValue, setTabValue] = useState(0);

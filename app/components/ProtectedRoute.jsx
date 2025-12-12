@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from './authProvider';
 import { useRouter } from 'next/navigation';
 import { Box, CircularProgress, Typography } from '@mui/material';
-import AccessDenied from './organismsComponents/AccessDeniedComponent';
+import AccessDenied from './features/shared/AccessDeniedComponent';
 
 /**
  * Componente para proteger rotas baseado no sistema de secretárias

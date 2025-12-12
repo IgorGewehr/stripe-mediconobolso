@@ -33,8 +33,8 @@ import {
     TrendingUp as TrendingUpIcon,
     Lock as LockIcon
 } from '@mui/icons-material';
-import AudioProcessingDialog from './audioProcessingDialog';
-import { useAuth } from '../authProvider';
+import AudioProcessingDialog from '../dialogs/AudioProcessingDialog';
+import { useAuth } from '../../authProvider';
 
 const MiniChatCard = () => {
     const theme = useTheme();

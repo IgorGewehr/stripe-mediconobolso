@@ -24,7 +24,7 @@ import {
     useMediaQuery
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import firebaseService from '../../../lib/firebaseService';
+import firebaseService from '../../../../lib/firebaseService';
 
 // Lista de estados brasileiros
 const brazilianStates = [

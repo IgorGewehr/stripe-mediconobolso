@@ -25,7 +25,7 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 
 // Importar o modal de upgrade
-import UpgradeModal from './upgradeModal';
+import UpgradeModal from './UpgradeModal';
 
 // Tema consistente com o padrão existente
 const theme = createTheme({

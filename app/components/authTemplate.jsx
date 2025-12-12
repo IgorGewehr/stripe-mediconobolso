@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { Box, CircularProgress, useMediaQuery, useTheme } from '@mui/material';
-import AuthForms from './organismsComponents/authForms';
+import AuthForms from './features/auth/AuthForms';
 import { useAuth } from './authProvider';
 import { useRouter } from 'next/navigation';
 import { useResponsiveScale } from './useScale';

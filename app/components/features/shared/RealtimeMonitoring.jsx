@@ -43,8 +43,8 @@ import {
     SignalWifiOff as UnknownIcon
 } from '@mui/icons-material';
 
-import optimizedPresenceService from '../../../lib/presenceService';
-import firebaseService from '../../../lib/firebaseService';
+import optimizedPresenceService from '../../../../lib/presenceService';
+import firebaseService from '../../../../lib/firebaseService';
 
 const EnhancedRealtimeMonitoring = () => {
     // Estados básicos

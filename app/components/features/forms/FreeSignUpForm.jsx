@@ -2,8 +2,8 @@
 
 import React, {useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../authProvider';
-import firebaseService from '../../../lib/firebaseService';
+import { useAuth } from '../../authProvider';
+import firebaseService from '../../../../lib/firebaseService';
 import {
     Box,
     TextField,
@@ -29,8 +29,8 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import GoogleButton from '../organismsComponents/googleButton';
-import {FacebookEvents} from "../../../lib/facebookConversions";
+import GoogleButton from '../auth/GoogleButton';
+import {FacebookEvents} from "../../../../lib/facebookConversions";
 
 // Lista de estados brasileiros
 const brazilianStates = [

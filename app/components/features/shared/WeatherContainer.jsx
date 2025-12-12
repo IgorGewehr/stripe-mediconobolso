@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { Skeleton, Box, Typography, Button } from "@mui/material";
-import { useAuth } from "../authProvider";
-import WeatherCard from "../ui/cards/WeatherCard";
-import firebaseService from "../../../lib/firebaseService";
+import { useAuth } from "../../authProvider";
+import WeatherCard from "../../ui/cards/WeatherCard";
+import firebaseService from "../../../../lib/firebaseService";
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 /**

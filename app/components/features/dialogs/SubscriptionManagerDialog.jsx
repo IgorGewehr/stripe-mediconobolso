@@ -48,8 +48,8 @@ import {
     Email as EmailIcon,
     CalendarToday as CalendarTodayIcon
 } from '@mui/icons-material';
-import { useAuth } from '../authProvider';
-import UpgradeModal from '../organismsComponents/upgradeModal';
+import { useAuth } from '../../authProvider';
+import UpgradeModal from './UpgradeModal';
 
 // Configuração dos planos com ícones e cores melhoradas
 const plansConfig = {

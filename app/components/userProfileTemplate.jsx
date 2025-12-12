@@ -43,8 +43,8 @@ import {
 import { debounce } from 'lodash';
 import FirebaseService from "../../lib/firebaseService";
 import { useAuth } from "./authProvider";
-import SubscriptionManagerDialog from './organismsComponents/subscriptionManagerDialog';
-import SecretaryManagerDialog from './organismsComponents/secretaryManagerDialog';
+import SubscriptionManagerDialog from './features/dialogs/SubscriptionManagerDialog';
+import SecretaryManagerDialog from './features/dialogs/SecretaryManagerDialog';
 import globalCache from './globalCache';
 import LogoutIcon from '@mui/icons-material/Logout';
 

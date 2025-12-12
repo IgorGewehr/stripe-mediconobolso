@@ -33,9 +33,9 @@ import {
     VideoCall,
     ArrowForward
 } from '@mui/icons-material';
-import FirebaseService from '../../../lib/firebaseService';
-import { useAuth } from '../authProvider';
-import EventoModal from './eventoModal';
+import FirebaseService from '../../../../lib/firebaseService';
+import { useAuth } from '../../authProvider';
+import EventoModal from '../forms/EventoModal';
 import moment from 'moment-timezone';
 import {
     format,
@@ -44,8 +44,8 @@ import {
     parseISO,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import PeriodSelector from "../ui/inputs/PeriodSelector";
-import ViewConsultationDialog from "./viewConsultationDialog";
+import PeriodSelector from "../../ui/inputs/PeriodSelector";
+import ViewConsultationDialog from "../dialogs/ViewConsultationDialog";
 
 // Main component
 const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {

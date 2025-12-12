@@ -30,7 +30,7 @@ import {
     Close as CloseIcon,
     Info as InfoIcon
 } from '@mui/icons-material';
-import { useAuth } from '../authProvider';
+import { useAuth } from '../../authProvider';
 
 // ✅ CONFIGURAÇÃO LOCAL DE MÓDULOS E SUAS DESCRIÇÕES (removido moduleConfig)
 const MODULE_CONFIG = {

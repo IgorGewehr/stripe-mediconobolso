@@ -23,15 +23,15 @@ import PsychologyAltIcon from '@mui/icons-material/PsychologyAlt';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckIcon from '@mui/icons-material/Check';
 import LockIcon from '@mui/icons-material/Lock';
-import AnamneseDialog from "./anamneseDialog";
-import ReceitaDialog from "./receitasDialog";
-import ExamDialog from "./examDialog";
-import RelatorioDialog from "./relatorioDialog";
-import FirebaseService from "../../../lib/firebaseService";
-import useModuleAccess from '../useModuleAccess';
-import ModuleProtection from '../ModuleProtection';
-import AccessDeniedDialog from '../organismsComponents/accessDeniedDialog';
-import {useAuth} from "../authProvider";
+import AnamneseDialog from "../dialogs/AnamneseDialog";
+import ReceitaDialog from "../dialogs/ReceitasDialog";
+import ExamDialog from "../dialogs/ExamDialog";
+import RelatorioDialog from "../dialogs/RelatorioDialog";
+import FirebaseService from "../../../../lib/firebaseService";
+import useModuleAccess from '../../useModuleAccess';
+import ModuleProtection from '../../ModuleProtection';
+import AccessDeniedDialog from '../dialogs/AccessDeniedDialog';
+import {useAuth} from "../../authProvider";
 
 // Paleta de cores refinada
 const themeColors = {

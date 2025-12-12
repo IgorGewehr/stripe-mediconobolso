@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { Box, CircularProgress, Typography, Button, useTheme, useMediaQuery } from "@mui/material";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PacienteCard from "./organismsComponents/cardPaciente";
-import AcompanhamentoSection from "./organismsComponents/acompanhamentoSection";
-import NotasSection from "./organismsComponents/notasSection";
+import PacienteCard from "./features/patients/CardPaciente";
+import FollowUpSection from "./features/shared/FollowUpSection";
+import NotesSection from "./features/shared/NotesSection";
 import { useAuth } from "./authProvider";
 import FirebaseService from "../../lib/firebaseService";
 
@@ -247,16 +247,16 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                     }),
                 }}
             >
-                {/* Passa a função de atualização para AcompanhamentoSection */}
-                <AcompanhamentoSection
+                {/* Passa a função de atualização para FollowUpSection */}
+                <FollowUpSection
                     pacienteId={pacienteId || pacienteData.id}
                     doctorId={doctorId}
                     onNotaUpdated={handleNotaUpdated}
                     forceUpdateNotas={forceUpdateNotas}
                 />
 
-                {/* Passa as notas atualizadas e função de atualização para NotasSection */}
-                <NotasSection
+                {/* Passa as notas atualizadas e função de atualização para NotesSection */}
+                <NotesSection
                     notas={notasData}
                     pacienteId={pacienteId || pacienteData.id}
                     onNotaUpdated={handleNotaUpdated}

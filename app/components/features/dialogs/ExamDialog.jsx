@@ -57,10 +57,10 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FirebaseService from '../../../lib/firebaseService';
-import { useAuth } from '../authProvider';
-import ExamTable from "./examTable";
-import AccessDeniedDialog from "./accessDeniedDialog";
+import FirebaseService from '../../../../lib/firebaseService';
+import { useAuth } from '../../authProvider';
+import ExamTable from "../shared/ExamTable";
+import AccessDeniedDialog from "./AccessDeniedDialog";
 
 // Theme creation for defining colors, fonts, and formats
 const theme = createTheme({

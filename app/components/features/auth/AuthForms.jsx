@@ -16,12 +16,12 @@ import {
     IconButton
 } from "@mui/material";
 import React, { useState } from "react";
-import firebaseService from "../../../lib/firebaseService";
+import firebaseService from "../../../../lib/firebaseService";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../authProvider";
+import { useAuth } from "../../authProvider";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import GoogleButton from './googleButton';
+import GoogleButton from './GoogleButton';
 
 export const AuthForms = () => {
     const [showPassword, setShowPassword] = useState(false);

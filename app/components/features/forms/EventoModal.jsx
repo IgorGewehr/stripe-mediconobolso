@@ -31,10 +31,10 @@ import {
     MoreVert as MoreVertIcon,
     Assignment as AssignmentIcon
 } from '@mui/icons-material';
-import FirebaseService from '../../../lib/firebaseService';
-import { consultationModel } from '../../../lib/modelObjects';
-import { useAuth } from '../authProvider';
-import useModuleAccess from '../useModuleAccess';
+import FirebaseService from '../../../../lib/firebaseService';
+import { consultationModel } from '../../../../lib/modelObjects';
+import { useAuth } from '../../authProvider';
+import useModuleAccess from '../../useModuleAccess';
 
 // Estilos personalizados
 const StyledDialog = styled(Dialog)(({ theme }) => ({

@@ -57,10 +57,10 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Serviço Firebase
-import FirebaseService from "../../../lib/firebaseService";
-import AnamneseViewer from "./anamneseViewer";
-import ReceitaViewer from "./receitasViewer";
-import ExamViewer from "./examViewer";
+import FirebaseService from "../../../../lib/firebaseService";
+import AnamneseViewer from "../shared/AnamneseViewer";
+import ReceitaViewer from "../shared/PrescriptionsViewer";
+import ExamViewer from "../shared/ExamViewer";
 import jsPDF from "jspdf";
 
 // Tema com cores para cada tipo de nota

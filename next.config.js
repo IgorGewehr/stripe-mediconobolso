@@ -16,10 +16,11 @@ const nextConfig = {
 
     // Mesclando suas configurações webpack existentes com as novas
     webpack: (config, { isServer }) => {
-        // Mantendo seu fallback para fs
+        // Mantendo seu fallback para fs e canvas
         config.resolve.fallback = {
             ...config.resolve.fallback,
             fs: false,
+            canvas: false,
         };
 
         // Adicionando configurações para pacotes nativos
@@ -28,7 +29,8 @@ const nextConfig = {
                 ...(config.externals || []),
                 'sharp',
                 'puppeteer',
-                'tesseract.js'
+                'tesseract.js',
+                'canvas'
             ];
         }
 

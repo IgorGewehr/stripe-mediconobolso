@@ -28,8 +28,8 @@ import {
     Circle as CircleIcon
 } from '@mui/icons-material';
 
-import firebaseService from "../../../lib/firebaseService";
-import { useAuth } from "../authProvider";
+import firebaseService from "../../../../lib/firebaseService";
+import { useAuth } from "../../authProvider";
 
 const AdminChatDialog = ({
                              selectedUser,

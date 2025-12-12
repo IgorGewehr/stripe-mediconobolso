@@ -69,7 +69,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Serviço Firebase
-import FirebaseService from "../../../lib/firebaseService";
+import FirebaseService from "../../../../lib/firebaseService";
 
 // Tema personalizado com melhorias estéticas
 const theme = createTheme({

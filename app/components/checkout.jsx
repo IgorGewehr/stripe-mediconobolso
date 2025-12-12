@@ -4,7 +4,7 @@ import React, { Suspense, useEffect } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import CustomCheckout from './customCheckout';
 import { useAuth } from "./authProvider";
-import Analytics from "./organismsComponents/analytics";
+import Analytics from "./features/shared/Analytics";
 
 // Facebook Pixel implementation
 

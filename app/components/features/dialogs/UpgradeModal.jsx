@@ -44,7 +44,7 @@ import {
     Diamond as DiamondIcon,
     SavingsOutlined as SavingsIcon
 } from '@mui/icons-material';
-import { useAuth } from '../authProvider';
+import { useAuth } from '../../authProvider';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 

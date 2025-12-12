@@ -57,8 +57,8 @@ import {
 
 import { format, isToday, isPast, isValid, parse, differenceInYears, formatDistance, isAfter, isBefore, startOfDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FirebaseService from "../../../lib/firebaseService";
-import { useAuth } from "../authProvider";
+import FirebaseService from "../../../../lib/firebaseService";
+import { useAuth } from "../../authProvider";
 
 // Constantes
 const VIEW_OPTIONS = {

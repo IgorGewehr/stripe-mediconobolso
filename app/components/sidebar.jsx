@@ -9,7 +9,7 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 // ✨ IMPORTAR ÍCONE PARA O DOCTOR AI
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import PsychologyIcon from "@mui/icons-material/Psychology";
-import SecretaryIndicator from "./organismsComponents/secretaryIndicator";
+import SecretaryIndicator from "./features/shared/SecretaryIndicator";
 
 const Sidebar = ({
                      initialSelected = "Dashboard",

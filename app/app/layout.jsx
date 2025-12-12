@@ -10,7 +10,7 @@ import Sidebar from "../components/sidebar";
 import DashboardTemplate from "../components/dashboardTemplate";
 import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
 import PacienteTemplate from "../components/pacienteTemplate";
-import AgendaMedica from "../components/organismsComponents/agendaComponente";
+import AgendaMedica from "../components/features/shared/AgendaComponente";
 import { useAuth } from "../components/authProvider";
 import { useRouter } from "next/navigation";
 import Dashboard from "../components/dashboardTemplate";
@@ -22,9 +22,9 @@ import UserProfileTemplate from "../components/userProfileTemplate";
 import HelpCenter from "../components/helpCenter";
 import UserDataTemplate from "../components/userDataTemplate";
 import DoctorAITemplate from "../components/doctorAITemplate";
-import UnifiedUserManagement from "../components/organismsComponents/unifiedUserManagement";
-import BottomNavigation from "../components/organismsComponents/BottomNavigation";
-import SwipeableView from "../components/organismsComponents/SwipeableView";
+import UnifiedUserManagement from "../components/features/shared/UnifiedUserManagement";
+import BottomNavigation from "../components/features/shared/BottomNavigation";
+import SwipeableView from "../components/features/shared/SwipeableView";
 import '../styles/mobile-fixes.css';
 
 // ✅ COMPONENTE PARA PROTEGER ROTAS COM VERIFICAÇÃO DE PERMISSÕES

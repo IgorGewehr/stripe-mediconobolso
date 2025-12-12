@@ -38,19 +38,35 @@ STRIPE_WEBHOOK_SECRET=$(stripe listen --print-secret) npm run dev
 ### Key Directories
 
 #### `/app` - Next.js App Router
-- **`/api`** - API routes handling subscriptions, emails, medical chat, webhooks, etc.
-- **`/components`** - Organized in three layers:
-  - `basicComponents/` - Simple, reusable UI elements
-  - `organismsComponents/` - Complex, feature-rich components
-  - Template components for different views (dashboard, patients, etc.)
+- **`/api`** - 16 API routes handling subscriptions, emails, medical chat, webhooks, etc.
+- **`/components`** - Organized modular structure:
+  - `ui/` - Reusable UI elements (buttons, cards, inputs)
+  - `features/` - Feature-specific components by domain (patients, prescriptions, appointments, etc.)
+  - `providers/` - Context providers (Auth, Theme)
+  - `hooks/` - Custom React hooks
+  - `layout/` - Layout components (Sidebar, TopAppBar, ProtectedRoute)
+  - `templates/` - Page templates (Dashboard, Patient, etc.)
 
 #### `/lib` - Core Services
-- **`firebase.js`** - Firebase configuration and service initialization
-- **`stripe.js`** - Stripe configuration (server-only)
-- **`moduleConfig.js`** - Modular system configuration defining available features per subscription plan
-- **`firebaseService.js`** - Firebase data operations and utilities
-- **`emailService.js`** - Email sending functionality
-- **`moduleService.jsx`** - Module access control and validation
+- **`config/`** - Configuration files (firebase.config.js, stripe.js)
+- **`services/firebase/`** - Domain-specific Firebase services:
+  - `base.service.js` - Base service class with shared utilities
+  - `auth.service.js` - Authentication operations
+  - `patients.service.js` - Patient management
+  - `prescriptions.service.js` - Prescription handling
+  - `appointments.service.js` - Appointment scheduling
+  - `exams.service.js` - Exam management
+  - `notes.service.js` - Medical notes
+  - `secretary.service.js` - Secretary account management
+  - `admin.service.js` - Admin operations
+  - `ai.service.js` - AI-powered features
+  - `weather.service.js` - Weather data
+  - `storage.service.js` - File storage
+- **`utils/`** - Utility functions (date, validation, format)
+- **`models/`** - Data models
+- **`firebaseService.js`** - Legacy facade (delegates to domain services)
+- **`moduleConfig.js`** - Module system configuration
+- **`emailService.js`** - Email functionality
 
 ### Module System Architecture
 
@@ -102,7 +118,12 @@ Each module has dependencies and limitations that are enforced throughout the ap
 ## Development Patterns
 
 ### Component Organization
-- Use the three-tier component structure (basic → organisms → templates)
+- Use the modular component structure:
+  - `ui/` for reusable UI elements
+  - `features/` for domain-specific components
+  - `templates/` for page-level components
+- Import from barrel exports when possible (e.g., `import { PatientCard } from '@/features'`)
+- Path aliases configured in tsconfig.json (@/components, @/lib, @/services, etc.)
 - Follow Material-UI theming patterns
 - Implement proper loading states and error handling
 

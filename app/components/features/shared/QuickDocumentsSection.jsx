@@ -26,7 +26,7 @@ import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import DeleteIcon from "@mui/icons-material/Delete";
-import FirebaseService from "../../../lib/firebaseService";
+import FirebaseService from "../../../../lib/firebaseService";
 
 // Theme colors for consistent styling
 const themeColors = {

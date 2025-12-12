@@ -62,8 +62,8 @@ import { format, addDays, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import FirebaseService from "../../../lib/firebaseService";
-import { useAuth } from "../authProvider";
+import FirebaseService from "../../../../lib/firebaseService";
+import { useAuth } from "../../authProvider";
 
 // Tema principal
 const theme = createTheme({
