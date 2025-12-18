@@ -1,3 +1,5 @@
+"use client";
+
 import { Box, Grid, FormControl, InputLabel, TextField, Select, MenuItem, RadioGroup, FormControlLabel, Radio, InputAdornment, FormLabel, useTheme, useMediaQuery } from '@mui/material';
 
 function NewPacienteForm() {
