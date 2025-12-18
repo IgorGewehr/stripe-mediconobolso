@@ -58,7 +58,7 @@ import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlin
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from '../../../../lib/firebaseService';
-import { useAuth } from '../../authProvider';
+import { useAuth } from '../../providers/authProvider';
 import ExamTable from "../shared/ExamTable";
 import AccessDeniedDialog from "./AccessDeniedDialog";
 

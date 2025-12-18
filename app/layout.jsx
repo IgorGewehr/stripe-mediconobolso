@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import '../styles/global.css';
-import ClientProviders from './components/ClientProviders';
+import { ClientProviders } from './components';
 
 export default function RootLayout({ children }) {
     return (

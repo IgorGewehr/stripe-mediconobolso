@@ -1,7 +1,6 @@
 //app/page.jsx
 import React from "react";
-import PacienteTemplate from "../components/pacienteTemplate";
-import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
+import { PatientTemplate as PacienteTemplate, PatientRegistrationTemplate as PacienteCadastroTemplate } from "../components";
 
 export default function AppPage() {
     return <PacienteTemplate  />;

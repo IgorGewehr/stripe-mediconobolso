@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from "react";
 import { Box, CircularProgress, Typography, Button, useTheme, useMediaQuery } from "@mui/material";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PacienteCard from "./features/patients/CardPaciente";
-import FollowUpSection from "./features/shared/FollowUpSection";
-import NotesSection from "./features/shared/NotesSection";
-import { useAuth } from "./authProvider";
-import FirebaseService from "../../lib/firebaseService";
+import PacienteCard from "../features/patients/CardPaciente";
+import FollowUpSection from "../features/shared/FollowUpSection";
+import NotesSection from "../features/shared/NotesSection";
+import { useAuth } from "../providers/authProvider";
+import FirebaseService from "../../../lib/firebaseService";
 
 // Main component
 export default function PacienteTemplate({ paciente, pacienteId, onBack }) {

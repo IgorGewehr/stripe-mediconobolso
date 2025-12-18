@@ -56,7 +56,7 @@ import {
 } from '@mui/icons-material';
 
 import firebaseService from "../../../../lib/firebaseService";
-import { useAuth } from "../../authProvider";
+import { useAuth } from '../../providers/authProvider';
 
 const AdminMessagesComponent = ({ open, onClose }) => {
     // Estados principais

@@ -77,7 +77,7 @@ import {
 
 import firebaseService from '../../../../lib/firebaseService';
 import presenceService from '../../../../lib/presenceService';
-import useModuleAccess from '../../useModuleAccess';
+import useModuleAccess from '../../hooks/useModuleAccess';
 
 const AdminDashboard = () => {
     const [tabValue, setTabValue] = useState(0);

@@ -45,9 +45,9 @@ import {
     Add as AddIcon,
     Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { useResponsiveScale } from "./useScale";
-import { useAuth } from "./authProvider";
-import firebaseService from "../../lib/firebaseService";
+import { useResponsiveScale } from "../hooks/useScale";
+import { useAuth } from "../providers/authProvider";
+import firebaseService from "../../../lib/firebaseService";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 const CentralAjudaTemplate = ({ selectedReportId = null }) => {

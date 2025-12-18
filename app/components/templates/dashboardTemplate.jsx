@@ -7,15 +7,15 @@ import {
     useTheme,
     useMediaQuery
 } from '@mui/material';
-import MetricsCard from "./features/shared/MetricsCard";
-import ConsultationCard from "./features/shared/ConsultationCard";
-import PatientsListCard from "./features/patients/PatientsList";
-import MobileConsultationCard from "./features/mobile/MobileConsultationCard";
-import MobilePatientsListCard from "./features/mobile/MobilePatientsListCard";
-import { useAuth } from "./authProvider";
-import FirebaseService from "../../lib/firebaseService";
+import MetricsCard from "../features/shared/MetricsCard";
+import ConsultationCard from "../features/shared/ConsultationCard";
+import PatientsListCard from "../features/patients/PatientsList";
+import MobileConsultationCard from "../features/mobile/MobileConsultationCard";
+import MobilePatientsListCard from "../features/mobile/MobilePatientsListCard";
+import { useAuth } from "../providers/authProvider";
+import FirebaseService from "../../../lib/firebaseService";
 import { format, addDays, subDays, startOfDay, isAfter } from 'date-fns';
-import MiniChatCard from "./features/shared/MiniChatCard";
+import MiniChatCard from "../features/shared/MiniChatCard";
 
 const Dashboard = ({ onClickPatients }) => {
     const theme = useTheme();

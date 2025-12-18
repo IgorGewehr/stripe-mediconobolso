@@ -31,7 +31,7 @@ import {
     VideoLibrary as VideoLibraryIcon,
     Search as SearchIcon,
 } from "@mui/icons-material";
-import FirebaseService from "../../lib/firebaseService";
+import FirebaseService from "../../../lib/firebaseService";
 
 // Updated Video tutorial categories
 const TUTORIAL_CATEGORIES = [

@@ -32,8 +32,8 @@ import {
     AdminPanelSettings as AdminIcon,
     Person as PersonIcon
 } from '@mui/icons-material';
-import firebaseService from "../../lib/firebaseService";
-import { useAuth } from "./authProvider";
+import firebaseService from "../../../lib/firebaseService";
+import { useAuth } from "../providers/authProvider";
 
 const UserDataTemplate = () => {
     // Estados para controle da tabela e dados

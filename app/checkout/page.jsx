@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import Checkout from '../components/checkout'
+import { CheckoutTemplate as Checkout } from '../components'
 
 export default function Page() {
     return (

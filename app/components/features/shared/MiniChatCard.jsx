@@ -34,7 +34,7 @@ import {
     Lock as LockIcon
 } from '@mui/icons-material';
 import AudioProcessingDialog from '../dialogs/AudioProcessingDialog';
-import { useAuth } from '../../authProvider';
+import { useAuth } from '../../providers/authProvider';
 
 const MiniChatCard = () => {
     const theme = useTheme();

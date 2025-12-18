@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import {
     Dialog,
@@ -33,8 +35,8 @@ import {
 } from '@mui/icons-material';
 import FirebaseService from '../../../../lib/firebaseService';
 import { consultationModel } from '../../../../lib/modelObjects';
-import { useAuth } from '../../authProvider';
-import useModuleAccess from '../../useModuleAccess';
+import { useAuth } from '../../providers/authProvider';
+import useModuleAccess from '../../hooks/useModuleAccess';
 
 // Estilos personalizados
 const StyledDialog = styled(Dialog)(({ theme }) => ({

@@ -30,7 +30,7 @@ import {
     MarkEmailRead as MarkReadIcon
 } from "@mui/icons-material";
 import firebaseService from "../../../../lib/firebaseService";
-import { useAuth } from "../../authProvider";
+import { useAuth } from '../../providers/authProvider';
 
 const NotificationComponent = ({ onMessageClick }) => {
     const [anchorEl, setAnchorEl] = useState(null);

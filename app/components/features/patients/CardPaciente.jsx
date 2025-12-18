@@ -41,8 +41,8 @@ import SaveIcon from "@mui/icons-material/Save";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import FirebaseService from "../../../../lib/firebaseService";
-import {useAuth} from "../../authProvider";
-import useModuleAccess from "../../useModuleAccess";
+import {useAuth} from '../../providers/authProvider';
+import useModuleAccess from '../../hooks/useModuleAccess';
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 
 // Enhanced color palette

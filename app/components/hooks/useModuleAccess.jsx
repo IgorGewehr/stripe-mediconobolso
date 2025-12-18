@@ -1,6 +1,6 @@
 // hooks/useModuleAccess.jsx
 
-import { useAuth } from './authProvider';
+import { useAuth } from '../providers/authProvider';
 
 /**
  * Hook para verificar acesso a módulos baseado no sistema de secretárias

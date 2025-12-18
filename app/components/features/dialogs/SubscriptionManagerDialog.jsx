@@ -48,7 +48,7 @@ import {
     Email as EmailIcon,
     CalendarToday as CalendarTodayIcon
 } from '@mui/icons-material';
-import { useAuth } from '../../authProvider';
+import { useAuth } from '../../providers/authProvider';
 import UpgradeModal from './UpgradeModal';
 
 // Configuração dos planos com ícones e cores melhoradas

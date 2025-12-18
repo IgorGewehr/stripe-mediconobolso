@@ -28,10 +28,10 @@ import ReceitaDialog from "../dialogs/ReceitasDialog";
 import ExamDialog from "../dialogs/ExamDialog";
 import RelatorioDialog from "../dialogs/RelatorioDialog";
 import FirebaseService from "../../../../lib/firebaseService";
-import useModuleAccess from '../../useModuleAccess';
-import ModuleProtection from '../../ModuleProtection';
+import useModuleAccess from '../../hooks/useModuleAccess';
+import ModuleProtection from '../../layout/ModuleProtection';
 import AccessDeniedDialog from '../dialogs/AccessDeniedDialog';
-import {useAuth} from "../../authProvider";
+import {useAuth} from '../../providers/authProvider';
 
 // Paleta de cores refinada
 const themeColors = {

@@ -1,25 +1,45 @@
 /**
  * Features barrel export
  *
- * This module provides a centralized export for all feature components.
- * Import from this file for cleaner imports across the application.
+ * Main entry point for all feature components.
+ * Organized by domain for cleaner imports across the application.
+ *
+ * @example
+ * import { PatientCard, ExamDialog, AdminDashboard } from '@/components/features';
  */
 
-// Patients
-export { default as PatientCard } from './patients/PatientCard';
-export { default as PatientsList } from './patients/PatientsList';
+// Admin Features
+export * from './admin';
 
-// Appointments
+// Authentication Features
+export * from './auth';
+
+// Checkout & Payments
+export * from './checkout/CustomCheckout';
+
+// Dialogs & Modals
+export * from './dialogs';
+
+// Forms
+export * from './forms';
+
+// Mobile Components
+export * from './mobile';
+
+// Patient Management
+export * from './patients';
+
+// Shared Components
+export * from './shared';
+
+// Appointments (re-export from subdirectory)
 export { default as AppointmentCalendar } from './appointments/AppointmentCalendar';
 
-// Exams
-export { default as ExamDialog } from './exams/ExamDialog';
-
-// Anamnesis
+// Anamnesis (re-export from subdirectory)
 export { default as AnamnesisDialog } from './anamnesis/AnamnesisDialog';
 
-// Prescriptions
-export { default as PrescriptionsTemplate } from './prescriptions/PrescriptionsTemplate';
+// Exams (re-export from subdirectory)
+export { default as ExamDialogFeature } from './exams/ExamDialog';
 
-// Checkout
-export { default as CustomCheckout } from './checkout/CustomCheckout';
+// Prescriptions (re-export from subdirectory)
+export { default as PrescriptionsTemplateFeature } from './prescriptions/PrescriptionsTemplate';

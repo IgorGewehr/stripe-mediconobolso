@@ -124,7 +124,7 @@ const getLimitationsByPlan = (plan) => {
     };
     return limitations[plan] || limitations.free;
 };
-import useModuleAccess from '../../useModuleAccess';
+import useModuleAccess from '../../hooks/useModuleAccess';
 
 const ModuleAdminPanel = () => {
     const [tabValue, setTabValue] = useState(0);

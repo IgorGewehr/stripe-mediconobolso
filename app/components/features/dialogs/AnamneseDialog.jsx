@@ -54,7 +54,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import AnamneseNotesPanel from "../shared/AnamneseNotesPanel";
 import FloatingVoiceRecorder from "../shared/FloatingVoiceRecorder";
 import AccessDeniedDialog from "./AccessDeniedDialog";
-import {useAuth} from "../../authProvider";
+import {useAuth} from '../../providers/authProvider';
 
 
 // ------------------ ESTILOS ------------------

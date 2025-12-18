@@ -31,7 +31,7 @@ import BiotechIcon from "@mui/icons-material/Biotech";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import FirebaseService from "../../../../lib/firebaseService";
-import { useAuth } from "../../authProvider";
+import { useAuth } from '../../providers/authProvider';
 import QuickDocumentsSection from "./QuickDocumentsSection";
 import AnamneseDialog from "../dialogs/AnamneseDialog";
 import ViewNoteDialog from "../dialogs/ViewNoteDialog";

@@ -2,7 +2,7 @@
 
 import React, {useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../authProvider';
+import { useAuth } from '../../providers/authProvider';
 import firebaseService from '../../../../lib/firebaseService';
 import {
     Box,

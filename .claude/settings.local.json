@@ -26,7 +26,8 @@
       "Bash(ls:*)",
       "Bash(git mv:*)",
       "Bash(xargs:*)",
-      "Bash(timeout 30s npm run dev:*)"
+      "Bash(timeout 30s npm run dev:*)",
+      "Bash(for dir in /Users/igorgewehr/WebstormProjects/stripe-mediconobolso/app/components/*/)"
     ],
     "deny": []
   }

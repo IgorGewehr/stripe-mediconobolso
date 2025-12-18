@@ -4,24 +4,27 @@
  * Main entry point for all component exports.
  * Use this for cleaner imports across the application.
  *
- * Example usage:
- * import { Sidebar, useAuth, PatientCard } from '@/components';
+ * @example
+ * import { Sidebar, useAuth, PatientCard, DashboardTemplate } from '@/components';
  */
 
-// Providers
+// Context Providers
 export * from './providers';
 
-// Hooks
+// Custom Hooks
 export * from './hooks';
 
-// Layout
+// Layout Components
 export * from './layout';
 
-// Templates
+// Page Templates
 export * from './templates';
 
-// Features
+// Feature Components
 export * from './features';
 
 // UI Components
 export * from './ui';
+
+// Utilities
+export * from './utils';

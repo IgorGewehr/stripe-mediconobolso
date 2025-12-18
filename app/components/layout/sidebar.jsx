@@ -2,14 +2,14 @@
 
 import React, { useState, useMemo } from "react";
 import { Box, Button, Typography, Avatar, Tooltip } from "@mui/material";
-import { useResponsiveScale } from "./useScale";
-import { useAuth } from "./authProvider";
+import { useResponsiveScale } from "../hooks/useScale";
+import { useAuth } from "../providers/authProvider";
 import LockIcon from "@mui/icons-material/Lock";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-// ✨ IMPORTAR ÍCONE PARA O DOCTOR AI
+// IMPORTAR ÍCONE PARA O DOCTOR AI
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import PsychologyIcon from "@mui/icons-material/Psychology";
-import SecretaryIndicator from "./features/shared/SecretaryIndicator";
+import SecretaryIndicator from "../features/shared/SecretaryIndicator";
 
 const Sidebar = ({
                      initialSelected = "Dashboard",

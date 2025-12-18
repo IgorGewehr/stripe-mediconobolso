@@ -34,7 +34,7 @@ import {
     ArrowForward
 } from '@mui/icons-material';
 import FirebaseService from '../../../../lib/firebaseService';
-import { useAuth } from '../../authProvider';
+import { useAuth } from '../../providers/authProvider';
 import EventoModal from '../forms/EventoModal';
 import moment from 'moment-timezone';
 import {

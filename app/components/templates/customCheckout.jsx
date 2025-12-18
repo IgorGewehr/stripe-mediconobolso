@@ -35,8 +35,8 @@ import {
     FormLabel
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import firebaseService from '../../lib/firebaseService';
-import { useAuth } from './authProvider';
+import firebaseService from '../../../lib/firebaseService';
+import { useAuth } from '../providers/authProvider';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckIcon from '@mui/icons-material/Check';
@@ -48,7 +48,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import Image from 'next/image';
-import { FacebookEvents, generateEventId } from '../../lib/facebookConversions';
+import { FacebookEvents, generateEventId } from '../../../lib/facebookConversions';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 

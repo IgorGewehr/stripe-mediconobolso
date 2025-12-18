@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
@@ -30,7 +32,7 @@ import {
     Close as CloseIcon,
     Info as InfoIcon
 } from '@mui/icons-material';
-import { useAuth } from '../../authProvider';
+import { useAuth } from '../../providers/authProvider';
 
 // ✅ CONFIGURAÇÃO LOCAL DE MÓDULOS E SUAS DESCRIÇÕES (removido moduleConfig)
 const MODULE_CONFIG = {

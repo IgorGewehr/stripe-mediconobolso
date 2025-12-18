@@ -79,8 +79,8 @@ import {
 
 import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, differenceInMonths, differenceInDays, subDays, addDays, isAfter, isBefore, formatDistance, isWithinInterval, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FirebaseService from "../../lib/firebaseService";
-import { useAuth } from "./authProvider";
+import FirebaseService from "../../../lib/firebaseService";
+import { useAuth } from "../providers/authProvider";
 
 // Constantes para o componente
 const PRESCRIPTION_STATUS = [

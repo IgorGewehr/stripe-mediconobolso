@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import AuthTemplate from './components/authTemplate';
+import { AuthTemplate } from './components';
 
 export default function Page() {
     return <AuthTemplate />;

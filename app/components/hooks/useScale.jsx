@@ -1,3 +1,5 @@
+"use client";
+
 // hooks/useResponsiveScale.js
 import { useState, useEffect } from 'react';
 

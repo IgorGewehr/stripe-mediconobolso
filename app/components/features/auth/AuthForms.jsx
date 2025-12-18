@@ -18,7 +18,7 @@ import {
 import React, { useState } from "react";
 import firebaseService from "../../../../lib/firebaseService";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../authProvider";
+import { useAuth } from '../../providers/authProvider';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import GoogleButton from './GoogleButton';

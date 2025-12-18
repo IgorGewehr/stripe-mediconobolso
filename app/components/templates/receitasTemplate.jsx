@@ -79,16 +79,16 @@ import {
     ViewList as ViewListIcon,
     GridView as GridViewIcon,
 } from '@mui/icons-material';
-import FirebaseService from "../../lib/firebaseService";
+import FirebaseService from "../../../lib/firebaseService";
 import { format, formatDistanceToNow, isToday, isYesterday, isValid, parse, isPast, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useAuth } from "./authProvider";
-import SearchBar from "./ui/inputs/SearchBar";
+import { useAuth } from "../providers/authProvider";
+import SearchBar from "../ui/inputs/SearchBar";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { formatDistance } from 'date-fns';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { styled } from '@mui/material/styles';
-import ReceitaDialog from "./features/dialogs/ReceitasDialog";
+import ReceitaDialog from "../features/dialogs/ReceitasDialog";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 

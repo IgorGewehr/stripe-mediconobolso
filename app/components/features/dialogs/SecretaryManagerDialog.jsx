@@ -1,3 +1,5 @@
+"use client";
+
 // ✅ VERSÃO FINAL DO SECRETARYMANAGERDIALOG - COMPLETAMENTE FUNCIONAL
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -56,9 +58,9 @@ import {
     Info as InfoIcon,
     AccountCircle as AccountIcon
 } from '@mui/icons-material';
-import { useAuth } from '../../authProvider';
+import { useAuth } from '../../providers/authProvider';
 import firebaseService from '../../../../lib/firebaseService';
-import globalCache from '../../globalCache';
+import globalCache from '../../utils/globalCache';
 
 // ✅ CONFIGURAÇÃO DOS MÓDULOS E PERMISSÕES
 const MODULE_PERMISSIONS = {

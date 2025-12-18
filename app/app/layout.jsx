@@ -5,26 +5,27 @@ import { Box, CircularProgress, Typography, Button, Alert, useTheme, useMediaQue
 import MenuIcon from '@mui/icons-material/Menu';
 import LockIcon from '@mui/icons-material/Lock';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import TopAppBar from "../components/topAppBar";
-import Sidebar from "../components/sidebar";
-import DashboardTemplate from "../components/dashboardTemplate";
-import PacienteCadastroTemplate from "../components/pacienteCadastroTemplate";
-import PacienteTemplate from "../components/pacienteTemplate";
-import AgendaMedica from "../components/features/shared/AgendaComponente";
-import { useAuth } from "../components/authProvider";
+import {
+    TopAppBar,
+    Sidebar,
+    DashboardTemplate,
+    PatientRegistrationTemplate as PacienteCadastroTemplate,
+    PatientTemplate as PacienteTemplate,
+    useAuth,
+    PatientsListTemplate as PatientsListPage,
+    PrescriptionsTemplate as PrescriptionsPage,
+    useResponsiveScale,
+    HelpCenterTemplate as CentralAjudaTemplate,
+    UserProfileTemplate,
+    HelpCenter,
+    UserDataTemplate,
+    DoctorAITemplate,
+    AgendaComponente as AgendaMedica,
+    UnifiedUserManagement,
+    BottomNavigation,
+    SwipeableView
+} from "../components";
 import { useRouter } from "next/navigation";
-import Dashboard from "../components/dashboardTemplate";
-import PatientsListPage from "../components/patientsListTemplate";
-import PrescriptionsPage from "../components/receitasTemplate";
-import { useResponsiveScale } from "../components/useScale";
-import CentralAjudaTemplate from "../components/centralAjudaTemplate";
-import UserProfileTemplate from "../components/userProfileTemplate";
-import HelpCenter from "../components/helpCenter";
-import UserDataTemplate from "../components/userDataTemplate";
-import DoctorAITemplate from "../components/doctorAITemplate";
-import UnifiedUserManagement from "../components/features/shared/UnifiedUserManagement";
-import BottomNavigation from "../components/features/shared/BottomNavigation";
-import SwipeableView from "../components/features/shared/SwipeableView";
 import '../styles/mobile-fixes.css';
 
 // ✅ COMPONENTE PARA PROTEGER ROTAS COM VERIFICAÇÃO DE PERMISSÕES

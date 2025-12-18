@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useCallback } from 'react';
 import debounce from 'lodash.debounce';
 import { TextField, InputAdornment } from '@mui/material';

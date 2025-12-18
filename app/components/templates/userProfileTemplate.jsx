@@ -41,11 +41,11 @@ import {
     People as PeopleIcon
 } from "@mui/icons-material";
 import { debounce } from 'lodash';
-import FirebaseService from "../../lib/firebaseService";
-import { useAuth } from "./authProvider";
-import SubscriptionManagerDialog from './features/dialogs/SubscriptionManagerDialog';
-import SecretaryManagerDialog from './features/dialogs/SecretaryManagerDialog';
-import globalCache from './globalCache';
+import FirebaseService from "../../../lib/firebaseService";
+import { useAuth } from "../providers/authProvider";
+import SubscriptionManagerDialog from '../features/dialogs/SubscriptionManagerDialog';
+import SecretaryManagerDialog from '../features/dialogs/SecretaryManagerDialog';
+import globalCache from '../utils/globalCache';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 // ✅ CONFIGURAÇÃO DE CORES OTIMIZADA

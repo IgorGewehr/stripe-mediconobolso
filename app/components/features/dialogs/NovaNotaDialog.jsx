@@ -45,7 +45,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from '../../../../lib/firebaseService';
-import { useAuth } from '../../authProvider';
+import { useAuth } from '../../providers/authProvider';
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";

@@ -92,7 +92,7 @@ import {
 } from '@mui/icons-material';
 
 import firebaseService from "../../../../lib/firebaseService";
-import { useAuth } from "../../authProvider";
+import { useAuth } from '../../providers/authProvider';
 import AdminMessagesComponent from "../admin/AdminMessagesComponent";
 import AdminChatDialog from "../admin/AdminChatDialog";
 

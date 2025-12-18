@@ -2,9 +2,14 @@
  * Providers barrel export
  *
  * Exports all context providers for the application.
+ * These providers wrap the app to provide global state and functionality.
  */
 
-// Re-export from current locations for backward compatibility
-export { AuthProvider, useAuth } from '../authProvider';
-export { default as ThemeProvider } from '../themeProvider';
-export { default as ClientProviders } from '../ClientProviders';
+// Authentication Provider
+export { AuthProvider, useAuth } from './authProvider';
+
+// Theme Provider
+export { default as ThemeProvider } from './themeProvider';
+
+// Combined Client Providers
+export { default as ClientProviders } from './ClientProviders';

@@ -13,17 +13,17 @@ import {
 } from "@mui/material";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import InfoBasicasForm from "./features/patients/InformacoesBasicas";
-import CondicoesClinicasForm from "./features/patients/CondicoesClinicas";
-import ConductHistoryForm from "./features/shared/ConductHistory";
+import InfoBasicasForm from "../features/patients/InformacoesBasicas";
+import CondicoesClinicasForm from "../features/patients/CondicoesClinicas";
+import ConductHistoryForm from "../features/shared/ConductHistory";
 
 // Importa o serviço do Firebase
-import firebaseService from "../../lib/firebaseService";
+import firebaseService from "../../../lib/firebaseService";
 import { collection, doc, setDoc } from "firebase/firestore";
 
 // Importa o AuthProvider (useAuth) para obter o id do usuário autenticado
-import { useAuth } from "./authProvider";
-import useModuleAccess from "./useModuleAccess";
+import { useAuth } from "../providers/authProvider";
+import useModuleAccess from "../hooks/useModuleAccess";
 
 // ------------------ ESTILOS ------------------
 const PageContainer = styled(Box)(({ theme }) => ({

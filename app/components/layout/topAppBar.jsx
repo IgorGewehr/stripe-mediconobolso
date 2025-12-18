@@ -2,8 +2,8 @@
 import React from "react";
 import { Box, Typography, Button, IconButton, useTheme, useMediaQuery } from "@mui/material";
 import MenuIcon from '@mui/icons-material/Menu';
-import NotificationComponent from "./features/shared/NotificationComponent";
-import { useAuth } from "./authProvider";
+import NotificationComponent from "../features/shared/NotificationComponent";
+import { useAuth } from "../providers/authProvider";
 
 // Atualiza o ActionButton para aceitar onClick
 const ActionButton = ({ label, icon, isPrimary = false, onClick, isMobile = false }) => {

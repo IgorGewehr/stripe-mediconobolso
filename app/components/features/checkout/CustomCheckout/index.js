@@ -16,7 +16,7 @@
 
 // Re-export from original file for backward compatibility
 // Once migration is complete, this will export from the new modular structure
-export { default } from '../../../customCheckout';
+export { default } from '../../../templates/customCheckout';
 
 // Export subcomponents
 export { default as PlanCard } from './PlanCard';

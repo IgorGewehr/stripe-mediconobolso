@@ -1,4 +1,4 @@
-import AuthTemplate from '../components/authTemplate';
+import { AuthTemplate } from '../components';
 
 export default function LoginPage() {
     return <AuthTemplate />;

@@ -3,11 +3,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore"; // ✅ IMPORTS CORRIGIDOS
-import firebaseService from "../../lib/firebaseService";
-import moduleService from "../../lib/moduleService";
+import firebaseService from "../../../lib/firebaseService";
+import moduleService from "../../../lib/moduleService";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import presenceService from "../../lib/presenceService";
-import globalCache from "./globalCache";
+import presenceService from "../../../lib/presenceService";
+import globalCache from "../utils/globalCache";
 
 const AuthContext = createContext();
 

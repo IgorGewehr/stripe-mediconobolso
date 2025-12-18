@@ -1,12 +1,15 @@
 /**
  * Hooks barrel export
  *
- * Exports all custom hooks for the application.
+ * Exports all custom React hooks for the application.
+ * These hooks encapsulate reusable stateful logic.
  */
 
-// Re-export from current locations for backward compatibility
-export { default as useModuleAccess } from '../useModuleAccess';
-export { default as useScale } from '../useScale';
+// Module Access Hook
+export { default as useModuleAccess } from './useModuleAccess';
 
-// Re-export auth hook from providers
-export { useAuth } from '../authProvider';
+// UI Scaling Hook
+export { useResponsiveScale } from './useScale';
+
+// Re-export auth hook from providers for convenience
+export { useAuth } from '../providers';

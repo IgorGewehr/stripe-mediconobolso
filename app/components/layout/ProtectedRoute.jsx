@@ -1,10 +1,12 @@
+"use client";
+
 // components/ProtectedRoute.jsx
 
 import React, { useEffect, useState } from 'react';
-import { useAuth } from './authProvider';
+import { useAuth } from '../providers/authProvider';
 import { useRouter } from 'next/navigation';
 import { Box, CircularProgress, Typography } from '@mui/material';
-import AccessDenied from './features/shared/AccessDeniedComponent';
+import AccessDenied from '../features/shared/AccessDeniedComponent';
 
 /**
  * Componente para proteger rotas baseado no sistema de secretárias

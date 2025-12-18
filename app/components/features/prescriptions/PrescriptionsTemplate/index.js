@@ -17,4 +17,4 @@
  */
 
 // Re-export from original file for backward compatibility
-export { default } from '../../../receitasTemplate';
+export { default } from '../../../templates/receitasTemplate';
