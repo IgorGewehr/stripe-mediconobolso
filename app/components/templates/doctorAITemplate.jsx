@@ -514,8 +514,8 @@ const DoctorAITemplate = () => {
     return (
         <Box sx={{
             display: 'flex',
-            height: 'calc(100vh - 140px)',
-            maxHeight: 'calc(100vh - 140px)',
+            height: isMobile ? 'calc(100vh - 130px)' : 'calc(100vh - 100px)',
+            minHeight: 0,
             backgroundColor: '#F4F9FF',
             borderRadius: '20px',
             overflow: 'hidden',
@@ -543,24 +543,26 @@ const DoctorAITemplate = () => {
             {/* Sidebar do Histórico */}
             <Box
                 sx={{
-                    width: isMobile ? '280px' : '300px',
+                    width: isMobile ? '280px' : '280px',
                     backgroundColor: 'white',
-                    borderRight: '1px solid #E5E7EB',
+                    borderRight: '1px solid',
+                    borderColor: theme.palette.divider,
                     display: 'flex',
                     flexDirection: 'column',
                     position: isMobile ? 'absolute' : 'relative',
                     zIndex: isMobile ? 1000 : 1,
                     height: '100%',
+                    minHeight: 0,
                     overflow: 'hidden',
-                    transform: isMobile ? 
-                        (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') : 
+                    transform: isMobile ?
+                        (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') :
                         'translateX(0)',
                     transition: isMobile ? 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
                     visibility: !isMobile || sidebarOpen ? 'visible' : 'hidden',
                 }}
             >
                 {/* Header do Histórico */}
-                <Box sx={{ p: 2.5, borderBottom: '1px solid #F3F4F6' }}> {/* Reduzido padding */}
+                <Box sx={{ p: 2, borderBottom: '1px solid #F3F4F6', flexShrink: 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}> {/* Reduzido */}
                         <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
                             Doctor AI
@@ -904,24 +906,29 @@ const DoctorAITemplate = () => {
                 flexDirection: 'column',
                 backgroundColor: 'white',
                 overflow: 'hidden',
-                width: isMobile ? '100%' : 'calc(100% - 300px)',
+                minHeight: 0,
+                minWidth: 0,
                 position: 'relative'
             }}>
                 {/* Header do Chat */}
                 <Box
                     sx={{
-                        p: 2.5, /* Reduzido */
-                        borderBottom: '1px solid #F3F4F6',
+                        py: 1.5,
+                        px: 2,
+                        borderBottom: '1px solid',
+                        borderColor: theme.palette.divider,
                         backgroundColor: 'white',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: isMobile ? 'space-between' : 'center'
+                        justifyContent: isMobile ? 'space-between' : 'center',
+                        flexShrink: 0
                     }}
                 >
                     {/* Botão de menu para mobile */}
                     {isMobile && (
                         <IconButton
                             onClick={() => setSidebarOpen(!sidebarOpen)}
+                            size="small"
                             sx={{
                                 color: '#6B7280',
                                 '&:hover': { backgroundColor: '#F9FAFB' }
@@ -932,27 +939,42 @@ const DoctorAITemplate = () => {
                     )}
 
                     <Box sx={{ textAlign: 'center', flex: isMobile ? 1 : 'none' }}>
-                        <Typography variant="h5" sx={{ fontWeight: 600, color: '#111827', mb: 0.5 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#111827', lineHeight: 1.3 }}>
                             Assistente Médico
                         </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                            Dúvidas clínicas, dosagens e protocolos médicos
+                        <Typography variant="caption" color="textSecondary">
+                            Dúvidas clínicas, dosagens e protocolos
                         </Typography>
                     </Box>
 
                     {/* Espaço vazio para balance visual no mobile */}
-                    {isMobile && <Box sx={{ width: 48 }} />}
+                    {isMobile && <Box sx={{ width: 40 }} />}
                 </Box>
 
                 {/* Área das Mensagens */}
                 <Box
                     sx={{
                         flex: 1,
+                        minHeight: 0,
                         overflowY: 'auto',
-                        p: 2.5, /* Reduzido */
+                        overflowX: 'hidden',
+                        p: { xs: 1.5, sm: 2.5 },
                         display: 'flex',
                         flexDirection: 'column',
-                        backgroundColor: '#FAFBFC'
+                        backgroundColor: '#FAFBFC',
+                        '&::-webkit-scrollbar': {
+                            width: '6px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                            backgroundColor: 'transparent',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                            backgroundColor: 'rgba(0,0,0,0.1)',
+                            borderRadius: '3px',
+                            '&:hover': {
+                                backgroundColor: 'rgba(0,0,0,0.2)',
+                            }
+                        }
                     }}
                 >
                     {messages.length === 0 ? (
@@ -1161,10 +1183,11 @@ const DoctorAITemplate = () => {
 
                 {/* Área de Input */}
                 <Box sx={{
-                    p: { xs: 2, sm: 3 },
+                    p: { xs: 1.5, sm: 2 },
                     backgroundColor: 'white',
                     borderTop: '1px solid',
-                    borderColor: theme.palette.divider
+                    borderColor: theme.palette.divider,
+                    flexShrink: 0
                 }}>
                     {error && (
                         <Alert
