@@ -27,7 +27,19 @@
       "Bash(git mv:*)",
       "Bash(xargs:*)",
       "Bash(timeout 30s npm run dev:*)",
-      "Bash(for dir in /Users/igorgewehr/WebstormProjects/stripe-mediconobolso/app/components/*/)"
+      "Bash(for dir in /Users/igorgewehr/WebstormProjects/stripe-mediconobolso/app/components/*/)",
+      "Bash(timeout 20s npm run dev:*)",
+      "Bash(cat:*)",
+      "Bash(npm show:*)",
+      "Bash(app/components/features/patients/PatientsList.jsx )",
+      "Bash(app/components/features/shared/MetricsCard.jsx )",
+      "Bash(app/components/templates/dashboardTemplate.jsx )",
+      "Bash(app/components/templates/doctorAITemplate.jsx )",
+      "Bash(app/components/templates/patientsListTemplate.jsx )",
+      "Bash(app/components/templates/receitasTemplate.jsx )",
+      "Bash(app/components/ui/inputs/SearchBar.jsx )",
+      "Bash(app/components/ui/inputs/SearchField.jsx )",
+      "Bash(app/app/layout.jsx)"
     ],
     "deny": []
   }

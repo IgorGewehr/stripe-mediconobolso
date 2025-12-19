@@ -34,7 +34,7 @@ import {
 import { format, addMonths, parseISO, isValid, isSameDay, isToday, getDay, startOfMonth, endOfMonth, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FirebaseService from '../../../../lib/firebaseService';
-import WeatherContainer from "./weatherContainer";
+import WeatherContainer from "./WeatherContainer";
 
 const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgenda, onSelectPatient }) => {
     const theme = useTheme();

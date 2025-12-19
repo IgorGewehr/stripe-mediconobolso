@@ -22,4 +22,4 @@ export { default as ClinicalConditions } from './CondicoesClinicas';
 
 // Utilities
 export * from './PatientCard/patient-card.utils';
-export * from './PatientCard/patient-card.constants';
+export { themeColors, fieldConfig } from './PatientCard/patient-card.constants';

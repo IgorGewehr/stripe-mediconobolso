@@ -1,29 +1,33 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // Mantendo sua configuração para o Netlify
+    // Configuração para o Netlify
     output: 'standalone',
 
-    // serverExternalPackages é o novo nome para serverComponentsExternalPackages
+    // serverExternalPackages para pacotes que devem ser tratados como externos
     serverExternalPackages: ['sharp', 'tesseract.js', 'mammoth', 'puppeteer', 'pdf-img-convert'],
 
-    // Configurações experimentais atualizadas
+    // Configurações experimentais
     experimental: {
-        esmExternals: true,
         serverActions: {
             bodySizeLimit: '10mb',
         },
     },
 
-    // Mesclando suas configurações webpack existentes com as novas
+    // Turbopack config (Next.js 16 usa Turbopack por padrão)
+    turbopack: {
+        resolveAlias: {
+            canvas: './empty-module.js',
+        },
+    },
+
+    // Webpack config (para builds com --webpack)
     webpack: (config, { isServer }) => {
-        // Mantendo seu fallback para fs e canvas
         config.resolve.fallback = {
             ...config.resolve.fallback,
             fs: false,
             canvas: false,
         };
 
-        // Adicionando configurações para pacotes nativos
         if (isServer) {
             config.externals = [
                 ...(config.externals || []),
@@ -34,7 +38,6 @@ const nextConfig = {
             ];
         }
 
-        // Aumentar limites para processamento de arquivos grandes
         config.performance = {
             ...config.performance,
             maxEntrypointSize: 512000,
@@ -42,14 +45,6 @@ const nextConfig = {
         };
 
         return config;
-    },
-
-    // Aumentar os limites de tamanho para arquivos grandes (usando nova sintaxe)
-    serverRuntimeConfig: {
-        responseLimit: '30mb',
-    },
-    publicRuntimeConfig: {
-        maxFileSize: '15mb',
     },
 }
 

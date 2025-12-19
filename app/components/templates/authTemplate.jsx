@@ -3,9 +3,9 @@
 import React, { useEffect } from 'react';
 import { Box, CircularProgress, useMediaQuery, useTheme } from '@mui/material';
 import AuthForms from '../features/auth/AuthForms';
-import { useAuth } from '../providers/authProvider';
+import { useAuth } from '../providers';
 import { useRouter } from 'next/navigation';
-import { useResponsiveScale } from '../hooks/useScale';
+import { useResponsiveScale } from '../hooks';
 
 const AuthTemplate = () => {
     const { user, loading } = useAuth();

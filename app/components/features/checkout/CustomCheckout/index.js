@@ -24,4 +24,4 @@ export { default as PaymentMethodSelector } from './PaymentMethodSelector';
 
 // Export utilities
 export * from './checkout.utils';
-export * from './checkout.constants';
+export { plansData, CARD_ELEMENT_OPTIONS, initialFormData } from './checkout.constants';
