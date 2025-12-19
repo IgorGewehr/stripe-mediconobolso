@@ -56,7 +56,7 @@ const MetricsCard = ({ metrics, loading }) => {
     // Estilo comum para ambos os cards principais
     const mainCardStyle = {
         height: '140px', // Altura fixa para todos os cards
-        mb: 1,
+        mb: 1.5,
         borderRadius: '20px',
         border: 'none',
         overflow: 'hidden',
@@ -77,13 +77,13 @@ const MetricsCard = ({ metrics, loading }) => {
                 overflow: 'visible',
             }}
         >
-            <CardContent sx={{ p: 3 }}>
+            <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                 <Typography
                     variant="h6"
                     fontWeight={700}
                     color="primary.main"
                     gutterBottom
-                    sx={{ mb: 2 }}
+                    sx={{ mb: 2.5 }}
                 >
                     Veja suas métricas
                     <Typography component="span" color="primary" fontWeight={500}>
@@ -98,7 +98,7 @@ const MetricsCard = ({ metrics, loading }) => {
                         justifyContent: 'space-between',
                         backgroundColor: '#fff',
                         borderRadius: '30px',
-                        mb: 3,
+                        mb: 3.5,
                         p: 0.5,
                         border: '1px solid',
                         borderColor: theme.palette.divider

@@ -1230,7 +1230,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
     }
 
     return (
-        <Box sx={{ p: 0, backgroundColor: '#F4F9FF' }}>
+        <Box sx={{ p: { xs: 2, sm: 3 }, backgroundColor: '#F4F9FF' }}>
             {/* Cabeçalho com abas */}
             <Tabs
                 value={currentTab}
@@ -1325,26 +1325,31 @@ const PrescriptionsPage = forwardRef((props, ref) => {
             </Tabs>
 
             {/* Cards de métricas */}
-            <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
                 <Grid item xs={12} sm={6} md={3}>
                     <Card sx={{
-                        borderRadius: '24px',
+                        borderRadius: '20px',
                         boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                        height: '100%'
+                        height: '100%',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                        '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08)',
+                        }
                     }}>
-                        <CardContent>
-                            <Typography variant="subtitle2" color="text.secondary">
+                        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                 Total de Receitas
                             </Typography>
-                            <Typography component="div" variant="h4" sx={{ mt: 1, fontWeight: 600, color: theme.palette.primary.main }}>
+                            <Typography component="div" variant="h4" sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
                                 {loading ? <Chip size="small" label="Carregando..." /> : metrics.totalPrescriptions}
                             </Typography>
                             {loading ? (
-                                <Box sx={{ mt: 1 }}>
+                                <Box sx={{ mt: 1.5 }}>
                                     <Chip size="small" label="Carregando..." />
                                 </Box>
                             ) : (
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
                                     +3 receitas nesta semana
                                 </Typography>
                             )}
@@ -1354,23 +1359,28 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
                 <Grid item xs={12} sm={6} md={3}>
                     <Card sx={{
-                        borderRadius: '24px',
+                        borderRadius: '20px',
                         boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                        height: '100%'
+                        height: '100%',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                        '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08)',
+                        }
                     }}>
-                        <CardContent>
-                            <Typography variant="subtitle2" color="text.secondary">
+                        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                 Receitas Ativas
                             </Typography>
-                            <Typography component="div"  variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#4CAF50' }}>
+                            <Typography component="div" variant="h4" sx={{ fontWeight: 600, color: '#4CAF50' }}>
                                 {loading ? <Chip size="small" label="Carregando..." /> : metrics.activePrescriptions}
                             </Typography>
                             {loading ? (
-                                <Box sx={{ mt: 1 }}>
+                                <Box sx={{ mt: 1.5 }}>
                                     <Chip size="small" label="Carregando..." />
                                 </Box>
                             ) : (
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
                                     <span style={{ color: '#4CAF50' }}>{Math.round((metrics.activePrescriptions / metrics.totalPrescriptions) * 100) || 0}%</span> do total
                                 </Typography>
                             )}
@@ -1380,18 +1390,23 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
                 <Grid item xs={12} sm={6} md={3}>
                     <Card sx={{
-                        borderRadius: '24px',
+                        borderRadius: '20px',
                         boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                        height: '100%'
+                        height: '100%',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                        '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08)',
+                        }
                     }}>
-                        <CardContent>
-                            <Typography variant="subtitle2" color="text.secondary">
+                        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                 Receitas Pendentes
                             </Typography>
-                            <Typography component="div" variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#FF9800' }}>
+                            <Typography component="div" variant="h4" sx={{ fontWeight: 600, color: '#FF9800' }}>
                                 {loading ? <Chip size="small" label="Carregando..." /> : metrics.pendingPrescriptions}
                             </Typography>
-                            <Typography component="div" variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            <Typography component="div" variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
                                 {loading ? <Chip size="small" label="Carregando..." /> : 'Requerem sua atenção'}
                             </Typography>
                         </CardContent>
@@ -1400,18 +1415,23 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
                 <Grid item xs={12} sm={6} md={3}>
                     <Card sx={{
-                        borderRadius: '24px',
+                        borderRadius: '20px',
                         boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                        height: '100%'
+                        height: '100%',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                        '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08)',
+                        }
                     }}>
-                        <CardContent>
-                            <Typography variant="subtitle2" color="text.secondary">
+                        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                 Medicamentos Cadastrados
                             </Typography>
-                            <Typography component="div" variant="h4" sx={{ mt: 1, fontWeight: 600, color: '#2196F3' }}>
+                            <Typography component="div" variant="h4" sx={{ fontWeight: 600, color: '#2196F3' }}>
                                 {loading ? <Chip size="small" label="Carregando..." /> : metrics.totalMedications}
                             </Typography>
-                            <Typography component="div" variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            <Typography component="div" variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
                                 {loading ? <Chip size="small" label="Carregando..." /> : `${medications.filter(m => m.dosages?.length > 0).length} com dosagens definidas`}
                             </Typography>
                         </CardContent>
@@ -1423,11 +1443,13 @@ const PrescriptionsPage = forwardRef((props, ref) => {
             {currentTab !== 'medications' && (
                 <Box
                     sx={{
+                        mt: 3,
                         mb: 3,
                         display: 'flex',
-                        flexDirection: { xs: 'column', sm: 'row' },
-                        alignItems: { xs: 'stretch', sm: 'center' },
-                        gap: 2
+                        flexDirection: { xs: 'column', md: 'row' },
+                        alignItems: { xs: 'stretch', md: 'center' },
+                        justifyContent: 'center',
+                        gap: { xs: 2, sm: 2.5 }
                     }}
                 >
                     <SearchBar
@@ -1441,8 +1463,8 @@ const PrescriptionsPage = forwardRef((props, ref) => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1,
-                            justifyContent: { xs: 'space-between', sm: 'flex-end' },
-                            flex: { xs: '1', sm: '1 1 50%' }
+                            justifyContent: { xs: 'space-between', md: 'flex-end' },
+                            flexShrink: 0
                         }}
                     >
                         {hasActiveFilters && (

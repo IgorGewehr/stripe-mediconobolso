@@ -9,10 +9,10 @@ import {
 } from '@mui/material';
 import MetricsCard from "../features/shared/MetricsCard";
 import ConsultationCard from "../features/shared/ConsultationCard";
-import PatientsListCard from "../features/patients/PatientsList";
+import PatientsListCard from "../features/patients/PatientsList.jsx";
 import MobileConsultationCard from "../features/mobile/MobileConsultationCard";
 import MobilePatientsListCard from "../features/mobile/MobilePatientsListCard";
-import { useAuth } from "../providers/authProvider";
+import { useAuth } from "../providers";
 import FirebaseService from "../../../lib/firebaseService";
 import { format, addDays, subDays, startOfDay, isAfter } from 'date-fns';
 import MiniChatCard from "../features/shared/MiniChatCard";

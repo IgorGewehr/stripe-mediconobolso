@@ -516,10 +516,12 @@ const DoctorAITemplate = () => {
             display: 'flex',
             height: 'calc(100vh - 140px)',
             maxHeight: 'calc(100vh - 140px)',
-            backgroundColor: '#FAFBFC',
-            borderRadius: '12px',
+            backgroundColor: '#F4F9FF',
+            borderRadius: '20px',
             overflow: 'hidden',
-            border: '1px solid #E5E7EB',
+            border: '1px solid',
+            borderColor: theme.palette.divider,
+            boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
             position: 'relative'
         }}>
             {/* Backdrop para mobile */}
@@ -589,12 +591,19 @@ const DoctorAITemplate = () => {
 
                     {/* Estatísticas */}
                     {showStats && stats && (
-                        <Card sx={{ mb: 2, backgroundColor: '#F9FAFB' }}>
+                        <Card sx={{
+                            mb: 2,
+                            backgroundColor: '#F9FAFB',
+                            borderRadius: '16px',
+                            border: '1px solid',
+                            borderColor: theme.palette.divider,
+                            boxShadow: 'none'
+                        }}>
                             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
+                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
                                     Estatísticas de Uso
                                 </Typography>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#374151' }}>
                                     <span>{stats.totalConversations} conversas</span>
                                     <span>{stats.totalMessages} mensagens</span>
                                     <span>{stats.totalTokens} tokens</span>
@@ -605,13 +614,20 @@ const DoctorAITemplate = () => {
 
                     {/* Contador de Usos Free */}
                     {isFreeUser && (
-                        <Card sx={{ mb: 2, backgroundColor: freeUsageCount >= FREE_USAGE_LIMIT ? '#FEF2F2' : '#F0F9FF' }}>
+                        <Card sx={{
+                            mb: 2,
+                            backgroundColor: freeUsageCount >= FREE_USAGE_LIMIT ? '#FEF2F2' : '#F0F9FF',
+                            borderRadius: '16px',
+                            border: '1px solid',
+                            borderColor: freeUsageCount >= FREE_USAGE_LIMIT ? '#FECACA' : '#BAE6FD',
+                            boxShadow: 'none'
+                        }}>
                             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
+                                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
                                     Plano Gratuito
                                 </Typography>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                                    <span style={{ color: freeUsageCount >= FREE_USAGE_LIMIT ? '#EF4444' : '#1976D2' }}>
+                                    <span style={{ color: freeUsageCount >= FREE_USAGE_LIMIT ? '#EF4444' : '#1976D2', fontWeight: 500 }}>
                                         {freeUsageCount}/{FREE_USAGE_LIMIT} usos hoje
                                     </span>
                                     {freeUsageCount >= FREE_USAGE_LIMIT && (
@@ -620,10 +636,13 @@ const DoctorAITemplate = () => {
                                             variant="contained"
                                             onClick={() => setUpgradeDialogOpen(true)}
                                             sx={{
-                                                fontSize: '0.6rem',
+                                                fontSize: '0.65rem',
                                                 py: 0.5,
-                                                px: 1,
+                                                px: 1.5,
+                                                borderRadius: '50px',
                                                 bgcolor: '#EF4444',
+                                                textTransform: 'none',
+                                                fontWeight: 600,
                                                 '&:hover': { bgcolor: '#DC2626' }
                                             }}
                                         >
@@ -643,11 +662,28 @@ const DoctorAITemplate = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                        sx={{ mb: 1.5, backgroundColor: '#F9FAFB' }} /* Reduzido */
+                        sx={{
+                            mb: 2,
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: '50px',
+                                backgroundColor: '#fff',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                transition: 'box-shadow 0.2s ease',
+                                '&:hover': {
+                                    boxShadow: '0 3px 12px rgba(0,0,0,0.12)',
+                                },
+                                '&.Mui-focused': {
+                                    boxShadow: '0 3px 12px rgba(24,82,254,0.15)',
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: theme.palette.primary.main,
+                                }
+                            }
+                        }}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
-                                    <SearchIcon fontSize="small" sx={{ color: '#6B7280' }} />
+                                    <SearchIcon fontSize="small" sx={{ color: searchTerm ? theme.palette.primary.main : '#6B7280' }} />
                                 </InputAdornment>
                             ),
                             endAdornment: searchTerm && (
@@ -661,21 +697,23 @@ const DoctorAITemplate = () => {
                     />
 
                     {/* Botões de Ação */}
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1.5 }}>
                         <Button
                             fullWidth
                             variant="contained"
                             startIcon={<AddIcon />}
                             onClick={createNewConversation}
                             sx={{
-                                backgroundColor: '#111827',
+                                backgroundColor: theme.palette.primary.main,
                                 color: 'white',
-                                fontWeight: 500,
+                                fontWeight: 600,
                                 textTransform: 'none',
-                                boxShadow: 'none',
+                                borderRadius: '50px',
+                                py: 1.2,
+                                boxShadow: '0 2px 8px rgba(24,82,254,0.2)',
                                 '&:hover': {
-                                    backgroundColor: '#1F2937',
-                                    boxShadow: 'none'
+                                    backgroundColor: theme.palette.primary.dark,
+                                    boxShadow: '0 4px 12px rgba(24,82,254,0.3)'
                                 }
                             }}
                         >
@@ -686,9 +724,16 @@ const DoctorAITemplate = () => {
                             <IconButton
                                 onClick={cleanOldConversations}
                                 sx={{
-                                    border: '1px solid #E5E7EB',
+                                    border: '1px solid',
+                                    borderColor: theme.palette.divider,
+                                    borderRadius: '50%',
                                     color: '#6B7280',
-                                    '&:hover': { backgroundColor: '#F9FAFB' }
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                        backgroundColor: '#F9FAFB',
+                                        borderColor: theme.palette.primary.main,
+                                        color: theme.palette.primary.main
+                                    }
                                 }}
                             >
                                 <CleaningServicesIcon fontSize="small" />
@@ -735,24 +780,26 @@ const DoctorAITemplate = () => {
                                             {periodLabels[period]}
                                         </Typography>
 
-                                        <List sx={{ py: 0.3 }}> {/* Reduzido padding */}
+                                        <List sx={{ py: 0.5 }}>
                                             {convs.map((conversation) => (
                                                 <ListItem key={conversation.id} sx={{ px: 2, py: 0 }}>
                                                     <ListItemButton
                                                         selected={currentConversationId === conversation.id}
                                                         onClick={() => loadConversation(conversation.id)}
                                                         sx={{
-                                                            borderRadius: '8px',
-                                                            mb: 0.3, /* Reduzido */
-                                                            py: 1, /* Reduzido padding vertical */
-                                                            px: 1.5, /* Reduzido padding horizontal */
+                                                            borderRadius: '12px',
+                                                            mb: 0.5,
+                                                            py: 1.2,
+                                                            px: 1.5,
                                                             minHeight: 'auto',
+                                                            transition: 'all 0.2s ease',
                                                             '&.Mui-selected': {
-                                                                backgroundColor: '#F3F4F6',
-                                                                borderLeft: '2px solid #111827'
+                                                                backgroundColor: `rgba(24, 82, 254, 0.08)`,
+                                                                borderLeft: `3px solid ${theme.palette.primary.main}`
                                                             },
                                                             '&:hover': {
-                                                                backgroundColor: '#F9FAFB'
+                                                                backgroundColor: '#F9FAFB',
+                                                                transform: 'translateX(2px)'
                                                             }
                                                         }}
                                                     >
@@ -929,7 +976,7 @@ const DoctorAITemplate = () => {
                                 Faça perguntas sobre dosagens, protocolos, diagnósticos diferenciais ou qualquer dúvida clínica.
                             </Typography>
 
-                            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 600 }}>
                                 {[
                                     "Dosagem de amoxicilina pediátrica",
                                     "Protocolo para IAM",
@@ -943,12 +990,18 @@ const DoctorAITemplate = () => {
                                         clickable
                                         onClick={() => setCurrentMessage(suggestion)}
                                         sx={{
-                                            borderColor: '#E5E7EB',
+                                            borderColor: theme.palette.divider,
                                             color: '#6B7280',
                                             fontSize: '0.875rem',
+                                            borderRadius: '50px',
+                                            py: 2.5,
+                                            px: 0.5,
+                                            transition: 'all 0.2s ease',
                                             '&:hover': {
-                                                backgroundColor: '#F9FAFB',
-                                                borderColor: '#D1D5DB'
+                                                backgroundColor: `rgba(24, 82, 254, 0.08)`,
+                                                borderColor: theme.palette.primary.main,
+                                                color: theme.palette.primary.main,
+                                                transform: 'translateY(-2px)'
                                             }
                                         }}
                                     />
@@ -971,11 +1024,14 @@ const DoctorAITemplate = () => {
                                         {message.role !== 'user' && (
                                             <Avatar
                                                 sx={{
-                                                    bgcolor: message.role === 'error' ? '#EF4444' : '#111827',
+                                                    bgcolor: message.role === 'error' ? '#EF4444' : theme.palette.primary.main,
                                                     width: 32,
                                                     height: 32,
                                                     mr: 2,
-                                                    mt: 0.5
+                                                    mt: 0.5,
+                                                    boxShadow: message.role === 'error'
+                                                        ? '0 2px 8px rgba(239, 68, 68, 0.2)'
+                                                        : '0 2px 8px rgba(24, 82, 254, 0.2)'
                                                 }}
                                             >
                                                 {message.role === 'error' ? '⚠️' : <PsychologyIcon sx={{ fontSize: 16 }} />}
@@ -988,20 +1044,23 @@ const DoctorAITemplate = () => {
                                                 p: 2.5,
                                                 maxWidth: '75%',
                                                 backgroundColor: message.role === 'user'
-                                                    ? '#111827'
+                                                    ? theme.palette.primary.main
                                                     : message.role === 'error'
                                                         ? '#FEF2F2'
                                                         : 'white',
                                                 color: message.role === 'user' ? 'white' : '#374151',
                                                 borderRadius: message.role === 'user'
-                                                    ? '16px 16px 4px 16px'
-                                                    : '16px 16px 16px 4px',
+                                                    ? '20px 20px 4px 20px'
+                                                    : '20px 20px 20px 4px',
                                                 border: '1px solid',
                                                 borderColor: message.role === 'user'
-                                                    ? '#111827'
+                                                    ? theme.palette.primary.main
                                                     : message.role === 'error'
                                                         ? '#FECACA'
-                                                        : '#F3F4F6'
+                                                        : theme.palette.divider,
+                                                boxShadow: message.role === 'user'
+                                                    ? '0 2px 8px rgba(24, 82, 254, 0.2)'
+                                                    : '0 2px 8px rgba(0, 0, 0, 0.05)'
                                             }}
                                         >
                                             <Typography
@@ -1041,11 +1100,12 @@ const DoctorAITemplate = () => {
                                         {message.role === 'user' && (
                                             <Avatar
                                                 sx={{
-                                                    bgcolor: '#6B7280',
+                                                    bgcolor: theme.palette.primary.dark,
                                                     width: 32,
                                                     height: 32,
                                                     ml: 2,
-                                                    mt: 0.5
+                                                    mt: 0.5,
+                                                    boxShadow: '0 2px 8px rgba(24, 82, 254, 0.2)'
                                                 }}
                                             >
                                                 <PersonIcon sx={{ fontSize: 16 }} />
@@ -1065,10 +1125,11 @@ const DoctorAITemplate = () => {
                                 >
                                     <Avatar
                                         sx={{
-                                            bgcolor: '#111827',
+                                            bgcolor: theme.palette.primary.main,
                                             width: 32,
                                             height: 32,
-                                            mr: 2
+                                            mr: 2,
+                                            boxShadow: '0 2px 8px rgba(24, 82, 254, 0.2)'
                                         }}
                                     >
                                         <PsychologyIcon sx={{ fontSize: 16 }} />
@@ -1078,13 +1139,15 @@ const DoctorAITemplate = () => {
                                         sx={{
                                             p: 2.5,
                                             backgroundColor: 'white',
-                                            borderRadius: '16px 16px 16px 4px',
+                                            borderRadius: '20px 20px 20px 4px',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            border: '1px solid #F3F4F6'
+                                            border: '1px solid',
+                                            borderColor: theme.palette.divider,
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
                                         }}
                                     >
-                                        <CircularProgress size={16} sx={{ mr: 2, color: '#6B7280' }} />
+                                        <CircularProgress size={16} sx={{ mr: 2, color: theme.palette.primary.main }} />
                                         <Typography variant="body2" color="textSecondary">
                                             Analisando...
                                         </Typography>
@@ -1098,21 +1161,26 @@ const DoctorAITemplate = () => {
 
                 {/* Área de Input */}
                 <Box sx={{
-                    p: 2.5, /* Reduzido */
+                    p: { xs: 2, sm: 3 },
                     backgroundColor: 'white',
-                    borderTop: '1px solid #F3F4F6'
+                    borderTop: '1px solid',
+                    borderColor: theme.palette.divider
                 }}>
                     {error && (
                         <Alert
                             severity={error.includes('removidas') ? 'success' : 'error'}
-                            sx={{ mb: 2, fontSize: '0.875rem' }}
+                            sx={{
+                                mb: 2,
+                                fontSize: '0.875rem',
+                                borderRadius: '12px'
+                            }}
                             onClose={() => setError('')}
                         >
                             {error}
                         </Alert>
                     )}
 
-                    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1.5 }}>
                         <TextField
                             ref={inputRef}
                             fullWidth
@@ -1126,15 +1194,18 @@ const DoctorAITemplate = () => {
                             variant="outlined"
                             sx={{
                                 '& .MuiOutlinedInput-root': {
-                                    borderRadius: '12px',
-                                    backgroundColor: '#FAFBFC',
-                                    borderColor: '#E5E7EB',
+                                    borderRadius: '20px',
+                                    backgroundColor: '#F9FAFB',
+                                    transition: 'all 0.2s ease',
                                     '&:hover': {
-                                        backgroundColor: '#F9FAFB'
+                                        backgroundColor: '#F3F4F6'
                                     },
                                     '&.Mui-focused': {
                                         backgroundColor: 'white',
-                                        borderColor: '#111827'
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                                    },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: theme.palette.primary.main
                                     }
                                 }
                             }}
@@ -1145,37 +1216,45 @@ const DoctorAITemplate = () => {
                             sx={{
                                 bgcolor: '#22C55E',
                                 color: 'white',
-                                width: 44,
-                                height: 44,
+                                width: 48,
+                                height: 48,
+                                boxShadow: '0 2px 8px rgba(34, 197, 94, 0.3)',
+                                transition: 'all 0.2s ease',
                                 '&:hover': {
-                                    bgcolor: '#16A34A'
+                                    bgcolor: '#16A34A',
+                                    transform: 'scale(1.05)'
                                 },
                                 '&:disabled': {
                                     bgcolor: '#E5E7EB',
-                                    color: '#9CA3AF'
+                                    color: '#9CA3AF',
+                                    boxShadow: 'none'
                                 }
                             }}
                         >
-                            <MicIcon fontSize="small" />
+                            <MicIcon />
                         </IconButton>
                         <IconButton
                             onClick={handleSendMessage}
                             disabled={!currentMessage.trim() || isLoading}
                             sx={{
-                                bgcolor: '#111827',
+                                bgcolor: theme.palette.primary.main,
                                 color: 'white',
-                                width: 44,
-                                height: 44,
+                                width: 48,
+                                height: 48,
+                                boxShadow: '0 2px 8px rgba(24, 82, 254, 0.3)',
+                                transition: 'all 0.2s ease',
                                 '&:hover': {
-                                    bgcolor: '#1F2937'
+                                    bgcolor: theme.palette.primary.dark,
+                                    transform: 'scale(1.05)'
                                 },
                                 '&:disabled': {
                                     bgcolor: '#E5E7EB',
-                                    color: '#9CA3AF'
+                                    color: '#9CA3AF',
+                                    boxShadow: 'none'
                                 }
                             }}
                         >
-                            <SendIcon fontSize="small" />
+                            <SendIcon />
                         </IconButton>
                     </Box>
                 </Box>
@@ -1187,14 +1266,29 @@ const DoctorAITemplate = () => {
                 open={Boolean(menuAnchor)}
                 onClose={() => setMenuAnchor(null)}
                 PaperProps={{
-                    sx: { borderRadius: '8px', minWidth: 140 }
+                    sx: {
+                        borderRadius: '12px',
+                        minWidth: 160,
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                        border: '1px solid',
+                        borderColor: theme.palette.divider
+                    }
                 }}
             >
                 <MenuItem
                     onClick={() => deleteConversation(selectedConversationMenu)}
-                    sx={{ color: 'error.main', fontSize: '0.875rem' }}
+                    sx={{
+                        color: 'error.main',
+                        fontSize: '0.875rem',
+                        borderRadius: '8px',
+                        mx: 1,
+                        my: 0.5,
+                        '&:hover': {
+                            backgroundColor: 'rgba(239, 68, 68, 0.08)'
+                        }
+                    }}
                 >
-                    <DeleteIcon sx={{ mr: 1, fontSize: 16 }} />
+                    <DeleteIcon sx={{ mr: 1.5, fontSize: 18 }} />
                     Excluir
                 </MenuItem>
             </Menu>

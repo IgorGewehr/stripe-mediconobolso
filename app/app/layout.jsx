@@ -335,7 +335,7 @@ export default function AppLayout({ children }) {
 
         switch (page) {
             case "dashboard":
-                return <Dashboard onClickPatients={handlePatientClick}/>;
+                return <DashboardTemplate onClickPatients={handlePatientClick}/>;
 
             case "pacientes":
                 return (

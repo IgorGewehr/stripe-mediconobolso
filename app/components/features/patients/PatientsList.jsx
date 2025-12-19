@@ -874,6 +874,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
                         fullWidth
                         size="small"
                         sx={{
+                            mt: 3,
                             '& .MuiOutlinedInput-root': {
                                 borderRadius: '50px',
                                 backgroundColor: '#fff',

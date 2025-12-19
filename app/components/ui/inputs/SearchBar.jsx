@@ -29,7 +29,8 @@ const SearchBar = React.memo(({ onSearch, placeholder = "Buscar pacientes por no
     return (
         <div style={{
             position: 'relative',
-            flex: isTablet ? '1' : '1 1 50%',
+            flex: '1 1 60%',
+            maxWidth: '600px',
             transformOrigin: 'top left',
         }}>
             <TextField
@@ -43,13 +44,20 @@ const SearchBar = React.memo(({ onSearch, placeholder = "Buscar pacientes por no
                     '& .MuiOutlinedInput-root': {
                         borderRadius: '50px',
                         backgroundColor: '#fff',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                        transition: 'box-shadow 0.2s ease',
+                        '&:hover': {
+                            boxShadow: '0 3px 12px rgba(0,0,0,0.12)',
+                        },
+                        '&.Mui-focused': {
+                            boxShadow: '0 3px 12px rgba(24,82,254,0.15)',
+                        }
                     }
                 }}
                 InputProps={{
                     startAdornment: (
                         <InputAdornment position="start">
-                            <SearchIcon />
+                            <SearchIcon color={localSearchTerm ? 'primary' : 'inherit'} />
                         </InputAdornment>
                     ),
                 }}

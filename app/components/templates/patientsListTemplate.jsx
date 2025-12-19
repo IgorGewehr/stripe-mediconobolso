@@ -99,7 +99,7 @@ import {
 } from 'date-fns';
 import {ptBR} from 'date-fns/locale';
 import FirebaseService from "../../../lib/firebaseService";
-import {useAuth} from "../providers/authProvider";
+import {useAuth} from "../providers";
 import useModuleAccess from "../hooks/useModuleAccess";
 import SearchField from "../ui/inputs/SearchField";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -1886,21 +1886,26 @@ const PatientsListPage = ({onPatientClick}) => {
 
     // Cartão de métricas
     const MetricsCardsSection = () => (
-        <Grid container spacing={3} sx={{mb: 3}}>
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{mb: 4}}>
             <Grid item xs={12} sm={6} md={3}>
                 <Card sx={{
-                    borderRadius: '24px',
+                    borderRadius: '20px',
                     boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                    height: '100%'
+                    height: '100%',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08)',
+                    }
                 }}>
-                    <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">
+                    <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                             Total de Pacientes
                         </Typography>
-                        <Typography variant="h4" sx={{mt: 1, fontWeight: 600, color: theme.palette.primary.main}}>
+                        <Typography variant="h4" sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
                             {loading ? <Skeleton width={60}/> : metrics.totalPatients}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
                             {loading ? <Skeleton width={120}/> : '+3 pacientes nesta semana'}
                         </Typography>
                     </CardContent>
@@ -1909,18 +1914,23 @@ const PatientsListPage = ({onPatientClick}) => {
 
             <Grid item xs={12} sm={6} md={3}>
                 <Card sx={{
-                    borderRadius: '24px',
+                    borderRadius: '20px',
                     boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                    height: '100%'
+                    height: '100%',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08)',
+                    }
                 }}>
-                    <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">
+                    <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                             Pacientes Ativos
                         </Typography>
-                        <Typography variant="h4" sx={{mt: 1, fontWeight: 600, color: '#4CAF50'}}>
+                        <Typography variant="h4" sx={{ fontWeight: 600, color: '#4CAF50' }}>
                             {loading ? <Skeleton width={60}/> : metrics.activePatients}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
                             {loading ? (
                                 <Skeleton width={120}/>
                             ) : (
@@ -1937,18 +1947,23 @@ const PatientsListPage = ({onPatientClick}) => {
 
             <Grid item xs={12} sm={6} md={3}>
                 <Card sx={{
-                    borderRadius: '24px',
+                    borderRadius: '20px',
                     boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                    height: '100%'
+                    height: '100%',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08)',
+                    }
                 }}>
-                    <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">
+                    <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                             Novos Pacientes (30 dias)
                         </Typography>
-                        <Typography variant="h4" sx={{mt: 1, fontWeight: 600, color: '#2196F3'}}>
+                        <Typography variant="h4" sx={{ fontWeight: 600, color: '#2196F3' }}>
                             {loading ? <Skeleton width={60}/> : metrics.newPatients}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
                             {loading ? <Skeleton width={120}/> : 'Média de 3 por semana'}
                         </Typography>
                     </CardContent>
@@ -1957,18 +1972,23 @@ const PatientsListPage = ({onPatientClick}) => {
 
             <Grid item xs={12} sm={6} md={3}>
                 <Card sx={{
-                    borderRadius: '24px',
+                    borderRadius: '20px',
                     boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
-                    height: '100%'
+                    height: '100%',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08)',
+                    }
                 }}>
-                    <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">
+                    <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                             Consultas Agendadas
                         </Typography>
-                        <Typography variant="h4" sx={{mt: 1, fontWeight: 600, color: '#FF9800'}}>
+                        <Typography variant="h4" sx={{ fontWeight: 600, color: '#FF9800' }}>
                             {loading ? <Skeleton width={60}/> : metrics.upcomingAppointments}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
                             {loading ? <Skeleton
                                 width={120}/> : `Próxima: ${metrics.upcomingAppointments > 0 ? 'Hoje' : 'Nenhuma'}`}
                         </Typography>
@@ -2088,10 +2108,12 @@ const PatientsListPage = ({onPatientClick}) => {
             <Box
                 sx={{
                     mb: 3,
+                    mt: 3,
                     display: 'flex',
-                    flexDirection: isTablet ? 'column' : 'row',
-                    alignItems: isTablet ? 'stretch' : 'center',
-                    gap: 2
+                    flexDirection: { xs: 'column', md: 'row' },
+                    alignItems: { xs: 'stretch', md: 'center' },
+                    justifyContent: 'center',
+                    gap: { xs: 2, sm: 2.5 }
                 }}
             >
                 <SearchField
@@ -2107,8 +2129,8 @@ const PatientsListPage = ({onPatientClick}) => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1,
-                        justifyContent: isTablet ? 'space-between' : 'flex-end',
-                        flex: isTablet ? '1' : '1 1 50%'
+                        justifyContent: { xs: 'space-between', md: 'flex-end' },
+                        flexShrink: 0
                     }}
                 >
                     {hasActiveFilters && (
@@ -3157,7 +3179,7 @@ const PatientsListPage = ({onPatientClick}) => {
     );
 
     return (
-        <Box sx={{p: 0, backgroundColor: '#F4F9FF'}}>
+        <Box sx={{p: { xs: 2, sm: 3 }, backgroundColor: '#F4F9FF'}}>
             {/* Cabeçalho e estatísticas */}
             <HeaderSection/>
 

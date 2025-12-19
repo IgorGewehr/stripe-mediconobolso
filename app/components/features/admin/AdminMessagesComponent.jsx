@@ -47,9 +47,6 @@ import {
     Info as InfoIcon,
     Check as CheckIcon,
     Refresh as RefreshIcon,
-    FilterList as FilterIcon,
-    DoneAll as DoneAllIcon,
-    Priority as PriorityIcon,
     Schedule as ScheduleIcon,
     Person as PersonIcon,
     Email as EmailIcon
