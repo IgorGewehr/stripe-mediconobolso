@@ -24,6 +24,12 @@ import {
     CalendarToday as CalendarTodayIcon,
     ArrowForward as ArrowForwardIcon,
     Phone as PhoneIcon,
+    HealthAndSafety as HealthAndSafetyIcon,
+    LocationOn as LocationOnIcon,
+    Thermostat as ThermostatIcon,
+    Air as AirIcon,
+    WaterDrop as WaterDropIcon,
+    Brightness7 as SunIcon
 } from '@mui/icons-material';
 import { format, addMonths, parseISO, isValid, isSameDay, isToday, getDay, startOfMonth, endOfMonth, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -33,8 +39,18 @@ import WeatherContainer from "./WeatherContainer";
 const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgenda, onSelectPatient }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+    const isMedium = useMediaQuery(theme.breakpoints.down('md'));
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [patientData, setPatientData] = useState(null);
+    const [weatherData, setWeatherData] = useState({
+        temperature: 28,
+        condition: 'Ensolarado',
+        humidity: 65,
+        wind: 10,
+        location: 'São Paulo, SP',
+        icon: 'sun'
+    });
 
     useEffect(() => {
         const loadPatientData = async () => {
@@ -189,10 +205,6 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
         return new Date();
     };
 
-    // Verifica se há uma consulta válida
-    const hasValidConsultation = nextConsultation &&
-        (nextConsultation.consultationTime || nextConsultation.horaInicio || nextConsultation.patientId);
-
     // Renderização para ausência de consulta agendada
     const renderNoConsultation = () => (
         <Box
@@ -201,40 +213,21 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                 alignItems: 'center',
                 justifyContent: 'center',
                 height: '100%',
-                width: '100%',
-                p: 3,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: isMobile ? '16px' : '20px',
+                p: 1
             }}
         >
             <Box sx={{ textAlign: 'center' }}>
-                <CalendarTodayIcon sx={{ fontSize: 48, color: 'white', mb: 2, opacity: 0.9 }} />
-                <Typography variant="h6" sx={{ color: 'white', fontWeight: 600, mb: 1 }}>
-                    Nenhuma consulta agendada
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 2.5 }}>
-                    Você não tem consultas futuras marcadas
+                <CalendarTodayIcon sx={{ fontSize: 36, color: 'text.disabled', mb: 0.5 }} />
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
+                    Sem consultas agendadas
                 </Typography>
                 <Button
                     variant="contained"
+                    color="primary"
                     onClick={handleViewAgenda}
-                    startIcon={<ArrowForwardIcon />}
-                    sx={{
-                        borderRadius: '50px',
-                        bgcolor: 'white',
-                        color: '#667eea',
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        px: 3,
-                        py: 1,
-                        boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-                        '&:hover': {
-                            bgcolor: 'rgba(255,255,255,0.9)',
-                            boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
-                        }
-                    }}
+                    sx={{ borderRadius: '50px', bgcolor: '#1852FE', textTransform: 'none', fontSize: '0.65rem' }}
                 >
-                    Abrir Agenda
+                    Ir para Agenda
                 </Button>
             </Box>
         </Box>
@@ -265,36 +258,9 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
     const patientStatus = getPatientStatus();
     const consultationDate = getConsultationDate();
 
-    // Se não há consulta válida, renderiza o estado vazio
-    if (!hasValidConsultation && !loading) {
-        return (
-            <Box sx={{
-                display: 'flex',
-                gap: isMobile ? 0.5 : 1,
-                flexDirection: isMobile ? 'column' : 'row'
-            }}>
-                {/* Card de Clima (à esquerda) */}
-                {!isMobile && (
-                    <Box sx={{ width: '25%', height: 180 }}>
-                        <WeatherContainer/>
-                    </Box>
-                )}
-
-                {/* Mensagem de nenhuma consulta */}
-                <Box sx={{
-                    width: isMobile ? '100%' : '75%',
-                    height: isMobile ? 'auto' : 180,
-                    minHeight: isMobile ? 150 : 180,
-                }}>
-                    {renderNoConsultation()}
-                </Box>
-            </Box>
-        );
-    }
-
     return (
-        <Box sx={{
-            display: 'flex',
+        <Box sx={{ 
+            display: 'flex', 
             gap: isMobile ? 0.5 : 1,
             flexDirection: isMobile ? 'column' : 'row'
         }}>
