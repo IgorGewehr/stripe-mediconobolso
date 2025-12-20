@@ -3,6 +3,7 @@ import React from "react";
 import { Box, Typography, Button, IconButton, useTheme, useMediaQuery } from "@mui/material";
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationComponent from "../features/shared/NotificationComponent";
+import { WhatsAppStatusButton } from "../features/conversations";
 import { useAuth } from "../providers/authProvider";
 
 // Atualiza o ActionButton para aceitar onClick
@@ -216,6 +217,9 @@ const TopAppBar = ({
             </Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: isMobile ? "8px" : "12px" }}>
+                {/* WhatsApp Status Button */}
+                <WhatsAppStatusButton variant={isMobile ? "chip" : "button"} />
+
                 {/* Componente de notificação */}
                 <NotificationComponent onMessageClick={handleNotificationClick} />
 

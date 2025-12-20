@@ -43,3 +43,6 @@ export { default as ExamDialogFeature } from './exams/ExamDialog';
 
 // Prescriptions (re-export from subdirectory)
 export { default as PrescriptionsTemplateFeature } from './prescriptions/PrescriptionsTemplate';
+
+// Conversations (WhatsApp/Social Media)
+export * from './conversations';

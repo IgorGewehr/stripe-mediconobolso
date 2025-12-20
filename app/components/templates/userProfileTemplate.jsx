@@ -1149,68 +1149,107 @@ const UserProfileTemplate = ({ onLogout }) => {
                                 </Box>
                             </Box>
 
-                            {/* Indicador de secretária ativa (apenas para médicos) */}
-                            {!isSecretary && state.secretaryInfo && (
-                                <Box sx={{ mb: 2 }}>
-                                    <Typography
-                                        variant="caption"
-                                        sx={{
-                                            display: 'block',
-                                            color: themeColors.textTertiary,
-                                            fontFamily: "Gellix, sans-serif",
-                                            mb: 0.5
-                                        }}
-                                    >
-                                        Secretária Ativa
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <PeopleIcon
-                                            fontSize="small"
-                                            sx={{ color: themeColors.success, mr: 1 }}
-                                        />
-                                        <Typography
-                                            variant="body2"
+                            <Divider sx={{ my: 2 }} />
+
+                            {/* Seção de Secretárias (apenas para médicos) */}
+                            {!isSecretary && canManageSecretaries() && (
+                                <Box
+                                    sx={{
+                                        p: 2,
+                                        mb: 2,
+                                        borderRadius: '12px',
+                                        backgroundColor: state.secretaryInfo
+                                            ? alpha(themeColors.success, 0.05)
+                                            : alpha(themeColors.primary, 0.03),
+                                        border: '1px solid',
+                                        borderColor: state.secretaryInfo
+                                            ? alpha(themeColors.success, 0.15)
+                                            : alpha(themeColors.primary, 0.1),
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': {
+                                            backgroundColor: state.secretaryInfo
+                                                ? alpha(themeColors.success, 0.08)
+                                                : alpha(themeColors.primary, 0.06),
+                                            transform: 'translateY(-1px)'
+                                        }
+                                    }}
+                                    onClick={() => actions.setShowSecretaryManager(true)}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            <Box
+                                                sx={{
+                                                    width: 36,
+                                                    height: 36,
+                                                    borderRadius: '10px',
+                                                    backgroundColor: state.secretaryInfo
+                                                        ? alpha(themeColors.success, 0.15)
+                                                        : alpha(themeColors.primary, 0.1),
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
+                                            >
+                                                <PeopleIcon
+                                                    sx={{
+                                                        fontSize: 20,
+                                                        color: state.secretaryInfo ? themeColors.success : themeColors.primary
+                                                    }}
+                                                />
+                                            </Box>
+                                            <Box>
+                                                <Typography
+                                                    variant="subtitle2"
+                                                    sx={{
+                                                        fontWeight: 600,
+                                                        color: themeColors.textPrimary,
+                                                        fontFamily: "Gellix, sans-serif",
+                                                        fontSize: '13px'
+                                                    }}
+                                                >
+                                                    {state.secretaryInfo ? 'Sua Equipe' : 'Secretárias'}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: state.secretaryInfo ? themeColors.success : themeColors.textTertiary,
+                                                        fontFamily: "Gellix, sans-serif",
+                                                        fontWeight: state.secretaryInfo ? 500 : 400
+                                                    }}
+                                                >
+                                                    {state.secretaryInfo
+                                                        ? `${state.secretaryInfo.name} ativa`
+                                                        : 'Adicionar secretária'}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                        <Box
                                             sx={{
-                                                color: themeColors.success,
-                                                fontFamily: "Gellix, sans-serif",
-                                                fontWeight: 500
+                                                width: 28,
+                                                height: 28,
+                                                borderRadius: '8px',
+                                                backgroundColor: state.secretaryInfo
+                                                    ? alpha(themeColors.success, 0.15)
+                                                    : alpha(themeColors.primary, 0.1),
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
                                             }}
                                         >
-                                            {state.secretaryInfo.name}
-                                        </Typography>
+                                            <SettingsIcon
+                                                sx={{
+                                                    fontSize: 16,
+                                                    color: state.secretaryInfo ? themeColors.success : themeColors.primary
+                                                }}
+                                            />
+                                        </Box>
                                     </Box>
                                 </Box>
                             )}
 
-                            <Divider sx={{ my: 2 }} />
-
-                            {/* ✅ BOTÕES DE GERENCIAMENTO */}
+                            {/* Botões de Gerenciamento */}
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {/* Botão para gerenciar secretárias (apenas para médicos) */}
-                                {!isSecretary && canManageSecretaries() && (
-                                    <Button
-                                        variant="outlined"
-                                        startIcon={<PeopleIcon />}
-                                        onClick={() => actions.setShowSecretaryManager(true)}
-                                        fullWidth
-                                        sx={{
-                                            borderRadius: '12px',
-                                            textTransform: 'none',
-                                            fontFamily: 'Gellix, sans-serif',
-                                            fontWeight: 500,
-                                            color: themeColors.success,
-                                            borderColor: alpha(themeColors.success, 0.5),
-                                            py: 1,
-                                            '&:hover': {
-                                                backgroundColor: alpha(themeColors.success, 0.08),
-                                                borderColor: themeColors.success
-                                            },
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
-                                        {state.secretaryInfo ? 'Gerenciar Secretária' : 'Adicionar Secretária'}
-                                    </Button>
-                                )}
 
                                 {/* Botão de gerenciar assinatura (apenas para médicos) */}
                                 {!isSecretary && (

@@ -39,7 +39,8 @@
       "Bash(app/components/templates/receitasTemplate.jsx )",
       "Bash(app/components/ui/inputs/SearchBar.jsx )",
       "Bash(app/components/ui/inputs/SearchField.jsx )",
-      "Bash(app/app/layout.jsx)"
+      "Bash(app/app/layout.jsx)",
+      "Bash(git revert:*)"
     ],
     "deny": []
   }
