@@ -7,12 +7,31 @@ import {
   IconButton,
   CircularProgress,
   Typography,
-  alpha
+  alpha,
+  Tooltip
 } from '@mui/material';
 import {
   Send,
-  Block as BlockIcon
+  PauseCircle,
+  SmartToy,
+  Keyboard
 } from '@mui/icons-material';
+
+// Modern color palette
+const colors = {
+  primary: '#6366F1',
+  primaryLight: '#818CF8',
+  primaryDark: '#4F46E5',
+  secondary: '#10B981',
+  surface: '#FFFFFF',
+  border: '#E2E8F0',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+  warning: '#F59E0B',
+  warningLight: '#FEF3C7',
+  gradient: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A855F7 100%)',
+};
 
 const MessageInput = memo(({
   aiBlocked,
@@ -60,69 +79,123 @@ const MessageInput = memo(({
     <Box
       sx={{
         p: 2,
-        borderTop: '1px solid #E5E7EB',
+        px: 2.5,
+        borderTop: `1px solid ${colors.border}`,
         bgcolor: !aiBlocked
-          ? alpha('#EF5350', 0.05)
-          : '#FFFFFF',
+          ? alpha(colors.warning, 0.04)
+          : colors.surface,
         position: 'sticky',
         bottom: 0,
         zIndex: 10,
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.05)',
+        backdropFilter: 'blur(12px)',
+        background: !aiBlocked
+          ? `linear-gradient(180deg, ${alpha(colors.warningLight, 0.5)} 0%, ${colors.surface} 100%)`
+          : colors.surface,
       }}
     >
       <Box
         sx={{
           display: 'flex',
           gap: 1.5,
-          alignItems: 'center',
+          alignItems: 'flex-end',
           maxWidth: '100%',
         }}
       >
         {!aiBlocked ? (
-          // AI Mode Active - Click to enable manual mode
+          // AI Mode Active - Modern card to enable manual mode
           <Box
             onClick={!checkingAiStatus && !disabled ? onEnableManualMode : undefined}
             sx={{
               flex: 1,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
               gap: 2,
-              py: 1.25,
-              px: 3,
-              bgcolor: alpha('#EF5350', 0.08),
-              borderRadius: '24px',
+              py: 1.5,
+              px: 2.5,
+              bgcolor: colors.surface,
+              borderRadius: '16px',
               cursor: checkingAiStatus || disabled ? 'default' : 'pointer',
-              transition: 'all 0.2s ease-out',
-              border: `1.5px solid ${alpha('#EF5350', 0.2)}`,
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              border: `1.5px solid ${alpha(colors.warning, 0.3)}`,
+              boxShadow: `0 2px 8px ${alpha(colors.warning, 0.1)}`,
               '&:hover': (checkingAiStatus || disabled) ? {} : {
-                bgcolor: alpha('#EF5350', 0.15),
-                transform: 'translateY(-1px)',
-                boxShadow: `0 4px 16px ${alpha('#EF5350', 0.15)}`,
-                borderColor: alpha('#EF5350', 0.4),
+                transform: 'translateY(-2px)',
+                boxShadow: `0 8px 24px ${alpha(colors.warning, 0.2)}`,
+                borderColor: colors.warning,
               },
             }}
           >
-            {checkingAiStatus ? (
-              <CircularProgress size={20} thickness={4} sx={{ color: '#EF5350' }} />
-            ) : (
-              <BlockIcon sx={{ color: '#EF5350', fontSize: 20 }} />
-            )}
-            <Typography
+            {/* AI Icon */}
+            <Box
               sx={{
-                color: '#EF5350',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                userSelect: 'none',
-                letterSpacing: '0.01em',
+                width: 44,
+                height: 44,
+                borderRadius: '12px',
+                background: `linear-gradient(135deg, ${colors.warning} 0%, #F97316 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `0 4px 12px ${alpha(colors.warning, 0.3)}`,
+                flexShrink: 0,
               }}
             >
-              Pausar IA e responder manualmente
-            </Typography>
+              {checkingAiStatus ? (
+                <CircularProgress size={22} thickness={4} sx={{ color: '#FFFFFF' }} />
+              ) : (
+                <SmartToy sx={{ color: '#FFFFFF', fontSize: 24 }} />
+              )}
+            </Box>
+
+            {/* Text */}
+            <Box flex={1}>
+              <Typography
+                sx={{
+                  color: colors.text,
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  letterSpacing: '-0.01em',
+                  lineHeight: 1.3,
+                }}
+              >
+                IA respondendo automaticamente
+              </Typography>
+              <Typography
+                sx={{
+                  color: colors.textSecondary,
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  mt: 0.25,
+                }}
+              >
+                <Keyboard sx={{ fontSize: 12 }} />
+                Clique para responder manualmente
+              </Typography>
+            </Box>
+
+            {/* Pause button */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 1.5,
+                py: 0.75,
+                borderRadius: '10px',
+                bgcolor: alpha(colors.warning, 0.1),
+                color: colors.warning,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <PauseCircle sx={{ fontSize: 18 }} />
+              <Typography sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                Pausar
+              </Typography>
+            </Box>
           </Box>
         ) : (
-          // Manual Mode Active - Input bar
+          // Manual Mode Active - Modern input bar
           <>
             <TextField
               inputRef={inputRef}
@@ -138,80 +211,113 @@ const MessageInput = memo(({
               autoComplete="off"
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: '20px',
-                  bgcolor: alpha('#FFFFFF', 0.95),
-                  transition: 'box-shadow 0.2s ease-out, border-color 0.2s ease-out',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                  borderRadius: '16px',
+                  bgcolor: colors.surface,
+                  transition: 'all 0.2s ease',
                   '& fieldset': {
-                    borderColor: alpha('#E5E7EB', 0.6),
+                    borderColor: colors.border,
                     borderWidth: '1.5px',
-                    transition: 'border-color 0.2s ease-out',
+                    transition: 'all 0.2s ease',
                   },
                   '&:hover': {
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
                     '& fieldset': {
-                      borderColor: alpha('#4285F4', 0.4),
+                      borderColor: alpha(colors.primary, 0.4),
                     },
                   },
                   '&.Mui-focused': {
-                    boxShadow: `0 4px 16px ${alpha('#4285F4', 0.12)}`,
+                    boxShadow: `0 0 0 3px ${alpha(colors.primary, 0.12)}`,
                     '& fieldset': {
-                      borderColor: '#4285F4',
+                      borderColor: colors.primary,
                       borderWidth: '2px',
                     },
                   },
                   '&.Mui-disabled': {
-                    opacity: 0.6,
+                    opacity: 0.5,
                   },
                 },
                 '& .MuiInputBase-input': {
-                  py: 1,
+                  py: 1.5,
                   px: 2,
                   fontSize: '0.9rem',
                   lineHeight: 1.5,
                   '&::placeholder': {
-                    color: alpha('#8A94A6', 0.5),
+                    color: colors.textMuted,
                     opacity: 1,
                   },
                 },
               }}
             />
 
-            <IconButton
-              onClick={handleSend}
-              disabled={!messageInput.trim() || sendingMessage || disabled}
-              sx={{
-                bgcolor: '#4285F4',
-                color: '#FFFFFF',
-                width: 44,
-                height: 44,
-                flexShrink: 0,
-                boxShadow: `0 4px 12px ${alpha('#4285F4', 0.3)}`,
-                transition: 'all 0.2s ease-out',
-                '&:hover': {
-                  bgcolor: '#1852FE',
-                  transform: 'scale(1.05)',
-                  boxShadow: `0 6px 20px ${alpha('#4285F4', 0.4)}`,
-                },
-                '&:active': {
-                  transform: 'scale(0.98)',
-                },
-                '&.Mui-disabled': {
-                  bgcolor: alpha('#9E9E9E', 0.15),
-                  color: alpha('#9E9E9E', 0.4),
-                  boxShadow: 'none',
-                },
-              }}
-            >
-              {sendingMessage ? (
-                <CircularProgress size={20} thickness={4} sx={{ color: '#FFFFFF' }} />
-              ) : (
-                <Send sx={{ fontSize: 20 }} />
-              )}
-            </IconButton>
+            <Tooltip title={messageInput.trim() ? 'Enviar mensagem (Enter)' : 'Digite uma mensagem'}>
+              <span>
+                <IconButton
+                  onClick={handleSend}
+                  disabled={!messageInput.trim() || sendingMessage || disabled}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    flexShrink: 0,
+                    background: messageInput.trim() ? colors.gradient : alpha(colors.textMuted, 0.1),
+                    color: messageInput.trim() ? '#FFFFFF' : colors.textMuted,
+                    borderRadius: '14px',
+                    boxShadow: messageInput.trim() ? `0 4px 14px ${alpha(colors.primary, 0.35)}` : 'none',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      background: messageInput.trim() ? colors.gradient : alpha(colors.textMuted, 0.15),
+                      transform: messageInput.trim() ? 'translateY(-2px)' : 'none',
+                      boxShadow: messageInput.trim() ? `0 8px 24px ${alpha(colors.primary, 0.4)}` : 'none',
+                    },
+                    '&:active': {
+                      transform: 'scale(0.95)',
+                    },
+                    '&.Mui-disabled': {
+                      background: alpha(colors.textMuted, 0.08),
+                      color: alpha(colors.textMuted, 0.4),
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  {sendingMessage ? (
+                    <CircularProgress size={22} thickness={4} sx={{ color: '#FFFFFF' }} />
+                  ) : (
+                    <Send sx={{ fontSize: 22 }} />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
           </>
         )}
       </Box>
+
+      {/* Hint text for manual mode */}
+      {aiBlocked && (
+        <Typography
+          variant="caption"
+          sx={{
+            display: 'block',
+            textAlign: 'center',
+            mt: 1.5,
+            color: colors.textMuted,
+            fontSize: '0.7rem',
+          }}
+        >
+          Pressione <kbd style={{
+            padding: '2px 6px',
+            borderRadius: '4px',
+            background: alpha(colors.textMuted, 0.1),
+            border: `1px solid ${colors.border}`,
+            fontFamily: 'inherit',
+            fontSize: '0.65rem',
+          }}>Enter</kbd> para enviar ou <kbd style={{
+            padding: '2px 6px',
+            borderRadius: '4px',
+            background: alpha(colors.textMuted, 0.1),
+            border: `1px solid ${colors.border}`,
+            fontFamily: 'inherit',
+            fontSize: '0.65rem',
+          }}>Shift + Enter</kbd> para nova linha
+        </Typography>
+      )}
     </Box>
   );
 });

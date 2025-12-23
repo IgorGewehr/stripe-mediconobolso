@@ -13,7 +13,7 @@ import PatientsListCard from "../features/patients/PatientsList.jsx";
 import MobileConsultationCard from "../features/mobile/MobileConsultationCard";
 import MobilePatientsListCard from "../features/mobile/MobilePatientsListCard";
 import { useAuth } from "../providers";
-import FirebaseService from "../../../lib/firebaseService";
+import { usePatients, useAppointments } from "../hooks";
 import { format, addDays, subDays, startOfDay, isAfter } from 'date-fns';
 import MiniChatCard from "../features/shared/MiniChatCard";
 
@@ -36,31 +36,55 @@ const Dashboard = ({ onClickPatients }) => {
         visuallyCalledNumber: 0
     });
 
+    // Usar os novos hooks
+    const {
+        patients: hookPatients,
+        loading: loadingPatients,
+    } = usePatients({ autoLoad: true });
+
+    const {
+        appointments: hookAppointments,
+        loading: loadingAppointments,
+    } = useAppointments({ autoLoad: true });
+
+    // Sincronizar dados dos hooks com o estado local
     useEffect(() => {
-        const loadData = async () => {
-            if (!user?.uid) return;
+        if (!user?.uid) return;
 
-            setLoading(true);
-            try {
-                // Carregar consultas
-                const consultationsData = await FirebaseService.listAllConsultations(getEffectiveUserId());
-                setConsultations(consultationsData);
+        // Converter pacientes do hook para o formato esperado
+        if (hookPatients && hookPatients.length > 0) {
+            const convertedPatients = hookPatients.map(p => ({
+                ...p,
+                patientName: p.name || p.patientName,
+                patientEmail: p.email || p.patientEmail,
+                patientPhone: p.phone || p.patientPhone,
+            }));
+            setPatients(convertedPatients);
+        }
 
-                // Carregar pacientes
-                const patientsData = await FirebaseService.getPatientsByDoctor(getEffectiveUserId());
-                setPatients(patientsData);
+        // Converter appointments do hook para consultations
+        if (hookAppointments && hookAppointments.length > 0) {
+            const convertedConsultations = hookAppointments.map(apt => ({
+                ...apt,
+                consultationDate: apt.startTime || apt.consultationDate,
+                consultationTime: apt.startTime ? format(new Date(apt.startTime), 'HH:mm') : apt.consultationTime,
+            }));
+            setConsultations(convertedConsultations);
+        }
 
-                // Calcular métricas
-                calculateMetrics(consultationsData, patientsData);
-            } catch (error) {
-                console.error("Erro ao carregar dados do dashboard:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+        // Calcular métricas quando ambos estiverem disponíveis
+        if (hookPatients && hookAppointments) {
+            calculateMetrics(
+                hookAppointments.map(apt => ({
+                    ...apt,
+                    consultationDate: apt.startTime || apt.consultationDate,
+                })),
+                hookPatients
+            );
+        }
 
-        loadData();
-    }, [user]);
+        setLoading(loadingPatients || loadingAppointments);
+    }, [user, hookPatients, hookAppointments, loadingPatients, loadingAppointments]);
 
     const calculateMetrics = (consultationsData, patientsData) => {
         const today = startOfDay(new Date());

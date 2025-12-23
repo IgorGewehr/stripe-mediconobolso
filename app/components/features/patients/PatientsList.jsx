@@ -57,8 +57,8 @@ import {
 
 import { format, isToday, isPast, isValid, parse, differenceInYears, formatDistance, isAfter, isBefore, startOfDay, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FirebaseService from "../../../../lib/firebaseService";
 import { useAuth } from '../../providers/authProvider';
+import { usePatients, useAppointments } from '../../hooks';
 
 // Constantes
 const VIEW_OPTIONS = {
@@ -314,6 +314,19 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         return 'pendente';
     }, [getDateValue]);
 
+    // Hook de appointments para carregar consultas
+    const {
+        appointments: hookAppointments,
+        loading: loadingAppointmentsHook,
+        loadAppointmentsByPatient
+    } = useAppointments({ autoLoad: false });
+
+    // Hook de patients para operações de status
+    const {
+        updateStatus: updatePatientStatusHook,
+        getStatusHistory: getStatusHistoryHook,
+    } = usePatients({ autoLoad: false });
+
     // Carregar consultas se não foram fornecidas como props
     useEffect(() => {
         const fetchConsultations = async () => {
@@ -325,8 +338,16 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
 
             setLoadingConsultations(true);
             try {
-                const consultationsData = await FirebaseService.listAllConsultations(getEffectiveUserId());
-                setLocalConsultations(consultationsData);
+                // Usar o hook de appointments - carrega todas as consultas
+                // Como não temos um método para listar todas, usamos a prop consultations
+                // ou mantemos vazio para que o componente pai forneça
+                if (hookAppointments && hookAppointments.length > 0) {
+                    setLocalConsultations(hookAppointments.map(apt => ({
+                        ...apt,
+                        consultationDate: apt.startTime,
+                        patientId: apt.patientId,
+                    })));
+                }
             } catch (error) {
                 console.error("Erro ao carregar consultas:", error);
             } finally {
@@ -335,7 +356,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         };
 
         fetchConsultations();
-    }, [user, consultations]);
+    }, [user, consultations, hookAppointments]);
 
     // Mapeamento de pacientes e suas consultas
     const patientConsultations = useMemo(() => {
@@ -555,7 +576,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         setStatusHistoryLoading(true);
 
         try {
-            const history = await FirebaseService.getPatientStatusHistory(getEffectiveUserId(), patientId);
+            const history = await getStatusHistoryHook(patientId);
             setStatusHistory(history || []);
             return history;
         } catch (error) {
@@ -565,7 +586,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         } finally {
             setStatusHistoryLoading(false);
         }
-    }, [user]);
+    }, [user, getStatusHistoryHook]);
 
     // Manipuladores de eventos
     const handleSearchChange = useCallback((event) => {
@@ -620,7 +641,8 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         setStatusUpdateSuccess(false);
 
         try {
-            await FirebaseService.updatePatientStatus(getEffectiveUserId(), selectedPatient.id, [newStatus]);
+            // Usar o hook para atualizar status
+            await updatePatientStatusHook(selectedPatient.id, newStatus, '');
 
             // Atualizar o estado local dos pacientes para refletir a mudança
             setPatients(prevPatients =>
@@ -629,14 +651,6 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
                         ? { ...patient, statusList: [newStatus] }
                         : patient
                 )
-            );
-
-            // Adicionar ao histórico
-            await FirebaseService.addPatientStatusHistory(
-                getEffectiveUserId(),
-                selectedPatient.id,
-                newStatus,
-                ''
             );
 
             setStatusUpdateSuccess(true);
@@ -657,7 +671,7 @@ const PatientsListCard = ({ patients: initialPatients, consultations, loading, o
         } finally {
             setStatusUpdateLoading(false);
         }
-    }, [selectedPatient, newStatus, user]);
+    }, [selectedPatient, newStatus, user, updatePatientStatusHook]);
 
     const handleCloseDialog = useCallback(() => {
         if (statusUpdateLoading) return;

@@ -3,7 +3,6 @@
 import React, { memo } from 'react';
 import {
   Box,
-  Paper,
   Typography,
   Avatar,
   Chip,
@@ -13,11 +12,30 @@ import {
 import {
   Person,
   SmartToy,
-  Event,
-  LocalHospital
+  CalendarToday,
+  LocalHospital,
+  DoneAll,
+  AutoAwesome
 } from '@mui/icons-material';
 import { format, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+// Modern color palette
+const colors = {
+  primary: '#6366F1',
+  primaryLight: '#818CF8',
+  secondary: '#10B981',
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  border: '#E2E8F0',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+  clientBubble: '#FFFFFF',
+  doctorBubble: '#6366F1',
+  aiBubble: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
+  gradient: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A855F7 100%)',
+};
 
 // Safe date formatting
 const safeFormat = (date, formatStr) => {
@@ -52,18 +70,46 @@ const toDate = (value) => {
   return null;
 };
 
-// Date divider component
+// Date divider component - Modern design
 const DateDivider = memo(({ date }) => {
   return (
-    <Box display="flex" justifyContent="center" my={2}>
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      my={3}
+      sx={{ position: 'relative' }}
+    >
+      <Box
+        sx={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          height: 1,
+          bgcolor: alpha(colors.border, 0.5),
+        }}
+      />
       <Chip
         label={safeFormat(date, "EEEE, dd 'de' MMMM")}
         size="small"
-        icon={<Event fontSize="small" />}
+        icon={<CalendarToday sx={{ fontSize: '12px !important' }} />}
         sx={{
-          bgcolor: alpha('#4285F4', 0.1),
-          color: '#4285F4',
+          position: 'relative',
+          bgcolor: colors.surface,
+          color: colors.textSecondary,
           fontWeight: 600,
+          fontSize: '0.75rem',
+          height: 28,
+          borderRadius: '14px',
+          border: `1px solid ${colors.border}`,
+          boxShadow: `0 2px 8px ${alpha(colors.text, 0.06)}`,
+          '& .MuiChip-icon': {
+            color: colors.primary,
+            ml: 0.75,
+          },
+          '& .MuiChip-label': {
+            px: 1.5,
+          },
         }}
       />
     </Box>
@@ -71,35 +117,33 @@ const DateDivider = memo(({ date }) => {
 });
 DateDivider.displayName = 'DateDivider';
 
-// Client message component
+// Client message component - Modern design
 const ClientMessage = memo(({ text, mediaUrls, timestamp }) => {
   return (
-    <Box display="flex" justifyContent="flex-start" gap={1.5}>
+    <Box display="flex" justifyContent="flex-start" gap={1.5} mb={0.5}>
       <Avatar
         sx={{
-          bgcolor: alpha('#29B6F6', 0.1),
-          color: '#29B6F6',
           width: 36,
           height: 36,
+          bgcolor: alpha(colors.textSecondary, 0.1),
+          color: colors.textSecondary,
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          flexShrink: 0,
         }}
       >
-        <Person fontSize="small" />
+        <Person sx={{ fontSize: 18 }} />
       </Avatar>
 
-      <Paper
-        elevation={0}
+      <Box
         sx={{
-          p: 2,
-          maxWidth: '70%',
-          bgcolor: '#FFFFFF',
-          border: '1px solid #E5E7EB',
-          borderRadius: 2,
-          borderBottomLeftRadius: 4,
+          maxWidth: '75%',
+          position: 'relative',
         }}
       >
         {/* Media attachments */}
         {mediaUrls && mediaUrls.length > 0 && (
-          <Box mb={1}>
+          <Box mb={1} sx={{ borderRadius: '16px', overflow: 'hidden' }}>
             {mediaUrls.map((url, index) => (
               <Box
                 key={index}
@@ -108,49 +152,70 @@ const ClientMessage = memo(({ text, mediaUrls, timestamp }) => {
                 alt={`Anexo ${index + 1}`}
                 sx={{
                   maxWidth: '100%',
-                  borderRadius: 1,
-                  mb: 0.5
+                  borderRadius: '12px',
+                  mb: 0.5,
+                  boxShadow: `0 2px 8px ${alpha(colors.text, 0.1)}`,
                 }}
               />
             ))}
           </Box>
         )}
 
-        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {text}
-        </Typography>
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: 'block', mt: 1 }}
+        <Box
+          sx={{
+            p: 1.75,
+            bgcolor: colors.clientBubble,
+            borderRadius: '18px',
+            borderTopLeftRadius: '4px',
+            border: `1px solid ${colors.border}`,
+            boxShadow: `0 1px 2px ${alpha(colors.text, 0.04)}`,
+            position: 'relative',
+          }}
         >
-          {safeFormat(timestamp, 'dd/MM/yyyy HH:mm')}
-        </Typography>
-      </Paper>
+          <Typography
+            variant="body2"
+            sx={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              color: colors.text,
+              fontSize: '0.875rem',
+              lineHeight: 1.5,
+            }}
+          >
+            {text}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              mt: 1,
+              color: colors.textMuted,
+              fontSize: '0.7rem',
+            }}
+          >
+            {safeFormat(timestamp, 'HH:mm')}
+          </Typography>
+        </Box>
+      </Box>
     </Box>
   );
 });
 ClientMessage.displayName = 'ClientMessage';
 
-// Doctor/AI message component
+// Doctor/AI message component - Modern design
 const DoctorMessage = memo(({ text, mediaUrls, timestamp, isAI = false, functionsCalled }) => {
   return (
-    <Box display="flex" justifyContent="flex-end" gap={1.5}>
-      <Paper
-        elevation={0}
+    <Box display="flex" justifyContent="flex-end" gap={1.5} mb={0.5}>
+      <Box
         sx={{
-          p: 2,
-          maxWidth: '70%',
-          bgcolor: alpha('#4285F4', 0.08),
-          border: `1px solid ${alpha('#4285F4', 0.2)}`,
-          borderRadius: 2,
-          borderBottomRightRadius: 4,
+          maxWidth: '75%',
+          position: 'relative',
         }}
       >
         {/* Media attachments */}
         {mediaUrls && mediaUrls.length > 0 && (
-          <Box mb={1}>
+          <Box mb={1} sx={{ borderRadius: '16px', overflow: 'hidden' }}>
             {mediaUrls.map((url, index) => (
               <Box
                 key={index}
@@ -159,61 +224,104 @@ const DoctorMessage = memo(({ text, mediaUrls, timestamp, isAI = false, function
                 alt={`Anexo ${index + 1}`}
                 sx={{
                   maxWidth: '100%',
-                  borderRadius: 1,
-                  mb: 0.5
+                  borderRadius: '12px',
+                  mb: 0.5,
+                  boxShadow: `0 2px 8px ${alpha(colors.text, 0.1)}`,
                 }}
               />
             ))}
           </Box>
         )}
 
-        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {text}
-        </Typography>
-
-        <Stack direction="row" spacing={1} alignItems="center" mt={1}>
-          <Typography variant="caption" color="text.secondary">
-            {safeFormat(timestamp, 'dd/MM/yyyy HH:mm')}
+        <Box
+          sx={{
+            p: 1.75,
+            background: isAI ? colors.aiBubble : colors.doctorBubble,
+            borderRadius: '18px',
+            borderTopRightRadius: '4px',
+            boxShadow: `0 2px 12px ${alpha(isAI ? '#8B5CF6' : colors.primary, 0.25)}`,
+            position: 'relative',
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              color: '#FFFFFF',
+              fontSize: '0.875rem',
+              lineHeight: 1.5,
+            }}
+          >
+            {text}
           </Typography>
 
-          {isAI && (
-            <Chip
-              label="IA"
-              size="small"
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end" mt={1}>
+            <Typography
+              variant="caption"
               sx={{
-                height: 18,
-                fontSize: '0.65rem',
-                bgcolor: alpha('#9C27B0', 0.1),
-                color: '#9C27B0',
-                '& .MuiChip-label': { px: 0.75 },
+                color: alpha('#FFFFFF', 0.7),
+                fontSize: '0.7rem',
               }}
-            />
-          )}
+            >
+              {safeFormat(timestamp, 'HH:mm')}
+            </Typography>
 
-          {functionsCalled && functionsCalled.length > 0 && (
-            <Chip
-              label={`${functionsCalled.length} funcao(oes)`}
-              size="small"
-              variant="outlined"
-              sx={{
-                height: 18,
-                fontSize: '0.65rem',
-                '& .MuiChip-label': { px: 0.75 },
-              }}
-            />
-          )}
-        </Stack>
-      </Paper>
+            <DoneAll sx={{ fontSize: 14, color: alpha('#FFFFFF', 0.7) }} />
+
+            {isAI && (
+              <Chip
+                icon={<AutoAwesome sx={{ fontSize: '10px !important' }} />}
+                label="IA"
+                size="small"
+                sx={{
+                  height: 18,
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  bgcolor: alpha('#FFFFFF', 0.2),
+                  color: '#FFFFFF',
+                  border: `1px solid ${alpha('#FFFFFF', 0.3)}`,
+                  '& .MuiChip-icon': {
+                    color: '#FFFFFF',
+                    ml: 0.25,
+                  },
+                  '& .MuiChip-label': { px: 0.5 },
+                }}
+              />
+            )}
+
+            {functionsCalled && functionsCalled.length > 0 && (
+              <Chip
+                label={`${functionsCalled.length} ações`}
+                size="small"
+                sx={{
+                  height: 18,
+                  fontSize: '0.6rem',
+                  fontWeight: 600,
+                  bgcolor: alpha('#FFFFFF', 0.15),
+                  color: '#FFFFFF',
+                  border: `1px solid ${alpha('#FFFFFF', 0.25)}`,
+                  '& .MuiChip-label': { px: 0.5 },
+                }}
+              />
+            )}
+          </Stack>
+        </Box>
+      </Box>
 
       <Avatar
         sx={{
-          bgcolor: isAI ? alpha('#9C27B0', 0.1) : alpha('#4285F4', 0.1),
-          color: isAI ? '#9C27B0' : '#4285F4',
           width: 36,
           height: 36,
+          background: isAI ? colors.gradient : alpha(colors.primary, 0.15),
+          color: isAI ? '#FFFFFF' : colors.primary,
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          flexShrink: 0,
+          boxShadow: isAI ? `0 4px 12px ${alpha('#8B5CF6', 0.3)}` : 'none',
         }}
       >
-        {isAI ? <SmartToy fontSize="small" /> : <LocalHospital fontSize="small" />}
+        {isAI ? <SmartToy sx={{ fontSize: 18 }} /> : <LocalHospital sx={{ fontSize: 18 }} />}
       </Avatar>
     </Box>
   );

@@ -17,5 +17,17 @@ export { default as useWhatsAppStatus, WhatsAppStatusType } from './useWhatsAppS
 export { default as useAIBlockStatus } from './useAIBlockStatus';
 export { default as useNotificationSettings } from './useNotificationSettings';
 
+// Domain Hooks (API-based)
+export { default as usePatients } from './usePatients';
+export { default as useAppointments } from './useAppointments';
+export { default as usePrescriptions } from './usePrescriptions';
+export { default as useExams } from './useExams';
+export { default as useNotes } from './useNotes';
+export { default as useSecretary } from './useSecretary';
+
+// TISS/TUSS Hooks
+export { default as useTiss } from './useTiss';
+export { default as useTussAutocomplete } from './useTussAutocomplete';
+
 // Re-export auth hook from providers for convenience
 export { useAuth } from '../providers';

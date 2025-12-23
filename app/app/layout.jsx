@@ -23,7 +23,8 @@ import {
     AgendaComponente as AgendaMedica,
     UnifiedUserManagement,
     BottomNavigation,
-    SwipeableView
+    SwipeableView,
+    ConversationsTemplate
 } from "../components";
 import { useRouter } from "next/navigation";
 import '../styles/mobile-fixes.css';
@@ -398,6 +399,10 @@ export default function AppLayout({ children }) {
             case "doctor ai":
                 // IA disponível para todos
                 return <DoctorAITemplate />;
+
+            case "conversas":
+                // Conversas de WhatsApp/Facebook/Instagram
+                return <ConversationsTemplate />;
 
             case "central de ajuda":
                 // Suporte disponível para todos

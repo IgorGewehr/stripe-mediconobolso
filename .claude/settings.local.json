@@ -40,7 +40,13 @@
       "Bash(app/components/ui/inputs/SearchBar.jsx )",
       "Bash(app/components/ui/inputs/SearchField.jsx )",
       "Bash(app/app/layout.jsx)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(cargo new:*)",
+      "Bash(timeout 30s npm run build:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(timeout 60s npm run build:*)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }

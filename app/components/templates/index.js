@@ -34,3 +34,6 @@ export { default as UserProfileTemplate } from './userProfileTemplate';
 // Checkout & Payments
 export { default as CheckoutTemplate } from './checkout';
 export { default as CustomCheckout } from './customCheckout';
+
+// Conversations
+export { default as ConversationsTemplate } from './conversationsTemplate';

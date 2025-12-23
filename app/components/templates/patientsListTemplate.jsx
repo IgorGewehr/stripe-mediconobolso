@@ -98,9 +98,9 @@ import {
     formatDistance
 } from 'date-fns';
 import {ptBR} from 'date-fns/locale';
-import FirebaseService from "../../../lib/firebaseService";
 import {useAuth} from "../providers";
 import useModuleAccess from "../hooks/useModuleAccess";
+import { usePatients, useAppointments } from "../hooks";
 import SearchField from "../ui/inputs/SearchField";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
@@ -1068,6 +1068,20 @@ const PatientsListPage = ({onPatientClick}) => {
         return null;
     };
 
+    // Hooks para API
+    const {
+        patients: hookPatients,
+        loading: loadingPatients,
+        getStatusHistory: getStatusHistoryHook,
+        updateStatus: updateStatusHook,
+        loadPatients,
+    } = usePatients({ autoLoad: false });
+
+    const {
+        appointments: hookAppointments,
+        loading: loadingAppointments,
+    } = useAppointments({ autoLoad: false });
+
     const loadStatusHistory = useCallback(async (patientId) => {
         if (!patientId || !user?.uid) return;
 
@@ -1075,8 +1089,8 @@ const PatientsListPage = ({onPatientClick}) => {
         setStatusHistory([]); // Limpa histórico anterior
 
         try {
-            // Chamada para a função real do FirebaseService
-            const history = await FirebaseService.getPatientStatusHistory(getEffectiveUserId(), patientId);
+            // Usar o hook para obter histórico de status
+            const history = await getStatusHistoryHook(patientId);
 
             // Se chegamos aqui, temos dados reais ou um array vazio
             setStatusHistory(history || []);
@@ -1088,7 +1102,7 @@ const PatientsListPage = ({onPatientClick}) => {
         } finally {
             setStatusHistoryLoading(false);
         }
-    }, [user]);
+    }, [user, getStatusHistoryHook]);
 
     const handleStatusClick = useCallback((patient, currentStatus, event) => {
         event.stopPropagation();
@@ -1185,16 +1199,8 @@ const PatientsListPage = ({onPatientClick}) => {
             )
         );
 
-        // dispara atualização no Firebase
-        FirebaseService.updatePatientStatus(effectiveUserId, selectedPatient.id, [newStatus])
-            .then(() =>
-                FirebaseService.addPatientStatusHistory(
-                    effectiveUserId,
-                    selectedPatient.id,
-                    newStatus,
-                    ''
-                )
-            )
+        // dispara atualização usando o hook
+        updateStatusHook(selectedPatient.id, newStatus, '')
             .then(() => {
                 setStatusUpdateSuccess(true);
                 // Use apenas um timeout em vez de dois aninhados
@@ -1212,7 +1218,7 @@ const PatientsListPage = ({onPatientClick}) => {
     }, [selectedPatient, newStatus, getEffectiveUserId]);
 
 
-    // Carregar dados iniciais
+    // Carregar dados iniciais usando hooks
     useEffect(() => {
         const effectiveUserId = getEffectiveUserId();
         if (!effectiveUserId) return;
@@ -1220,32 +1226,10 @@ const PatientsListPage = ({onPatientClick}) => {
         const loadData = async () => {
             setLoading(true);
             try {
-                let patients = [];
+                // Carregar pacientes usando o hook
+                await loadPatients(1);
 
-                // Se tem filtros ativos, usa a API de filtragem
-                if (hasActiveFilters) {
-                    patients = await FirebaseService.filterPatients(getEffectiveUserId(), activeFilters);
-                } else {
-                    // Carrega todos os pacientes normalmente
-                    patients = await FirebaseService.getPatientsByDoctor(getEffectiveUserId());
-                }
-
-                // Atualiza o estado dos pacientes
-                setPatients(patients);
-
-                // Carrega as consultas para referência
-                const consultationsData = await FirebaseService.listAllConsultations(getEffectiveUserId());
-                setConsultations(consultationsData);
-
-                // Calcula métricas
-                calculateMetrics(patients, consultationsData);
-
-                // Atualiza os favoritos com base no campo "favorite"
-                const favPatients = patients
-                    .filter(patient => patient.favorite === true)
-                    .map(patient => patient.id);
-                setFavoritePatients(favPatients);
-
+                // Atualizar estado local quando os dados do hook chegarem
             } catch (error) {
                 console.error("Erro ao carregar dados de pacientes:", error);
             } finally {
@@ -1254,7 +1238,45 @@ const PatientsListPage = ({onPatientClick}) => {
         };
 
         loadData();
-    }, [getEffectiveUserId, hasActiveFilters, activeFilters]);
+    }, [getEffectiveUserId, loadPatients]);
+
+    // Sincronizar pacientes do hook com estado local
+    useEffect(() => {
+        if (hookPatients && hookPatients.length > 0) {
+            // Converter formato do hook para o formato esperado pelo componente
+            const convertedPatients = hookPatients.map(p => ({
+                ...p,
+                patientName: p.name || p.patientName,
+                patientEmail: p.email || p.patientEmail,
+                patientPhone: p.phone || p.patientPhone,
+                patientCPF: p.cpf || p.patientCPF,
+                favorite: p.isFavorite || p.favorite,
+                statusList: p.status ? [p.status] : p.statusList || [],
+            }));
+
+            setPatients(convertedPatients);
+
+            // Atualiza os favoritos
+            const favPatients = convertedPatients
+                .filter(patient => patient.favorite === true || patient.isFavorite === true)
+                .map(patient => patient.id);
+            setFavoritePatients(favPatients);
+
+            // Calcula métricas
+            calculateMetrics(convertedPatients, consultations);
+        }
+    }, [hookPatients]);
+
+    // Sincronizar appointments do hook com consultations locais
+    useEffect(() => {
+        if (hookAppointments && hookAppointments.length > 0) {
+            const convertedConsultations = hookAppointments.map(apt => ({
+                ...apt,
+                consultationDate: apt.startTime || apt.consultationDate,
+            }));
+            setConsultations(convertedConsultations);
+        }
+    }, [hookAppointments]);
 
     // Calcula métricas baseadas nos dados
     const calculateMetrics = (patientsData, consultationsData) => {

@@ -3,7 +3,6 @@
 import React, { memo } from 'react';
 import {
   Box,
-  Paper,
   Typography,
   Avatar,
   Chip,
@@ -20,33 +19,54 @@ import {
   Edit,
   WhatsApp,
   Facebook,
-  Instagram
+  Instagram,
+  Circle
 } from '@mui/icons-material';
-import { getStatusLabel, getStatusColor, getChannelConfig } from '@/lib/models/Conversation.model';
+import { getStatusLabel, getChannelConfig } from '@/lib/models/Conversation.model';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+// Modern color palette
+const colors = {
+  primary: '#6366F1',
+  primaryLight: '#818CF8',
+  secondary: '#10B981',
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  surfaceHover: '#F1F5F9',
+  border: '#E2E8F0',
+  borderLight: '#F1F5F9',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+  whatsapp: '#25D366',
+  facebook: '#1877F2',
+  instagram: '#E4405F',
+  gradient: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A855F7 100%)',
+};
+
 // Status icon component
 const StatusIcon = memo(({ status }) => {
+  const iconStyle = { fontSize: 12 };
   switch (status) {
     case 'active':
-      return <Schedule fontSize="small" />;
+      return <Circle sx={iconStyle} />;
     case 'completed':
-      return <CheckCircle fontSize="small" />;
+      return <CheckCircle sx={iconStyle} />;
     case 'success':
-      return <EmojiEvents fontSize="small" />;
+      return <EmojiEvents sx={iconStyle} />;
     case 'abandoned':
-      return <Cancel fontSize="small" />;
+      return <Cancel sx={iconStyle} />;
     case 'pending':
-      return <Schedule fontSize="small" />;
+      return <Schedule sx={iconStyle} />;
     default:
-      return null;
+      return <Circle sx={iconStyle} />;
   }
 });
 StatusIcon.displayName = 'StatusIcon';
 
-// Channel badge component
-const ChannelBadge = memo(({ channel }) => {
+// Channel icon only (no label for cleaner look)
+const ChannelIcon = memo(({ channel }) => {
   const channelType = channel || 'whatsapp';
   const config = getChannelConfig(channelType);
 
@@ -57,27 +77,22 @@ const ChannelBadge = memo(({ channel }) => {
   }[channelType] || WhatsApp;
 
   return (
-    <Chip
-      icon={<IconComponent sx={{ fontSize: 12 }} />}
-      label={config.label}
-      size="small"
+    <Box
       sx={{
-        height: 20,
-        fontSize: '0.65rem',
-        fontWeight: 600,
+        width: 18,
+        height: 18,
+        borderRadius: '5px',
         bgcolor: alpha(config.color, 0.1),
-        color: config.color,
-        border: `1px solid ${alpha(config.color, 0.3)}`,
-        '& .MuiChip-label': { px: 0.75 },
-        '& .MuiChip-icon': {
-          ml: 0.5,
-          color: config.color,
-        },
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
-    />
+    >
+      <IconComponent sx={{ fontSize: 11, color: config.color }} />
+    </Box>
   );
 });
-ChannelBadge.displayName = 'ChannelBadge';
+ChannelIcon.displayName = 'ChannelIcon';
 
 // Format timestamp
 const formatTimestamp = (timestamp) => {
@@ -93,16 +108,16 @@ const formatTimestamp = (timestamp) => {
   }
 };
 
-// Status colors mapping to MUI palette
+// Status colors mapping
 const getStatusMuiColor = (status) => {
-  const colors = {
-    active: '#FFA726',
-    completed: '#29B6F6',
-    success: '#66BB6A',
-    abandoned: '#EF5350',
-    pending: '#9E9E9E'
+  const statusColors = {
+    active: '#F59E0B',
+    completed: '#3B82F6',
+    success: '#10B981',
+    abandoned: '#EF4444',
+    pending: '#94A3B8'
   };
-  return colors[status] || colors.pending;
+  return statusColors[status] || statusColors.pending;
 };
 
 const ConversationItem = memo(({
@@ -114,65 +129,120 @@ const ConversationItem = memo(({
   onRename
 }) => {
   const statusColor = getStatusMuiColor(conversation.status);
+  const isUnread = conversation.isRead === false;
 
   return (
-    <Paper
+    <Box
       onClick={() => onSelect?.(conversation.id)}
       onContextMenu={(e) => onContextMenu?.(e, conversation.id)}
-      elevation={0}
       sx={{
-        p: 2,
-        mb: 1,
+        p: 1.5,
+        mb: 0.75,
         cursor: 'pointer',
-        borderLeft: 3,
-        borderColor: isSelected ? '#4285F4' : 'transparent',
+        borderRadius: '14px',
+        position: 'relative',
         bgcolor: isSelected
-          ? alpha('#4285F4', 0.08)
-          : conversation.isRead === false
-            ? alpha('#29B6F6', 0.05)
-            : '#FFFFFF',
-        borderRadius: '8px',
-        border: '1px solid #E5E7EB',
-        transition: 'all 0.15s ease-out',
+          ? alpha(colors.primary, 0.08)
+          : isUnread
+            ? alpha(colors.primary, 0.03)
+            : colors.surface,
+        border: `1.5px solid ${isSelected ? colors.primary : 'transparent'}`,
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        overflow: 'hidden',
         '&:hover': {
           bgcolor: isSelected
-            ? alpha('#4285F4', 0.12)
-            : alpha('#4285F4', 0.04),
-          transform: 'translateX(2px)',
-          boxShadow: '0 2px 8px rgba(17, 30, 90, 0.08)',
+            ? alpha(colors.primary, 0.12)
+            : colors.surfaceHover,
+          transform: 'translateY(-1px)',
+          boxShadow: `0 4px 20px ${alpha(colors.text, 0.08)}`,
+          '& .edit-button': {
+            opacity: 1,
+          },
         },
+        '&::before': isUnread && !isSelected ? {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 3,
+          height: '60%',
+          borderRadius: '0 4px 4px 0',
+          background: colors.gradient,
+        } : {},
       }}
     >
-      <Box display="flex" gap={1.5}>
-        <Badge
-          badgeContent={conversation.unreadCount}
-          color="error"
-          invisible={conversation.isRead !== false || conversation.unreadCount === 0}
-        >
-          <Avatar
+      <Box display="flex" gap={1.5} alignItems="flex-start">
+        {/* Avatar with badge */}
+        <Box sx={{ position: 'relative', flexShrink: 0 }}>
+          <Badge
+            badgeContent={conversation.unreadCount}
+            max={99}
             sx={{
-              bgcolor: alpha('#4285F4', 0.1),
-              color: '#4285F4',
+              '& .MuiBadge-badge': {
+                background: colors.gradient,
+                color: '#FFFFFF',
+                fontWeight: 700,
+                fontSize: '0.65rem',
+                minWidth: 18,
+                height: 18,
+                borderRadius: '9px',
+                border: `2px solid ${colors.surface}`,
+              },
+            }}
+            invisible={!isUnread || conversation.unreadCount === 0}
+          >
+            <Avatar
+              sx={{
+                width: 48,
+                height: 48,
+                background: isSelected ? colors.gradient : alpha(colors.primary, 0.1),
+                color: isSelected ? '#FFFFFF' : colors.primary,
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {(conversation.clientName || conversation.clientPhone)?.[0]?.toUpperCase() || <Person />}
+            </Avatar>
+          </Badge>
+          {/* Channel indicator */}
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: -2,
+              right: -2,
             }}
           >
-            <Person />
-          </Avatar>
-        </Badge>
+            <ChannelIcon channel={conversation.channel} />
+          </Box>
+        </Box>
 
+        {/* Content */}
         <Box flex={1} minWidth={0}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+          {/* Header row */}
+          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={0.25}>
             <Box display="flex" alignItems="center" gap={0.75} flex={1} minWidth={0}>
               <Typography
                 variant="subtitle2"
-                fontWeight={conversation.isRead === false ? 700 : 600}
                 noWrap
-                sx={{ flex: 1, minWidth: 0, color: '#111E5A' }}
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  color: colors.text,
+                  fontWeight: isUnread ? 700 : 600,
+                  fontSize: '0.9rem',
+                  letterSpacing: '-0.01em',
+                }}
               >
                 {conversation.clientName || conversation.clientPhone}
               </Typography>
+            </Box>
 
+            <Box display="flex" alignItems="center" gap={0.5}>
               {!isEdited && onRename && (
                 <IconButton
+                  className="edit-button"
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -181,12 +251,12 @@ const ConversationItem = memo(({
                   sx={{
                     width: 24,
                     height: 24,
-                    p: 0.5,
-                    opacity: 0.6,
-                    transition: 'all 0.15s',
+                    opacity: 0,
+                    transition: 'all 0.2s ease',
+                    color: colors.textSecondary,
                     '&:hover': {
-                      opacity: 1,
-                      bgcolor: alpha('#4285F4', 0.1),
+                      bgcolor: alpha(colors.primary, 0.1),
+                      color: colors.primary,
                     },
                   }}
                   title="Renomear conversa"
@@ -194,54 +264,81 @@ const ConversationItem = memo(({
                   <Edit sx={{ fontSize: 14 }} />
                 </IconButton>
               )}
+              <Typography
+                variant="caption"
+                sx={{
+                  color: isUnread ? colors.primary : colors.textMuted,
+                  fontWeight: isUnread ? 600 : 400,
+                  fontSize: '0.7rem',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {formatTimestamp(conversation.lastMessageAt)}
+              </Typography>
             </Box>
-
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ ml: 1, flexShrink: 0 }}
-            >
-              {formatTimestamp(conversation.lastMessageAt)}
-            </Typography>
           </Box>
 
+          {/* Message preview */}
           <Typography
             variant="body2"
-            color="text.secondary"
             noWrap
             sx={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              fontWeight: conversation.isRead === false ? 600 : 400,
+              color: isUnread ? colors.text : colors.textSecondary,
+              fontWeight: isUnread ? 500 : 400,
+              fontSize: '0.825rem',
+              lineHeight: 1.4,
+              mb: 0.75,
             }}
           >
-            {conversation.lastMessage || 'Sem mensagens'}
+            {conversation.lastMessage || 'Nenhuma mensagem ainda'}
           </Typography>
 
-          <Box display="flex" gap={0.5} mt={1} alignItems="center" flexWrap="wrap">
-            <ChannelBadge channel={conversation.channel} />
-
+          {/* Status and meta info */}
+          <Box display="flex" gap={0.75} alignItems="center">
+            {/* Status chip */}
             <Chip
-              label={getStatusLabel(conversation.status)}
               size="small"
               icon={<StatusIcon status={conversation.status} />}
+              label={getStatusLabel(conversation.status)}
               sx={{
-                height: 20,
+                height: 22,
+                borderRadius: '6px',
                 fontSize: '0.7rem',
+                fontWeight: 600,
                 bgcolor: alpha(statusColor, 0.1),
                 color: statusColor,
-                '& .MuiChip-label': { px: 1 },
-                '& .MuiChip-icon': { color: statusColor },
+                border: `1px solid ${alpha(statusColor, 0.2)}`,
+                '& .MuiChip-icon': {
+                  color: statusColor,
+                  ml: 0.5,
+                },
+                '& .MuiChip-label': {
+                  px: 0.75,
+                },
               }}
             />
 
-            <Typography variant="caption" color="text.secondary">
-              {conversation.messageCount || 0} {(conversation.messageCount || 0) === 1 ? 'msg' : 'msgs'}
-            </Typography>
+            {/* Message count */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.25,
+                color: colors.textMuted,
+                fontSize: '0.7rem',
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                {conversation.messageCount || 0}
+              </Typography>
+              <Typography variant="caption">
+                {(conversation.messageCount || 0) === 1 ? 'msg' : 'msgs'}
+              </Typography>
+            </Box>
           </Box>
         </Box>
       </Box>
-    </Paper>
+    </Box>
   );
 }, (prevProps, nextProps) => {
   // Custom comparison for better memoization
