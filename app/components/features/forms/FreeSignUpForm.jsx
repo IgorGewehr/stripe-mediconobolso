@@ -4,6 +4,7 @@ import React, {useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../providers/authProvider';
 import firebaseService from '../../../../lib/firebaseService';
+import { authApiService } from '../../../../lib/services/api';
 import {
     Box,
     TextField,
@@ -303,6 +304,13 @@ const FreeSignupForm = () => {
 
             console.log('✅ Cadastro gratuito com Google concluído');
 
+            // Provisionar usuário no backend Rust
+            await authApiService.provision({
+                name: user.displayName || user.email.split('@')[0],
+                email: user.email,
+                phone: user.phoneNumber || null,
+                plan_type: 'free'
+            });
 
             // Enviar emails de boas-vindas
             firebaseService.sendGoogleWelcomeEmails(
@@ -394,6 +402,21 @@ const FreeSignupForm = () => {
                 formData.password,
                 userData
             );
+
+            // Provisionar usuário no backend Rust
+            await authApiService.provision({
+                name: formData.fullName.trim(),
+                email: formData.email,
+                cpf: formData.cpf,
+                phone: formData.phone,
+                address: {
+                    cep: formData.cep,
+                    city: formData.city,
+                    state: formData.state,
+                    country: 'BR'
+                },
+                plan_type: 'free'
+            });
 
             // Enviar emails de boas-vindas
             const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;

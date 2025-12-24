@@ -36,6 +36,7 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import firebaseService from '../../../lib/firebaseService';
+import { authApiService } from '../../../lib/services/api';
 import { useAuth } from '../providers/authProvider';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -746,6 +747,14 @@ function CheckoutForm() {
                     userData
                 );
 
+                // Provisionar usuário no backend Rust
+                await authApiService.provision({
+                    name: formData.fullName.trim(),
+                    email: formData.email,
+                    phone: formData.phone,
+                    plan_type: planId
+                });
+
                 setSuccess('Conta criada com sucesso!');
                 setUserCreated(true);
             } catch (error) {
@@ -942,6 +951,14 @@ function CheckoutForm() {
                     formData.password,
                     userData
                 );
+
+                // Provisionar usuário no backend Rust
+                await authApiService.provision({
+                    name: formData.fullName.trim(),
+                    email: formData.email,
+                    phone: formData.phone,
+                    plan_type: selectedPlan
+                });
 
                 needsToWaitForAuth = true;
             }

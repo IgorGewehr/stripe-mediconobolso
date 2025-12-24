@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import React, { useState } from "react";
 import firebaseService from "../../../../lib/firebaseService";
+import { authApiService } from "../../../../lib/services/api";
 import { useRouter } from "next/navigation";
 import { useAuth } from '../../providers/authProvider';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -120,6 +121,16 @@ export const AuthForms = () => {
                     ? '🆕 Conta Google criada e Firestore inicializado'
                     : '✅ Login com Google concluído – usuário existente'
             );
+
+            // Se for novo usuário, provisionar no backend Rust
+            if (isNewUser) {
+                await authApiService.provision({
+                    name: user.displayName || user.email.split('@')[0],
+                    email: user.email,
+                    phone: user.phoneNumber || null,
+                    plan_type: 'free'
+                });
+            }
             // o AuthProvider observa a mudança e faz redirect automaticamente
         } catch (error) {
             console.error('❌ Erro no login/signup com Google:', error);
