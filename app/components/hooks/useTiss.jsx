@@ -2,324 +2,304 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../providers/authProvider';
-import tissService from '@/lib/services/tiss.service';
+
+/**
+ * TISS Module - DESABILITADO
+ *
+ * Este módulo está temporariamente desabilitado aguardando implementação
+ * completa dos endpoints no doctor-server.
+ *
+ * Para habilitar, defina TISS_ENABLED = true
+ */
+const TISS_ENABLED = false;
 
 /**
  * Hook para gerenciar operações TISS
  * Centraliza estado e lógica de negócios do módulo de faturamento
+ *
+ * NOTA: Módulo desabilitado - retorna dados vazios e funções no-op
  */
 export function useTiss() {
   const { user } = useAuth();
   const doctorId = user?.uid;
 
   // Estado geral
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loading] = useState(false);
+  const [error] = useState(null);
 
-  // Estados específicos
-  const [operadoras, setOperadoras] = useState([]);
-  const [guias, setGuias] = useState([]);
-  const [lotes, setLotes] = useState([]);
-  const [stats, setStats] = useState(null);
+  // Estados específicos - sempre vazios quando desabilitado
+  const [operadoras] = useState([]);
+  const [guias] = useState([]);
+  const [lotes] = useState([]);
+  const [stats] = useState(null);
+
+  // Se TISS estiver desabilitado, retornar funções que não fazem nada
+  if (!TISS_ENABLED) {
+    const noOp = async () => {
+      console.warn('[TISS] Módulo desabilitado - funcionalidade em desenvolvimento');
+      return null;
+    };
+
+    const noOpArray = async () => {
+      console.warn('[TISS] Módulo desabilitado - funcionalidade em desenvolvimento');
+      return [];
+    };
+
+    const noOpThrow = async () => {
+      throw new Error('Módulo TISS temporariamente desabilitado. Em breve estará disponível.');
+    };
+
+    return {
+      // Estado
+      loading: false,
+      error: null,
+      clearError: () => {},
+      operadoras: [],
+      guias: [],
+      lotes: [],
+      stats: null,
+
+      // Flag de status
+      isEnabled: false,
+      isDisabledMessage: 'Módulo de faturamento TISS em desenvolvimento. Em breve estará disponível.',
+
+      // Operadoras
+      fetchOperadoras: noOpArray,
+      searchOperadoras: noOpArray,
+
+      // Guias
+      fetchGuias: noOp,
+      createGuia: noOpThrow,
+      updateGuia: noOpThrow,
+      deleteGuia: noOpThrow,
+      validarGuia: noOpThrow,
+      addProcedimento: noOpThrow,
+
+      // Lotes
+      fetchLotes: noOp,
+      createLote: noOpThrow,
+      fecharLote: noOpThrow,
+      downloadLoteXml: noOpThrow,
+
+      // Beneficiários
+      listConveniosPaciente: noOpArray,
+      vincularPacienteConvenio: noOpThrow,
+
+      // TUSS
+      searchTussCodes: noOpArray,
+
+      // Estatísticas
+      fetchStats: noOp,
+
+      // Financeiro
+      getResumoFinanceiro: noOp,
+      getPrevisaoRecebimento: noOpArray,
+      criarContaDeLote: noOpThrow,
+      registrarRecebimento: noOpThrow,
+    };
+  }
+
+  // ===============================================================
+  // CÓDIGO ORIGINAL - SÓ EXECUTA SE TISS_ENABLED = true
+  // ===============================================================
+
+  // Importação dinâmica do serviço (só quando habilitado)
+  const [tissService, setTissService] = useState(null);
+
+  useEffect(() => {
+    if (TISS_ENABLED) {
+      import('@/lib/services/tiss.service').then(module => {
+        setTissService(module.default);
+      });
+    }
+  }, []);
 
   // Limpar erro
-  const clearError = useCallback(() => setError(null), []);
+  const clearError = useCallback(() => {}, []);
 
   // ==================== OPERADORAS ====================
 
   const fetchOperadoras = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    if (!tissService) return [];
     try {
       const response = await tissService.listOperadoras();
-      setOperadoras(response.data || []);
-      return response.data;
+      return response.data || [];
     } catch (err) {
-      setError(err.message);
       return [];
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [tissService]);
 
   const searchOperadoras = useCallback(async (termo) => {
+    if (!tissService) return [];
     try {
       const response = await tissService.searchOperadoras(termo);
       return response.data || [];
     } catch (err) {
-      console.error('Erro ao buscar operadoras:', err);
       return [];
     }
-  }, []);
+  }, [tissService]);
 
   // ==================== GUIAS ====================
 
   const fetchGuias = useCallback(async (filters = {}) => {
-    if (!doctorId) return [];
-
-    setLoading(true);
-    setError(null);
+    if (!doctorId || !tissService) return { items: [], pagination: null };
     try {
       const response = await tissService.listGuias({
         doctor_id: doctorId,
         ...filters,
       });
-      setGuias(response.data?.items || []);
       return response.data;
     } catch (err) {
-      setError(err.message);
       return { items: [], pagination: null };
-    } finally {
-      setLoading(false);
     }
-  }, [doctorId]);
+  }, [doctorId, tissService]);
 
   const createGuia = useCallback(async (guiaData) => {
-    if (!doctorId) throw new Error('Usuário não autenticado');
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await tissService.createGuia({
-        doctor_id: doctorId,
-        ...guiaData,
-      });
-      // Atualizar lista
-      await fetchGuias();
-      return response.data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [doctorId, fetchGuias]);
+    if (!doctorId || !tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.createGuia({
+      doctor_id: doctorId,
+      ...guiaData,
+    });
+    return response.data;
+  }, [doctorId, tissService]);
 
   const updateGuia = useCallback(async (id, data) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await tissService.updateGuia(id, data);
-      await fetchGuias();
-      return response.data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchGuias]);
+    if (!tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.updateGuia(id, data);
+    return response.data;
+  }, [tissService]);
 
   const deleteGuia = useCallback(async (id) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await tissService.deleteGuia(id);
-      await fetchGuias();
-      return true;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchGuias]);
+    if (!tissService) throw new Error('Serviço não disponível');
+    await tissService.deleteGuia(id);
+    return true;
+  }, [tissService]);
 
   const validarGuia = useCallback(async (id) => {
-    try {
-      const response = await tissService.validarGuia(id);
-      return response.data;
-    } catch (err) {
-      console.error('Erro ao validar guia:', err);
-      throw err;
-    }
-  }, []);
+    if (!tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.validarGuia(id);
+    return response.data;
+  }, [tissService]);
 
   const addProcedimento = useCallback(async (guiaId, procedimento) => {
-    try {
-      const response = await tissService.addProcedimentoToGuia(guiaId, procedimento);
-      return response.data;
-    } catch (err) {
-      console.error('Erro ao adicionar procedimento:', err);
-      throw err;
-    }
-  }, []);
+    if (!tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.addProcedimentoToGuia(guiaId, procedimento);
+    return response.data;
+  }, [tissService]);
 
   // ==================== LOTES ====================
 
   const fetchLotes = useCallback(async (filters = {}) => {
-    if (!doctorId) return [];
-
-    setLoading(true);
-    setError(null);
+    if (!doctorId || !tissService) return { items: [], pagination: null };
     try {
       const response = await tissService.listLotes({
         doctor_id: doctorId,
         ...filters,
       });
-      setLotes(response.data?.items || []);
       return response.data;
     } catch (err) {
-      setError(err.message);
       return { items: [], pagination: null };
-    } finally {
-      setLoading(false);
     }
-  }, [doctorId]);
+  }, [doctorId, tissService]);
 
   const createLote = useCallback(async (loteData) => {
-    if (!doctorId) throw new Error('Usuário não autenticado');
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await tissService.createLote({
-        doctor_id: doctorId,
-        ...loteData,
-      });
-      await fetchLotes();
-      return response.data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [doctorId, fetchLotes]);
+    if (!doctorId || !tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.createLote({
+      doctor_id: doctorId,
+      ...loteData,
+    });
+    return response.data;
+  }, [doctorId, tissService]);
 
   const fecharLote = useCallback(async (id, gerarXml = true) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await tissService.fecharLote(id, gerarXml);
-      await fetchLotes();
-      return response.data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchLotes]);
+    if (!tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.fecharLote(id, gerarXml);
+    return response.data;
+  }, [tissService]);
 
   const downloadLoteXml = useCallback(async (id) => {
-    try {
-      await tissService.downloadLoteXml(id);
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    }
-  }, []);
+    if (!tissService) throw new Error('Serviço não disponível');
+    await tissService.downloadLoteXml(id);
+  }, [tissService]);
 
   // ==================== BENEFICIÁRIOS ====================
 
   const listConveniosPaciente = useCallback(async (patientId) => {
-    if (!doctorId) return [];
-
+    if (!doctorId || !tissService) return [];
     try {
       const response = await tissService.listConveniosPaciente(doctorId, patientId);
       return response.data || [];
     } catch (err) {
-      console.error('Erro ao buscar convênios do paciente:', err);
       return [];
     }
-  }, [doctorId]);
+  }, [doctorId, tissService]);
 
   const vincularPacienteConvenio = useCallback(async (data) => {
-    if (!doctorId) throw new Error('Usuário não autenticado');
-
-    try {
-      const response = await tissService.vincularPacienteConvenio({
-        doctor_id: doctorId,
-        ...data,
-      });
-      return response.data;
-    } catch (err) {
-      console.error('Erro ao vincular paciente:', err);
-      throw err;
-    }
-  }, [doctorId]);
+    if (!doctorId || !tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.vincularPacienteConvenio({
+      doctor_id: doctorId,
+      ...data,
+    });
+    return response.data;
+  }, [doctorId, tissService]);
 
   // ==================== TUSS ====================
 
   const searchTussCodes = useCallback(async (termo, tipo = null) => {
+    if (!tissService) return [];
     try {
       const response = await tissService.searchTussCodes(termo, tipo);
       return response.data || [];
     } catch (err) {
-      console.error('Erro ao buscar códigos TUSS:', err);
       return [];
     }
-  }, []);
+  }, [tissService]);
 
   // ==================== ESTATÍSTICAS ====================
 
   const fetchStats = useCallback(async () => {
-    if (!doctorId) return null;
-
+    if (!doctorId || !tissService) return null;
     try {
       const response = await tissService.getStats(doctorId);
-      setStats(response.data);
       return response.data;
     } catch (err) {
-      console.error('Erro ao buscar estatísticas:', err);
       return null;
     }
-  }, [doctorId]);
+  }, [doctorId, tissService]);
 
   // ==================== FINANCEIRO ====================
 
   const getResumoFinanceiro = useCallback(async (dataInicio, dataFim) => {
-    if (!doctorId) return null;
-
+    if (!doctorId || !tissService) return null;
     try {
       const response = await tissService.getResumoFinanceiro(doctorId, dataInicio, dataFim);
       return response.data;
     } catch (err) {
-      console.error('Erro ao buscar resumo financeiro:', err);
       return null;
     }
-  }, [doctorId]);
+  }, [doctorId, tissService]);
 
   const getPrevisaoRecebimento = useCallback(async (meses = 3) => {
-    if (!doctorId) return [];
-
+    if (!doctorId || !tissService) return [];
     try {
       const response = await tissService.getPrevisaoRecebimento(doctorId, meses);
       return response.data || [];
     } catch (err) {
-      console.error('Erro ao buscar previsão:', err);
       return [];
     }
-  }, [doctorId]);
+  }, [doctorId, tissService]);
 
   const criarContaDeLote = useCallback(async (loteId, diasParaPagamento = 45) => {
-    try {
-      const response = await tissService.criarContaDeLote(loteId, diasParaPagamento);
-      return response.data;
-    } catch (err) {
-      console.error('Erro ao criar conta:', err);
-      throw err;
-    }
-  }, []);
+    if (!tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.criarContaDeLote(loteId, diasParaPagamento);
+    return response.data;
+  }, [tissService]);
 
   const registrarRecebimento = useCallback(async (contaId, data) => {
-    try {
-      const response = await tissService.registrarRecebimento(contaId, data);
-      return response.data;
-    } catch (err) {
-      console.error('Erro ao registrar recebimento:', err);
-      throw err;
-    }
-  }, []);
-
-  // Carregar dados iniciais
-  useEffect(() => {
-    if (doctorId) {
-      fetchOperadoras();
-      fetchStats();
-    }
-  }, [doctorId, fetchOperadoras, fetchStats]);
+    if (!tissService) throw new Error('Serviço não disponível');
+    const response = await tissService.registrarRecebimento(contaId, data);
+    return response.data;
+  }, [tissService]);
 
   return {
     // Estado
@@ -330,6 +310,10 @@ export function useTiss() {
     guias,
     lotes,
     stats,
+
+    // Flag de status
+    isEnabled: TISS_ENABLED,
+    isDisabledMessage: null,
 
     // Operadoras
     fetchOperadoras,

@@ -2,11 +2,13 @@
  * WhatsApp Session Reset API
  *
  * Endpoint for disconnecting/resetting WhatsApp session.
+ * Communicates with doctor-server WhatsApp endpoints.
  */
 
 import { NextResponse } from 'next/server';
 
-const WHATSAPP_SERVICE_URL = process.env.WHATSAPP_SERVICE_URL || 'http://localhost:3001';
+// Doctor-server API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 export async function POST(request) {
   try {
@@ -21,12 +23,11 @@ export async function POST(request) {
 
     console.log('[WhatsApp Reset] Resetting session for doctor:', doctorId.substring(0, 8) + '***');
 
-    // Call WhatsApp microservice to reset session
-    const response = await fetch(`${WHATSAPP_SERVICE_URL}/api/session/reset`, {
-      method: 'POST',
+    // Call doctor-server to disconnect session
+    const response = await fetch(`${API_URL}/whatsapp/sessions/${doctorId}`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'X-Tenant-Id': doctorId
       },
       signal: AbortSignal.timeout(15000)
     });
@@ -36,7 +37,7 @@ export async function POST(request) {
       throw new Error(errorData.error || 'Failed to reset session');
     }
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({ success: true }));
 
     return NextResponse.json({
       success: true,

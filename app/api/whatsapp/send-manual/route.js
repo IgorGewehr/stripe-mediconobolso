@@ -3,12 +3,13 @@
  *
  * Endpoint for sending manual messages through WhatsApp.
  * Used when AI is paused and doctor/secretary responds manually.
+ * Communicates with doctor-server WhatsApp endpoints.
  */
 
 import { NextResponse } from 'next/server';
-import { conversationService } from '@/lib/services/firebase';
 
-const WHATSAPP_SERVICE_URL = process.env.WHATSAPP_SERVICE_URL || 'http://localhost:3001';
+// Doctor-server API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 export async function POST(request) {
   try {
@@ -37,17 +38,20 @@ export async function POST(request) {
       messageLength: message.length
     });
 
-    // Send message through WhatsApp microservice
-    const response = await fetch(`${WHATSAPP_SERVICE_URL}/api/send`, {
+    // Send message through doctor-server WhatsApp endpoint
+    const response = await fetch(`${API_URL}/whatsapp/messages/${doctorId}/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Tenant-Id': doctorId
       },
       body: JSON.stringify({
-        phone,
-        message,
-        isManual: true
+        to: phone,
+        text: message,
+        type: 'text',
+        metadata: {
+          is_manual: true,
+          conversation_id: conversationId || null
+        }
       }),
       signal: AbortSignal.timeout(15000)
     });
@@ -59,22 +63,9 @@ export async function POST(request) {
 
     const data = await response.json();
 
-    // Save message to Firebase if conversationId is provided
-    if (conversationId) {
-      try {
-        await conversationService.addMessage(doctorId, conversationId, {
-          doctorMessage: message,
-          sender: 'doctor',
-          whatsappMessageId: data.messageId || null
-        });
-      } catch (dbError) {
-        console.warn('[WhatsApp Send] Failed to save message to Firebase:', dbError.message);
-      }
-    }
-
     return NextResponse.json({
-      success: true,
-      messageId: data.messageId || null,
+      success: data.success !== false,
+      messageId: data.message_id || null,
       message: 'Message sent successfully'
     });
   } catch (error) {

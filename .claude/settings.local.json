@@ -46,7 +46,10 @@
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
       "Bash(timeout 60s npm run build:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(timeout 120s npm run build:*)",
+      "Bash(cargo check:*)",
+      "Bash(openssl rand:*)"
     ],
     "deny": []
   }

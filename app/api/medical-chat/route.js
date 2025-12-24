@@ -1,170 +1,100 @@
-// app/api/medical-chat/route.js
+/**
+ * Medical Chat API - Proxy para doctor-server
+ *
+ * Endpoint que faz proxy das requisições de chat médico
+ * para o doctor-server, onde o GPT é executado.
+ */
+
 import { NextResponse } from 'next/server';
-import { OpenAI } from 'openai';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Rate limiting configuration
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute per user
-const userRequestCounts = new Map();
-
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [userId, data] of userRequestCounts.entries()) {
-        if (now - data.lastReset > RATE_LIMIT_WINDOW) {
-            userRequestCounts.delete(userId);
-        }
-    }
-}, 5 * 60 * 1000);
-
-function checkRateLimit(userId) {
-    const now = Date.now();
-    const userKey = userId || 'anonymous';
-    
-    if (!userRequestCounts.has(userKey)) {
-        userRequestCounts.set(userKey, {
-            count: 1,
-            lastReset: now
-        });
-        return true;
-    }
-    
-    const userData = userRequestCounts.get(userKey);
-    
-    // Reset if window has passed
-    if (now - userData.lastReset > RATE_LIMIT_WINDOW) {
-        userData.count = 1;
-        userData.lastReset = now;
-        return true;
-    }
-    
-    // Check if under limit
-    if (userData.count < RATE_LIMIT_MAX_REQUESTS) {
-        userData.count++;
-        return true;
-    }
-    
-    return false;
-}
-
-const MEDICAL_SYSTEM_PROMPT = `Você é um assistente médico especializado, desenvolvido para apoiar profissionais de saúde com informações precisas e baseadas em evidências.
-
-DIRETRIZES OBRIGATÓRIAS:
-- Respostas EXTREMAMENTE diretas e técnicas
-- Use terminologia médica adequada e precisa
-- Cite dosagens, posologias e protocolos quando relevante
-- Inclua contraindicações e interações importantes
-- Baseie-se em guidelines atuais e evidências científicas
-- Seja conciso - médicos precisam de informações rápidas
-- Sempre inclua alertas sobre monitoramento necessário
-- NÃO forneça diagnósticos definitivos - apenas oriente sobre possibilidades
-
-FORMATO DE RESPOSTA:
-- Vá direto ao ponto
-- Use bullet points quando necessário
-- Destaque informações críticas
-- Mencione quando é necessário avaliação presencial
-
-IMPORTANTE: Este é um auxílio para profissionais médicos qualificados. Decisões clínicas devem sempre considerar o contexto completo do paciente.`;
+// Doctor-server API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 export async function POST(req) {
-    try {
-        const { message, conversationHistory = [], userId } = await req.json();
+  try {
+    const { message, conversationHistory = [], userId, conversationId } = await req.json();
 
-        // Rate limiting check
-        if (!checkRateLimit(userId)) {
-            return NextResponse.json({
-                success: false,
-                error: 'Muitas solicitações. Aguarde um momento antes de tentar novamente.',
-                retryAfter: 60
-            }, { status: 429 });
-        }
-
-        if (!message || typeof message !== 'string' || message.trim() === '') {
-            return NextResponse.json({
-                success: false,
-                error: 'Mensagem não pode estar vazia'
-            }, { status: 400 });
-        }
-
-        // Verificar se a chave da API está configurada
-        if (!process.env.OPENAI_KEY) {
-            console.error('[MEDICAL_CHAT] OPENAI_KEY não configurada');
-            return NextResponse.json({
-                success: false,
-                error: 'Configuração da IA não encontrada'
-            }, { status: 500 });
-        }
-
-        // Criar cliente OpenAI
-        const openai = new OpenAI({
-            apiKey: process.env.OPENAI_KEY
-        });
-
-        // Construir mensagens para a API
-        const messages = [
-            {
-                role: "system",
-                content: MEDICAL_SYSTEM_PROMPT
-            }
-        ];
-
-        // Adicionar histórico da conversa (máximo 10 mensagens para controlar contexto)
-        const recentHistory = conversationHistory.slice(-10);
-        messages.push(...recentHistory);
-
-        // Adicionar mensagem atual
-        messages.push({
-            role: "user",
-            content: message.trim()
-        });
-
-        console.log(`[MEDICAL_CHAT] Processando pergunta médica: ${message.substring(0, 100)}...`);
-
-        // Fazer chamada à API OpenAI
-        const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages: messages,
-            temperature: 0.1, // Baixa variabilidade para respostas mais consistentes
-            max_tokens: 800,   // Limite para respostas concisas
-            presence_penalty: 0.1,
-            frequency_penalty: 0.1
-        });
-
-        const aiResponse = response.choices[0].message.content;
-
-        console.log(`[MEDICAL_CHAT] Resposta gerada: ${aiResponse.substring(0, 100)}...`);
-
-        return NextResponse.json({
-            success: true,
-            message: aiResponse,
-            tokensUsed: response.usage?.total_tokens || 0
-        });
-
-    } catch (error) {
-        console.error('[MEDICAL_CHAT] Erro ao processar chat médico:', error);
-
-        // Tratar erros específicos da OpenAI
-        if (error.code === 'insufficient_quota') {
-            return NextResponse.json({
-                success: false,
-                error: 'Limite de uso da IA atingido. Tente novamente mais tarde.'
-            }, { status: 429 });
-        }
-
-        if (error.code === 'context_length_exceeded') {
-            return NextResponse.json({
-                success: false,
-                error: 'Conversa muito longa. Por favor, reinicie o chat.'
-            }, { status: 400 });
-        }
-
-        return NextResponse.json({
-            success: false,
-            error: 'Erro interno do servidor. Tente novamente.'
-        }, { status: 500 });
+    const doctorId = req.headers.get('X-Doctor-Id') || userId;
+    if (!doctorId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Doctor ID é obrigatório'
+      }, { status: 400 });
     }
+
+    if (!message || typeof message !== 'string' || message.trim() === '') {
+      return NextResponse.json({
+        success: false,
+        error: 'Mensagem não pode estar vazia'
+      }, { status: 400 });
+    }
+
+    console.log(`[MEDICAL_CHAT] Processando pergunta médica: ${message.substring(0, 100)}...`);
+
+    // Enviar para doctor-server
+    const response = await fetch(`${API_URL}/ai/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        doctor_id: doctorId,
+        message: message.trim(),
+        conversation_history: conversationHistory,
+        conversation_id: conversationId || null
+      }),
+      signal: AbortSignal.timeout(60000) // 60 segundos timeout
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[MEDICAL_CHAT] Erro do doctor-server:', errorData);
+
+      // Tratar rate limiting do server
+      if (response.status === 429) {
+        return NextResponse.json({
+          success: false,
+          error: 'Muitas solicitações. Aguarde um momento antes de tentar novamente.',
+          retryAfter: errorData.retry_after || 60
+        }, { status: 429 });
+      }
+
+      throw new Error(errorData.error || `Erro do servidor: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`[MEDICAL_CHAT] Resposta recebida: ${(data.message || '').substring(0, 100)}...`);
+
+    return NextResponse.json({
+      success: true,
+      message: data.message || data.response || '',
+      tokensUsed: data.tokens_used || 0,
+      conversationId: data.conversation_id || conversationId
+    });
+
+  } catch (error) {
+    console.error('[MEDICAL_CHAT] Erro ao processar chat médico:', error);
+
+    if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Timeout na resposta. Tente novamente.'
+      }, { status: 504 });
+    }
+
+    if (error.message.includes('quota') || error.message.includes('limit')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Limite de uso da IA atingido. Tente novamente mais tarde.'
+      }, { status: 429 });
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: 'Erro interno do servidor. Tente novamente.'
+    }, { status: 500 });
+  }
 }

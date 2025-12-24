@@ -9,4 +9,5 @@ node_modules/
 .vercel
 .env
 .env*.local
+.env.production
 next-env.d.ts

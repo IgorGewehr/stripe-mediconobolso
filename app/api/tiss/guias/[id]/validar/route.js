@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
-    const response = await fetch(`${TISS_SERVICE_URL}/guias/${id}/validar`);
+    const response = await fetch(`${TISS_SERVICE_URL}/billing/guias/${id}/validar`);
     const data = await response.json();
 
     return NextResponse.json(data, { status: response.status });

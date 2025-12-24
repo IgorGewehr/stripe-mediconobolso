@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
-    const response = await fetch(`${TISS_SERVICE_URL}/guias/${id}/procedimentos`);
+    const response = await fetch(`${TISS_SERVICE_URL}/billing/guias/${id}/procedimentos`);
     const data = await response.json();
 
     return NextResponse.json(data, { status: response.status });
@@ -49,7 +49,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    const response = await fetch(`${TISS_SERVICE_URL}/guias/${id}/procedimentos`, {
+    const response = await fetch(`${TISS_SERVICE_URL}/billing/guias/${id}/procedimentos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

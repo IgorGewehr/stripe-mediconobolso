@@ -1,4 +1,4 @@
-// app/api/webhook/route.js - VERSÃO COMPLETA COM SUPORTE A BOLETO
+// app/api/webhook/route.js - VERSÃO COMPLETA COM SUPORTE A BOLETO E SYNC COM DOCTOR-SERVER
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '../../../lib/stripe';
@@ -6,6 +6,51 @@ import firebaseService from '../../../lib/firebaseService';
 import { firestore } from '../../../lib/firebase';
 import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { sendWelcomeEmail } from '../../../lib/emailService';
+
+// Doctor-server API URL para sincronização
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+
+/**
+ * Sincroniza evento de subscription com o doctor-server
+ * Isso mantém o PostgreSQL atualizado para consultas de status
+ */
+async function syncWithDoctorServer(eventType, data) {
+  try {
+    console.log(`🔄 Sincronizando com doctor-server: ${eventType}`);
+
+    const response = await fetch(`${API_URL}/subscriptions/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        event_type: eventType,
+        stripe_customer_id: data.stripeCustomerId,
+        stripe_subscription_id: data.stripeSubscriptionId,
+        firebase_uid: data.uid,
+        payment_status: data.paymentStatus,
+        plan_type: data.planType,
+        payment_method: data.paymentMethod,
+        amount: data.amount,
+        current_period_end: data.currentPeriodEnd,
+        customer_email: data.customerEmail,
+        customer_name: data.customerName,
+        metadata: data.metadata || {},
+      }),
+      signal: AbortSignal.timeout(10000), // 10s timeout
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      console.warn(`⚠️ Sync com doctor-server falhou: ${error.message || response.status}`);
+    } else {
+      console.log(`✅ Sync com doctor-server concluído`);
+    }
+  } catch (error) {
+    // Não falhar o webhook se sync falhar - é secundário
+    console.warn(`⚠️ Erro ao sincronizar com doctor-server: ${error.message}`);
+  }
+}
 
 // Função auxiliar para atualização com retry
 async function updateUserWithRetry(uid, userData, maxRetries = 3) {
@@ -196,6 +241,19 @@ async function processEvent(event) {
           try {
             await updateUserWithRetry(uid, userData);
 
+            // 🔄 Sync com doctor-server (PostgreSQL)
+            await syncWithDoctorServer('checkout.session.completed', {
+              uid,
+              stripeCustomerId: session.customer,
+              stripeSubscriptionId: session.subscription,
+              paymentStatus: session.payment_status,
+              planType: session.metadata?.plan || 'monthly',
+              paymentMethod: isBoletoPayment ? 'boleto' : 'card',
+              customerEmail: customerEmail,
+              customerName: customerName,
+              metadata: session.metadata,
+            });
+
             // Marcar como processado
             try {
               await stripe.checkout.sessions.update(session.id, {
@@ -263,6 +321,17 @@ async function processEvent(event) {
             }
 
             await updateUserWithRetry(uid, paymentData);
+
+            // 🔄 Sync com doctor-server
+            await syncWithDoctorServer('invoice.payment_succeeded', {
+              uid,
+              stripeCustomerId: invoice.customer,
+              stripeSubscriptionId: subscriptionId,
+              paymentStatus: 'paid',
+              paymentMethod: paymentMethod || 'card',
+              amount: invoice.amount_paid,
+            });
+
             console.log(`✅ Pagamento registrado para usuário ${uid}`);
           } else {
             // Tentar via customer
@@ -290,6 +359,19 @@ async function processEvent(event) {
               }
 
               await updateUserWithRetry(uid, paymentData);
+
+              // 🔄 Sync com doctor-server
+              await syncWithDoctorServer('invoice.payment_succeeded', {
+                uid,
+                stripeCustomerId: invoice.customer,
+                stripeSubscriptionId: subscriptionId,
+                paymentStatus: 'paid',
+                paymentMethod: paymentMethod || 'card',
+                amount: invoice.amount_paid,
+                customerEmail: customer.email,
+                customerName: customer.name,
+              });
+
               console.log(`✅ Pagamento registrado para usuário ${uid} (via customer)`);
             }
           }
@@ -400,25 +482,30 @@ async function processEvent(event) {
         const subscription = event.data.object;
         console.log(`⛔ Subscription canceled for customer: ${subscription.customer}`);
 
-        if (subscription.metadata && subscription.metadata.uid) {
-          const uid = subscription.metadata.uid;
+        let uid = subscription.metadata?.uid;
+
+        if (!uid) {
+          const customer = await stripe.customers.retrieve(subscription.customer);
+          uid = customer?.metadata?.uid;
+        }
+
+        if (uid) {
           await updateUserWithRetry(uid, {
             assinouPlano: false,
             canceledAt: new Date(),
             cancellationReason: subscription.cancellation_details?.reason || 'unknown'
           });
+
+          // 🔄 Sync com doctor-server
+          await syncWithDoctorServer('customer.subscription.deleted', {
+            uid,
+            stripeCustomerId: subscription.customer,
+            stripeSubscriptionId: subscription.id,
+            paymentStatus: 'cancelled',
+            cancellationReason: subscription.cancellation_details?.reason,
+          });
+
           console.log(`✅ Assinatura cancelada para usuário ${uid}`);
-        } else {
-          const customer = await stripe.customers.retrieve(subscription.customer);
-          if (customer && customer.metadata && customer.metadata.uid) {
-            const uid = customer.metadata.uid;
-            await updateUserWithRetry(uid, {
-              assinouPlano: false,
-              canceledAt: new Date(),
-              cancellationReason: subscription.cancellation_details?.reason || 'unknown'
-            });
-            console.log(`✅ Assinatura cancelada para usuário ${uid} (via customer)`);
-          }
         }
         break;
       }
@@ -432,24 +519,35 @@ async function processEvent(event) {
           status: subscription.status
         };
 
+        let planType = subscription.metadata?.plan;
         if (subscription.items && subscription.items.data.length > 0) {
           const price = subscription.items.data[0].price;
           if (price && price.metadata && price.metadata.plan) {
-            updatedData.planType = price.metadata.plan;
+            planType = price.metadata.plan;
+            updatedData.planType = planType;
           }
         }
 
-        if (subscription.metadata && subscription.metadata.uid) {
-          const uid = subscription.metadata.uid;
-          await updateUserWithRetry(uid, updatedData);
-          console.log(`✅ Assinatura atualizada para usuário ${uid}`);
-        } else {
+        let uid = subscription.metadata?.uid;
+        if (!uid) {
           const customer = await stripe.customers.retrieve(subscription.customer);
-          if (customer && customer.metadata && customer.metadata.uid) {
-            const uid = customer.metadata.uid;
-            await updateUserWithRetry(uid, updatedData);
-            console.log(`✅ Assinatura atualizada para usuário ${uid} (via customer)`);
-          }
+          uid = customer?.metadata?.uid;
+        }
+
+        if (uid) {
+          await updateUserWithRetry(uid, updatedData);
+
+          // 🔄 Sync com doctor-server
+          await syncWithDoctorServer('customer.subscription.updated', {
+            uid,
+            stripeCustomerId: subscription.customer,
+            stripeSubscriptionId: subscription.id,
+            paymentStatus: subscription.status,
+            planType: planType,
+            currentPeriodEnd: subscription.current_period_end,
+          });
+
+          console.log(`✅ Assinatura atualizada para usuário ${uid}`);
         }
         break;
       }

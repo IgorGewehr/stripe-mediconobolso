@@ -2,12 +2,21 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../providers/authProvider';
-import { conversationService } from '@/lib/services/firebase';
-import { ConversationStatus } from '@/lib/models/Conversation.model';
+import { conversationsService } from '@/lib/services/api/conversations.service';
+
+/**
+ * Conversation status constants
+ */
+export const ConversationStatus = {
+  ACTIVE: 'active',
+  COMPLETED: 'completed',
+  SUCCESS: 'success',
+  ABANDONED: 'abandoned'
+};
 
 /**
  * Hook for managing conversations state and operations
- * Provides real-time conversation updates and message handling
+ * Uses polling-based updates from doctor-server
  */
 const useConversations = (options = {}) => {
   const { autoLoad = true, limit = 50 } = options;
@@ -34,7 +43,7 @@ const useConversations = (options = {}) => {
   });
 
   /**
-   * Load conversations from Firebase
+   * Load conversations from API
    */
   const loadConversations = useCallback(async () => {
     if (!doctorId) return;
@@ -43,10 +52,10 @@ const useConversations = (options = {}) => {
     setError(null);
 
     try {
-      const data = await conversationService.listConversations(doctorId, {
+      const data = await conversationsService.listConversations(doctorId, {
         status: filters.status !== 'all' ? filters.status : undefined,
         channel: filters.channel !== 'all' ? filters.channel : undefined,
-        limitCount: limit
+        limit
       });
 
       setConversations(data);
@@ -73,11 +82,11 @@ const useConversations = (options = {}) => {
     setMessages([]);
 
     try {
-      const data = await conversationService.listMessages(doctorId, conversationId);
+      const data = await conversationsService.listMessages(doctorId, conversationId);
       setMessages(data);
 
       // Mark as read
-      await conversationService.markAsRead(doctorId, conversationId);
+      await conversationsService.markAsRead(doctorId, conversationId);
 
       // Update local state
       setConversations(prev => prev.map(c =>
@@ -113,7 +122,7 @@ const useConversations = (options = {}) => {
     if (!doctorId) return;
 
     try {
-      await conversationService.markAsRead(doctorId, conversationId);
+      await conversationsService.markAsRead(doctorId, conversationId);
       setConversations(prev => prev.map(c =>
         c.id === conversationId ? { ...c, isRead: true, unreadCount: 0 } : c
       ));
@@ -133,7 +142,7 @@ const useConversations = (options = {}) => {
     if (!doctorId) return;
 
     try {
-      await conversationService.markAsUnread(doctorId, conversationId);
+      await conversationsService.markAsUnread(doctorId, conversationId);
       const conversation = conversations.find(c => c.id === conversationId);
 
       setConversations(prev => prev.map(c =>
@@ -155,7 +164,7 @@ const useConversations = (options = {}) => {
     if (!doctorId) return;
 
     try {
-      await conversationService.updateStatus(doctorId, conversationId, status);
+      await conversationsService.updateStatus(doctorId, conversationId, status);
       setConversations(prev => prev.map(c =>
         c.id === conversationId ? { ...c, status } : c
       ));
@@ -175,7 +184,7 @@ const useConversations = (options = {}) => {
     if (!doctorId) return;
 
     try {
-      await conversationService.renameConversation(doctorId, conversationId, newName);
+      await conversationsService.renameConversation(doctorId, conversationId, newName);
       setConversations(prev => prev.map(c =>
         c.id === conversationId ? { ...c, clientName: newName } : c
       ));
@@ -196,7 +205,7 @@ const useConversations = (options = {}) => {
     if (!doctorId || !selectedConversation) return;
 
     try {
-      const newMessage = await conversationService.addMessage(doctorId, selectedConversation.id, {
+      const newMessage = await conversationsService.addMessage(doctorId, selectedConversation.id, {
         doctorMessage: message,
         sender: isSecretary ? 'secretary' : 'doctor',
         senderName: user?.displayName || user?.email || ''
@@ -267,32 +276,32 @@ const useConversations = (options = {}) => {
     }
   }, [autoLoad, doctorId, loadConversations]);
 
-  // Real-time subscription for conversations
+  // Polling-based subscription for conversations
   useEffect(() => {
     if (!autoLoad || !doctorId) return;
 
-    console.log('[useConversations] Setting up real-time listener');
+    console.log('[useConversations] Setting up polling listener');
 
-    const unsubscribe = conversationService.subscribeToConversations(doctorId, (data) => {
-      console.log('[useConversations] Real-time update:', data.length, 'conversations');
+    const unsubscribe = conversationsService.subscribeToConversations(doctorId, (data) => {
+      console.log('[useConversations] Polling update:', data.length, 'conversations');
       setConversations(data);
       setLoading(false);
       setHasMore(data.length === limit);
     }, limit);
 
     return () => {
-      console.log('[useConversations] Cleaning up listener');
+      console.log('[useConversations] Cleaning up polling');
       unsubscribe();
     };
   }, [autoLoad, doctorId, limit]);
 
-  // Real-time subscription for messages
+  // Polling-based subscription for messages
   useEffect(() => {
     if (!doctorId || !selectedConversation?.id) return;
 
-    console.log('[useConversations] Setting up message listener for:', selectedConversation.id);
+    console.log('[useConversations] Setting up message polling for:', selectedConversation.id);
 
-    const unsubscribe = conversationService.subscribeToMessages(
+    const unsubscribe = conversationsService.subscribeToMessages(
       doctorId,
       selectedConversation.id,
       (data) => {
@@ -303,10 +312,17 @@ const useConversations = (options = {}) => {
     );
 
     return () => {
-      console.log('[useConversations] Cleaning up message listener');
+      console.log('[useConversations] Cleaning up message polling');
       unsubscribe();
     };
   }, [doctorId, selectedConversation?.id]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      conversationsService.cleanup();
+    };
+  }, []);
 
   return {
     // State

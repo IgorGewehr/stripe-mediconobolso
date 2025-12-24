@@ -15,9 +15,9 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
 
-    let endpoint = '/operadoras';
+    let endpoint = '/convenios';
     if (search) {
-      endpoint = `/operadoras/search/${encodeURIComponent(search)}`;
+      endpoint = `/convenios?search=${encodeURIComponent(search)}`;
     }
 
     const response = await fetch(`${TISS_SERVICE_URL}${endpoint}`);
@@ -40,7 +40,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    const response = await fetch(`${TISS_SERVICE_URL}/operadoras`, {
+    const response = await fetch(`${TISS_SERVICE_URL}/convenios`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

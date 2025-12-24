@@ -1,116 +1,80 @@
-import { NextResponse } from 'next/server';
-import { OpenAI } from 'openai';
+/**
+ * Clinical Report API - Proxy para doctor-server
+ *
+ * Endpoint que faz proxy das requisições de relatório clínico
+ * para o doctor-server, onde o GPT é executado.
+ */
 
-// Declare a rota como dinâmica para o Netlify
+import { NextResponse } from 'next/server';
+
 export const dynamic = 'force-dynamic';
 
+// Doctor-server API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+
 export async function POST(req) {
-    try {
-        // Obter dados da requisição
-        const body = await req.json();
-        const { pacienteData, doctorId, patientId } = body;
+  try {
+    const body = await req.json();
+    const { pacienteData, doctorId, patientId } = body;
 
-        // Verificar se os dados necessários foram fornecidos
-        if (!pacienteData || !doctorId || !patientId) {
-            return NextResponse.json({
-                success: false,
-                error: 'Dados incompletos para gerar o relatório clínico'
-            }, { status: 400 });
-        }
-
-        // Verificar se a chave da API está configurada
-        if (!process.env.OPENAI_KEY) {
-            console.error('OPENAI_KEY não configurada');
-            return NextResponse.json({
-                success: false,
-                error: 'Configuração da API de IA não encontrada'
-            }, { status: 500 });
-        }
-
-        // Criar cliente OpenAI
-        const openai = new OpenAI({
-            apiKey: process.env.OPENAI_KEY
-        });
-
-        // Prompt System aprimorado para a IA - mais focado e eficiente
-        const systemPrompt = `Você é um assistente médico especializado em análise de dados clínicos que gera resumos precisos e úteis.
-
-Analise os dados do paciente fornecidos e produza um relatório clínico CONCISO e OBJETIVO com insights relevantes.
-
-DIRETRIZES IMPORTANTES:
-1. Seja BREVE e DIRETO - priorize insights críticos sobre detalhes exaustivos
-2. Foque em ANOMALIAS e PADRÕES importantes, não liste dados normais
-3. Evite linguagem excessivamente técnica - seja claro e acessível
-4. Nunca invente informações - se faltar dados, indique explicitamente
-5. Identifique possíveis CORRELAÇÕES entre diferentes aspectos clínicos
-
-ESTRUTURA DO RELATÓRIO (JSON):
-- profileSummary: Resumo do perfil (máximo 3-4 frases, foco em condições principais)
-- alerts: Lista com 0-3 alertas críticos (array de strings curtas)
-- examAnalysis: Análise de exames (máximo 3-4 frases, destaque valores anormais)
-- medicationAnalysis: Análise de medicações (máximo 2-3 frases, foco em interações)
-- recommendations: Lista de 2-5 recomendações clínicas objetivas (array de strings curtas)
-- generatedAt: Timestamp atual
-
-IMPORTANTE:
-- Mantenha cada campo do relatório extremamente CONCISO
-- Foque em INSIGHTS PRÁTICOS, não apenas resumir dados
-- Destaque TENDÊNCIAS e MUDANÇAS IMPORTANTES
-- Cada alerta e recomendação deve ter no máximo 12 palavras
-- Priorize os dados marcados com "hasAbnormalResults: true" ou "priority_data_flags"
-
-Seu relatório será usado por médicos ocupados que precisam de informações críticas rapidamente.`;
-
-        // Criar o prompt do usuário com os dados do paciente
-        const userPrompt = JSON.stringify(pacienteData);
-
-        // Fazer chamada à API OpenAI com parâmetros otimizados
-        const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt }
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.2,  // Valor baixo para respostas mais determinísticas e precisas
-            max_tokens: 1200   // Limitar número de tokens para forçar concisão
-        });
-
-        // Extrair e validar o JSON retornado
-        const resultText = response.choices[0].message.content;
-
-        try {
-            const data = JSON.parse(resultText);
-
-            // Validar a estrutura mínima do relatório
-            if (!data.profileSummary || !Array.isArray(data.alerts) || !Array.isArray(data.recommendations)) {
-                throw new Error("Estrutura de dados do relatório inválida");
-            }
-
-            // Garantir que campos vazios tenham valores padrão
-            data.examAnalysis = data.examAnalysis || "Não há dados de exames suficientes para análise.";
-            data.medicationAnalysis = data.medicationAnalysis || "Não há dados de medicações suficientes para análise.";
-
-            // Adicionar informações de timestamp
-            data.generatedAt = new Date().toISOString();
-
-            return NextResponse.json({
-                success: true,
-                data: data
-            });
-        } catch (parseError) {
-            console.error("Erro ao processar resposta da IA:", parseError, resultText);
-            return NextResponse.json({
-                success: false,
-                error: "Erro ao processar resposta da IA. Por favor, tente novamente."
-            }, { status: 500 });
-        }
-    } catch (error) {
-        console.error('Erro ao processar relatório:', error);
-
-        return NextResponse.json({
-            success: false,
-            error: 'Erro ao gerar relatório clínico: ' + (error.message || 'Erro desconhecido')
-        }, { status: 500 });
+    if (!pacienteData || !doctorId || !patientId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Dados incompletos para gerar o relatório clínico'
+      }, { status: 400 });
     }
+
+    console.log(`[RELATORIO_API] Gerando relatório para paciente: ${patientId}`);
+
+    // Enviar para doctor-server
+    const response = await fetch(`${API_URL}/ai/clinical-summary`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        doctor_id: doctorId,
+        patient_id: patientId,
+        patient_data: pacienteData
+      }),
+      signal: AbortSignal.timeout(60000) // 60 segundos timeout
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[RELATORIO_API] Erro do doctor-server:', errorData);
+      throw new Error(errorData.error || `Erro do servidor: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[RELATORIO_API] Relatório gerado com sucesso');
+
+    // Normalizar resposta para o formato esperado pelo frontend
+    return NextResponse.json({
+      success: true,
+      data: {
+        profileSummary: data.profile_summary || data.profileSummary || '',
+        alerts: data.alerts || [],
+        examAnalysis: data.exam_analysis || data.examAnalysis || 'Não há dados de exames suficientes para análise.',
+        medicationAnalysis: data.medication_analysis || data.medicationAnalysis || 'Não há dados de medicações suficientes para análise.',
+        recommendations: data.recommendations || [],
+        generatedAt: data.generated_at || data.generatedAt || new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('[RELATORIO_API] Erro ao processar relatório:', error);
+
+    if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Timeout na geração do relatório. Tente novamente.'
+      }, { status: 504 });
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: 'Erro ao gerar relatório clínico: ' + (error.message || 'Erro desconhecido')
+    }, { status: 500 });
+  }
 }

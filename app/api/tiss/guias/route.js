@@ -38,7 +38,7 @@ export async function GET(request) {
     });
 
     const response = await fetch(
-      `${TISS_SERVICE_URL}/guias?${queryParams.toString()}`
+      `${TISS_SERVICE_URL}/billing/guias?${queryParams.toString()}`
     );
     const data = await response.json();
 
@@ -73,7 +73,7 @@ export async function POST(request) {
       );
     }
 
-    const response = await fetch(`${TISS_SERVICE_URL}/guias`, {
+    const response = await fetch(`${TISS_SERVICE_URL}/billing/guias`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
