@@ -217,11 +217,11 @@ const TopAppBar = ({
             </Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: isMobile ? "8px" : "12px" }}>
-                {/* WhatsApp Status Button */}
-                <WhatsAppStatusButton variant={isMobile ? "chip" : "button"} />
-
                 {/* Componente de notificação */}
                 <NotificationComponent onMessageClick={handleNotificationClick} />
+
+                {/* WhatsApp Status Button */}
+                <WhatsAppStatusButton variant={isMobile ? "chip" : "button"} />
 
                 {/* Botões de ação - ocultos no mobile ou simplificados */}
                 {!isMobile && (
