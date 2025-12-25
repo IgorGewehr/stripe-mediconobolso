@@ -49,7 +49,7 @@ import {
     Security as SecurityIcon
 } from '@mui/icons-material';
 
-import firebaseService from '../../../../lib/firebaseService';
+import { adminService } from '@/lib/services/firebase';
 import moduleService from '../../../../lib/moduleService';
 // Definições locais dos módulos - removido moduleConfig
 const MODULE_INFO = {
@@ -165,7 +165,7 @@ const ModuleAdminPanel = () => {
 
         setLoading(true);
         try {
-            const usersList = await firebaseService.listAllUsers(100, null, searchTerm);
+            const usersList = await adminService.listAllUsers(100, null, searchTerm);
             setUsers(usersList);
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);

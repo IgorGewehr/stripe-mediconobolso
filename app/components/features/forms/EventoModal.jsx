@@ -33,7 +33,7 @@ import {
     MoreVert as MoreVertIcon,
     Assignment as AssignmentIcon
 } from '@mui/icons-material';
-import FirebaseService from '../../../../lib/firebaseService';
+import { patientsService } from '../../../../lib/services/firebase';
 import { consultationModel } from '../../../../lib/modelObjects';
 import { useAuth } from '../../providers/authProvider';
 import useModuleAccess from '../../hooks/useModuleAccess';
@@ -220,9 +220,9 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                 }
 
                 console.log('🏥 Carregando pacientes para médico:', doctorId, '(secretária:', isSecretary, ')');
-                
+
                 // Carregar pacientes do médico
-                const patientsData = await FirebaseService.getPatientsByDoctor(doctorId);
+                const patientsData = await patientsService.getPatientsByDoctor(doctorId);
                 setPacientes(patientsData || []);
 
                 // Preparar opções para o Autocomplete

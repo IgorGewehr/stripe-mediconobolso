@@ -24,7 +24,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Firebase service
-import FirebaseService from "../../../../lib/firebaseService";
+import { prescriptionsService } from '@/lib/services/firebase';
 
 const ReceitaViewer = ({ receitaData, typeColor, onOpenPdf }) => {
     const theme = useTheme();
@@ -46,7 +46,7 @@ const ReceitaViewer = ({ receitaData, typeColor, onOpenPdf }) => {
                 if (receitaData.prescriptionId && !receitaData.tipo) {
                     try {
                         // Tentar buscar dados completos da receita
-                        const fullData = await FirebaseService.getPrescription(
+                        const fullData = await prescriptionsService.getPrescription(
                             receitaData.doctorId,
                             receitaData.patientId,
                             receitaData.prescriptionId

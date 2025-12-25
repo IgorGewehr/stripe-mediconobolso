@@ -3,7 +3,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore"; // ✅ IMPORTS CORRIGIDOS
-import firebaseService from "../../../lib/firebaseService";
+import { authService, secretaryService } from "../../../lib/services/firebase";
+import { auth, firestore } from "../../../lib/config/firebase.config";
 import moduleService from "../../../lib/moduleService";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import presenceService from "../../../lib/presenceService";
@@ -145,7 +146,7 @@ export const AuthProvider = ({ children }) => {
                 userData.referralSource = currentReferralSource;
             }
 
-            await firebaseService.editUserData(authUser.uid, userData);
+            await authService.editUserData(authUser.uid, userData);
             console.log('✅ Dados básicos criados para usuário órfão');
 
             return userData;
@@ -183,7 +184,7 @@ export const AuthProvider = ({ children }) => {
 
                 if (migrationResult.success) {
                     console.log(`✅ Usuário novo migrado para plano: ${planType}`);
-                    const updatedUserData = await firebaseService.getUserData(uid);
+                    const updatedUserData = await authService.getUserData(uid);
                     return updatedUserData;
                 }
             }
@@ -241,7 +242,7 @@ export const AuthProvider = ({ children }) => {
                 let doctorData;
 
                 try {
-                    doctorData = await firebaseService.getUserData(userId);
+                    doctorData = await authService.getUserData(userId);
                 } catch (error) {
                     console.log('⚠️ Não encontrado na collection users:', error.message);
                 }
@@ -262,7 +263,7 @@ export const AuthProvider = ({ children }) => {
 
                 // ✅ SE NÃO É MÉDICO, VERIFICAR SE É SECRETÁRIA
                 console.log('🔍 Não é médico, verificando se é secretária...');
-                const secretaryRef = doc(firebaseService.firestore, "secretaries", userId);
+                const secretaryRef = doc(firestore, "secretaries", userId);
                 const secretarySnap = await getDoc(secretaryRef);
 
                 if (secretarySnap.exists()) {
@@ -273,7 +274,7 @@ export const AuthProvider = ({ children }) => {
                     }
 
                     // Buscar dados do médico responsável
-                    const doctorData = await firebaseService.getUserData(secretaryData.doctorId);
+                    const doctorData = await authService.getUserData(secretaryData.doctorId);
                     if (!doctorData) {
                         throw new Error("Médico responsável não encontrado");
                     }
@@ -398,7 +399,7 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log('🔄 Iniciando criação de secretária via AuthProvider...');
 
-            const result = await firebaseService.createSecretaryAccount(
+            const result = await secretaryService.createSecretaryAccount(
                 workingDoctorId || user.uid,
                 secretaryData
             );
@@ -530,7 +531,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(displayUserData);
 
                 // ✅ REGISTRAR LOGIN (NÃO BLOQUEANTE)
-                firebaseService.registerDetailedLogin(
+                authService.registerDetailedLogin(
                     authUser.uid,
                     authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email'
                 ).catch((loginError) => {
@@ -610,7 +611,7 @@ export const AuthProvider = ({ children }) => {
 
         // ✅ CONFIGURAR LISTENER
         try {
-            unsubscribe = onAuthStateChanged(firebaseService.auth, async (authUser) => {
+            unsubscribe = onAuthStateChanged(auth, async (authUser) => {
                 if (!isMounted) return;
 
                 try {
@@ -654,7 +655,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const result = await firebaseService.updateSecretaryPermissions(
+            const result = await secretaryService.updateSecretaryPermissions(
                 workingDoctorId || user.uid,
                 secretaryId,
                 newPermissions
@@ -680,7 +681,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const result = await firebaseService.deactivateSecretaryAccount(
+            const result = await secretaryService.deactivateSecretaryAccount(
                 workingDoctorId || user.uid,
                 secretaryId
             );
@@ -693,7 +694,7 @@ export const AuthProvider = ({ children }) => {
             invalidateVerificationCache(doctorId);
 
             // Atualizar dados do usuário
-            const updatedUserData = await firebaseService.getUserData(doctorId);
+            const updatedUserData = await authService.getUserData(doctorId);
             setUser(prev => ({ ...prev, ...updatedUserData }));
 
             return result;
@@ -741,7 +742,7 @@ export const AuthProvider = ({ children }) => {
                 setPresenceInitialized(false);
             }
 
-            await signOut(firebaseService.auth);
+            await signOut(auth);
 
             // Limpar todos os estados
             setUserContext(null);
@@ -969,7 +970,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const result = await moduleService.setCustomModules(user.uid, modules, limitations);
             if (result.success) {
-                const updatedUserData = await firebaseService.getUserData(user.uid);
+                const updatedUserData = await authService.getUserData(user.uid);
                 setUser({ uid: user.uid, ...updatedUserData });
 
                 // Limpar cache do contexto
@@ -988,9 +989,9 @@ export const AuthProvider = ({ children }) => {
         if (!user?.uid) return false;
 
         try {
-            const result = await firebaseService.updateUserPlan(user.uid, newPlanType);
+            const result = await authService.updateUserPlan(user.uid, newPlanType);
             if (result.success) {
-                const updatedUserData = await firebaseService.getUserData(user.uid);
+                const updatedUserData = await authService.getUserData(user.uid);
                 setUser({ uid: user.uid, ...updatedUserData });
 
                 // Limpar cache do contexto
@@ -1026,7 +1027,7 @@ export const AuthProvider = ({ children }) => {
 
             const result = await moduleService.updateUserModulesFromPlan(user.uid, planType);
             if (result.success) {
-                const updatedUserData = await firebaseService.getUserData(user.uid);
+                const updatedUserData = await authService.getUserData(user.uid);
                 setUser({ uid: user.uid, ...updatedUserData });
 
                 // Limpar cache do contexto

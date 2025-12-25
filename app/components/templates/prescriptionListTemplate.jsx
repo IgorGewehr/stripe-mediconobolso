@@ -79,7 +79,7 @@ import {
 
 import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, differenceInMonths, differenceInDays, subDays, addDays, isAfter, isBefore, formatDistance, isWithinInterval, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FirebaseService from "../../../lib/firebaseService";
+import { prescriptionsService, patientsService } from '@/lib/services/firebase';
 import { useAuth } from "../providers/authProvider";
 
 // Constantes para o componente
@@ -562,11 +562,11 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
             setLoading(true);
             try {
                 // Carrega a lista de prescrições
-                const prescriptionsData = await FirebaseService.listAllPrescriptions(getEffectiveUserId());
+                const prescriptionsData = await prescriptionsService.listAllPrescriptions(getEffectiveUserId());
                 setPrescriptions(prescriptionsData);
 
                 // Carrega informações de pacientes para referência
-                const patients = await FirebaseService.listPatients(getEffectiveUserId());
+                const patients = await patientsService.listPatients(getEffectiveUserId());
                 const patientsMapData = {};
                 patients.forEach(patient => {
                     patientsMapData[patient.id] = patient;
@@ -931,7 +931,7 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
 
         try {
             // Em produção, atualizaria no Firebase
-            // await FirebaseService.updatePrescriptionFavoriteStatus(getEffectiveUserId(), prescriptionId, newFavoriteStatus);
+            // await prescriptionsService.updatePrescriptionFavoriteStatus(getEffectiveUserId(), prescriptionId, newFavoriteStatus);
             console.log(`Prescrição ${prescriptionId} ${newFavoriteStatus ? 'adicionada aos' : 'removida dos'} favoritos`);
         } catch (error) {
             console.error("Erro ao atualizar favorito:", error);

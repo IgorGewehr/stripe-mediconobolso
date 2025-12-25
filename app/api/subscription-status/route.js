@@ -1,7 +1,7 @@
 // app/api/subscription-status/route.js - VERSÃO CORRIGIDA
 import { NextResponse } from 'next/server';
 import { stripe } from '../../../lib/stripe';
-import firebaseService from '../../../lib/firebaseService';
+import { authService } from '../../../lib/services/firebase';
 
 export async function GET(req) {
     try {
@@ -18,7 +18,7 @@ export async function GET(req) {
         console.log(`🔍 Buscando status da assinatura para usuário: ${uid}`);
 
         // 1. Buscar dados do usuário no Firebase
-        const userData = await firebaseService.getUserData(uid);
+        const userData = await authService.getUserData(uid);
 
         if (!userData) {
             return NextResponse.json(

@@ -16,7 +16,7 @@ import {
     IconButton
 } from "@mui/material";
 import React, { useState } from "react";
-import firebaseService from "../../../../lib/firebaseService";
+import { authService } from "../../../../lib/services/firebase";
 import { authApiService } from "../../../../lib/services/api";
 import { useRouter } from "next/navigation";
 import { useAuth } from '../../providers/authProvider';
@@ -69,7 +69,7 @@ export const AuthForms = () => {
             return;
         }
         try {
-            await firebaseService.sendPasswordResetEmail(formData.email);
+            await authService.sendPasswordResetEmail(formData.email);
             setPasswordResetSent(true);
             setTimeout(() => setPasswordResetSent(false), 6000);
         } catch (error) {
@@ -90,7 +90,7 @@ export const AuthForms = () => {
         }
 
         try {
-            await firebaseService.login(formData.email, formData.password);
+            await authService.login(formData.email, formData.password);
             // O redirecionamento é tratado pelo AuthProvider
         } catch (error) {
             console.error("Erro no login:", error);
@@ -114,7 +114,7 @@ export const AuthForms = () => {
 
         try {
             console.log('🔄 Iniciando login/signup com Google...');
-            const { user, isNewUser } = await firebaseService.loginWithGoogle();
+            const { user, isNewUser } = await authService.loginWithGoogle();
 
             console.log(
                 isNewUser

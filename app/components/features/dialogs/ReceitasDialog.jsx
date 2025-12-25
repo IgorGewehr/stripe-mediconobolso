@@ -62,7 +62,7 @@ import { format, addDays, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import FirebaseService from "../../../../lib/firebaseService";
+import { patientsService, prescriptionsService, notesService, storageService, adminService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 
 // Tema principal
@@ -299,7 +299,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
             try {
                 setLoadingMedications(true);
-                const medicationsData = await FirebaseService.listMedications(doctorId);
+                const medicationsData = await adminService.listMedications(doctorId);
                 setMedications(medicationsData);
             } catch (error) {
                 console.error("Erro ao carregar medicamentos:", error);
@@ -354,7 +354,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
     const fetchPatients = async () => {
         try {
             setLoadingPatients(true);
-            const patientsData = await FirebaseService.listPatients(doctorId);
+            const patientsData = await patientsService.listPatients(doctorId);
             setPatients(patientsData);
         } catch (error) {
             console.error("Erro ao buscar pacientes:", error);
@@ -420,7 +420,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
     // Função para buscar dados da receita (no modo de edição)
     const loadReceitaData = async () => {
         try {
-            const receita = await FirebaseService.getPrescription(doctorId, patientId || selectedPatient?.id, receitaId);
+            const receita = await prescriptionsService.getPrescription(doctorId, patientId || selectedPatient?.id, receitaId);
 
             if (receita) {
                 // Convertendo as datas de Timestamp para Date se necessário
@@ -449,7 +449,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
     // Função para buscar dados do paciente no Firebase
     const fetchPatientData = async (patId) => {
         try {
-            const patientDoc = await FirebaseService.getPatient(doctorId, patId);
+            const patientDoc = await patientsService.getPatient(doctorId, patId);
 
             if (patientDoc) {
                 setPatientData(patientDoc);
@@ -814,19 +814,19 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
             // Se estivermos editando, atualiza a receita existente; caso contrário, cria uma nova
             if (isEditMode) {
-                await FirebaseService.updatePrescription(doctorId, currentPatientId, receitaData.id, normalizedData);
+                await prescriptionsService.updatePrescription(doctorId, currentPatientId, receitaData.id, normalizedData);
                 receitaId = receitaData.id;
             } else {
                 normalizedData.createdAt = new Date();
-                receitaId = await FirebaseService.createPrescription(doctorId, currentPatientId, normalizedData);
+                receitaId = await prescriptionsService.createPrescription(doctorId, currentPatientId, normalizedData);
             }
 
             // Salvar o PDF no Firebase Storage
             const pdfFileName = `receitas/${doctorId}/${currentPatientId}/${receitaId}.pdf`;
-            const pdfUrl = await FirebaseService.uploadFile(pdfBlob, pdfFileName);
+            const pdfUrl = await storageService.uploadFile(pdfBlob, pdfFileName);
 
             // Atualize a receita com o URL do PDF
-            await FirebaseService.updatePrescription(doctorId, currentPatientId, receitaId, {
+            await prescriptionsService.updatePrescription(doctorId, currentPatientId, receitaId, {
                 pdfUrl: pdfUrl
             });
 
@@ -847,7 +847,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                 pdfUrl: pdfUrl // Adicione a URL do PDF à nota
             };
 
-            await FirebaseService.createNote(doctorId, currentPatientId, noteData);
+            await notesService.createNote(doctorId, currentPatientId, noteData);
 
             setSnackbar({
                 open: true,
@@ -886,7 +886,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
         setIsSubmitting(true);
         try {
-            await FirebaseService.deletePrescription(
+            await prescriptionsService.deletePrescription(
                 doctorId,
                 patientId || selectedPatient?.id,
                 receitaData.id
@@ -1753,7 +1753,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                                                             instructions: medicamentoTemp.observacao || ''
                                                                                         };
 
-                                                                                        await FirebaseService.createMedication(doctorId, medicationData);
+                                                                                        await adminService.createMedication(doctorId, medicationData);
 
                                                                                         // Atualizar a lista local de medicamentos
                                                                                         setMedications(prev => [...prev, {

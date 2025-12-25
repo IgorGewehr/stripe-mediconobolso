@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Skeleton, Box, Typography, Button } from "@mui/material";
 import { useAuth } from '../../providers/authProvider';
 import WeatherCard from "../../ui/cards/WeatherCard";
-import firebaseService from "../../../../lib/firebaseService";
+import { weatherService } from '@/lib/services/firebase';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 /**
@@ -31,7 +31,7 @@ const WeatherContainer = () => {
 
             try {
                 // 1. Buscar dados do Firebase imediatamente
-                const { weatherData: storedData, currentCity } = await firebaseService.getUserWeatherData(user.uid);
+                const { weatherData: storedData, currentCity } = await weatherService.getUserWeatherData(user.uid);
 
                 // 2. Se temos dados no Firebase, mostrar imediatamente
                 if (storedData && isMounted) {
@@ -64,7 +64,7 @@ const WeatherContainer = () => {
                         }
 
                         // 5. Salvar no Firebase
-                        await firebaseService.updateUserWeatherData(user.uid, freshData, currentCity);
+                        await weatherService.updateUserWeatherData(user.uid, freshData, currentCity);
 
                         // 6. Atualizar a UI
                         if (isMounted) {
@@ -136,7 +136,7 @@ const WeatherContainer = () => {
 
         try {
             // Obter cidade do usuário
-            const { currentCity } = await firebaseService.getUserWeatherData(user.uid);
+            const { currentCity } = await weatherService.getUserWeatherData(user.uid);
 
             // Chamar API
             const response = await fetch(`/api/weather?city=${encodeURIComponent(currentCity)}`);
@@ -155,7 +155,7 @@ const WeatherContainer = () => {
             }
 
             // Salvar no Firebase
-            await firebaseService.updateUserWeatherData(user.uid, freshData, currentCity);
+            await weatherService.updateUserWeatherData(user.uid, freshData, currentCity);
 
             // Atualizar UI
             setWeatherData(freshData);

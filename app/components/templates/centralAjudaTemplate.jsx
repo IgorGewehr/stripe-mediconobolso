@@ -47,7 +47,7 @@ import {
 } from '@mui/icons-material';
 import { useResponsiveScale } from "../hooks/useScale";
 import { useAuth } from "../providers/authProvider";
-import firebaseService from "../../../lib/firebaseService";
+import { adminService } from '@/lib/services/firebase';
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 const CentralAjudaTemplate = ({ selectedReportId = null }) => {
@@ -89,20 +89,20 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
             console.log('🔄 Carregando reports para usuário:', user.uid);
 
             // Primeira tentativa - método padrão
-            let userReports = await firebaseService.getUserReports(user.uid);
+            let userReports = await adminService.getUserReports(user.uid);
             console.log(`📊 Reports encontrados: ${userReports.length}`);
 
             // Se não encontrou nada, tentar busca manual como fallback
             if (userReports.length === 0) {
                 console.log('🔍 Tentando busca manual como fallback...');
-                userReports = await firebaseService.debugUserReports(user.uid);
+                userReports = await adminService.debugUserReports(user.uid);
 
                 // Se ainda assim não encontrou, verificar se há reports para corrigir
                 if (userReports.length === 0) {
-                    const fixResult = await firebaseService.fixUserReports?.(user.uid);
+                    const fixResult = await adminService.fixUserReports?.(user.uid);
                     if (fixResult?.fixedCount > 0) {
                         // Se corrigiu algum, tentar buscar novamente
-                        userReports = await firebaseService.getUserReports(user.uid);
+                        userReports = await adminService.getUserReports(user.uid);
                     }
                 }
             }
@@ -131,7 +131,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
             console.log('📤 Enviando novo report...');
 
             // Criar o report
-            const reportId = await firebaseService.createReport(user.uid, {
+            const reportId = await adminService.createReport(user.uid, {
                 subject: newReport.subject.trim(),
                 content: newReport.content.trim(),
                 type: newReport.type,
@@ -165,7 +165,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
         try {
             // 🔧 CORREÇÃO: Buscar o report completo com todas as respostas
             console.log('📥 Buscando dados completos do report...');
-            const fullReport = await firebaseService.getReport(report.id);
+            const fullReport = await adminService.getReport(report.id);
 
             if (!fullReport) {
                 setError('Report não encontrado');
@@ -181,7 +181,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
             // Marcar como lida se tinha respostas não lidas
             if (fullReport.hasUnreadResponses) {
                 try {
-                    await firebaseService.markReportAsReadByUser(report.id);
+                    await adminService.markReportAsReadByUser(report.id);
                     await loadReports(); // Recarregar para atualizar o estado da lista
                 } catch (error) {
                     console.error("❌ Erro ao marcar como lido:", error);
@@ -202,7 +202,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
         try {
             console.log('📤 Enviando resposta do usuário...');
 
-            await firebaseService.addReportResponse(selectedReport.id, {
+            await adminService.addReportResponse(selectedReport.id, {
                 content: newResponse.trim(),
                 isAdmin: false,
                 authorId: user.uid,
@@ -212,7 +212,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
             setNewResponse("");
 
             // 🔧 CORREÇÃO: Recarregar o report selecionado com dados completos
-            const updatedReport = await firebaseService.getReport(selectedReport.id);
+            const updatedReport = await adminService.getReport(selectedReport.id);
             if (updatedReport) {
                 setSelectedReport(updatedReport);
                 console.log('✅ Report atualizado após envio de resposta');

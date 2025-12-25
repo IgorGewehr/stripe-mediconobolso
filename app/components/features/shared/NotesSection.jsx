@@ -30,7 +30,7 @@ import ViewListIcon from "@mui/icons-material/ViewList";
 import BiotechIcon from "@mui/icons-material/Biotech";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import FirebaseService from "../../../../lib/firebaseService";
+import { patientsService, notesService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 import QuickDocumentsSection from "./QuickDocumentsSection";
 import AnamneseDialog from "../dialogs/AnamneseDialog";
@@ -646,7 +646,7 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
         if (pacienteId && effectiveUserId) {
             const fetchPatientData = async () => {
                 try {
-                    const data = await FirebaseService.getPatient(effectiveUserId, pacienteId);
+                    const data = await patientsService.getPatient(effectiveUserId, pacienteId);
                     setPatientData(data);
                 } catch (error) {
                     console.error("Erro ao buscar dados do paciente:", error);
@@ -674,7 +674,7 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
     const fetchNotas = async () => {
         try {
             setIsLoading(true);
-            const notes = await FirebaseService.listNotes(getEffectiveUserId(), pacienteId);
+            const notes = await notesService.listNotes(getEffectiveUserId(), pacienteId);
 
             // Sort by creation date, newest first
             const sortedNotes = notes.sort((a, b) => {
@@ -852,11 +852,11 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
         try {
             if (selectedNota && selectedNota.id) {
                 // If editing, update note in Firebase
-                await FirebaseService.updateNote(getEffectiveUserId(), pacienteId, selectedNota.id, notaData);
+                await notesService.updateNote(getEffectiveUserId(), pacienteId, selectedNota.id, notaData);
                 setSuccessAction("atualizada");
             } else {
                 // If new note, create in Firebase
-                await FirebaseService.createNote(getEffectiveUserId(), pacienteId, notaData);
+                await notesService.createNote(getEffectiveUserId(), pacienteId, notaData);
                 setSuccessAction("criada");
             }
 

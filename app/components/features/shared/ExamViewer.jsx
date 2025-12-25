@@ -36,7 +36,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Firebase Service
-import FirebaseService from "../../../../lib/firebaseService";
+import { examsService } from '@/lib/services/firebase';
 
 const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
     const theme = useTheme();
@@ -62,7 +62,7 @@ const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
                     try {
                         console.log(`Fetching exam data using exameId: ${examData.exameId}`);
 
-                        const fullData = await FirebaseService.getExam(
+                        const fullData = await examsService.getExam(
                             examData.doctorId || examData.userId,
                             examData.patientId,
                             examData.exameId

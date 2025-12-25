@@ -46,7 +46,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Serviço Firebase
-import FirebaseService from "../../../../lib/firebaseService";
+import { notesService } from '@/lib/services/firebase';
 
 const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
     const theme = useTheme();
@@ -68,7 +68,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
                 if (anamneseData.anamneseId && !anamneseData.chiefComplaint) {
                     try {
                         // Tentar buscar dados completos da anamnese
-                        const fullData = await FirebaseService.getAnamnese(
+                        const fullData = await notesService.getAnamnese(
                             anamneseData.doctorId,
                             anamneseData.patientId,
                             anamneseData.anamneseId

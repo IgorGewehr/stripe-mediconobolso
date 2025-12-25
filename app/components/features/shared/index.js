@@ -36,9 +36,3 @@ export { default as UnifiedUserManagement } from './UnifiedUserManagement';
 export { default as PlanSelector } from './PlanSelector';
 export { default as SecretaryIndicator } from './SecretaryIndicator';
 export { default as AccessDeniedComponent } from './AccessDeniedComponent';
-
-// Legacy aliases for backward compatibility
-export { default as AcompanhamentoSection } from './FollowUpSection';
-export { default as NotasSection } from './NotesSection';
-export { default as HistoricoConduta } from './ConductHistory';
-export { default as ReceitasViewer } from './PrescriptionsViewer';

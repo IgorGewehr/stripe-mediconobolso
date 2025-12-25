@@ -18,8 +18,9 @@ import CondicoesClinicasForm from "../features/patients/CondicoesClinicas";
 import ConductHistoryForm from "../features/shared/ConductHistory";
 
 // Importa o serviço do Firebase
-import firebaseService from "../../../lib/firebaseService";
+import { storageService } from '@/lib/services/firebase';
 import { collection, doc, setDoc } from "firebase/firestore";
+import { firestore } from '@/lib/config/firebase.config';
 
 // Importa o AuthProvider (useAuth) para obter o id do usuário autenticado
 import { useAuth } from "../providers/authProvider";
@@ -316,7 +317,7 @@ export default function PacienteCadastroTemplate() {
 
             // Gere o docRef para o paciente e obtenha seu ID
             const patientRef = doc(
-                collection(firebaseService.firestore, "users", doctorId, "patients")
+                collection(firestore, "users", doctorId, "patients")
             );
             const patientId = patientRef.id;
 
@@ -372,7 +373,7 @@ export default function PacienteCadastroTemplate() {
             // Upload de foto do paciente
             if (formData.infoBasicas.patientPhoto) {
                 const photoPath = `users/${doctorId}/patients/${patientId}/profilePhoto/${Date.now()}_${formData.infoBasicas.patientPhoto.name}`;
-                const photoUrl = await firebaseService.uploadFile(
+                const photoUrl = await storageService.uploadFile(
                     formData.infoBasicas.patientPhoto,
                     photoPath
                 );
@@ -515,7 +516,7 @@ export default function PacienteCadastroTemplate() {
                                             if (!doctorId || !patientId) return; // Ignora upload se não tiver ID de paciente
 
                                             // Usa a nova função para upload de documentos
-                                            await firebaseService.uploadPatientDocument(
+                                            await storageService.uploadPatientDocument(
                                                 file,
                                                 doctorId,
                                                 patientId,

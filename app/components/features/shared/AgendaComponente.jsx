@@ -33,7 +33,7 @@ import {
     VideoCall,
     ArrowForward
 } from '@mui/icons-material';
-import FirebaseService from '../../../../lib/firebaseService';
+import { appointmentsService, patientsService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 import EventoModal from '../forms/EventoModal';
 import moment from 'moment-timezone';
@@ -209,12 +209,12 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             setIsLoading(true);
             try {
                 const doctorId = getEffectiveUserId();
-                const consultationsData = await FirebaseService.listAllConsultations(doctorId);
+                const consultationsData = await appointmentsService.listAllConsultations(doctorId);
 
                 // Get patient information
                 const patientIds = [...new Set(consultationsData.map(c => c.patientId))];
                 const patientsPromises = patientIds.map(pid =>
-                    FirebaseService.getPatient(doctorId, pid)
+                    patientsService.getPatient(doctorId, pid)
                 );
                 const patientsResults = await Promise.all(patientsPromises);
                 const patientsMap = {};
@@ -275,7 +275,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             };
 
             // Create consultation in Firebase
-            const consultationId = await FirebaseService.createConsultation(
+            const consultationId = await appointmentsService.createConsultation(
                 doctorId,
                 patientId,
                 dataToSave
@@ -284,7 +284,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             console.log('🆔 Consulta criada com ID:', consultationId);
 
             // Get patient name
-            const patient = await FirebaseService.getPatient(doctorId, patientId);
+            const patient = await patientsService.getPatient(doctorId, patientId);
 
             // Crie o objeto de evento usando nossa função
             const newEvent = createEventObject(
@@ -355,7 +355,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             };
 
             // Update in Firebase
-            await FirebaseService.updateConsultation(
+            await appointmentsService.updateConsultation(
                 doctorId,
                 patientId,
                 consultationId,
@@ -365,7 +365,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             console.log('✅ Consulta atualizada no Firebase');
 
             // Crie o objeto de evento atualizado
-            const patient = await FirebaseService.getPatient(doctorId, patientId);
+            const patient = await patientsService.getPatient(doctorId, patientId);
             const updatedEvent = createEventObject(
                 dataToSave,
                 patient ? (patient.patientName || patient.nome) : "Paciente"
@@ -465,7 +465,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             };
 
             // Atualizar no Firebase com a data preservada
-            await FirebaseService.updateConsultation(
+            await appointmentsService.updateConsultation(
                 doctorId,
                 patientId,
                 consultationId,

@@ -57,7 +57,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Serviço Firebase
-import FirebaseService from "../../../../lib/firebaseService";
+import { patientsService, prescriptionsService, storageService } from '@/lib/services/firebase';
 import AnamneseViewer from "../shared/AnamneseViewer";
 import ReceitaViewer from "../shared/PrescriptionsViewer";
 import ExamViewer from "../shared/ExamViewer";
@@ -308,7 +308,7 @@ const ViewNoteDialog = ({
             if (open && patientId && doctorId) {
                 setLoading(true);
                 try {
-                    const data = await FirebaseService.getPatient(doctorId, patientId);
+                    const data = await patientsService.getPatient(doctorId, patientId);
                     setPatientData(data);
                 } catch (error) {
                     console.error("Erro ao buscar dados do paciente:", error);
@@ -635,10 +635,10 @@ const ViewNoteDialog = ({
                     if (doctorId && patientId && noteData.id) {
                         const pdfBlob = doc.output('blob');
                         const pdfFileName = `receitas/${doctorId}/${patientId}/${noteData.id}.pdf`;
-                        const pdfUrl = await FirebaseService.uploadFile(pdfBlob, pdfFileName);
+                        const pdfUrl = await storageService.uploadFile(pdfBlob, pdfFileName);
 
                         // Atualiza o registro da receita com o URL do PDF
-                        await FirebaseService.updatePrescription(doctorId, patientId, noteData.id, {
+                        await prescriptionsService.updatePrescription(doctorId, patientId, noteData.id, {
                             pdfUrl: pdfUrl
                         });
 
@@ -704,7 +704,7 @@ const ViewNoteDialog = ({
             console.log("Tentando obter URL pelo storagePath:", attachment.storagePath);
 
             try {
-                FirebaseService.getStorageFileUrl(attachment.storagePath)
+                storageService.getFileUrl(attachment.storagePath)
                     .then(url => {
                         console.log("URL obtida com sucesso:", url);
                         window.open(url, '_blank');
@@ -728,7 +728,7 @@ const ViewNoteDialog = ({
 
                 console.log("Tentando reconstruir caminho para:", filePath);
 
-                FirebaseService.getStorageFileUrl(filePath)
+                storageService.getFileUrl(filePath)
                     .then(url => {
                         console.log("URL obtida pelo caminho reconstruído:", url);
                         window.open(url, '_blank');
@@ -740,7 +740,7 @@ const ViewNoteDialog = ({
                         const alternativePath = `notes/${doctorId}/${patientId}/${noteData.id}/${attachment.fileName}`;
                         console.log("Tentando caminho alternativo:", alternativePath);
 
-                        return FirebaseService.getStorageFileUrl(alternativePath);
+                        return storageService.getFileUrl(alternativePath);
                     })
                     .then(url => {
                         if (url) {

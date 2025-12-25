@@ -48,7 +48,7 @@ import FormatSizeIcon from "@mui/icons-material/FormatSize";
 import MicIcon from "@mui/icons-material/Mic";
 import LockIcon from "@mui/icons-material/Lock";
 // Firebase service
-import firebaseService from "../../../../lib/firebaseService";
+import { patientsService, notesService, storageService } from '@/lib/services/firebase';
 import { parse } from 'date-fns';
 import DescriptionIcon from "@mui/icons-material/Description";
 import AnamneseNotesPanel from "../shared/AnamneseNotesPanel";
@@ -685,8 +685,8 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 try {
                     // Carregar dados em paralelo
                     const [patientDoc, notes] = await Promise.all([
-                        firebaseService.getPatient(doctorId, patientId),
-                        firebaseService.listNotes(doctorId, patientId)
+                        patientsService.getPatient(doctorId, patientId),
+                        notesService.listNotes(doctorId, patientId)
                     ]);
 
                     if (!isMounted) return;
@@ -721,7 +721,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
             const fetchAnamneseData = async () => {
                 try {
-                    const data = await firebaseService.getAnamnese(doctorId, patientId, anamneseId);
+                    const data = await notesService.getAnamnese(doctorId, patientId, anamneseId);
 
                     if (!isMounted) return;
 
@@ -1421,7 +1421,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             // Check if we're editing an existing anamnese
             if (anamneseId) {
                 // Update existing anamnese
-                await firebaseService.updateAnamnese(
+                await notesService.updateAnamnese(
                     doctorId,
                     patientId,
                     anamneseId,
@@ -1430,7 +1430,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 isNewAnamnese = false;
             } else {
                 // Create new anamnese
-                anamneseId = await firebaseService.createAnamnese(
+                anamneseId = await notesService.createAnamnese(
                     doctorId,
                     patientId,
                     anamneseData
@@ -1453,13 +1453,13 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
 
             // Upload PDF to Firebase Storage
             const pdfPath = `users/${doctorId}/patients/${patientId}/anamneses/${anamneseId}/${pdfFileName}`;
-            const pdfUrl = await firebaseService.uploadFile(
+            const pdfUrl = await storageService.uploadFile(
                 pdfFile,
                 pdfPath
             );
 
             // Update anamnesis with PDF URL
-            await firebaseService.updateAnamnese(
+            await notesService.updateAnamnese(
                 doctorId,
                 patientId,
                 anamneseId,
@@ -1480,14 +1480,14 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     pdfUrl // Store the PDF URL in the note as well
                 };
 
-                const noteId = await firebaseService.createNote(
+                const noteId = await notesService.createNote(
                     doctorId,
                     patientId,
                     noteData
                 );
 
                 // Attach PDF to note
-                await firebaseService.uploadNoteAttachment(
+                await storageService.uploadNoteAttachment(
                     pdfFile,
                     doctorId,
                     patientId,
@@ -1495,12 +1495,12 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                 );
             } else {
                 // If updating, find and update the associated note
-                const notes = await firebaseService.listNotes(doctorId, patientId);
+                const notes = await notesService.listNotes(doctorId, patientId);
                 const associatedNote = notes.find(note => note.anamneseId === anamneseId);
 
                 if (associatedNote) {
                     const formattedDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-                    await firebaseService.updateNote(
+                    await notesService.updateNote(
                         doctorId,
                         patientId,
                         associatedNote.id,
@@ -1512,7 +1512,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
                     );
 
                     // Update attachment if needed
-                    await firebaseService.uploadNoteAttachment(
+                    await storageService.uploadNoteAttachment(
                         pdfFile,
                         doctorId,
                         patientId,

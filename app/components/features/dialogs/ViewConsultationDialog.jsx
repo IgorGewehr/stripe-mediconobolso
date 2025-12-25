@@ -69,7 +69,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Serviço Firebase
-import FirebaseService from "../../../../lib/firebaseService";
+import { patientsService } from '@/lib/services/firebase';
 
 // Tema personalizado com melhorias estéticas
 const theme = createTheme({
@@ -713,7 +713,7 @@ const ViewConsultationDialog = ({
             if (open && patientId && doctorId) {
                 setLoading(true);
                 try {
-                    const data = await FirebaseService.getPatient(doctorId, patientId);
+                    const data = await patientsService.getPatient(doctorId, patientId);
                     setPatientData(data);
                 } catch (error) {
                     console.error("Erro ao buscar dados do paciente:", error);

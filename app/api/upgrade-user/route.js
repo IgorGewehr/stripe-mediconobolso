@@ -1,7 +1,7 @@
 // app/api/upgrade-user/route.js
 import { NextResponse } from 'next/server';
 import { stripe } from '../../../lib/stripe';
-import firebaseService from '../../../lib/firebaseService';
+import { authService } from '../../../lib/services/firebase';
 
 export async function POST(req) {
     try {
@@ -45,7 +45,7 @@ export async function POST(req) {
         // 🔍 BUSCAR DADOS DO USUÁRIO ATUAL
         let userData;
         try {
-            userData = await firebaseService.getUserData(uid);
+            userData = await authService.getUserData(uid);
             console.log('✅ Dados do usuário encontrados:', userData.email);
         } catch (error) {
             console.error('❌ Erro ao buscar dados do usuário:', error);
@@ -249,7 +249,7 @@ export async function POST(req) {
             upgradeData.cpf = finalCpf;
         }
 
-        await firebaseService.editUserData(uid, upgradeData);
+        await authService.editUserData(uid, upgradeData);
         console.log(`✅ Dados de upgrade salvos no Firebase`);
 
         // 📊 LOG PARA MONITORAMENTO

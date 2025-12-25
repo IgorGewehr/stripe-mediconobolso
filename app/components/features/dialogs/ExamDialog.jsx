@@ -57,7 +57,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FirebaseService from '../../../../lib/firebaseService';
+import { examsService, notesService, storageService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 import ExamTable from "../shared/ExamTable";
 import AccessDeniedDialog from "./AccessDeniedDialog";
@@ -593,7 +593,7 @@ const ExamDialog = ({
             } else if (file && file.storagePath) {
                 console.log("Fetching from storagePath:", file.storagePath);
                 try {
-                    const url = await FirebaseService.getStorageFileUrl(file.storagePath);
+                    const url = await storageService.getFileUrl(file.storagePath);
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
                     blob = await response.blob();
@@ -1184,7 +1184,7 @@ const ExamDialog = ({
 
                     for (const file of fileList) {
                         try {
-                            const fileInfo = await FirebaseService.uploadExamAttachment(
+                            const fileInfo = await examsService.uploadExamAttachment(
                                 file,
                                 getEffectiveUserId(),
                                 patientId,
@@ -1310,7 +1310,7 @@ const ExamDialog = ({
                 // Obter a URL correta
                 let url = attachment.fileUrl;
                 if (!url && attachment.storagePath) {
-                    url = await FirebaseService.getStorageFileUrl(attachment.storagePath);
+                    url = await storageService.getFileUrl(attachment.storagePath);
                 }
 
                 if (!url) {
@@ -1527,7 +1527,7 @@ const ExamDialog = ({
         if (attachment.storagePath) {
             try {
                 console.log("Fetching URL from storagePath:", attachment.storagePath);
-                FirebaseService.getStorageFileUrl(attachment.storagePath)
+                storageService.getFileUrl(attachment.storagePath)
                     .then(url => {
                         console.log("Got URL from storage path:", url);
                         window.open(url, '_blank');
@@ -1557,7 +1557,7 @@ const ExamDialog = ({
                         console.log("Trying exam path:", examPath);
 
                         try {
-                            const url = await FirebaseService.getStorageFileUrl(examPath);
+                            const url = await storageService.getFileUrl(examPath);
                             console.log("Successfully got URL from constructed exam path");
                             window.open(url, '_blank');
                             return true;
@@ -1573,7 +1573,7 @@ const ExamDialog = ({
                         console.log("Trying note path as fallback:", notePath);
 
                         try {
-                            const url = await FirebaseService.getStorageFileUrl(notePath);
+                            const url = await storageService.getFileUrl(notePath);
                             console.log("Successfully got URL from constructed note path");
                             window.open(url, '_blank');
                             return true;
@@ -1616,7 +1616,7 @@ const ExamDialog = ({
             try {
                 const attachment = attachments[index];
                 if (attachment.fileUrl) {
-                    await FirebaseService.removeExamAttachment(
+                    await examsService.removeExamAttachment(
                         getEffectiveUserId(),
                         patientId,
                         exam.id,
@@ -1673,7 +1673,7 @@ const ExamDialog = ({
                 // 1) Create or update the exam
                 if (isEditMode && exameId) {
                     console.log(`Updating exam with ID: ${exameId}`);
-                    await FirebaseService.updateExam(getEffectiveUserId(), patientId, exameId, {
+                    await examsService.updateExam(getEffectiveUserId(), patientId, exameId, {
                         title,
                         examDate,
                         category: examCategory,
@@ -1702,7 +1702,7 @@ const ExamDialog = ({
                         createdAt: new Date(),
                         lastModified: new Date()
                     };
-                    exameId = await FirebaseService.createExam(getEffectiveUserId(), patientId, examData);
+                    exameId = await examsService.createExam(getEffectiveUserId(), patientId, examData);
                     console.log(`Created new exam with ID: ${exameId}`);
                 }
 
@@ -1712,7 +1712,7 @@ const ExamDialog = ({
                 for (const att of attachments) {
                     if (att.file) {
                         console.log(`Preparing to upload: ${att.fileName}`);
-                        const uploadPromise = FirebaseService.uploadExamAttachment(
+                        const uploadPromise = examsService.uploadExamAttachment(
                             att.file,
                             getEffectiveUserId(),
                             patientId,
@@ -1763,7 +1763,7 @@ const ExamDialog = ({
                         const updatedAttachments = [...existingAttachments, ...successfulUploads];
 
                         // Update the exam with the complete, corrected attachment list
-                        await FirebaseService.updateExam(getEffectiveUserId(), patientId, exameId, {
+                        await examsService.updateExam(getEffectiveUserId(), patientId, exameId, {
                             attachments: updatedAttachments.map(att => {
                                 const { file, ...meta } = att;
                                 return meta;
@@ -1795,12 +1795,12 @@ const ExamDialog = ({
                     };
 
                     // 4) Create or update the note in Firestore
-                    const allNotes = await FirebaseService.listNotes(getEffectiveUserId(), patientId);
+                    const allNotes = await notesService.listNotes(getEffectiveUserId(), patientId);
                     const existingNote = allNotes.find(n => n.exameId === exameId);
 
                     if (existingNote) {
                         console.log(`Updating existing note for exam: ${exameId}`);
-                        await FirebaseService.updateNote(
+                        await notesService.updateNote(
                             getEffectiveUserId(),
                             patientId,
                             existingNote.id,
@@ -1814,7 +1814,7 @@ const ExamDialog = ({
                         );
                     } else {
                         console.log(`Creating new note for exam: ${exameId}`);
-                        await FirebaseService.createNote(
+                        await notesService.createNote(
                             getEffectiveUserId(),
                             patientId,
                             notePayload
@@ -1860,7 +1860,7 @@ const ExamDialog = ({
         if (!isEditMode || !exam.id) return;
         setIsLoading(true);
         try {
-            await FirebaseService.deleteExam(
+            await examsService.deleteExam(
                 getEffectiveUserId(),
                 patientId,
                 exam.id

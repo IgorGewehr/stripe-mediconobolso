@@ -5,6 +5,18 @@
  * These hooks encapsulate reusable stateful logic.
  */
 
+// Shared/Utility Hooks
+export {
+  useAsyncOperation,
+  useMultipleAsyncOperations
+} from './useAsyncOperation';
+
+export {
+  useDialogState,
+  useConfirmDialog,
+  useSnackbar
+} from './useDialogState';
+
 // Module Access Hook
 export { default as useModuleAccess } from './useModuleAccess';
 

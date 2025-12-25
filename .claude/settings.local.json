@@ -49,7 +49,8 @@
       "Bash(chmod:*)",
       "Bash(timeout 120s npm run build:*)",
       "Bash(cargo check:*)",
-      "Bash(openssl rand:*)"
+      "Bash(openssl rand:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

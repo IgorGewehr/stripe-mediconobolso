@@ -31,7 +31,7 @@ import {
     VideoLibrary as VideoLibraryIcon,
     Search as SearchIcon,
 } from "@mui/icons-material";
-import FirebaseService from "../../../lib/firebaseService";
+import { storageService } from '@/lib/services/firebase';
 
 // Updated Video tutorial categories
 const TUTORIAL_CATEGORIES = [
@@ -150,7 +150,7 @@ const getThumbnailUrl = async (videoId) => {
         const index = videoId.replace('video', '');
         // Incluindo a extensão .png
         const path = `tumb${index}.png`;
-        return await FirebaseService.getStorageFileUrl(path);
+        return await storageService.getStorageFileUrl(path);
     } catch (error) {
         console.error("Erro ao buscar thumbnail:", error);
         return null;
@@ -162,7 +162,7 @@ const getVideoUrl = async (videoId) => {
     try {
         // Incluindo a extensão .mp4
         const path = `${videoId}.mp4`;
-        return await FirebaseService.getStorageFileUrl(path);
+        return await storageService.getStorageFileUrl(path);
     } catch (error) {
         console.error("Erro ao buscar vídeo:", error);
         return null;

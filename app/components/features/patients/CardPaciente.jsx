@@ -40,7 +40,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import FirebaseService from "../../../../lib/firebaseService";
+import { patientsService, storageService } from "../../../../lib/services/firebase";
 import {useAuth} from '../../providers/authProvider';
 import useModuleAccess from '../../hooks/useModuleAccess';
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
@@ -2797,12 +2797,12 @@ export default function PacienteCard({paciente}) {
                     const photoPath = `users/${getEffectiveUserId()}/patients/${paciente.id}/profilePhoto/${photoFileName}`;
 
                     // Upload the new photo
-                    const photoURL = await FirebaseService.uploadFile(formData.photoFile, photoPath);
+                    const photoURL = await storageService.uploadFile(formData.photoFile, photoPath);
 
                     // Delete previous photo if it exists and is different
                     if (paciente.photoURL && paciente.photoURL !== photoURL) {
                         try {
-                            await FirebaseService.deleteFile(paciente.photoURL);
+                            await storageService.deleteFile(paciente.photoURL);
                             console.log("Previous photo deleted successfully");
                         } catch (error) {
                             console.warn("Could not delete previous photo:", error);
@@ -2820,7 +2820,7 @@ export default function PacienteCard({paciente}) {
             }
 
             // Update in Firebase
-            await FirebaseService.updatePatient(getEffectiveUserId(), paciente.id, dataToSave);
+            await patientsService.updatePatient(getEffectiveUserId(), paciente.id, dataToSave);
 
             // Update successful
             setIsEditing(false);

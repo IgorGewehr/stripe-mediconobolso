@@ -44,7 +44,7 @@ import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import FirebaseService from '../../../../lib/firebaseService';
+import { appointmentsService, notesService, storageService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
@@ -580,7 +580,7 @@ const PatientNoteDialog = ({
         setIsLoadingConsultations(true);
         try {
             console.log("Carregando consultas para paciente:", patientId);
-            const cons = await FirebaseService.listPatientConsultations(getEffectiveUserId(), patientId);
+            const cons = await appointmentsService.listPatientConsultations(getEffectiveUserId(), patientId);
             console.log("Consultas carregadas:", cons);
             setConsultations(cons);
         } catch (error) {
@@ -606,7 +606,7 @@ const PatientNoteDialog = ({
             setUploadProgress('Fazendo upload dos arquivos...');
             try {
                 for (const file of fileList) {
-                    const fileInfo = await FirebaseService.uploadNoteAttachment(
+                    const fileInfo = await storageService.uploadNoteAttachment(
                         file,
                         getEffectiveUserId(),
                         patientId,
@@ -732,7 +732,7 @@ const PatientNoteDialog = ({
         if (attachment.storagePath) {
             console.log("Tentando obter URL do Storage pelo caminho:", attachment.storagePath);
             try {
-                FirebaseService.getStorageFileUrl(attachment.storagePath)
+                storageService.getFileUrl(attachment.storagePath)
                     .then(url => {
                         console.log("URL obtida com sucesso:", url);
                         window.open(url, '_blank');
@@ -754,7 +754,7 @@ const PatientNoteDialog = ({
                 const path = `users/${getEffectiveUserId()}/patients/${patientId}/notes/${note.id}/${attachment.fileName}`;
                 console.log("Tentando reconstruir caminho para:", path);
 
-                FirebaseService.getStorageFileUrl(path)
+                storageService.getFileUrl(path)
                     .then(url => {
                         console.log("URL obtida do caminho reconstruído:", url);
                         window.open(url, '_blank');
@@ -780,7 +780,7 @@ const PatientNoteDialog = ({
             try {
                 const attachment = attachments[index];
                 if (attachment.fileUrl) {
-                    await FirebaseService.removeNoteAttachment(
+                    await storageService.removeNoteAttachment(
                         getEffectiveUserId(),
                         patientId,
                         note.id,
@@ -869,7 +869,7 @@ const PatientNoteDialog = ({
         if (!isEditMode || !note.id) return;
         setIsLoading(true);
         try {
-            await FirebaseService.deleteNote(
+            await notesService.deleteNote(
                 getEffectiveUserId(),
                 patientId,
                 note.id

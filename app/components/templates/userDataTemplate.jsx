@@ -32,7 +32,7 @@ import {
     AdminPanelSettings as AdminIcon,
     Person as PersonIcon
 } from '@mui/icons-material';
-import firebaseService from "../../../lib/firebaseService";
+import { adminService } from '@/lib/services/firebase';
 import { useAuth } from "../providers/authProvider";
 
 const UserDataTemplate = () => {
@@ -53,7 +53,7 @@ const UserDataTemplate = () => {
     const loadUsers = async () => {
         setLoading(true);
         try {
-            const usersData = await firebaseService.listAllUsers(100, null, searchQuery);
+            const usersData = await adminService.listAllUsers(100, null, searchQuery);
             setUsers(usersData);
         } catch (error) {
             console.error("Erro ao carregar usuários:", error);
@@ -108,7 +108,7 @@ const UserDataTemplate = () => {
         if (!selectedUser) return;
 
         try {
-            await firebaseService.updateUserAdminStatus(selectedUser.id, isAdmin);
+            await adminService.updateUserAdminStatus(selectedUser.id, isAdmin);
             // Atualizar o usuário na lista local
             setUsers(users.map(user =>
                 user.id === selectedUser.id ? { ...user, isAdmin: isAdmin } : user

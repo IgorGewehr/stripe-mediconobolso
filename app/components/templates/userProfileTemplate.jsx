@@ -41,7 +41,7 @@ import {
     People as PeopleIcon
 } from "@mui/icons-material";
 import { debounce } from 'lodash';
-import FirebaseService from "../../../lib/firebaseService";
+import { authService, secretaryService, storageService } from '@/lib/services/firebase';
 import { useAuth } from "../providers/authProvider";
 import SubscriptionManagerDialog from '../features/dialogs/SubscriptionManagerDialog';
 import SecretaryManagerDialog from '../features/dialogs/SecretaryManagerDialog';
@@ -665,7 +665,7 @@ const UserProfileTemplate = ({ onLogout }) => {
                 if (isSecretary && userContext) {
                     return userContext.userData;
                 } else {
-                    return await FirebaseService.getUserData(user.uid);
+                    return await authService.getUserData(user.uid);
                 }
             }, 2 * 60 * 1000); // 2 minutos de cache
 
@@ -695,7 +695,7 @@ const UserProfileTemplate = ({ onLogout }) => {
 
         try {
             const info = await globalCache.getOrSet('secretaryInfo', user.uid, async () => {
-                return await FirebaseService.getDoctorSecretaryInfo(user.uid);
+                return await secretaryService.getDoctorSecretaryInfo(user.uid);
             }, 5 * 60 * 1000); // 5 minutos de cache
 
             actions.setSecretaryInfo(info);
@@ -782,12 +782,12 @@ const UserProfileTemplate = ({ onLogout }) => {
             if (state.photoFile) {
                 try {
                     const photoPath = `users/${user.uid}/profilePhoto/${Date.now()}_${state.photoFile.name}`;
-                    const photoURL = await FirebaseService.uploadFile(state.photoFile, photoPath);
+                    const photoURL = await storageService.uploadFile(state.photoFile, photoPath);
 
                     // Deletar foto anterior se existir
                     if (state.userData.photoURL && state.userData.photoURL !== photoURL) {
                         try {
-                            await FirebaseService.deleteFile(state.userData.photoURL);
+                            await storageService.deleteFile(state.userData.photoURL);
                         } catch (error) {
                             console.warn("⚠️ Erro ao deletar foto antiga:", error);
                         }
@@ -801,7 +801,7 @@ const UserProfileTemplate = ({ onLogout }) => {
             }
 
             // ✅ ATUALIZAR DADOS NO FIREBASE
-            await FirebaseService.editUserData(user.uid, updatedData);
+            await authService.editUserData(user.uid, updatedData);
 
             // ✅ ATUALIZAR DADOS LOCAIS E CACHE
             actions.setUserData(updatedData);

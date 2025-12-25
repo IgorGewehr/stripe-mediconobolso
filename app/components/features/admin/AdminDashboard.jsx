@@ -75,7 +75,7 @@ import {
     AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 
-import firebaseService from '../../../../lib/firebaseService';
+import { adminService } from '@/lib/services/firebase';
 import presenceService from '../../../../lib/presenceService';
 import useModuleAccess from '../../hooks/useModuleAccess';
 
@@ -115,7 +115,10 @@ const AdminDashboard = () => {
     const loadUsers = async () => {
         setLoading(true);
         try {
-            const usersList = await firebaseService.listUsersForAdmin(100, null, searchTerm);
+            const usersList = await adminService.getUsersWithPresenceData({
+                pageSize: 100,
+                searchQuery: searchTerm
+            });
             setUsers(usersList);
         } catch (error) {
             console.error('Erro ao carregar usuários:', error);
@@ -128,7 +131,7 @@ const AdminDashboard = () => {
     // Carregar estatísticas da plataforma
     const loadPlatformStats = async () => {
         try {
-            const stats = await firebaseService.getPlatformStats();
+            const stats = await adminService.getEnhancedPlatformStats();
             setPlatformStats(stats);
         } catch (error) {
             console.error('Erro ao carregar estatísticas:', error);
@@ -140,7 +143,7 @@ const AdminDashboard = () => {
     const loadUserDetails = async (userId) => {
         setDetailsLoading(true);
         try {
-            const details = await firebaseService.getUserAdminStats(userId);
+            const details = await adminService.getUserDetailedStats(userId);
             setUserDetails(details);
         } catch (error) {
             console.error('Erro ao carregar detalhes do usuário:', error);

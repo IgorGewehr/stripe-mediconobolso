@@ -1,7 +1,7 @@
 // app/api/cancel-subscription/route.js
 import { NextResponse } from 'next/server';
 import { stripe } from '../../../lib/stripe';
-import firebaseService from '../../../lib/firebaseService';
+import { authService } from '../../../lib/services/firebase';
 
 export async function POST(req) {
     try {
@@ -17,7 +17,7 @@ export async function POST(req) {
         console.log(`🚫 Iniciando cancelamento da assinatura para usuário: ${uid}`);
 
         // 1. Buscar dados do usuário
-        const userData = await firebaseService.getUserData(uid);
+        const userData = await authService.getUserData(uid);
 
         if (!userData) {
             return NextResponse.json(
@@ -96,7 +96,7 @@ export async function POST(req) {
             updatedAt: new Date()
         };
 
-        await firebaseService.editUserData(uid, updateData);
+        await authService.editUserData(uid, updateData);
 
         console.log(`✅ Dados atualizados no Firebase para usuário ${uid}`);
 

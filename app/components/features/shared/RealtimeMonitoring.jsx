@@ -46,7 +46,7 @@ import {
 } from '@mui/icons-material';
 
 import optimizedPresenceService from '../../../../lib/presenceService';
-import firebaseService from '../../../../lib/firebaseService';
+import { authService } from '@/lib/services/firebase';
 
 const EnhancedRealtimeMonitoring = () => {
     // Estados básicos
@@ -73,7 +73,7 @@ const EnhancedRealtimeMonitoring = () => {
         const detailsMap = new Map();
         const userPromises = users.map(async (presenceData) => {
             try {
-                const userData = await firebaseService.getUserData(presenceData.userId);
+                const userData = await authService.getUserData(presenceData.userId);
                 return {
                     userId: presenceData.userId,
                     userData: {

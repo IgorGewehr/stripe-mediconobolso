@@ -2,8 +2,8 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '../../../lib/stripe';
-import firebaseService from '../../../lib/firebaseService';
-import { firestore } from '../../../lib/firebase';
+import { authService } from '../../../lib/services/firebase';
+import { firestore } from '../../../lib/config/firebase.config';
 import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { sendWelcomeEmail } from '../../../lib/emailService';
 
@@ -75,7 +75,7 @@ async function updateUserWithRetry(uid, userData, maxRetries = 3) {
 
       if (attempt >= maxRetries) {
         try {
-          await firebaseService.editUserData(uid, userData);
+          await authService.editUserData(uid, userData);
           console.log(`✅ Usuário ${uid} atualizado via firebaseService após ${maxRetries} falhas diretas`);
           return true;
         } catch (serviceError) {
@@ -89,6 +89,15 @@ async function updateUserWithRetry(uid, userData, maxRetries = 3) {
   }
 }
 
+// Helper function using authService instead of firebaseService
+async function getUserDataHelper(uid) {
+  return await authService.getUserData(uid);
+}
+
+async function editUserDataHelper(uid, data) {
+  return await authService.editUserData(uid, data);
+}
+
 // Função para enviar emails de boas-vindas se necessário
 async function sendWelcomeEmailIfNeeded(uid, customerEmail, customerName) {
   if (!customerEmail) {
@@ -98,7 +107,7 @@ async function sendWelcomeEmailIfNeeded(uid, customerEmail, customerName) {
 
   try {
     // Verificar se já enviamos email para este usuário
-    const userData = await firebaseService.getUserData(uid);
+    const userData = await authService.getUserData(uid);
     if (userData.welcomeEmailSent) {
       console.log(`📧 Email de boas-vindas já enviado para ${customerEmail}`);
       return;
@@ -313,7 +322,7 @@ async function processEvent(event) {
 
               // 🆕 CRITICAL: Enviar email de boas-vindas quando boleto é pago
               try {
-                const userData = await firebaseService.getUserData(uid);
+                const userData = await authService.getUserData(uid);
                 await sendWelcomeEmailIfNeeded(uid, userData.email, userData.fullName);
               } catch (userError) {
                 console.warn('Erro ao buscar dados do usuário para email:', userError);

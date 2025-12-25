@@ -27,7 +27,7 @@ import AnamneseDialog from "../dialogs/AnamneseDialog";
 import ReceitaDialog from "../dialogs/ReceitasDialog";
 import ExamDialog from "../dialogs/ExamDialog";
 import RelatorioDialog from "../dialogs/RelatorioDialog";
-import FirebaseService from "../../../../lib/firebaseService";
+import { patientsService, examsService, notesService } from '@/lib/services/firebase';
 import useModuleAccess from '../../hooks/useModuleAccess';
 import ModuleProtection from '../../layout/ModuleProtection';
 import AccessDeniedDialog from '../dialogs/AccessDeniedDialog';
@@ -485,7 +485,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
             if (pacienteId && doctorId && !localPatientData) {
                 try {
                     console.log("Buscando dados do paciente do Firebase:", pacienteId);
-                    const data = await FirebaseService.getPatient(doctorId, pacienteId);
+                    const data = await patientsService.getPatient(doctorId, pacienteId);
                     if (data) {
                         console.log("Dados do paciente obtidos com sucesso");
                         setLocalPatientData(data);
@@ -518,12 +518,12 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                     setIsDataLoaded(false);
 
                     // Buscar exames
-                    const exams = await FirebaseService.listExams(doctorId, pacienteId);
+                    const exams = await examsService.listExams(doctorId, pacienteId);
                     console.log(`Exames carregados: ${exams?.length || 0}`);
                     setAllExams(exams || []);
 
                     // Buscar notas
-                    const notes = await FirebaseService.listNotes(doctorId, pacienteId);
+                    const notes = await notesService.listNotes(doctorId, pacienteId);
                     console.log(`Notas carregadas: ${notes?.length || 0}`);
                     setAllNotes(notes || []);
 
@@ -1019,7 +1019,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
         try {
             console.log("Salvando exame:", examData);
             // Create the exam using Firebase service
-            const examId = await FirebaseService.createExam(doctorId, pacienteId, examData);
+            const examId = await examsService.createExam(doctorId, pacienteId, examData);
 
             console.log(`Exame ${examId} salvo com sucesso!`);
             setOpenExamDialog(false);

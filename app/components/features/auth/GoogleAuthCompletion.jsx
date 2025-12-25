@@ -24,7 +24,7 @@ import {
     useMediaQuery
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import firebaseService from '../../../../lib/firebaseService';
+import { authService } from '../../../../lib/services/firebase';
 
 // Lista de estados brasileiros
 const brazilianStates = [
@@ -220,10 +220,10 @@ const GoogleProfileCompletion = ({
                 checkoutCompleted: true
             };
 
-            await firebaseService.completeGoogleProfile(user.uid, profileData);
+            await authService.completeGoogleProfile(user.uid, profileData);
 
             // Enviar emails de boas-vindas se ainda não foram enviados
-            firebaseService.sendGoogleWelcomeEmails(
+            authService.sendGoogleWelcomeEmails(
                 user.email,
                 user.displayName || user.email.split('@')[0]
             ).catch(console.error);

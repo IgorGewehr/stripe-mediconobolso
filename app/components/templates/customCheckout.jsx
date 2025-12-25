@@ -35,7 +35,8 @@ import {
     FormLabel
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import firebaseService from '../../../lib/firebaseService';
+import { authService } from '@/lib/services/firebase';
+import { auth as firebaseAuth } from '@/lib/config/firebase.config';
 import { authApiService } from '../../../lib/services/api';
 import { useAuth } from '../providers/authProvider';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -486,7 +487,7 @@ function CheckoutForm() {
             setPollingCount(attempts);
 
             try {
-                const userData = await firebaseService.getUserData(uid);
+                const userData = await authService.getUserData(uid);
                 console.log(`Polling attempt ${attempts}: User subscription status:`, userData?.assinouPlano);
 
                 if (userData && userData.assinouPlano === true) {
@@ -741,7 +742,7 @@ function CheckoutForm() {
 
                 console.log('🔄 Creating user account with data:', userData);
 
-                await firebaseService.signUp(
+                await authService.signUp(
                     formData.email,
                     formData.password,
                     userData
@@ -908,7 +909,7 @@ function CheckoutForm() {
 
         try {
             // Aguardar um pouco para o usuário ser autenticado se necessário
-            let currentUser = firebaseService.auth.currentUser;
+            let currentUser = firebaseAuth.currentUser;
             let needsToWaitForAuth = false;
 
             // Se não tem usuário autenticado e não é usuário existente, criar conta primeiro
@@ -946,7 +947,7 @@ function CheckoutForm() {
                 }
 
                 console.log('🔄 Criando usuário...');
-                await firebaseService.signUp(
+                await authService.signUp(
                     formData.email,
                     formData.password,
                     userData
@@ -972,7 +973,7 @@ function CheckoutForm() {
 
                 while (!currentUser && waitedTime < maxWaitTime) {
                     await new Promise(resolve => setTimeout(resolve, checkInterval));
-                    currentUser = firebaseService.auth.currentUser;
+                    currentUser = firebaseAuth.currentUser;
                     waitedTime += checkInterval;
 
                     if (currentUser) {
@@ -1027,7 +1028,7 @@ function CheckoutForm() {
                 console.log('Cliente marcado como vindo através do Enrico (dados iniciais)');
             }
 
-            await firebaseService.editUserData(currentUser.uid, userData);
+            await authService.editUserData(currentUser.uid, userData);
             console.log("✅ Dados do usuário atualizados no Firebase");
 
             // 2) Chamar a API para criar a subscription
@@ -1215,7 +1216,7 @@ function CheckoutForm() {
                 console.log('Cliente marcado como vindo através do Enrico (finalização do pagamento)');
             }
 
-            await firebaseService.editUserData(currentUser.uid, updateData);
+            await authService.editUserData(currentUser.uid, updateData);
 
         } catch (error) {
             console.error('❌ Erro no checkout:', error);

@@ -28,7 +28,7 @@ import {
     Circle as CircleIcon
 } from '@mui/icons-material';
 
-import firebaseService from "../../../../lib/firebaseService";
+import { adminService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 
 const AdminChatDialog = ({
@@ -69,7 +69,7 @@ const AdminChatDialog = ({
         try {
             console.log(`🔄 Carregando conversa com usuário ${selectedUser.id}...`);
 
-            const existingConversation = await firebaseService.getAdminUserConversation(selectedUser.id);
+            const existingConversation = await adminService.getAdminUserConversation(selectedUser.id);
 
             if (existingConversation) {
                 console.log('✅ Conversa existente encontrada:', existingConversation.id);
@@ -106,7 +106,7 @@ const AdminChatDialog = ({
             if (isNewConversation || !conversationId) {
                 console.log('📤 Criando nova conversa com usuário...');
 
-                conversationId = await firebaseService.createAdminUserConversation(
+                conversationId = await adminService.createAdminUserConversation(
                     selectedUser.id,
                     newMessage.trim(),
                     {
@@ -127,7 +127,7 @@ const AdminChatDialog = ({
                 setNewMessage('');
 
                 // Recarregar a conversa recém-criada
-                const newConversation = await firebaseService.getReport(conversationId);
+                const newConversation = await adminService.getReport(conversationId);
                 if (newConversation) {
                     console.log('✅ Conversa inicial carregada:', newConversation);
                     setConversation(newConversation);
@@ -138,7 +138,7 @@ const AdminChatDialog = ({
             } else {
                 console.log('📤 Enviando mensagem para conversa existente...');
 
-                await firebaseService.sendAdminMessage(
+                await adminService.sendAdminMessage(
                     conversationId,
                     newMessage.trim(),
                     {
@@ -151,7 +151,7 @@ const AdminChatDialog = ({
                 setNewMessage('');
 
                 // Recarregar conversa atualizada
-                const updatedConversation = await firebaseService.getReport(conversationId);
+                const updatedConversation = await adminService.getReport(conversationId);
                 if (updatedConversation) {
                     setConversation(updatedConversation);
                     console.log('✅ Conversa atualizada com sucesso');
@@ -216,7 +216,7 @@ const AdminChatDialog = ({
         if (conversation?.id) {
             try {
                 setLoading(true);
-                const refreshedConversation = await firebaseService.getReport(conversation.id);
+                const refreshedConversation = await adminService.getReport(conversation.id);
                 if (refreshedConversation) {
                     console.log('✅ Conversa recarregada:', {
                         id: refreshedConversation.id,

@@ -30,7 +30,7 @@ import {
 import { format, isToday, addDays, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
-import FirebaseService from '../../../../lib/firebaseService';
+import { patientsService } from '../../../../lib/services/firebase';
 
 const MobileConsultationCard = ({ 
     nextConsultation, 
@@ -48,7 +48,7 @@ const MobileConsultationCard = ({
         const loadPatientData = async () => {
             if (!nextConsultation || !nextConsultation.patientId || !nextConsultation.doctorId) return;
             try {
-                const patient = await FirebaseService.getPatient(
+                const patient = await patientsService.getPatient(
                     nextConsultation.doctorId,
                     nextConsultation.patientId
                 );

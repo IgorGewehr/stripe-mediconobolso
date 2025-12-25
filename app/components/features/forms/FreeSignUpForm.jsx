@@ -3,7 +3,7 @@
 import React, {useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../providers/authProvider';
-import firebaseService from '../../../../lib/firebaseService';
+import { authService } from '../../../../lib/services/firebase';
 import { authApiService } from '../../../../lib/services/api';
 import {
     Box,
@@ -299,7 +299,7 @@ const FreeSignupForm = () => {
         try {
             console.log('🆓 Iniciando cadastro gratuito com Google...');
 
-            const result = await firebaseService.signUpFreeWithGoogle();
+            const result = await authService.signUpFreeWithGoogle();
             const { user, userData } = result;
 
             console.log('✅ Cadastro gratuito com Google concluído');
@@ -313,7 +313,7 @@ const FreeSignupForm = () => {
             });
 
             // Enviar emails de boas-vindas
-            firebaseService.sendGoogleWelcomeEmails(
+            authService.sendGoogleWelcomeEmails(
                 user.email,
                 user.displayName || user.email.split('@')[0]
             ).catch(console.error);
@@ -397,7 +397,7 @@ const FreeSignupForm = () => {
                 userData.referralSource = currentReferralSource;
             }
 
-            const userCredential = await firebaseService.signUp(
+            const userCredential = await authService.signUp(
                 formData.email,
                 formData.password,
                 userData

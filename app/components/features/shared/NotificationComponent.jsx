@@ -29,7 +29,7 @@ import {
     AdminPanelSettings as AdminPanelSettingsIcon,
     MarkEmailRead as MarkReadIcon
 } from "@mui/icons-material";
-import firebaseService from "../../../../lib/firebaseService";
+import { adminService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 
 const NotificationComponent = ({ onMessageClick }) => {
@@ -53,7 +53,7 @@ const NotificationComponent = ({ onMessageClick }) => {
             console.log('🔔 Carregando reports para notificações...');
 
             // ✨ USAR A NOVA FUNÇÃO DE REPORTS
-            const userReports = await firebaseService.getUserReports(user.uid);
+            const userReports = await adminService.getUserReports(user.uid);
             const unreadReports = userReports.filter(report => report.hasUnreadResponses === true);
             const recentReports = userReports.slice(0, 5); // Mostrar apenas os 5 mais recentes
 
@@ -100,7 +100,7 @@ const NotificationComponent = ({ onMessageClick }) => {
 
             // ✨ MARCAR CADA REPORT COMO LIDO INDIVIDUALMENTE
             for (const reportId of unreadReportIds) {
-                await firebaseService.markReportAsReadByUser(reportId);
+                await adminService.markReportAsReadByUser(reportId);
             }
 
             if (unreadReportIds.length > 0) {
@@ -118,7 +118,7 @@ const NotificationComponent = ({ onMessageClick }) => {
         // Marcar como lido se não estava lido
         if (report.hasUnreadResponses) {
             try {
-                await firebaseService.markReportAsReadByUser(report.id);
+                await adminService.markReportAsReadByUser(report.id);
                 await loadUnreadReports(); // Atualizar contador
             } catch (error) {
                 console.error("❌ Erro ao marcar report como lido:", error);

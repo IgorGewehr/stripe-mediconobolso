@@ -91,7 +91,7 @@ import {
 
 } from '@mui/icons-material';
 
-import firebaseService from "../../../../lib/firebaseService";
+import { adminService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 import AdminMessagesComponent from "../admin/AdminMessagesComponent";
 import AdminChatDialog from "../admin/AdminChatDialog";
@@ -147,7 +147,7 @@ const UnifiedUserManagement = () => {
         setError('');
 
         try {
-            const result = await firebaseService.getUsersWithPresenceData({
+            const result = await adminService.getUsersWithPresenceData({
                 pageSize: 100,
                 searchQuery,
                 planFilter,
@@ -198,8 +198,8 @@ const UnifiedUserManagement = () => {
 
             // Carregar estatísticas da plataforma e reports separadamente
             const [stats, reportStats] = await Promise.all([
-                firebaseService.getEnhancedPlatformStats(),
-                firebaseService.getReportsStats() // ✨ NOVA FUNÇÃO OTIMIZADA
+                adminService.getEnhancedPlatformStats(),
+                adminService.getReportsStats() // ✨ NOVA FUNÇÃO OTIMIZADA
             ]);
 
             console.log('✅ Stats carregadas:', stats);
@@ -302,7 +302,7 @@ const UnifiedUserManagement = () => {
         setUserStats(null);
 
         try {
-            const stats = await firebaseService.getUserDetailedStats(user.id);
+            const stats = await adminService.getUserDetailedStats(user.id);
             setUserStats(stats);
         } catch (error) {
             console.error("Erro ao carregar estatísticas do usuário:", error);
@@ -319,7 +319,7 @@ const UnifiedUserManagement = () => {
 
     const handleToggleAdminStatus = async (userId, currentStatus) => {
         try {
-            await firebaseService.updateUserAdminStatus(userId, !currentStatus);
+            await adminService.updateUserAdminStatus(userId, !currentStatus);
             await loadUsers(); // Recarregar dados
         } catch (error) {
             console.error("Erro ao atualizar status de administrador:", error);

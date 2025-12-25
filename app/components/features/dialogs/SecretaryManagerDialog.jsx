@@ -53,7 +53,7 @@ import {
     Celebration as CelebrationIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../providers/authProvider';
-import firebaseService from '../../../../lib/firebaseService';
+import { secretaryService } from '@/lib/services/firebase';
 import globalCache from '../../utils/globalCache';
 
 // Importar novos componentes
@@ -222,7 +222,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                 globalCache.invalidate('profileData', user.uid);
             }
 
-            const secretariesList = await firebaseService.listDoctorSecretaries(user.uid, true);
+            const secretariesList = await secretaryService.listDoctorSecretaries(user.uid, true);
             setSecretaries(secretariesList);
 
             const stats = {
@@ -338,7 +338,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
                 permissions: permissions
             };
 
-            const result = await firebaseService.createSecretaryAccount(user.uid, secretaryData);
+            const result = await secretaryService.createSecretaryAccount(user.uid, secretaryData);
 
             if (result.success) {
                 setCreationSuccess(true);
@@ -391,7 +391,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
         try {
             setSavingPermissions(true);
 
-            await firebaseService.updateSecretaryPermissions(
+            await secretaryService.updateSecretaryPermissions(
                 user.uid,
                 editingSecretary.id,
                 editPermissions
@@ -414,10 +414,10 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
     const handleToggleSecretaryStatus = useCallback(async (secretary) => {
         try {
             if (secretary.active) {
-                await firebaseService.deactivateSecretaryAccount(user.uid, secretary.id);
+                await secretaryService.deactivateSecretaryAccount(user.uid, secretary.id);
                 showAlert(`${secretary.name} desativada`, 'success');
             } else {
-                await firebaseService.reactivateSecretaryAccount(user.uid, secretary.id);
+                await secretaryService.reactivateSecretaryAccount(user.uid, secretary.id);
                 showAlert(`${secretary.name} reativada`, 'success');
             }
             await loadSecretaries(true);

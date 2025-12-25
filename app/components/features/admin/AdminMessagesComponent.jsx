@@ -52,7 +52,7 @@ import {
     Email as EmailIcon
 } from '@mui/icons-material';
 
-import firebaseService from "../../../../lib/firebaseService";
+import { adminService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 
 const AdminMessagesComponent = ({ open, onClose }) => {
@@ -111,7 +111,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
             if (showUnreadOnly) filters.hasUnreadFromUser = true;
 
             // Buscar reports (muito mais rápido que a versão antiga)
-            const allReports = await firebaseService.getAllReports(filters);
+            const allReports = await adminService.getAllReports(filters);
 
             setReports(allReports);
             setLastUpdate(new Date());
@@ -129,7 +129,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
         if (!currentUser?.administrador) return;
 
         try {
-            const reportStats = await firebaseService.getReportsStats();
+            const reportStats = await adminService.getReportsStats();
             setStats(reportStats);
         } catch (error) {
             console.error("Erro ao carregar estatísticas:", error);
@@ -155,7 +155,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
 
         setSending(true);
         try {
-            await firebaseService.addReportResponse(selectedReport.id, {
+            await adminService.addReportResponse(selectedReport.id, {
                 content: newResponse.trim(),
                 isAdmin: true,
                 authorId: currentUser.uid,
@@ -165,7 +165,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
             setNewResponse('');
 
             // Recarregar o report selecionado
-            const updatedReport = await firebaseService.getReport(selectedReport.id);
+            const updatedReport = await adminService.getReport(selectedReport.id);
             if (updatedReport) {
                 setSelectedReport(updatedReport);
             }
@@ -187,7 +187,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
         if (!reportId) return;
 
         try {
-            await firebaseService.updateReportStatus(
+            await adminService.updateReportStatus(
                 reportId,
                 'resolved',
                 currentUser.fullName || 'Administrador'
@@ -210,7 +210,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
     // Marcar como lida pelo admin
     const handleMarkAsRead = useCallback(async (reportId) => {
         try {
-            await firebaseService.markReportAsReadByAdmin(reportId);
+            await adminService.markReportAsReadByAdmin(reportId);
             await loadReports();
             await loadStats();
         } catch (error) {

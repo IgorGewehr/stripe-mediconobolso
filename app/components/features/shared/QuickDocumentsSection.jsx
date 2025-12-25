@@ -26,7 +26,7 @@ import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import DeleteIcon from "@mui/icons-material/Delete";
-import FirebaseService from "../../../../lib/firebaseService";
+import { storageService } from '@/lib/services/firebase';
 
 // Theme colors for consistent styling
 const themeColors = {
@@ -290,7 +290,7 @@ export default function QuickDocumentsSection({ patientId, doctorId }) {
     const fetchDocuments = async () => {
         try {
             setLoading(true);
-            const docs = await FirebaseService.getPatientDocuments(doctorId, patientId);
+            const docs = await storageService.getPatientDocuments(doctorId, patientId);
             setDocuments(docs || []);
         } catch (error) {
             console.error("Erro ao buscar documentos:", error);
@@ -341,7 +341,7 @@ export default function QuickDocumentsSection({ patientId, doctorId }) {
                 description: newDocument.description
             };
 
-            await FirebaseService.uploadPatientDocument(
+            await storageService.uploadPatientDocument(
                 newDocument.file,
                 doctorId,
                 patientId,
@@ -378,7 +378,7 @@ export default function QuickDocumentsSection({ patientId, doctorId }) {
     const handleRemoveDocument = async (documentId) => {
         try {
             setLoading(true);
-            await FirebaseService.removePatientDocument(doctorId, patientId, documentId);
+            await storageService.removePatientDocument(doctorId, patientId, documentId);
             await fetchDocuments();
 
             setAlert({
