@@ -44,7 +44,8 @@ import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { appointmentsService, notesService, storageService } from '@/lib/services/firebase';
+import { appointmentsService, notesService } from '@/lib/services/api';
+import { storageService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
@@ -580,7 +581,7 @@ const PatientNoteDialog = ({
         setIsLoadingConsultations(true);
         try {
             console.log("Carregando consultas para paciente:", patientId);
-            const cons = await appointmentsService.listPatientConsultations(getEffectiveUserId(), patientId);
+            const cons = await appointmentsService.getByPatient(patientId);
             console.log("Consultas carregadas:", cons);
             setConsultations(cons);
         } catch (error) {

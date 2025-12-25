@@ -33,7 +33,7 @@ import {
 } from '@mui/icons-material';
 import { format, addMonths, parseISO, isValid, isSameDay, isToday, getDay, startOfMonth, endOfMonth, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { patientsService } from '@/lib/services/firebase';
+import { patientsService } from '@/lib/services/api';
 import WeatherContainer from "./WeatherContainer";
 
 const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgenda, onSelectPatient }) => {
@@ -56,10 +56,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
         const loadPatientData = async () => {
             if (!nextConsultation || !nextConsultation.patientId || !nextConsultation.doctorId) return;
             try {
-                const patient = await patientsService.getPatient(
-                    nextConsultation.doctorId,
-                    nextConsultation.patientId
-                );
+                const patient = await patientsService.getById(nextConsultation.patientId);
                 setPatientData(patient);
             } catch (error) {
                 console.error("Erro ao carregar dados do paciente:", error);

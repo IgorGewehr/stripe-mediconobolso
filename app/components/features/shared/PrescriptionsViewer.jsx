@@ -23,8 +23,8 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Firebase service
-import { prescriptionsService } from '@/lib/services/firebase';
+// API service
+import { prescriptionsService } from '@/lib/services/api';
 
 const ReceitaViewer = ({ receitaData, typeColor, onOpenPdf }) => {
     const theme = useTheme();
@@ -46,11 +46,7 @@ const ReceitaViewer = ({ receitaData, typeColor, onOpenPdf }) => {
                 if (receitaData.prescriptionId && !receitaData.tipo) {
                     try {
                         // Tentar buscar dados completos da receita
-                        const fullData = await prescriptionsService.getPrescription(
-                            receitaData.doctorId,
-                            receitaData.patientId,
-                            receitaData.prescriptionId
-                        );
+                        const fullData = await prescriptionsService.getById(receitaData.prescriptionId);
 
                         if (fullData) {
                             // Mesclar os dados completos com os dados da nota

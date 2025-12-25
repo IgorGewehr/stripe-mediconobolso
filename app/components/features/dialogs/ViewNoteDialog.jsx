@@ -56,8 +56,9 @@ import 'react-toastify/dist/ReactToastify.css';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Serviço Firebase
-import { patientsService, prescriptionsService, storageService } from '@/lib/services/firebase';
+// Serviços API e Firebase
+import { patientsService, prescriptionsService } from '@/lib/services/api';
+import { storageService } from '@/lib/services/firebase';
 import AnamneseViewer from "../shared/AnamneseViewer";
 import ReceitaViewer from "../shared/PrescriptionsViewer";
 import ExamViewer from "../shared/ExamViewer";
@@ -308,7 +309,7 @@ const ViewNoteDialog = ({
             if (open && patientId && doctorId) {
                 setLoading(true);
                 try {
-                    const data = await patientsService.getPatient(doctorId, patientId);
+                    const data = await patientsService.getById(patientId);
                     setPatientData(data);
                 } catch (error) {
                     console.error("Erro ao buscar dados do paciente:", error);
@@ -638,7 +639,7 @@ const ViewNoteDialog = ({
                         const pdfUrl = await storageService.uploadFile(pdfBlob, pdfFileName);
 
                         // Atualiza o registro da receita com o URL do PDF
-                        await prescriptionsService.updatePrescription(doctorId, patientId, noteData.id, {
+                        await prescriptionsService.update(noteData.id, {
                             pdfUrl: pdfUrl
                         });
 

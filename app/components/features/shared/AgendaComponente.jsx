@@ -33,7 +33,7 @@ import {
     VideoCall,
     ArrowForward
 } from '@mui/icons-material';
-import { appointmentsService, patientsService } from '@/lib/services/firebase';
+import { appointmentsService, patientsService } from '@/lib/services/api';
 import { useAuth } from '../../providers/authProvider';
 import EventoModal from '../forms/EventoModal';
 import moment from 'moment-timezone';
@@ -214,7 +214,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                 // Get patient information
                 const patientIds = [...new Set(consultationsData.map(c => c.patientId))];
                 const patientsPromises = patientIds.map(pid =>
-                    patientsService.getPatient(doctorId, pid)
+                    patientsService.getById(pid)
                 );
                 const patientsResults = await Promise.all(patientsPromises);
                 const patientsMap = {};
@@ -284,7 +284,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             console.log('🆔 Consulta criada com ID:', consultationId);
 
             // Get patient name
-            const patient = await patientsService.getPatient(doctorId, patientId);
+            const patient = await patientsService.getById(patientId);
 
             // Crie o objeto de evento usando nossa função
             const newEvent = createEventObject(
@@ -365,7 +365,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             console.log('✅ Consulta atualizada no Firebase');
 
             // Crie o objeto de evento atualizado
-            const patient = await patientsService.getPatient(doctorId, patientId);
+            const patient = await patientsService.getById(patientId);
             const updatedEvent = createEventObject(
                 dataToSave,
                 patient ? (patient.patientName || patient.nome) : "Paciente"

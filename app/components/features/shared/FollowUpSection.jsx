@@ -27,7 +27,7 @@ import AnamneseDialog from "../dialogs/AnamneseDialog";
 import ReceitaDialog from "../dialogs/ReceitasDialog";
 import ExamDialog from "../dialogs/ExamDialog";
 import RelatorioDialog from "../dialogs/RelatorioDialog";
-import { patientsService, examsService, notesService } from '@/lib/services/firebase';
+import { patientsService, examsService, notesService } from '@/lib/services/api';
 import useModuleAccess from '../../hooks/useModuleAccess';
 import ModuleProtection from '../../layout/ModuleProtection';
 import AccessDeniedDialog from '../dialogs/AccessDeniedDialog';
@@ -485,7 +485,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
             if (pacienteId && doctorId && !localPatientData) {
                 try {
                     console.log("Buscando dados do paciente do Firebase:", pacienteId);
-                    const data = await patientsService.getPatient(doctorId, pacienteId);
+                    const data = await patientsService.getById(pacienteId);
                     if (data) {
                         console.log("Dados do paciente obtidos com sucesso");
                         setLocalPatientData(data);
@@ -523,7 +523,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                     setAllExams(exams || []);
 
                     // Buscar notas
-                    const notes = await notesService.listNotes(doctorId, pacienteId);
+                    const notes = await notesService.listNotesByPatient(pacienteId);
                     console.log(`Notas carregadas: ${notes?.length || 0}`);
                     setAllNotes(notes || []);
 

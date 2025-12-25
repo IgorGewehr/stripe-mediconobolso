@@ -79,7 +79,7 @@ import {
 
 import { format, isToday, isPast, parseISO, isValid, parse, differenceInYears, differenceInMonths, differenceInDays, subDays, addDays, isAfter, isBefore, formatDistance, isWithinInterval, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { prescriptionsService, patientsService } from '@/lib/services/firebase';
+import { prescriptionsService, patientsService } from '@/lib/services/api';
 import { useAuth } from "../providers/authProvider";
 
 // Constantes para o componente
@@ -562,11 +562,12 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
             setLoading(true);
             try {
                 // Carrega a lista de prescrições
-                const prescriptionsData = await prescriptionsService.listAllPrescriptions(getEffectiveUserId());
-                setPrescriptions(prescriptionsData);
+                const prescriptionsResponse = await prescriptionsService.list({ perPage: 1000 });
+                setPrescriptions(prescriptionsResponse.items || []);
 
                 // Carrega informações de pacientes para referência
-                const patients = await patientsService.listPatients(getEffectiveUserId());
+                const patientsResponse = await patientsService.list({ perPage: 1000 });
+                const patients = patientsResponse.items || [];
                 const patientsMapData = {};
                 patients.forEach(patient => {
                     patientsMapData[patient.id] = patient;

@@ -51,7 +51,7 @@ import {
     Close as CloseIcon
 } from "@mui/icons-material";
 import { useAuth } from "../providers/authProvider";
-import { conversationService } from '@/lib/services/firebase';
+import { aiConversationsService } from '@/lib/services/api';
 import { format, isToday, isYesterday, isThisWeek, isThisMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FloatingVoiceRecorder from '../features/shared/FloatingVoiceRecorder';
@@ -183,7 +183,7 @@ const DoctorAITemplate = () => {
     // Carregar estatísticas
     const loadStats = async () => {
         try {
-            const conversationStats = await conversationService.getConversationStats(getEffectiveUserId());
+            const conversationStats = await aiConversationsService.getStats();
             setStats(conversationStats);
         } catch (error) {
             console.error("Erro ao carregar estatísticas:", error);
@@ -194,7 +194,8 @@ const DoctorAITemplate = () => {
     const loadConversationHistory = async () => {
         try {
             setIsLoadingHistory(true);
-            const history = await conversationService.getConversations(getEffectiveUserId());
+            const response = await aiConversationsService.listConversations();
+            const history = response.items || response || [];
             setConversations(history || []);
         } catch (error) {
             console.error("Erro ao carregar histórico:", error);
@@ -213,7 +214,7 @@ const DoctorAITemplate = () => {
 
         try {
             setIsSearching(true);
-            const results = await conversationService.searchConversations(getEffectiveUserId(), searchTerm);
+            const results = await aiConversationsService.searchConversations(searchTerm);
             setConversations(results || []);
         } catch (error) {
             console.error("Erro na busca:", error);
@@ -232,7 +233,8 @@ const DoctorAITemplate = () => {
     // Limpar conversas antigas
     const cleanOldConversations = async () => {
         try {
-            const deleted = await conversationService.cleanOldConversations(getEffectiveUserId(), 30);
+            const result = await aiConversationsService.cleanupConversations(30);
+            const deleted = result.deleted || 0;
             if (deleted > 0) {
                 await loadConversationHistory();
                 await loadStats();
@@ -266,7 +268,7 @@ const DoctorAITemplate = () => {
     // Carregar conversa específica
     const loadConversation = async (conversationId) => {
         try {
-            const conversation = await conversationService.getConversation(getEffectiveUserId(), conversationId);
+            const conversation = await aiConversationsService.getConversation(conversationId);
             if (conversation) {
                 setMessages(conversation.messages || []);
                 setCurrentConversationId(conversationId);
@@ -297,10 +299,15 @@ const DoctorAITemplate = () => {
 
             let savedId;
             if (conversationId) {
-                await conversationService.updateConversation(getEffectiveUserId(), conversationId, conversationData);
+                await aiConversationsService.updateConversation(conversationId, conversationData.title);
                 savedId = conversationId;
             } else {
-                savedId = await conversationService.saveConversation(getEffectiveUserId(), conversationData);
+                const created = await aiConversationsService.createConversation({
+                    title: conversationData.title,
+                    conversationType: 'chat',
+                    initialMessage: messagesData[0]?.content
+                });
+                savedId = created.id;
             }
 
             // Recarregar histórico e stats
@@ -329,7 +336,7 @@ const DoctorAITemplate = () => {
     // Deletar conversa
     const deleteConversation = async (conversationId) => {
         try {
-            await conversationService.deleteConversation(getEffectiveUserId(), conversationId);
+            await aiConversationsService.deleteConversation(conversationId);
 
             // Se era a conversa atual, limpar
             if (currentConversationId === conversationId) {

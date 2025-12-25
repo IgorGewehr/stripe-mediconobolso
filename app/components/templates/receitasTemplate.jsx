@@ -79,7 +79,7 @@ import {
     ViewList as ViewListIcon,
     GridView as GridViewIcon,
 } from '@mui/icons-material';
-import { prescriptionsService } from '@/lib/services/firebase';
+import { prescriptionsService } from '@/lib/services/api';
 import { format, formatDistanceToNow, isToday, isYesterday, isValid, parse, isPast, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from "../providers/authProvider";
@@ -221,10 +221,11 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
             setLoading(true);
             try {
-                const [prescriptionsData, medicationsData] = await Promise.all([
-                    prescriptionsService.listPrescriptionsWithDetails(doctorId),
-                    prescriptionsService.listMedications(doctorId)
+                const [prescriptionsResponse, medicationsData] = await Promise.all([
+                    prescriptionsService.list({ perPage: 1000 }),
+                    prescriptionsService.listMedications()
                 ]);
+                const prescriptionsData = prescriptionsResponse.items || [];
 
                 // Validar os dados recebidos
                 if (!Array.isArray(prescriptionsData)) {
@@ -565,8 +566,9 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
     const handleSaveReceita = (receitaId) => {
         // Recarregar os dados após criar uma nova receita
-        prescriptionsService.listPrescriptionsWithDetails(doctorId)
-            .then(data => {
+        prescriptionsService.list({ perPage: 1000 })
+            .then(response => {
+                const data = response.items || [];
                 const processedPrescriptions = data.map(p => ({
                     ...p,
                     status: p.status || 'Ativa',
@@ -842,7 +844,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
             if (selectedMedication) {
                 // Update existing medication
-                await prescriptionsService.updateMedication(doctorId, selectedMedication.id, medicationFormData);
+                await prescriptionsService.updateMedication(selectedMedication.id, medicationFormData);
                 setMedications(prev =>
                     prev.map(med =>
                         med.id === selectedMedication.id ?
@@ -857,9 +859,9 @@ const PrescriptionsPage = forwardRef((props, ref) => {
                 });
             } else {
                 // Create new medication
-                const newMedicationId = await prescriptionsService.createMedication(doctorId, medicationFormData);
-                const newMedication = {
-                    id: newMedicationId,
+                const newMedication = await prescriptionsService.createMedication(medicationFormData);
+                const medicationToAdd = {
+                    id: newMedication.id,
                     ...medicationFormData,
                     createdAt: new Date(),
                 };
@@ -892,7 +894,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
     const handleDeleteMedication = async (id) => {
         try {
-            await prescriptionsService.deleteMedication(doctorId, id);
+            await prescriptionsService.deleteMedication(id);
             setMedications(prev => prev.filter(med => med.id !== id));
 
             // Update metrics
@@ -1015,8 +1017,8 @@ const PrescriptionsPage = forwardRef((props, ref) => {
                 throw new Error("Prescrição não encontrada");
             }
 
-            // Atualizar o status no Firebase
-            await prescriptionsService.updatePrescription(doctorId, patientId, prescriptionId, {
+            // Atualizar o status no backend
+            await prescriptionsService.update(prescriptionId, {
                 status: newStatus,
                 updatedAt: new Date()
             });

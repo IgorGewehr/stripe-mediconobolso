@@ -40,7 +40,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import { patientsService, storageService } from "../../../../lib/services/firebase";
+import { patientsService } from '@/lib/services/api';
+import { storageService } from '@/lib/services/firebase';
 import {useAuth} from '../../providers/authProvider';
 import useModuleAccess from '../../hooks/useModuleAccess';
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
@@ -2819,8 +2820,8 @@ export default function PacienteCard({paciente}) {
                 }
             }
 
-            // Update in Firebase
-            await patientsService.updatePatient(getEffectiveUserId(), paciente.id, dataToSave);
+            // Update in doctor-server
+            await patientsService.update(paciente.id, dataToSave);
 
             // Update successful
             setIsEditing(false);

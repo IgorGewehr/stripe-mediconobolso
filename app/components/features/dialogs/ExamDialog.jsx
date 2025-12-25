@@ -57,7 +57,8 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { examsService, notesService, storageService } from '@/lib/services/firebase';
+import { examsService, notesService } from '@/lib/services/api';
+import { storageService } from '@/lib/services/firebase';
 import { useAuth } from '../../providers/authProvider';
 import ExamTable from "../shared/ExamTable";
 import AccessDeniedDialog from "./AccessDeniedDialog";
@@ -1702,7 +1703,8 @@ const ExamDialog = ({
                         createdAt: new Date(),
                         lastModified: new Date()
                     };
-                    exameId = await examsService.createExam(getEffectiveUserId(), patientId, examData);
+                    const createdExam = await examsService.create(patientId, examData);
+                    exameId = createdExam.id;
                     console.log(`Created new exam with ID: ${exameId}`);
                 }
 
@@ -1763,7 +1765,7 @@ const ExamDialog = ({
                         const updatedAttachments = [...existingAttachments, ...successfulUploads];
 
                         // Update the exam with the complete, corrected attachment list
-                        await examsService.updateExam(getEffectiveUserId(), patientId, exameId, {
+                        await examsService.update(exameId, {
                             attachments: updatedAttachments.map(att => {
                                 const { file, ...meta } = att;
                                 return meta;
@@ -1795,30 +1797,21 @@ const ExamDialog = ({
                     };
 
                     // 4) Create or update the note in Firestore
-                    const allNotes = await notesService.listNotes(getEffectiveUserId(), patientId);
+                    const allNotes = await notesService.listNotesByPatient(patientId);
                     const existingNote = allNotes.find(n => n.exameId === exameId);
 
                     if (existingNote) {
                         console.log(`Updating existing note for exam: ${exameId}`);
-                        await notesService.updateNote(
-                            getEffectiveUserId(),
-                            patientId,
-                            existingNote.id,
-                            {
-                                noteTitle: `Exame - ${title}`,
-                                noteText: `Exame atualizado em ${formattedDate}.${
-                                    hasResults ? '\n\nExame possui resultados estruturados.' : ''
-                                }`,
-                                lastModified: new Date()
-                            }
-                        );
+                        await notesService.updateNote(existingNote.id, {
+                            noteTitle: `Exame - ${title}`,
+                            noteText: `Exame atualizado em ${formattedDate}.${
+                                hasResults ? '\n\nExame possui resultados estruturados.' : ''
+                            }`,
+                            lastModified: new Date()
+                        });
                     } else {
                         console.log(`Creating new note for exam: ${exameId}`);
-                        await notesService.createNote(
-                            getEffectiveUserId(),
-                            patientId,
-                            notePayload
-                        );
+                        await notesService.createNote(patientId, notePayload);
                     }
                 } catch (noteError) {
                     console.error("Erro ao criar nota associada:", noteError);

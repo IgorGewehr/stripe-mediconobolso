@@ -36,7 +36,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Firebase Service
-import { examsService } from '@/lib/services/firebase';
+import { examsService } from '@/lib/services/api';
 
 const ExamViewer = ({ examData, typeColor, onOpenFile }) => {
     const theme = useTheme();

@@ -6,7 +6,7 @@ import PacienteCard from "../features/patients/CardPaciente";
 import FollowUpSection from "../features/shared/FollowUpSection";
 import NotesSection from "../features/shared/NotesSection";
 import { useAuth } from "../providers/authProvider";
-import { notesService, patientsService } from '@/lib/services/firebase';
+import { notesService, patientsService } from '@/lib/services/api';
 
 // Main component
 export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
@@ -27,7 +27,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
     const forceUpdateNotas = async () => {
         console.log("Forçando atualização de notas...");
         try {
-            const notes = await notesService.listNotes(getEffectiveUserId(), pacienteId);
+            const notes = await notesService.listNotesByPatient(pacienteId);
             // Ordena as notas por data (mais recentes primeiro)
             const sortedNotes = notes.sort((a, b) => {
                 const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
@@ -47,7 +47,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
     const fetchNotas = async () => {
         if (pacienteId && user?.uid) {
             try {
-                const notes = await notesService.listNotes(getEffectiveUserId(), pacienteId);
+                const notes = await notesService.listNotesByPatient(pacienteId);
                 setNotasData(notes);
             } catch (err) {
                 console.error("Erro ao carregar anotações:", err);
@@ -68,8 +68,7 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
             const fetchPacienteData = async () => {
                 try {
                     setLoading(true);
-                    const doctorId = getEffectiveUserId();
-                    const patientData = await patientsService.getPatient(doctorId, pacienteId);
+                    const patientData = await patientsService.getById(pacienteId);
 
                     if (!patientData) {
                         setError("Paciente não encontrado");

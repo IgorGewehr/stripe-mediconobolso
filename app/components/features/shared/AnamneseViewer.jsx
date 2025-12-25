@@ -46,7 +46,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Serviço Firebase
-import { notesService } from '@/lib/services/firebase';
+import { notesService } from '@/lib/services/api';
 
 const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
     const theme = useTheme();

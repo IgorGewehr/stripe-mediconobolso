@@ -30,7 +30,7 @@ import {
 import { format, isToday, addDays, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
-import { patientsService } from '../../../../lib/services/firebase';
+import { patientsService } from '@/lib/services/api';
 
 const MobileConsultationCard = ({ 
     nextConsultation, 
@@ -48,10 +48,7 @@ const MobileConsultationCard = ({
         const loadPatientData = async () => {
             if (!nextConsultation || !nextConsultation.patientId || !nextConsultation.doctorId) return;
             try {
-                const patient = await patientsService.getPatient(
-                    nextConsultation.doctorId,
-                    nextConsultation.patientId
-                );
+                const patient = await patientsService.getById(nextConsultation.patientId);
                 setPatientData(patient);
             } catch (error) {
                 console.error("Erro ao carregar dados do paciente:", error);

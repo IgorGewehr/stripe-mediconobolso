@@ -53,7 +53,7 @@ import {
     Celebration as CelebrationIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../providers/authProvider';
-import { secretaryService } from '@/lib/services/firebase';
+import { secretaryService } from '@/lib/services/api';
 import globalCache from '../../utils/globalCache';
 
 // Importar novos componentes
@@ -391,8 +391,7 @@ const SecretaryManagerDialog = ({ open, onClose }) => {
         try {
             setSavingPermissions(true);
 
-            await secretaryService.updateSecretaryPermissions(
-                user.uid,
+            await secretaryService.updatePermissions(
                 editingSecretary.id,
                 editPermissions
             );

@@ -50,7 +50,8 @@
       "Bash(timeout 120s npm run build:*)",
       "Bash(cargo check:*)",
       "Bash(openssl rand:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }

@@ -17,10 +17,9 @@ import InfoBasicasForm from "../features/patients/InformacoesBasicas";
 import CondicoesClinicasForm from "../features/patients/CondicoesClinicas";
 import ConductHistoryForm from "../features/shared/ConductHistory";
 
-// Importa o serviço do Firebase
+// Importa o serviço de pacientes da API (doctor-server)
+import { patientsService } from '@/lib/services/api';
 import { storageService } from '@/lib/services/firebase';
-import { collection, doc, setDoc } from "firebase/firestore";
-import { firestore } from '@/lib/config/firebase.config';
 
 // Importa o AuthProvider (useAuth) para obter o id do usuário autenticado
 import { useAuth } from "../providers/authProvider";
@@ -315,78 +314,70 @@ export default function PacienteCadastroTemplate() {
         try {
             const doctorId = getEffectiveUserId();
 
-            // Gere o docRef para o paciente e obtenha seu ID
-            const patientRef = doc(
-                collection(firestore, "users", doctorId, "patients")
-            );
-            const patientId = patientRef.id;
-
-            // Mapeie os campos dos três formulários para o modelo de paciente
-            const newPatient = {
-                id: patientId,
+            // Mapeie os campos dos formulários para o modelo esperado pela API
+            const patientData = {
+                // Dados básicos
                 patientName: formData.infoBasicas.nome,
                 birthDate: formData.infoBasicas.dataNascimento,
+                patientGender: formData.infoBasicas.genero,
+                patientCPF: formData.infoBasicas.cpf,
+                patientEmail: formData.infoBasicas.email,
+                patientPhone: formData.infoBasicas.telefone,
+
+                // Endereço (formato esperado pela API)
+                address: {
+                    logradouro: formData.infoBasicas.endereco,
+                    cidade: formData.infoBasicas.cidade,
+                    uf: formData.infoBasicas.estado,
+                    cep: formData.infoBasicas.cep,
+                },
+
+                // Dados médicos
                 bloodType: formData.infoBasicas.tipoSanguineo,
-                gender: formData.infoBasicas.genero,
-                address: formData.infoBasicas.endereco,
-                city: formData.infoBasicas.cidade,
-                state: formData.infoBasicas.estado,
-                cpf: formData.infoBasicas.cpf,
-                email: formData.infoBasicas.email,
-                phone: formData.infoBasicas.telefone,
-                cep: formData.infoBasicas.cep,
-                doctorId: doctorId,
-                createdAt: new Date(),
+                isSmoker: formData.condicoesClinicas.ehFumante === "Sim",
+                isAlcoholConsumer: formData.condicoesClinicas.consumeAlcool === "Sim",
 
-                // Condições clínicas e atividades - normalização
-                chronicDiseases: formData.condicoesClinicas.doencas || [],
+                // Históricos médicos
                 allergies: formData.condicoesClinicas.alergias || [],
+                chronicDiseases: formData.condicoesClinicas.doencas || [],
+                medications: formData.condicoesClinicas.medicamentos || [],
+                surgicalHistory: formData.condicoesClinicas.cirurgias || [],
+                familyHistory: formData.historicoConduta.doencasHereditarias
+                    ? [formData.historicoConduta.doencasHereditarias]
+                    : [],
 
-                // Campos adicionais organizados - mantém compatibilidade
-                condicoesClinicas: {
-                    medicamentos: formData.condicoesClinicas.medicamentos || [],
-                    doencas: formData.condicoesClinicas.doencas || [],
-                    alergias: formData.condicoesClinicas.alergias || [],
-                    cirurgias: formData.condicoesClinicas.cirurgias || [],
-                    atividades: formData.condicoesClinicas.atividades || [],
-                    consumeAlcool: formData.condicoesClinicas.consumeAlcool || "Não",
-                    ehFumante: formData.condicoesClinicas.ehFumante || "Não"
-                },
+                // Plano de saúde (primeiro plano se houver)
+                healthPlan: (formData.historicoConduta.healthPlans?.length > 0)
+                    ? {
+                        name: formData.historicoConduta.healthPlans[0].name,
+                        number: formData.historicoConduta.healthPlans[0].number,
+                        validUntil: formData.historicoConduta.healthPlans[0].validUntil,
+                    }
+                    : undefined,
 
-                // Histórico médico
-                historicoConduta: {
-                    doencasHereditarias: formData.historicoConduta.doencasHereditarias || "",
-                    condutaInicial: formData.historicoConduta.condutaInicial || "",
-                },
-
-                // CORREÇÃO: Salvar os planos de saúde corretamente
-                healthPlans: formData.historicoConduta.healthPlans || [],
-                // Garantir que o objeto healthPlan seja preenchido com o primeiro plano para compatibilidade
-                healthPlan: (formData.historicoConduta.healthPlans && formData.historicoConduta.healthPlans.length > 0)
-                    ? formData.historicoConduta.healthPlans[0]
-                    : {name: "", number: "", validUntil: "", type: ""},
-
-                // Informações para o Card3
-                statusList: [],  // Lista inicial vazia de status
+                // Observações (conduta inicial)
+                notes: formData.historicoConduta.condutaInicial || undefined,
             };
 
-            // Upload de foto do paciente
-            if (formData.infoBasicas.patientPhoto) {
-                const photoPath = `users/${doctorId}/patients/${patientId}/profilePhoto/${Date.now()}_${formData.infoBasicas.patientPhoto.name}`;
-                const photoUrl = await storageService.uploadFile(
-                    formData.infoBasicas.patientPhoto,
-                    photoPath
-                );
-                newPatient.photoURL = photoUrl;  // Nome consistente com Card1
-                newPatient.fotoPerfil = photoUrl; // Para compatibilidade
+            // Cria o paciente via API (doctor-server)
+            const createdPatient = await patientsService.create(patientData);
+            const newPatientId = createdPatient.id;
+
+            // Upload de foto do paciente (ainda usa Firebase Storage)
+            if (formData.infoBasicas.patientPhoto && newPatientId) {
+                try {
+                    const photoPath = `users/${doctorId}/patients/${newPatientId}/profilePhoto/${Date.now()}_${formData.infoBasicas.patientPhoto.name}`;
+                    const photoUrl = await storageService.uploadFile(
+                        formData.infoBasicas.patientPhoto,
+                        photoPath
+                    );
+                    // Atualiza o paciente com a URL da foto
+                    await patientsService.update(newPatientId, { photoURL: photoUrl });
+                } catch (photoError) {
+                    console.warn("Erro ao fazer upload da foto (não crítico):", photoError);
+                }
             }
 
-            // Salva o paciente com todos os dados básicos
-            await setDoc(patientRef, newPatient);
-
-            // Já não precisamos mais do upload de arquivos, pois substituímos pela seção de planos de saúde
-
-            const newPatientId = patientRef.id;
             setPatientId(newPatientId);
 
             setSnackbar({
