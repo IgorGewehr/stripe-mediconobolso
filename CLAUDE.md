@@ -9,6 +9,7 @@ This is a medical practice management system built with Next.js, integrating Str
 ## Development Commands
 
 ```bash
+
 # Install dependencies
 npm install
 
