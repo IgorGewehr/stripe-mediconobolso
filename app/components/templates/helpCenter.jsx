@@ -291,43 +291,6 @@ const HelpCenter = () => {
 
     return (
         <Box sx={{ maxWidth: "1280px", mx: "auto", p: { xs: 2, md: 3 }, bgcolor: "#F4F9FF", minHeight: "90vh" }}>
-            {/* Header */}
-            <Paper
-                elevation={0}
-                sx={{
-                    p: { xs: 2, md: 3 },
-                    borderRadius: "18px",
-                    backgroundColor: "#FFFFFF",
-                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.05)",
-                    mb: 3
-                }}
-            >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <VideoLibraryIcon sx={{ color: "#1852FE", mr: 1.5, fontSize: 32 }} />
-                    <Typography
-                        variant="h4"
-                        component="h1"
-                        sx={{
-                            color: "#1852FE",
-                            fontWeight: 600,
-                            fontFamily: "Gellix, sans-serif",
-                            fontSize: { xs: '24px', md: '28px' }
-                        }}
-                    >
-                        Tutoriais em Vídeo
-                    </Typography>
-                </Box>
-                <Typography
-                    variant="subtitle1"
-                    sx={{
-                        color: "#111E5A",
-                        fontFamily: "Gellix, sans-serif"
-                    }}
-                >
-                    Aprenda a usar todas as funcionalidades da plataforma com nossos tutoriais em vídeo
-                </Typography>
-            </Paper>
-
             {/* Search & Filters */}
             <Box sx={{ mb: 3 }}>
                 <Box

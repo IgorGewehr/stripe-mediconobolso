@@ -1,94 +1,82 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Box, Button, Typography, Avatar, Tooltip } from "@mui/material";
-import { useResponsiveScale } from "../hooks/useScale";
+import React, { useState, useMemo, useRef, useCallback } from "react";
+import { Link } from "@mui/material"; // Keeping for compatibility if needed
 import { useAuth } from "../providers/authProvider";
-import LockIcon from "@mui/icons-material/Lock";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-// IMPORTAR ÍCONE PARA O DOCTOR AI
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import PsychologyIcon from "@mui/icons-material/Psychology";
-import ChatIcon from "@mui/icons-material/Chat";
 import SecretaryIndicator from "../features/shared/SecretaryIndicator";
+import { cn } from "@/lib/utils";
+import {
+    LayoutDashboard,
+    Users,
+    FileText,
+    Calendar,
+    MessageSquare,
+    BarChart3,
+    DollarSign,
+    Settings,
+    HelpCircle,
+    AlertCircle,
+    Sparkles,
+    ChevronRight,
+    Shield,
+    Building2
+} from "lucide-react";
+import { Avatar } from "@mui/material";
 
 const Sidebar = ({
-                     initialSelected = "Dashboard",
-                     userName = "Dolittle",
-                     userRole = "Cirurgião",
-                     onMenuSelect,
-                     onLogout,
-                     onProfileClick,
-                     isMobile = false,
-                 }) => {
+    initialSelected = "Dashboard",
+    userName = "Dolittle",
+    userRole = "Cirurgião",
+    onMenuSelect,
+    onLogout,
+    onProfileClick,
+    isMobile = false,
+}) => {
     const [selected, setSelected] = useState(initialSelected);
-    const { user } = useAuth();
-    // Simplificar verificação de acesso - todos têm acesso básico
-    const hasAccess = () => true;
+    const [isScrolling, setIsScrolling] = useState(false);
+    const scrollTimeoutRef = useRef(null);
+    const { user, isSecretary, userContext, clinicMode, doctorAssociation } = useAuth();
     const isAdmin = user?.administrador === true;
-    const { scaleStyle } = useResponsiveScale();
-    const { isSecretary, userContext } = useAuth();
+    const isClinicOwner = doctorAssociation?.associationType === 'owner';
+    const canManageClinic = isAdmin || isClinicOwner || (clinicMode === 'solo' && !isSecretary);
 
-    // Definir itens do menu simplificado
+    // Handle scroll - show scrollbar while scrolling, hide 1s after stop
+    const handleScroll = useCallback(() => {
+        setIsScrolling(true);
+
+        if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+        }
+
+        scrollTimeoutRef.current = setTimeout(() => {
+            setIsScrolling(false);
+        }, 1000);
+    }, []);
+
+    // Map existing menu logic to Lucide icons
     const menuItems = useMemo(() => ({
         principal: [
-            {
-                label: "Dashboard",
-                icon: "/dashboardico.svg"
-            },
-            {
-                label: "Pacientes",
-                icon: "/pacientes.svg"
-            },
-            {
-                label: "Receitas",
-                icon: "/receitas.svg"
-            },
-            {
-                label: "Agenda",
-                icon: "/agenda.svg"
-            },
-            {
-                label: "Conversas",
-                iconComponent: ChatIcon
-            },
-            {
-                label: "Métricas",
-                icon: "/metricas.svg",
-                disabled: true
-            },
-            {
-                label: "Financeiro",
-                icon: "/financeiro.svg",
-                disabled: true
-            }
+            { label: "Dashboard", icon: LayoutDashboard },
+            { label: "Pacientes", icon: Users },
+            { label: "Receitas", icon: FileText },
+            { label: "Agenda", icon: Calendar },
+            { label: "Conversas", icon: MessageSquare },
+            { label: "CRM", icon: BarChart3 },
+            { label: "Financeiro", icon: DollarSign }
         ],
         admin: [
-            ...(user && user.administrador === true ? [{
-                label: "Dados",
-                iconComponent: AdminPanelSettingsIcon
-            }] : [])
+            ...(canManageClinic ? [{ label: "Gestão da Clínica", icon: Building2 }] : []),
+            ...(user && user.administrador === true ? [{ label: "Dados", icon: Shield }] : [])
         ],
         ia: [
-            {
-                label: "Doctor AI",
-                iconComponent: PsychologyIcon,
-                special: true
-            }
+            { label: "Doctor AI", icon: Sparkles, special: false }
         ],
         suporte: [
-            {
-                label: "Central de Ajuda",
-                icon: "/centralajuda.svg"
-            },
-            {
-                label: "Reportar",
-                icon: "/reportar.svg"
-            }
+            { label: "Central de Ajuda", icon: HelpCircle },
+            { label: "Reportar", icon: AlertCircle }
         ]
-    }), [user]);
+    }), [user, canManageClinic]);
 
-    // Filtrar itens baseado no acesso simplificado
     const visibleItems = useMemo(() => {
         const filterItems = (items) => items.map(item => ({
             ...item,
@@ -104,19 +92,8 @@ const Sidebar = ({
         };
     }, [menuItems]);
 
-    const handleMenuClick = (label, isLogout = false, disabled = false) => {
-        if (disabled) {
-            if (label === "Métricas" || label === "Financeiro") {
-                return;
-            }
-            return;
-        }
-
-        if (isLogout && onLogout) {
-            onLogout();
-            return;
-        }
-
+    const handleMenuClick = (label, disabled = false) => {
+        if (disabled) return;
         setSelected(label);
         onMenuSelect?.(label);
     };
@@ -126,499 +103,165 @@ const Sidebar = ({
         else onMenuSelect?.("Meu Perfil");
     };
 
-    const handleUpgrade = (moduleId) => {
-        window.location.href = '/checkout';
-    };
+    const NavItem = ({ item }) => {
+        const isActive = selected === item.label;
+        const Icon = item.icon;
 
-    const buttonStyles = (isSelected, label, isLogout, disabled) => ({
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        fontFamily: "Gellix, sans-serif",
-        fontSize: isMobile ? "15px" : "14px",
-        fontWeight: 500,
-        textTransform: "none",
-        width: isMobile ? "100%" : label === "Central de Ajuda" ? "180px" : "150px",
-        height: isMobile ? "36px" : "28px",
-        px: isMobile ? 2.5 : 2,
-        py: isMobile ? 1.5 : 1,
-        my: 0.5,
-        borderRadius: "18px",
-        transition: "background-color 0.2s ease, color 0.2s ease",
-        color: disabled
-            ? "#8A94A6"
-            : isSelected
-                ? "#FFF"
-                : isLogout
-                    ? "#DB4437"
-                    : "#111E5A",
-        backgroundColor: isSelected && !disabled ? "#4285F4" : "transparent",
-        opacity: disabled ? 0.6 : isSelected ? 0.77 : 1,
-        cursor: disabled ? "default" : "pointer",
-        "&:hover": {
-            backgroundColor: disabled
-                ? "transparent"
-                : isSelected
-                    ? "#4285F4"
-                    : isLogout
-                        ? "rgba(219, 68, 55, 0.08)"
-                        : "rgba(66, 133, 244, 0.08)",
-        },
-    });
-
-    // ✨ ESTILOS ESPECÍFICOS PARA O BOTÃO DO DOCTOR AI
-    const doctorAIButtonStyles = (isSelected) => ({
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        fontFamily: "Gellix, sans-serif",
-        fontSize: isMobile ? "15px" : "14px",
-        fontWeight: 600,
-        textTransform: "none",
-        width: isMobile ? "100%" : "180px",
-        height: isMobile ? "52px" : "44px",
-        px: isMobile ? 3 : 2.5,
-        py: 1.5,
-        borderRadius: "16px",
-        transition: "all 0.2s ease",
-        color: isSelected ? "#FFFFFF" : "#2D3748",
-        backgroundColor: isSelected
-            ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-            : "#FFFFFF",
-        border: `2px solid ${isSelected ? "transparent" : "#E2E8F0"}`,
-        boxShadow: isSelected
-            ? "0 4px 16px rgba(102, 126, 234, 0.25)"
-            : "0 2px 8px rgba(0, 0, 0, 0.06)",
-        "&:hover": {
-            backgroundColor: isSelected
-                ? "linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)"
-                : "#F7FAFC",
-            borderColor: isSelected ? "transparent" : "#667eea",
-            boxShadow: isSelected
-                ? "0 6px 20px rgba(102, 126, 234, 0.35)"
-                : "0 4px 12px rgba(102, 126, 234, 0.15)",
-            transform: "translateY(-1px)",
-        },
-        "&:active": {
-            transform: "translateY(0)",
-        },
-    });
-
-    const iconStyles = { width: isMobile ? "20px" : "18px", height: isMobile ? "20px" : "18px", mr: 1.2 };
-    const lockIconStyles = { width: "14px", height: "14px", ml: 0.8, color: "#8A94A6" };
-    const categoryLabelStyle = {
-        color: "#8A94A6",
-        fontFamily: "Gellix, sans-serif",
-        fontSize: isMobile ? "14px" : "13px",
-        fontWeight: 500,
-        mb: 0.8,
-        mt: isMobile ? 2 : 2.5,
-        ml: 1.5,
-    };
-
-    // Renderizar item do menu com lógica híbrida
-    const renderMenuItem = (item) => {
-        const isSelected = selected === item.label;
-
-        // ✨ TRATAMENTO ESPECIAL PARA O DOCTOR AI
         if (item.special && item.label === "Doctor AI") {
             return (
-                <Tooltip
-                    key={item.label}
-                    title="Assistente Médico com IA"
-                    placement="right"
+                <div
+                    onClick={() => handleMenuClick(item.label)}
+                    className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer group mb-1",
+                        isActive
+                            ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/20"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    )}
                 >
-                    <Button
-                        onClick={() => handleMenuClick(item.label, false, false)}
-                        variant="contained"
-                        sx={doctorAIButtonStyles(isSelected)}
-                        startIcon={
-                            <AutoAwesomeIcon
-                                sx={{
-                                    width: "20px",
-                                    height: "20px",
-                                    mr: 1,
-                                    color: isSelected ? "#FFFFFF" : "#667eea"
-                                }}
-                            />
-                        }
-                    >
-                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                            <Typography
-                                sx={{
-                                    fontSize: "12px",
-                                    fontWeight: 600,
-                                    lineHeight: 1.2,
-                                    color: "inherit"
-                                }}
-                            >
-                                Doctor AI
-                            </Typography>
-                            <Typography
-                                sx={{
-                                    fontSize: "10px",
-                                    fontWeight: 400,
-                                    lineHeight: 1.2,
-                                    color: isSelected ? "rgba(255,255,255,0.9)" : "#64748B",
-                                    mt: 0.2
-                                }}
-                            >
-                                Assistente Médico
-                            </Typography>
-                        </Box>
-                    </Button>
-                </Tooltip>
-            );
-        }
-
-        if (item.hasOwnProperty('disabled') && item.disabled) {
-            return (
-                <Button
-                    key={item.label}
-                    onClick={() => handleMenuClick(item.label, false, true)}
-                    variant="text"
-                    sx={buttonStyles(false, item.label, false, true)}
-                    startIcon={
-                        item.iconComponent ? (
-                            <item.iconComponent sx={iconStyles} />
-                        ) : (
-                            <Box
-                                component="img"
-                                src={item.icon}
-                                alt={item.label}
-                                sx={iconStyles}
-                            />
-                        )
-                    }
-                    disableRipple
-                >
-                    {item.label}
-                    <LockIcon sx={lockIconStyles} />
-                </Button>
-            );
-        }
-
-        if (!item.moduleId) {
-            return (
-                <Button
-                    key={item.label}
-                    onClick={() => handleMenuClick(item.label, false, false)}
-                    variant="text"
-                    sx={buttonStyles(isSelected, item.label, false, false)}
-                    startIcon={
-                        item.iconComponent ? (
-                            <item.iconComponent sx={iconStyles} />
-                        ) : (
-                            <Box
-                                component="img"
-                                src={item.icon}
-                                alt={item.label}
-                                sx={iconStyles}
-                            />
-                        )
-                    }
-                >
-                    {item.label}
-                </Button>
-            );
-        }
-
-        if (item.disabled && item.moduleId) {
-            return (
-                <ModuleProtection
-                    key={item.label}
-                    moduleId={item.moduleId}
-                    showTooltip={true}
-                    showDialog={true}
-                    onUpgrade={handleUpgrade}
-                >
-                    <Button
-                        variant="text"
-                        sx={buttonStyles(false, item.label, false, true)}
-                        startIcon={
-                            item.iconComponent ? (
-                                <item.iconComponent sx={iconStyles} />
-                            ) : (
-                                <Box
-                                    component="img"
-                                    src={item.icon}
-                                    alt={item.label}
-                                    sx={iconStyles}
-                                />
-                            )
-                        }
-                        disableRipple
-                    >
-                        {item.label}
-                        <LockIcon sx={lockIconStyles} />
-                    </Button>
-                </ModuleProtection>
+                    <Icon className={cn("w-4 h-4", isActive ? "text-indigo-100" : "text-indigo-600 group-hover:text-indigo-700")} />
+                    <span>{item.label}</span>
+                    <span className="ml-auto text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        Beta
+                    </span>
+                </div>
             );
         }
 
         return (
-            <Button
-                key={item.label}
-                onClick={() => handleMenuClick(item.label, false, item.disabled, item.moduleId)}
-                variant="text"
-                sx={buttonStyles(isSelected, item.label, false, item.disabled)}
-                startIcon={
-                    item.iconComponent ? (
-                        <item.iconComponent sx={iconStyles} />
-                    ) : (
-                        <Box
-                            component="img"
-                            src={item.icon}
-                            alt={item.label}
-                            sx={iconStyles}
-                        />
-                    )
-                }
-                disableRipple={item.disabled}
+            <div
+                onClick={() => handleMenuClick(item.label, item.disabled)}
+                className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer group mb-1",
+                    item.disabled ? "opacity-60 cursor-not-allowed" : "",
+                    isActive
+                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
             >
-                {item.label}
-            </Button>
+                <Icon className={cn("w-4 h-4", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary transition-colors")} />
+                <span>{item.label}</span>
+            </div>
         );
     };
 
     return (
-        <Box
-            sx={{
-                backgroundColor: "#F8FAFF",
-                height: isMobile ? "100%" : "100vh",
-                width: isMobile ? "100%" : "240px",
-                position: "relative",
-                pl: isMobile ? "20px" : "30px",
-                pr: isMobile ? "20px" : "16px",
-                pt: isMobile ? "20px" : "30px",
-                boxSizing: "border-box",
-                display: "flex",
-                flexDirection: "column",
-                overflowX: "hidden",
-            }}
-        >
-            <Box
-                sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    height: "100%",
-                    ...scaleStyle,
-                }}
-            >
-                {/* Logo */}
-                <Box
+        <div className={cn(
+            "h-screen bg-sidebar border-r border-sidebar-border flex flex-col fixed left-0 top-0 z-40 bg-white/80 backdrop-blur-xl transition-all duration-300",
+            isMobile ? "w-full" : "w-64"
+        )}>
+            {/* Header / Logo */}
+            <div className="p-6">
+                <div
+                    className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => handleMenuClick("Dashboard")}
-                    sx={{ display: "flex", alignItems: "center", mb: 4, flexShrink: 0, cursor: "pointer" }}
                 >
-                    <Box
-                        component="img"
-                        src="/ico.svg"
-                        alt="Logo"
-                        sx={{
-                            width: "47px",
-                            height: "44px",
-                            flexShrink: 0,
-                            ml: "4px",
-                            objectFit: "contain",
-                        }}
+                    <img
+                        src="/logo.png"
+                        alt="Médico no Bolso"
+                        className="w-8 h-8 object-contain"
                     />
-                    <Box sx={{ ml: "10px" }}>
-                        <Typography
-                            sx={{
-                                color: "#4285F4",
-                                fontFamily: "Gellix, sans-serif",
-                                fontSize: "18px",
-                                fontWeight: 500,
-                                lineHeight: 1.2,
-                                whiteSpace: "nowrap",
-                            }}
-                        >
+                    <div className="flex flex-col">
+                        <span className="text-base font-bold leading-none tracking-tight text-foreground">
                             Médico
-                        </Typography>
-                        <Typography
-                            sx={{
-                                color: "#8A94A6",
-                                fontFamily: "Gellix, sans-serif",
-                                fontSize: "9px",
-                                letterSpacing: "2px",
-                                fontWeight: 500,
-                                lineHeight: 1.2,
-                                opacity: 0.9,
-                                whiteSpace: "nowrap",
-                            }}
-                        >
-                            NO BOLSO
-                        </Typography>
-                    </Box>
-                </Box>
+                        </span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
+                            No Bolso
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-                {isSecretary && (
-                    <Box sx={{ mb: 2, mx: 1 }}>
-                        <SecretaryIndicator
-                            isSecretary={isSecretary}
-                            secretaryName={userContext?.secretaryData?.name}
-                            doctorName={userContext?.userData?.fullName}
-                        />
-                    </Box>
+            {/* Secretary Indicator */}
+            {isSecretary && (
+                <div className="px-6 mb-4">
+                    <SecretaryIndicator
+                        isSecretary={isSecretary}
+                        secretaryName={userContext?.secretaryData?.name}
+                        doctorName={userContext?.userData?.fullName}
+                    />
+                </div>
+            )}
+
+            <div
+                className={cn(
+                    "flex-1 overflow-y-auto py-2 px-4 space-y-6",
+                    isScrolling ? "sidebar-scroll-visible" : "sidebar-scroll-hidden"
+                )}
+                onScroll={handleScroll}
+            >
+                {/* Principal */}
+                <div>
+                    <div className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-3 px-2">
+                        Principal
+                    </div>
+                    {visibleItems.principal.map((item) => (
+                        <NavItem key={item.label} item={item} />
+                    ))}
+                </div>
+
+                {/* Admin */}
+                {visibleItems.admin.length > 0 && (
+                    <div>
+                        <div className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-3 px-2">
+                            Administração
+                        </div>
+                        {visibleItems.admin.map((item) => (
+                            <NavItem key={item.label} item={item} />
+                        ))}
+                    </div>
                 )}
 
-                {/* Itens principais */}
-                <Box sx={{ flex: 1, overflowY: "auto" }}>
-                    <Typography sx={categoryLabelStyle}>Principal</Typography>
-                    <Box>
-                        {visibleItems.principal.map(renderMenuItem)}
-                    </Box>
-
-                    {/* Seção Admin (só aparece se tiver itens) */}
-                    {visibleItems.admin.length > 0 && (
-                        <>
-                            <Typography sx={categoryLabelStyle}>Administração</Typography>
-                            <Box>
-                                {visibleItems.admin.map(renderMenuItem)}
-                            </Box>
-                        </>
-                    )}
-
-                    {/* ✨ NOVA SEÇÃO: ASSISTENTE IA */}
-                    <Typography sx={{...categoryLabelStyle, color: "#667eea", fontWeight: 600}}>
+                {/* IA */}
+                <div>
+                    <div className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-3 px-2">
                         Inteligência Artificial
-                    </Typography>
-                    <Box sx={{ mb: 2 }}>
-                        {visibleItems.ia.map(renderMenuItem)}
-                    </Box>
+                    </div>
+                    {visibleItems.ia.map((item) => (
+                        <NavItem key={item.label} item={item} />
+                    ))}
+                </div>
 
-                    <Typography sx={categoryLabelStyle}>Suporte</Typography>
-                    <Box>
-                        {visibleItems.suporte.map(renderMenuItem)}
-                    </Box>
-                </Box>
+                {/* Suporte */}
+                <div>
+                    <div className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-3 px-2">
+                        Suporte
+                    </div>
+                    {visibleItems.suporte.map((item) => (
+                        <NavItem key={item.label} item={item} />
+                    ))}
+                </div>
+            </div>
 
-                {/* Meu Perfil */}
-                <Box sx={{ mt: "auto", mb: 3, position: "relative", width: "100%" }}>
-                    <Typography
-                        sx={{
-                            color: "#8A94A6",
-                            fontFamily: "Gellix, sans-serif",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            mb: 1,
-                            ml: 1.5,
-                        }}
-                    >
-                        Meu Perfil
-                    </Typography>
-                    <Box
-                        onClick={handleProfileClick}
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            py: 2,
-                            px: 2,
-                            borderRadius: "12px",
-                            border: "1px solid rgba(66, 133, 244, 0.2)",
-                            backgroundColor: "#FFFFFF",
-                            boxShadow: "0 2px 8px rgba(17, 30, 90, 0.05)",
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                            "&:hover": {
-                                backgroundColor: "rgba(66, 133, 244, 0.04)",
-                                borderColor: "rgba(66, 133, 244, 0.5)",
-                                boxShadow: "0 4px 12px rgba(17, 30, 90, 0.08)",
-                                transform: "translateY(-2px)",
-                            },
-                            "&:active": {
-                                transform: "translateY(0)",
-                            },
-                        }}
-                    >
-                        <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
-                            {user?.photoURL ? (
-                                <Avatar
-                                    src={user.photoURL}
-                                    alt={userName}
-                                    sx={{
-                                        width: "40px",
-                                        height: "40px",
-                                        borderRadius: "50%",
-                                        border: "2px solid #4285F4",
-                                        boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8)",
-                                        flexShrink: 0,
-                                    }}
-                                />
-                            ) : (
-                                <Box
-                                    component="img"
-                                    src="/doctorimage.png"
-                                    alt="Doctor"
-                                    sx={{
-                                        width: "40px",
-                                        height: "40px",
-                                        borderRadius: "50%",
-                                        border: "2px solid #4285F4",
-                                        boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8)",
-                                        flexShrink: 0,
-                                        objectFit: "cover",
-                                    }}
-                                />
-                            )}
-                            <Box sx={{ ml: 2, flex: 1, minWidth: 0 }}>
-                                <Typography
-                                    sx={{
-                                        color: "#111E5A",
-                                        fontFamily: "Gellix, sans-serif",
-                                        fontSize: "14px",
-                                        fontWeight: 600,
-                                        lineHeight: 1.3,
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}
-                                >
-                                    Dr. {user?.fullName?.split(" ")[0] || userName}
-                                </Typography>
-                                <Typography
-                                    sx={{
-                                        color: "#4285F4",
-                                        fontFamily: "Gellix, sans-serif",
-                                        fontSize: "12px",
-                                        fontWeight: 500,
-                                        lineHeight: 1.3,
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}
-                                >
-                                    {user?.especialidade || userRole}
-                                </Typography>
-                            </Box>
-                        </Box>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                                minWidth: 0,
-                                p: 0.5,
-                                borderRadius: "8px",
-                                borderColor: "rgba(66, 133, 244, 0.3)",
-                                color: "#4285F4",
-                                "&:hover": {
-                                    backgroundColor: "rgba(66, 133, 244, 0.08)",
-                                    borderColor: "#4285F4",
-                                },
-                            }}
-                        >
-                            <Box
-                                component="img"
-                                src="/chevron-down.svg"
-                                alt="Configurações de perfil"
-                                sx={{ width: "16px", height: "16px" }}
-                            />
-                        </Button>
-                    </Box>
-                </Box>
-            </Box>
-        </Box>
+            {/* Profile Section */}
+            <div className="p-4 border-t border-sidebar-border mt-auto">
+                <div className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-3 px-2">
+                    Meu Perfil
+                </div>
+                <div
+                    onClick={handleProfileClick}
+                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                >
+                    <div className="relative h-9 w-9">
+                        <img
+                            src={user?.photoURL || "https://github.com/shadcn.png"}
+                            alt={userName}
+                            className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-sm"
+                        />
+                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors">
+                            Dr. {user?.fullName?.split(" ")[0] || userName}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                            {user?.especialidade || userRole}
+                        </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+            </div>
+        </div>
     );
 };
 

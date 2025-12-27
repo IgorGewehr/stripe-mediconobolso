@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { appointmentsService } from '@/lib/services/firebase';
+import { appointmentsService } from '@/lib/services/api';
 
 export async function POST(request) {
   const requestId = `get_appointments_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;

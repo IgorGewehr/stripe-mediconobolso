@@ -31,9 +31,18 @@ export { default as PrescriptionListTemplate } from './prescriptionListTemplate'
 export { default as UserDataTemplate } from './userDataTemplate';
 export { default as UserProfileTemplate } from './userProfileTemplate';
 
+// Clinic Management
+export { default as ClinicManagementTemplate } from './clinicManagementTemplate';
+
 // Checkout & Payments
 export { default as CheckoutTemplate } from './checkout';
 export { default as CustomCheckout } from './customCheckout';
 
 // Conversations
 export { default as ConversationsTemplate } from './conversationsTemplate';
+
+// Financial
+export { default as FinancialTemplate } from './financialTemplate';
+
+// CRM
+export { default as CRMTemplate } from './crmTemplate';

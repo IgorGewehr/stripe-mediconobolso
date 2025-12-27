@@ -24,7 +24,10 @@ import {
     UnifiedUserManagement,
     BottomNavigation,
     SwipeableView,
-    ConversationsTemplate
+    ConversationsTemplate,
+    ClinicManagementTemplate,
+    FinancialTemplate,
+    CRMTemplate
 } from "../components";
 import { useRouter } from "next/navigation";
 import '../styles/mobile-fixes.css';
@@ -107,7 +110,7 @@ export default function AppLayout({ children }) {
     const userContext = auth?.userContext;
     const hasModulePermission = auth?.hasModulePermission;
     const router = useRouter();
-    
+
     // Responsive design
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -120,7 +123,7 @@ export default function AppLayout({ children }) {
     const [selectedMessageId, setSelectedMessageId] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [activeSwipeIndex, setActiveSwipeIndex] = useState(0);
-    
+
     // Mapping between pages and swipe indexes for mobile
     const mobilePages = ['dashboard', 'pacientes', 'receitas', 'agenda'];
     const pageToIndex = {
@@ -159,7 +162,7 @@ export default function AppLayout({ children }) {
         if (page.toLowerCase() !== "central de ajuda") {
             setSelectedMessageId(null);
         }
-        
+
         // Update swipe index for mobile
         if (isMobile) {
             const pageIndex = pageToIndex[page.toLowerCase()];
@@ -205,7 +208,7 @@ export default function AppLayout({ children }) {
     const handleMobileMenuClose = useCallback(() => {
         setMobileMenuOpen(false);
     }, []);
-    
+
     // Handler for swipe navigation
     const handleSwipeIndexChange = useCallback((newIndex) => {
         setActiveSwipeIndex(newIndex);
@@ -214,7 +217,7 @@ export default function AppLayout({ children }) {
             setActivePage(pages[newIndex]);
         }
     }, []);
-    
+
     // Handler for bottom navigation
     const handleBottomNavigate = useCallback((value) => {
         const pageMap = {
@@ -228,7 +231,7 @@ export default function AppLayout({ children }) {
             handleMenuSelect(page);
         }
     }, [handleMenuSelect]);
-    
+
     // Refs for accessing child component methods
     const receitasTemplateRef = useRef(null);
     const agendaComponenteRef = useRef(null);
@@ -336,7 +339,7 @@ export default function AppLayout({ children }) {
 
         switch (page) {
             case "dashboard":
-                return <DashboardTemplate onClickPatients={handlePatientClick}/>;
+                return <DashboardTemplate onClickPatients={handlePatientClick} />;
 
             case "pacientes":
                 return (
@@ -392,7 +395,7 @@ export default function AppLayout({ children }) {
                         requiredAction="write"
                         fallbackMessage="Você precisa de permissão para criar novos pacientes."
                     >
-                        <PacienteCadastroTemplate/>
+                        <PacienteCadastroTemplate />
                     </ProtectedRoute>
                 );
 
@@ -406,7 +409,7 @@ export default function AppLayout({ children }) {
 
             case "central de ajuda":
                 // Suporte disponível para todos
-                return <HelpCenter initialTab={0}/>;
+                return <HelpCenter initialTab={0} />;
 
             case "reportar":
                 // Reportar disponível para todos
@@ -414,15 +417,27 @@ export default function AppLayout({ children }) {
 
             case "meu perfil":
                 // Perfil disponível para todos
-                return <UserProfileTemplate onLogout={logout}/>;
+                return <UserProfileTemplate onLogout={logout} />;
 
             case "dados":
                 // Admin apenas para administradores
                 return isAdmin ? (
                     <UnifiedUserManagement />
                 ) : (
-                    <Dashboard onClickPatients={handlePatientClick}/>
+                    <Dashboard onClickPatients={handlePatientClick} />
                 );
+
+            case "gestão da clínica":
+                // Gestão de clínica multi-médico
+                return <ClinicManagementTemplate />;
+
+            case "financeiro":
+                // Sistema financeiro
+                return <FinancialTemplate />;
+
+            case "crm":
+                // Sistema de CRM
+                return <CRMTemplate />;
 
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
@@ -453,7 +468,7 @@ export default function AppLayout({ children }) {
                     return (
                         <>
                             Bem vinda,{" "}
-                            <span style={{color: "#1852FE"}}>
+                            <span style={{ color: "#1852FE" }}>
                                 {secretaryName}
                             </span>
                             {" "}(Dr. {doctorName})
@@ -466,7 +481,7 @@ export default function AppLayout({ children }) {
                 case "doctor ai":
                     return (
                         <>
-                            <span style={{color: "#667eea"}}>Doctor AI</span>
+                            <span style={{ color: "#667eea" }}>Doctor AI</span>
                             {" - Assistente médico inteligente"}
                         </>
                     );
@@ -492,7 +507,7 @@ export default function AppLayout({ children }) {
             case "doctor ai":
                 return (
                     <>
-                        <span style={{color: "#667eea"}}>Doctor AI</span>
+                        <span style={{ color: "#667eea" }}>Doctor AI</span>
                         {" - Seu assistente médico inteligente"}
                     </>
                 );
@@ -502,7 +517,7 @@ export default function AppLayout({ children }) {
                 return (
                     <>
                         Bem vindo,{" "}
-                        <span style={{color: "#1852FE"}}>
+                        <span style={{ color: "#1852FE" }}>
                             Dr. {firstName}
                         </span>
                     </>
@@ -510,7 +525,7 @@ export default function AppLayout({ children }) {
             case "agenda":
                 return (
                     <>
-                        <span style={{color: "#1852FE"}}>
+                        <span style={{ color: "#1852FE" }}>
                             Dr. {firstName}
                         </span>
                         {", confira sua agenda"}
@@ -519,7 +534,7 @@ export default function AppLayout({ children }) {
             case "pacientes":
                 return (
                     <>
-                        <span style={{color: "#1852FE"}}>
+                        <span style={{ color: "#1852FE" }}>
                             Dr. {firstName}
                         </span>
                         {", gerencie seus pacientes"}
@@ -555,29 +570,29 @@ export default function AppLayout({ children }) {
                     justifyContent: 'center',
                     alignItems: 'center',
                     height: '100vh',
-                    backgroundColor: '#F4F9FF'
+                    background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 50%, #EFF6FF 100%)',
                 }}
             >
                 <CircularProgress
-                    color="primary"
-                    size={60}
-                    sx={{ mb: 3 }}
+                    size={48}
+                    sx={{ mb: 3, color: '#2563EB' }}
                 />
                 <Typography
-                    variant="h6"
                     sx={{
-                        color: '#1852FE',
-                        fontFamily: 'Gellix, sans-serif',
-                        mb: 1
+                        color: '#0F172A',
+                        fontFamily: "'Inter', sans-serif",
+                        fontWeight: 600,
+                        fontSize: '16px',
+                        mb: 0.5
                     }}
                 >
                     Carregando...
                 </Typography>
                 <Typography
-                    variant="body2"
                     sx={{
-                        color: '#666',
-                        fontFamily: 'Gellix, sans-serif'
+                        color: '#64748B',
+                        fontFamily: "'Inter', sans-serif",
+                        fontSize: '14px',
                     }}
                 >
                     Verificando suas credenciais
@@ -597,7 +612,10 @@ export default function AppLayout({ children }) {
     }
 
     return (
-        <Box display="flex" height="100vh" overflow="hidden" sx={{backgroundColor: "#F4F9FF"}}>
+        <Box display="flex" height="100vh" overflow="hidden" sx={{
+            background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 50%, #EFF6FF 100%)',
+            fontFamily: "'Inter', 'Gellix', system-ui, sans-serif",
+        }}>
             {/* ✅ SIDEBAR PARA DESKTOP */}
             {!isMobile && (
                 <Sidebar
@@ -642,7 +660,17 @@ export default function AppLayout({ children }) {
             )}
 
             {/* ✅ ÁREA PRINCIPAL */}
-            <Box flex={1} display="flex" flexDirection="column" overflow="hidden">
+            <Box
+                flex={1}
+                display="flex"
+                flexDirection="column"
+                overflow="hidden"
+                sx={{
+                    marginLeft: isMobile ? 0 : '256px', // 256px = w-64
+                    transition: 'margin-left 0.3s ease-in-out',
+                    width: isMobile ? '100%' : 'calc(100% - 256px)'
+                }}
+            >
                 {/* ✅ TOP APP BAR */}
                 <Box sx={{ flexShrink: 0 }}>
                     <TopAppBar
@@ -659,8 +687,8 @@ export default function AppLayout({ children }) {
                 </Box>
 
                 {/* ✅ CONTEÚDO PRINCIPAL COM PROTEÇÃO */}
-                <Box flex={1} sx={{ 
-                    position: 'relative', 
+                <Box flex={1} sx={{
+                    position: 'relative',
                     overflow: isMobile ? 'hidden' : 'auto',
                     pb: isMobile ? '56px' : 0 // Space for bottom navigation
                 }}>
@@ -711,7 +739,7 @@ export default function AppLayout({ children }) {
                         </Box>
                     )}
                 </Box>
-                
+
                 {/* ✅ BOTTOM NAVIGATION FOR MOBILE */}
                 {isMobile && (
                     <BottomNavigation

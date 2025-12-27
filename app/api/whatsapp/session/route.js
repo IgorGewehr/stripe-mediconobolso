@@ -13,6 +13,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1
 export async function GET(request) {
   try {
     const doctorId = request.headers.get('X-Doctor-Id');
+    const authToken = request.headers.get('Authorization');
 
     if (!doctorId) {
       return NextResponse.json(
@@ -23,12 +24,18 @@ export async function GET(request) {
 
     console.log('[WhatsApp Session] Checking status for doctor:', doctorId.substring(0, 8) + '***');
 
+    // Build headers with auth token if available
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (authToken) {
+      headers['Authorization'] = authToken;
+    }
+
     // Call doctor-server WhatsApp status endpoint
     const response = await fetch(`${API_URL}/whatsapp/sessions/${doctorId}/status`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       signal: AbortSignal.timeout(10000)
     });
 

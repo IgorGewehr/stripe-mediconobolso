@@ -75,7 +75,7 @@ import {
     AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 
-import { adminService } from '@/lib/services/firebase';
+import { adminService } from '@/lib/services/api';
 import presenceService from '../../../../lib/presenceService';
 import useModuleAccess from '../../hooks/useModuleAccess';
 

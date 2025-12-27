@@ -102,6 +102,7 @@ import {useAuth} from "../providers";
 import useModuleAccess from "../hooks/useModuleAccess";
 import { usePatients, useAppointments } from "../hooks";
 import SearchField from "../ui/inputs/SearchField";
+import DoctorFilter from "../features/shared/DoctorFilter";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import MaleIcon from "@mui/icons-material/Male";
@@ -1003,6 +1004,7 @@ const PatientsListPage = ({onPatientClick}) => {
     const [filteredPatients, setFilteredPatients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDoctorId, setSelectedDoctorId] = useState(null);
     const [viewMode, setViewMode] = useState(isMobile ? VIEWS.GRID : VIEWS.TABLE);
     const [currentTab, setCurrentTab] = useState(TABS.ALL);
     const [page, setPage] = useState(1);
@@ -2144,6 +2146,16 @@ const PatientsListPage = ({onPatientClick}) => {
                     setPage={setPage}
                     isTablet={isTablet}
                     theme={theme}
+                />
+
+                {/* Filtro de médico para clínicas multi-médico */}
+                <DoctorFilter
+                    value={selectedDoctorId}
+                    onChange={(id) => {
+                        setSelectedDoctorId(id);
+                        setPage(1);
+                    }}
+                    context="patients"
                 />
 
                 <Box

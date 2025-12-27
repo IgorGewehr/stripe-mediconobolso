@@ -18,6 +18,7 @@ import {
   Cancel,
   Edit,
   WhatsApp,
+  Facebook,
   Circle
 } from '@mui/icons-material';
 import { getStatusLabel } from '@/lib/models/Conversation.model';
@@ -128,7 +129,7 @@ const ConversationItem = memo(({
               {(conversation.clientName || conversation.clientPhone)?.[0]?.toUpperCase() || <Person />}
             </Avatar>
           </Badge>
-          {/* WhatsApp indicator */}
+          {/* Channel indicator */}
           <Box
             sx={{
               position: 'absolute',
@@ -137,13 +138,17 @@ const ConversationItem = memo(({
               width: 16,
               height: 16,
               borderRadius: '4px',
-              bgcolor: alpha('#25D366', 0.1),
+              bgcolor: alpha(conversation.channel === 'facebook' ? '#1877F2' : '#25D366', 0.1),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <WhatsApp sx={{ fontSize: 10, color: '#25D366' }} />
+            {conversation.channel === 'facebook' ? (
+              <Facebook sx={{ fontSize: 10, color: '#1877F2' }} />
+            ) : (
+              <WhatsApp sx={{ fontSize: 10, color: '#25D366' }} />
+            )}
           </Box>
         </Box>
 

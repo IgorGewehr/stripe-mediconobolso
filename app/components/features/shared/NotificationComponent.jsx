@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { Bell } from "lucide-react";
 import {
     Box,
     IconButton,
@@ -29,7 +30,7 @@ import {
     AdminPanelSettings as AdminPanelSettingsIcon,
     MarkEmailRead as MarkReadIcon
 } from "@mui/icons-material";
-import { adminService } from '@/lib/services/firebase';
+import { adminService } from '@/lib/services/api';
 import { useAuth } from '../../providers/authProvider';
 
 const NotificationComponent = ({ onMessageClick }) => {
@@ -38,7 +39,7 @@ const NotificationComponent = ({ onMessageClick }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
-    
+
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -219,38 +220,15 @@ const NotificationComponent = ({ onMessageClick }) => {
 
     return (
         <>
-            <IconButton
+            <button
                 onClick={handleClick}
-                sx={{
-                    width: isMobile ? 36 : 40,
-                    height: isMobile ? 36 : 40,
-                    borderRadius: '50%',
-                    backgroundColor: 'rgba(24, 82, 254, 0.1)',
-                    border: '1px solid rgba(24, 82, 254, 0.2)',
-                    '&:hover': {
-                        backgroundColor: 'rgba(24, 82, 254, 0.15)',
-                    }
-                }}
+                className="h-8 w-8 rounded-full relative flex items-center justify-center border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-                <Badge
-                    badgeContent={unreadCount}
-                    color="error"
-                    sx={{
-                        '& .MuiBadge-badge': {
-                            fontSize: isMobile ? '0.65rem' : '0.75rem',
-                            minWidth: isMobile ? '16px' : '18px',
-                            height: isMobile ? '16px' : '18px'
-                        }
-                    }}
-                >
-                    <NotificationsIcon
-                        sx={{
-                            fontSize: isMobile ? 20 : 22,
-                            color: '#1852FE'
-                        }}
-                    />
-                </Badge>
-            </IconButton>
+                <Bell className="w-3.5 h-3.5" />
+                {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                )}
+            </button>
 
             <Popover
                 open={open}

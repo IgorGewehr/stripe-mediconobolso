@@ -13,6 +13,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1
 export async function POST(request) {
   try {
     const doctorId = request.headers.get('X-Doctor-Id');
+    const authToken = request.headers.get('Authorization');
 
     if (!doctorId) {
       return NextResponse.json(
@@ -23,12 +24,18 @@ export async function POST(request) {
 
     console.log('[WhatsApp Reset] Resetting session for doctor:', doctorId.substring(0, 8) + '***');
 
+    // Build headers with auth token if available
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (authToken) {
+      headers['Authorization'] = authToken;
+    }
+
     // Call doctor-server to disconnect session
     const response = await fetch(`${API_URL}/whatsapp/sessions/${doctorId}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       signal: AbortSignal.timeout(15000)
     });
 

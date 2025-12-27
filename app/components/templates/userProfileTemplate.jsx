@@ -41,7 +41,8 @@ import {
     People as PeopleIcon
 } from "@mui/icons-material";
 import { debounce } from 'lodash';
-import { authService, secretaryService, storageService } from '@/lib/services/firebase';
+import { authService, storageService } from '@/lib/services/firebase';
+import { secretaryService } from '@/lib/services/api';
 import { useAuth } from "../providers/authProvider";
 import SubscriptionManagerDialog from '../features/dialogs/SubscriptionManagerDialog';
 import SecretaryManagerDialog from '../features/dialogs/SecretaryManagerDialog';

@@ -14,6 +14,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1
 export async function POST(request) {
   try {
     const doctorId = request.headers.get('X-Doctor-Id');
+    const authToken = request.headers.get('Authorization');
     const body = await request.json();
 
     const { phone, message, conversationId } = body;
@@ -38,20 +39,22 @@ export async function POST(request) {
       messageLength: message.length
     });
 
+    // Build headers with auth token if available
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (authToken) {
+      headers['Authorization'] = authToken;
+    }
+
     // Send message through doctor-server WhatsApp endpoint
     const response = await fetch(`${API_URL}/whatsapp/messages/${doctorId}/send`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         to: phone,
-        text: message,
-        type: 'text',
-        metadata: {
-          is_manual: true,
-          conversation_id: conversationId || null
-        }
+        message: message, // doctor-server expects 'message' not 'text'
+        message_type: 'text'
       }),
       signal: AbortSignal.timeout(15000)
     });

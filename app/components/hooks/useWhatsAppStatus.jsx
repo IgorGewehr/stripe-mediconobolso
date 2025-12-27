@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../providers/authProvider';
+import { auth } from '@/lib/config/firebase.config';
 
 /**
  * WhatsApp connection status types
@@ -25,6 +26,19 @@ const CACHE_TTL = {
 
 // Shared cache between hook instances
 const statusCache = new Map();
+
+/**
+ * Get current user's Firebase auth token
+ */
+const getAuthToken = async () => {
+  const user = auth.currentUser;
+  if (!user) return null;
+  try {
+    return await user.getIdToken();
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Hook for managing WhatsApp connection status
@@ -85,11 +99,18 @@ const useWhatsAppStatus = (autoRefresh = false) => {
       setIsLoading(true);
       setError(null);
 
+      // Get auth token
+      const token = await getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Doctor-Id': doctorId
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/whatsapp/session', {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Doctor-Id': doctorId
-        }
+        headers
       });
 
       if (response.ok) {
@@ -151,12 +172,19 @@ const useWhatsAppStatus = (autoRefresh = false) => {
       setIsLoading(true);
       setError(null);
 
+      // Get auth token
+      const token = await getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Doctor-Id': doctorId
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/whatsapp/qr', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Doctor-Id': doctorId
-        }
+        headers
       });
 
       if (response.ok) {
@@ -186,12 +214,19 @@ const useWhatsAppStatus = (autoRefresh = false) => {
     try {
       setIsLoading(true);
 
+      // Get auth token
+      const token = await getAuthToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Doctor-Id': doctorId
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/whatsapp/session/reset', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Doctor-Id': doctorId
-        }
+        headers
       });
 
       if (response.ok) {

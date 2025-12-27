@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { appointmentsService } from '@/lib/services/firebase';
+import { appointmentsService } from '@/lib/services/api';
 
 export async function POST(request) {
   const startTime = Date.now();

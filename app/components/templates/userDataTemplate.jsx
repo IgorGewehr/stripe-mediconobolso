@@ -32,7 +32,7 @@ import {
     AdminPanelSettings as AdminIcon,
     Person as PersonIcon
 } from '@mui/icons-material';
-import { adminService } from '@/lib/services/firebase';
+import { adminService } from '@/lib/services/api';
 import { useAuth } from "../providers/authProvider";
 
 const UserDataTemplate = () => {
@@ -128,15 +128,12 @@ const UserDataTemplate = () => {
     };
 
     return (
-        <Box sx={{ padding: 3, maxWidth: "100%" }}>
-            {/* Cabeçalho */}
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: "#111E5A" }}>
-                    Gerenciamento de Usuários
-                </Typography>
-
+        <Box sx={{ padding: { xs: 2, md: 3 }, maxWidth: "100%" }}>
+            {/* Toolbar com ações e pesquisa */}
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 3, flexWrap: "wrap" }}>
                 <Button
                     variant="outlined"
+                    size="small"
                     startIcon={<RefreshIcon />}
                     onClick={loadUsers}
                     sx={{
@@ -150,20 +147,18 @@ const UserDataTemplate = () => {
                 >
                     Atualizar
                 </Button>
-            </Box>
 
-            {/* Barra de pesquisa */}
-            <Box sx={{ mb: 3 }}>
                 <TextField
-                    fullWidth
+                    sx={{ flex: 1, minWidth: 200 }}
+                    size="small"
                     variant="outlined"
-                    placeholder="Pesquisar por nome ou email"
+                    placeholder="Pesquisar por nome ou email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
-                                <SearchIcon sx={{ color: "#4285F4" }} />
+                                <SearchIcon sx={{ color: "#4285F4", fontSize: 20 }} />
                             </InputAdornment>
                         ),
                         sx: {

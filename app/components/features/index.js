@@ -46,3 +46,12 @@ export { default as PrescriptionsTemplateFeature } from './prescriptions/Prescri
 
 // Conversations (WhatsApp/Social Media)
 export * from './conversations';
+
+// Clinic Management (Multi-Doctor)
+export * from './clinic';
+
+// Financial System
+export * from './financial';
+
+// CRM System
+export * from './crm';

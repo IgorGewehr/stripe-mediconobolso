@@ -41,5 +41,32 @@ export { default as useSecretary } from './useSecretary';
 export { default as useTiss } from './useTiss';
 export { default as useTussAutocomplete } from './useTussAutocomplete';
 
+// Clinic/Multi-Doctor Hooks
+export { default as useClinicDoctors } from './useClinicDoctors';
+export { default as useClinicPermissions } from './useClinicPermissions';
+
+// Financial Hooks
+export {
+  default as useFinancial,
+  useFinancialDashboard,
+  useContasReceber,
+  useContasPagar,
+  useFornecedores,
+  useCategorias,
+  useRepasses,
+  useFinancialReports,
+} from './useFinancial';
+
+// CRM Hooks
+export {
+  default as useCRM,
+  useCRMDashboard,
+  useFollowUpRules,
+  useReminderConfig,
+  usePendingFollowUps,
+  useInactivePatients,
+  useDefaultTemplates,
+} from './useCRM';
+
 // Re-export auth hook from providers for convenience
 export { useAuth } from '../providers';

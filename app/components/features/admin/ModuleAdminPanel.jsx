@@ -49,7 +49,7 @@ import {
     Security as SecurityIcon
 } from '@mui/icons-material';
 
-import { adminService } from '@/lib/services/firebase';
+import { adminService } from '@/lib/services/api';
 import moduleService from '../../../../lib/moduleService';
 // Definições locais dos módulos - removido moduleConfig
 const MODULE_INFO = {

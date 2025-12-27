@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Skeleton, Box, Typography, Button } from "@mui/material";
 import { useAuth } from '../../providers/authProvider';
 import WeatherCard from "../../ui/cards/WeatherCard";
-import { weatherService } from '@/lib/services/firebase';
+import { weatherService } from '@/lib/services/api';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 /**
@@ -30,8 +30,8 @@ const WeatherContainer = () => {
             if (!user?.uid) return;
 
             try {
-                // 1. Buscar dados do Firebase imediatamente
-                const { weatherData: storedData, currentCity } = await weatherService.getUserWeatherData(user.uid);
+                // 1. Buscar dados do servidor imediatamente
+                const { weatherData: storedData, currentCity } = await weatherService.getUserWeatherData();
 
                 // 2. Se temos dados no Firebase, mostrar imediatamente
                 if (storedData && isMounted) {
@@ -63,8 +63,8 @@ const WeatherContainer = () => {
                             freshData.cityName = requestedCityName;
                         }
 
-                        // 5. Salvar no Firebase
-                        await weatherService.updateUserWeatherData(user.uid, freshData, currentCity);
+                        // 5. Salvar no servidor
+                        await weatherService.updateUserWeatherData(freshData, currentCity);
 
                         // 6. Atualizar a UI
                         if (isMounted) {
@@ -136,7 +136,7 @@ const WeatherContainer = () => {
 
         try {
             // Obter cidade do usuário
-            const { currentCity } = await weatherService.getUserWeatherData(user.uid);
+            const { currentCity } = await weatherService.getUserWeatherData();
 
             // Chamar API
             const response = await fetch(`/api/weather?city=${encodeURIComponent(currentCity)}`);
@@ -154,8 +154,8 @@ const WeatherContainer = () => {
                 freshData.cityName = requestedCityName;
             }
 
-            // Salvar no Firebase
-            await weatherService.updateUserWeatherData(user.uid, freshData, currentCity);
+            // Salvar no servidor
+            await weatherService.updateUserWeatherData(freshData, currentCity);
 
             // Atualizar UI
             setWeatherData(freshData);

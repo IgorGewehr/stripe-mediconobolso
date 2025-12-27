@@ -51,7 +51,18 @@
       "Bash(cargo check:*)",
       "Bash(openssl rand:*)",
       "Bash(npx tsc:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(while pgrep:*)",
+      "Bash(do sleep 5)",
+      "Bash(PGPASSWORD='DoctorSecure2024!' psql:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker exec:*)",
+      "Bash(lsof:*)",
+      "Bash(git stash:*)",
+      "Bash(cargo clean:*)",
+      "Bash(cargo build:*)",
+      "Bash(npm uninstall:*)",
+      "WebSearch"
     ],
     "deny": []
   }

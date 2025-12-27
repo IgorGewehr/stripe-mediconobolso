@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../providers/authProvider';
-import { conversationService } from '@/lib/services/firebase';
+import { aiBlocksService } from '@/lib/services/api';
 
 /**
  * Hook for managing AI block status for a specific phone number
@@ -54,13 +54,13 @@ const useAIBlockStatus = ({ phone }) => {
     setLoading(true);
 
     try {
-      const result = await conversationService.getAIBlockStatus(doctorId, phone);
+      const result = await aiBlocksService.getAIBlockStatus(phone);
 
       // Only update if phone hasn't changed
       if (phoneRef.current === phone) {
-        setBlocked(result.blocked || false);
-        setExpiresAt(result.expiresAt || null);
-        setReason(result.reason || '');
+        setBlocked(result.isBlocked || false);
+        setExpiresAt(result.blockedAt || null);
+        setReason(result.blockReason || '');
         setError(null);
       }
     } catch (err) {
@@ -87,15 +87,11 @@ const useAIBlockStatus = ({ phone }) => {
     setError(null);
 
     try {
-      const result = await conversationService.blockAI(doctorId, phone, {
-        duration,
-        reason: blockReason || 'Modo manual ativado pelo usuário',
-        createdBy: user?.uid
-      });
+      const result = await aiBlocksService.blockAI(phone, 'whatsapp', blockReason || 'Modo manual ativado pelo usuário');
 
       setBlocked(true);
-      setExpiresAt(result.expiresAt);
-      setReason(result.reason);
+      setExpiresAt(result.block?.blocked_at || null);
+      setReason(result.block?.block_reason || blockReason);
 
       console.log('[useAIBlockStatus] Manual mode enabled:', { phone, duration });
     } catch (err) {
@@ -117,7 +113,7 @@ const useAIBlockStatus = ({ phone }) => {
     setError(null);
 
     try {
-      await conversationService.unblockAI(doctorId, phone);
+      await aiBlocksService.unblockAI(phone);
 
       setBlocked(false);
       setExpiresAt(null);

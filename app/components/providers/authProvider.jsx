@@ -63,6 +63,13 @@ export const AuthProvider = ({ children }) => {
     // ✅ ESTADOS PARA PERFORMANCE E PRESENÇA
     const [presenceInitialized, setPresenceInitialized] = useState(false);
 
+    // ✅ ESTADOS PARA SISTEMA MULTI-CLÍNICA
+    const [clinicMode, setClinicMode] = useState('solo'); // 'solo' | 'multi_doctor'
+    const [clinicData, setClinicData] = useState(null);   // Dados da clínica
+    const [doctorAssociation, setDoctorAssociation] = useState(null); // Associação do médico
+    const [accessibleDoctors, setAccessibleDoctors] = useState([]); // Médicos que pode acessar
+    const [currentDoctorFilter, setCurrentDoctorFilter] = useState(null); // Filtro de médico ativo
+
     // ✅ HOOKS DO NEXT.JS
     const router = useRouter();
     const pathname = usePathname();
@@ -1081,6 +1088,83 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
+    // ✅ FUNÇÕES PARA SISTEMA MULTI-CLÍNICA
+
+    /**
+     * Verifica se pode acessar dados de um médico específico
+     */
+    const canAccessDoctorData = useCallback((doctorId) => {
+        // Admin sempre pode
+        if (user?.administrador || user?.role === 'tenant_admin') {
+            return true;
+        }
+
+        // Modo solo: só pode acessar seus próprios dados
+        if (clinicMode === 'solo') {
+            return workingDoctorId === doctorId;
+        }
+
+        // Modo multi-médico: verificar na lista de acessíveis
+        return accessibleDoctors.some(d => d.id === doctorId || d.profissionalId === doctorId);
+    }, [user, clinicMode, workingDoctorId, accessibleDoctors]);
+
+    /**
+     * Verifica se pode gerenciar financeiro
+     */
+    const canManageFinancial = useCallback(() => {
+        if (user?.administrador || user?.role === 'tenant_admin') {
+            return true;
+        }
+        if (doctorAssociation?.additionalPermissions?.canManageFinancial) {
+            return true;
+        }
+        // Médico solo tem acesso total
+        if (clinicMode === 'solo' && !isSecretary) {
+            return true;
+        }
+        return false;
+    }, [user, doctorAssociation, clinicMode, isSecretary]);
+
+    /**
+     * Retorna lista de médicos para filtro
+     */
+    const getDoctorsForFilter = useCallback(() => {
+        if (clinicMode === 'solo') {
+            return workingDoctorId ? [{ id: workingDoctorId, name: user?.fullName }] : [];
+        }
+        return accessibleDoctors;
+    }, [clinicMode, workingDoctorId, accessibleDoctors, user]);
+
+    /**
+     * Define filtro de médico para visualização
+     */
+    const setDoctorFilter = useCallback((doctorId) => {
+        if (doctorId && !canAccessDoctorData(doctorId)) {
+            console.error('Acesso negado ao médico:', doctorId);
+            return false;
+        }
+        setCurrentDoctorFilter(doctorId);
+        return true;
+    }, [canAccessDoctorData]);
+
+    /**
+     * Carrega dados da clínica e médicos (chamado após login)
+     */
+    const loadClinicData = useCallback(async () => {
+        try {
+            // Por enquanto, apenas configura modo solo
+            // Quando o backend estiver pronto, buscar dados reais
+            setClinicMode('solo');
+            setClinicData(null);
+            setDoctorAssociation(null);
+            setAccessibleDoctors([]);
+
+            console.log('📊 Modo clínica: solo (padrão)');
+        } catch (error) {
+            console.error('Erro ao carregar dados da clínica:', error);
+        }
+    }, []);
+
     // ✅ MEMOIZAR VALUE DO CONTEXT COM NOVAS FUNÇÕES
     const contextValue = useMemo(() => ({
         // Estados básicos
@@ -1124,7 +1208,26 @@ export const AuthProvider = ({ children }) => {
         // Verificações de usuário
         isLegacyUser: user ? checkIfLegacyUser(user) : false,
         userHasAccess: user ? userHasAccess(user) : false,
-        userHasValidData: user ? userHasValidData(user) : false
+        userHasValidData: user ? userHasValidData(user) : false,
+
+        // ✅ ESTADOS E FUNÇÕES MULTI-CLÍNICA
+        clinicMode,
+        clinicData,
+        doctorAssociation,
+        accessibleDoctors,
+        currentDoctorFilter,
+
+        // Funções multi-clínica
+        canAccessDoctorData,
+        canManageFinancial,
+        getDoctorsForFilter,
+        setDoctorFilter,
+        loadClinicData,
+
+        // Helpers computados
+        isMultiDoctorClinic: clinicMode === 'multi_doctor',
+        isSoloDoctor: clinicMode === 'solo' && !isSecretary,
+        isClinicAdmin: user?.role === 'tenant_admin' || user?.administrador
     }), [
         user, loading, isFreeUser, logout, hasFreeTrialOffer, referralSource,
         isSecretary, workingDoctorId, permissions, userContext,
@@ -1133,7 +1236,11 @@ export const AuthProvider = ({ children }) => {
         getDisplayUserData, reloadUserContext, clearRelatedCaches, markAsNewlyCreated,
         updateUserModules, upgradeUserPlan, migrateFromLegacy,
         isProtectedRoute, isPublicRoute, checkIfLegacyUser,
-        userHasAccess, userHasValidData
+        userHasAccess, userHasValidData,
+        // Multi-clínica
+        clinicMode, clinicData, doctorAssociation, accessibleDoctors,
+        currentDoctorFilter, canAccessDoctorData, canManageFinancial,
+        getDoctorsForFilter, setDoctorFilter, loadClinicData
     ]);
 
     return (

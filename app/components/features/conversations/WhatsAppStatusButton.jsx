@@ -168,20 +168,26 @@ const WhatsAppStatusButton = ({ variant = 'button' }) => {
         disabled={isLoading}
         startIcon={
           isLoading ? (
-            <CircularProgress size={16} sx={{ color: config.color }} />
+            <CircularProgress size={14} sx={{ color: config.color }} />
           ) : (
-            config.icon
+            React.cloneElement(config.icon, { sx: { fontSize: 14 } })
           )
         }
         sx={{
           borderRadius: '20px',
-          px: 2,
-          py: 0.75,
+          height: '32px',
+          minHeight: '32px',
+          px: 1.5,
+          py: 0,
+          fontSize: '12px',
           bgcolor: config.bgColor,
           color: config.color,
           fontWeight: 600,
           textTransform: 'none',
           border: `1px solid ${alpha(config.color, 0.3)}`,
+          '& .MuiButton-startIcon': {
+            marginRight: '4px',
+          },
           '&:hover': {
             bgcolor: config.hoverBgColor,
             '& .button-label': {

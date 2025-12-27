@@ -52,7 +52,7 @@ import {
     Email as EmailIcon
 } from '@mui/icons-material';
 
-import { adminService } from '@/lib/services/firebase';
+import { adminService } from '@/lib/services/api';
 import { useAuth } from '../../providers/authProvider';
 
 const AdminMessagesComponent = ({ open, onClose }) => {

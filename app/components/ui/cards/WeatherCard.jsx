@@ -6,13 +6,13 @@ import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
 import GrainIcon from '@mui/icons-material/Grain';
 import CloudIcon from '@mui/icons-material/Cloud';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 
 const weatherIcons = {
-    Clear: <WbSunnyIcon sx={{ fontSize: 18, color: '#f59e0b' }} />,
-    Rain: <GrainIcon sx={{ fontSize: 18, color: '#3b82f6' }} />,
-    Snow: <AcUnitIcon sx={{ fontSize: 18, color: '#64748b' }} />,
-    Clouds: <CloudIcon sx={{ fontSize: 18, color: '#6b7280' }} />
+    Clear: <WbSunnyIcon sx={{ fontSize: 32, color: '#F59E0B' }} />,
+    Rain: <GrainIcon sx={{ fontSize: 32, color: '#3B82F6' }} />,
+    Snow: <AcUnitIcon sx={{ fontSize: 32, color: '#64748B' }} />,
+    Clouds: <CloudIcon sx={{ fontSize: 32, color: '#94A3B8' }} />
 };
 
 const getWeatherLabel = (weather) => {
@@ -26,17 +26,13 @@ const getWeatherLabel = (weather) => {
 };
 
 const WeatherCard = ({
-                         cityName,
-                         currentTemp,
-                         currentWeather,
-                         highTemp,
-                         lowTemp,
-                         forecast = []
-                     }) => {
-    // Log para diagnóstico - para ver o que está chegando no componente
-    console.log("WeatherCard recebeu:", { cityName, currentTemp, currentWeather, highTemp, lowTemp });
-    console.log("Previsão recebida pelo WeatherCard:", forecast);
-
+    cityName,
+    currentTemp,
+    currentWeather,
+    highTemp,
+    lowTemp,
+    forecast = []
+}) => {
     return (
         <Paper
             elevation={0}
@@ -44,127 +40,125 @@ const WeatherCard = ({
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                padding: '16px 14px',
-                borderRadius: '20px',
+                p: 2.5,
+                borderRadius: '16px',
                 height: '180px',
                 width: '100%',
-                border: '1px solid',
-                borderColor: '#e0e0e0',
-                backgroundColor: 'white',
+                border: 'none',
+                background: 'linear-gradient(135deg, #FFFFFF 0%, #F0F9FF 50%, #E0F2FE 100%)',
                 boxSizing: 'border-box',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                overflow: 'hidden',
+                position: 'relative',
                 '&:hover': {
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.08)',
-                    borderColor: '#d0d7e6'
+                    boxShadow: '0 8px 24px rgba(37, 99, 235, 0.12)',
+                    transform: 'translateY(-2px)',
                 }
             }}
         >
-            {/* Seção do clima atual */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', width: '100%' }}>
-                <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center', mb: 0.5 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#172554', lineHeight: 1, fontSize: '0.9rem' }}>
-                        {cityName}
-                    </Typography>
-                    <LocationOnIcon sx={{ width: 10, height: 10, color: '#172554' }} />
-                </Box>
-
-                <Box sx={{ display: 'flex', gap: '2px', alignItems: 'flex-start' }}>
-                    <Typography variant="h3" sx={{ fontWeight: 600, color: '#2563EB', lineHeight: 1, fontSize: '2.5rem' }}>
-                        {currentTemp !== undefined ? `${currentTemp}°` : "--°"}
-                    </Typography>
-
-                    <Box sx={{ display: 'flex', flexDirection: 'column', ml: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#172554', fontSize: '0.85rem' }}>
-                                {currentWeather ? getWeatherLabel(currentWeather) : "Indisponível"}
-                            </Typography>
-                            {currentWeather && weatherIcons[currentWeather] ? weatherIcons[currentWeather] : <CloudIcon sx={{ fontSize: 18, color: '#6b7280' }} />}
-                        </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 500, color: '#172554', fontSize: '0.85rem', mt: 0.5 }}>
-                            Max:{highTemp !== undefined ? `${highTemp}°` : "--°"} Min:{lowTemp !== undefined ? `${lowTemp}°` : "--°"}
-                        </Typography>
-                    </Box>
-                </Box>
-            </Box>
-
-            {/* Linha divisória */}
+            {/* Elemento decorativo de fundo */}
             <Box
                 sx={{
-                    height: '1px',
-                    width: '100%',
-                    backgroundColor: '#e0e0e0',
-                    my: 1
+                    position: 'absolute',
+                    top: -20,
+                    right: -20,
+                    width: 100,
+                    height: 100,
+                    borderRadius: '50%',
+                    background: 'rgba(251, 191, 36, 0.1)',
+                    filter: 'blur(20px)',
                 }}
             />
 
-            {/* Seção de previsão */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                {Array.isArray(forecast) && forecast.length > 0 ? (
-                    // Mostramos exatamente os 2 dias de previsão (amanhã e depois)
-                    forecast.slice(0, 2).map((day, index) => (
-                        <Box key={index} sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            width: '45%',
-                            padding: '6px',
-                            borderRadius: '12px',
-                            transition: 'background-color 0.2s ease',
-                            '&:hover': {
-                                backgroundColor: 'rgba(241, 245, 249, 0.8)'
-                            }
-                        }}>
-                            <Typography variant="body2" sx={{
-                                fontWeight: 600,
-                                color: '#172554',
-                                fontSize: '0.9rem',
-                                lineHeight: 1,
-                                mb: 0.5
-                            }}>
-                                {day.day}
-                            </Typography>
-
-                            {weatherIcons[day.weather] || <CloudIcon sx={{ fontSize: 18, color: '#6b7280' }} />}
-
-                            <Box sx={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                gap: '4px',
-                                mt: 0.5
-                            }}>
-                                <Typography variant="body2" sx={{
-                                    fontWeight: 500,
-                                    color: '#172554',
-                                    fontSize: '0.85rem',
-                                    lineHeight: 1
-                                }}>
-                                    {day.lowTemp}°
-                                </Typography>
-                                <Typography variant="body2" sx={{
-                                    fontWeight: 600,
-                                    color: '#172554',
-                                    fontSize: '0.85rem',
-                                    lineHeight: 1,
-                                    ml: 1
-                                }}>
-                                    {day.highTemp}°
-                                </Typography>
-                            </Box>
-                        </Box>
-                    ))
-                ) : (
-                    // Mensagem de fallback quando não há previsão
-                    <Typography variant="body2" sx={{
+            {/* Header com localizacao e icone */}
+            <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                position: 'relative',
+                zIndex: 1,
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <LocationOnOutlinedIcon sx={{
+                        width: 14,
+                        height: 14,
+                        color: '#64748B'
+                    }} />
+                    <Typography sx={{
                         fontWeight: 500,
-                        color: '#64748b',
-                        fontSize: '0.85rem',
-                        width: '100%',
-                        textAlign: 'center'
+                        color: '#64748B',
+                        fontSize: '13px',
+                        fontFamily: "'Inter', sans-serif",
                     }}>
-                        Previsão para os próximos dias não disponível
+                        {cityName || "Sao Paulo"}
                     </Typography>
-                )}
+                </Box>
+                {currentWeather && weatherIcons[currentWeather]
+                    ? weatherIcons[currentWeather]
+                    : <WbSunnyIcon sx={{ fontSize: 32, color: '#F59E0B' }} />
+                }
+            </Box>
+
+            {/* Temperatura principal */}
+            <Box sx={{
+                position: 'relative',
+                zIndex: 1,
+                mt: 1,
+            }}>
+                <Typography sx={{
+                    fontWeight: 700,
+                    color: '#0F172A',
+                    fontSize: '40px',
+                    lineHeight: 1,
+                    letterSpacing: '-0.02em',
+                    fontFamily: "'Inter', sans-serif",
+                }}>
+                    {currentTemp !== undefined ? `${Math.round(currentTemp)}` : "--"}
+                    <Typography
+                        component="span"
+                        sx={{
+                            fontSize: '24px',
+                            fontWeight: 600,
+                            color: '#64748B',
+                        }}
+                    >
+                        o
+                    </Typography>
+                </Typography>
+
+                <Typography sx={{
+                    fontWeight: 500,
+                    color: '#64748B',
+                    fontSize: '14px',
+                    mt: 0.5,
+                    fontFamily: "'Inter', sans-serif",
+                }}>
+                    {currentWeather ? getWeatherLabel(currentWeather) : "Carregando..."}
+                </Typography>
+
+                <Box sx={{
+                    display: 'flex',
+                    gap: 2,
+                    mt: 1,
+                }}>
+                    <Typography sx={{
+                        fontWeight: 500,
+                        color: '#94A3B8',
+                        fontSize: '12px',
+                        fontFamily: "'Inter', sans-serif",
+                    }}>
+                        H: {highTemp !== undefined ? `${Math.round(highTemp)}` : "--"}o
+                    </Typography>
+                    <Typography sx={{
+                        fontWeight: 500,
+                        color: '#94A3B8',
+                        fontSize: '12px',
+                        fontFamily: "'Inter', sans-serif",
+                    }}>
+                        L: {lowTemp !== undefined ? `${Math.round(lowTemp)}` : "--"}o
+                    </Typography>
+                </Box>
             </Box>
         </Paper>
     );

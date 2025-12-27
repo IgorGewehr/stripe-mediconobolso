@@ -28,7 +28,7 @@ import {
     Circle as CircleIcon
 } from '@mui/icons-material';
 
-import { adminService } from '@/lib/services/firebase';
+import { adminService } from '@/lib/services/api';
 import { useAuth } from '../../providers/authProvider';
 
 const AdminChatDialog = ({

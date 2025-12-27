@@ -47,7 +47,7 @@ import {
 } from '@mui/icons-material';
 import { useResponsiveScale } from "../hooks/useScale";
 import { useAuth } from "../providers/authProvider";
-import { adminService } from '@/lib/services/firebase';
+import { adminService } from '@/lib/services/api';
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 const CentralAjudaTemplate = ({ selectedReportId = null }) => {
@@ -849,7 +849,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
     };
 
     return (
-        <Box sx={{ maxWidth: "1000px", mx: "auto", p: 3, ...scaleStyle }}>
+        <Box sx={{ maxWidth: "1000px", mx: "auto", p: { xs: 2, md: 3 }, ...scaleStyle }}>
             {/* Loading backdrop para carregamento de report */}
             <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={loadingReport}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
@@ -859,31 +859,6 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
                     </Typography>
                 </Box>
             </Backdrop>
-
-            <Typography
-                variant="h4"
-                component="h1"
-                sx={{
-                    color: "#1852FE",
-                    mb: 2,
-                    fontWeight: 600,
-                    fontFamily: "Gellix, sans-serif",
-                    fontSize: { xs: '24px', md: '28px' }
-                }}
-            >
-                Central de Ajuda
-            </Typography>
-
-            <Typography
-                variant="subtitle1"
-                sx={{
-                    color: "#111E5A",
-                    mb: 4,
-                    fontFamily: "Gellix, sans-serif"
-                }}
-            >
-                Como podemos ajudar você hoje?
-            </Typography>
 
             {/* Card de contato direto */}
             <Card sx={{ mb: 4, borderRadius: "12px", boxShadow: 'none', border: '1px solid rgba(66, 133, 244, 0.2)' }}>

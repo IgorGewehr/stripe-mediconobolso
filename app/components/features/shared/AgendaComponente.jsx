@@ -46,6 +46,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import PeriodSelector from "../../ui/inputs/PeriodSelector";
 import ViewConsultationDialog from "../dialogs/ViewConsultationDialog";
+import DoctorFilter from "./DoctorFilter";
 
 // Main component
 const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
@@ -69,6 +70,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [showConsultationDialog, setShowConsultationDialog] = useState(false);
     const [selectedConsultation, setSelectedConsultation] = useState(null);
+    const [selectedDoctorId, setSelectedDoctorId] = useState(null);
 
 
     // Constants
@@ -1977,13 +1979,19 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                         </Typography>
                     </Box>
 
-                    <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: isMobile ? 1 : 2,
                         width: isMobile ? '100%' : 'auto',
                         justifyContent: isMobile ? 'center' : 'flex-end'
                     }}>
+                        {/* Filtro de médico para clínicas multi-médico */}
+                        <DoctorFilter
+                            value={selectedDoctorId}
+                            onChange={setSelectedDoctorId}
+                            context="schedule"
+                        />
                         <PeriodSelector changeView={changeView} />
 
                         {!isMobile && (

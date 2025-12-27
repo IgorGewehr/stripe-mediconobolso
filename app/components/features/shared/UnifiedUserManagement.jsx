@@ -91,7 +91,7 @@ import {
 
 } from '@mui/icons-material';
 
-import { adminService } from '@/lib/services/firebase';
+import { adminService } from '@/lib/services/api';
 import { useAuth } from '../../providers/authProvider';
 import AdminMessagesComponent from "../admin/AdminMessagesComponent";
 import AdminChatDialog from "../admin/AdminChatDialog";

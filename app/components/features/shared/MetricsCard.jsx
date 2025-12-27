@@ -10,60 +10,151 @@ import {
     Skeleton,
     Card,
     CardContent,
-    Button
+    Grid,
 } from '@mui/material';
-import { TrendingUp, Timeline, People } from '@mui/icons-material';
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
+
+// Card de estatistica individual com borda colorida
+const StatCard = ({ title, value, color, icon: IconComponent, trend, trendType, loading, onClick }) => {
+    return (
+        <Card
+            elevation={0}
+            onClick={onClick}
+            sx={{
+                borderRadius: "16px",
+                border: "none",
+                backgroundColor: "#FFFFFF",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+                transition: "all 0.3s ease",
+                cursor: onClick ? "pointer" : "default",
+                height: "100%",
+                minHeight: "100px",
+                display: "flex",
+                overflow: "hidden",
+                "&:hover": onClick ? {
+                    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.08)",
+                    transform: "translateY(-2px)",
+                } : {},
+            }}
+        >
+            {/* Borda colorida na esquerda */}
+            <Box sx={{ width: "4px", backgroundColor: color, flexShrink: 0 }} />
+
+            <CardContent sx={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                p: 2,
+                "&:last-child": { pb: 2 },
+            }}>
+                {/* Header com icone */}
+                <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                    <Box sx={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: "10px",
+                        backgroundColor: alpha(color, 0.1),
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}>
+                        <IconComponent sx={{ width: 18, height: 18, color: color }} />
+                    </Box>
+
+                    {/* Indicador de mudanca */}
+                    {trend !== null && trend !== undefined && !loading && (
+                        <Box sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.25,
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: "6px",
+                            backgroundColor: trendType === "up" ? "#ECFDF5" : "#FEF2F2",
+                        }}>
+                            {trendType === "up" ? (
+                                <TrendingUpIcon sx={{ width: 12, height: 12, color: "#059669" }} />
+                            ) : (
+                                <TrendingDownIcon sx={{ width: 12, height: 12, color: "#DC2626" }} />
+                            )}
+                            <Typography sx={{
+                                fontSize: "10px",
+                                fontWeight: 600,
+                                color: trendType === "up" ? "#059669" : "#DC2626",
+                                fontFamily: "'Inter', sans-serif",
+                            }}>
+                                {trend}%
+                            </Typography>
+                        </Box>
+                    )}
+                </Box>
+
+                {/* Conteudo principal */}
+                <Box sx={{ mt: 1.5 }}>
+                    {loading ? (
+                        <>
+                            <Skeleton variant="text" width={50} height={32} sx={{ bgcolor: "rgba(0,0,0,0.06)" }} />
+                            <Skeleton variant="text" width={80} height={14} sx={{ bgcolor: "rgba(0,0,0,0.06)" }} />
+                        </>
+                    ) : (
+                        <>
+                            <Typography sx={{
+                                fontSize: "24px",
+                                fontWeight: 700,
+                                color: "#0F172A",
+                                lineHeight: 1.2,
+                                letterSpacing: "-0.02em",
+                                fontFamily: "'Inter', sans-serif",
+                            }}>
+                                {value}
+                            </Typography>
+                            <Typography sx={{
+                                fontSize: "12px",
+                                fontWeight: 500,
+                                color: "#64748B",
+                                mt: 0.25,
+                                fontFamily: "'Inter', sans-serif",
+                            }}>
+                                {title}
+                            </Typography>
+                        </>
+                    )}
+                </Box>
+            </CardContent>
+        </Card>
+    );
+};
 
 const MetricsCard = ({ metrics, loading }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
     const [timeFrame, setTimeFrame] = useState('hoje');
 
     const handleTimeFrameChange = (period) => {
         setTimeFrame(period);
     };
 
-    // Obter o valor de atendimentos com base no período selecionado
+    // Obter o valor de atendimentos com base no periodo selecionado
     const getAppointmentValue = () => {
-        let value;
         switch (timeFrame) {
             case 'hoje':
-                value = metrics?.dailyAppointments || 0;
-                break;
+                return metrics?.dailyAppointments || 0;
             case 'semana':
-                value = metrics?.weeklyAppointments || 0;
-                break;
+                return metrics?.weeklyAppointments || 0;
             case 'mes':
-                value = metrics?.monthlyAppointments || 0;
-                break;
+                return metrics?.monthlyAppointments || 0;
             case 'ano':
-                value = metrics?.yearlyAppointments || 0;
-                break;
+                return metrics?.yearlyAppointments || 0;
             default:
-                value = 0;
+                return 0;
         }
-        // Adiciona zero à esquerda para números menores que 10
-        return value < 10 ? `0${value}` : `${value}`;
     };
-
-    // Função para formatar a taxa de recorrência
-    const getFormattedRecurringRate = () => {
-        const rate = metrics?.recurringRate || 0;
-        return rate < 10 ? `0${rate}` : `${rate}`;
-    };
-
-    // Estilo comum para ambos os cards principais
-    const mainCardStyle = {
-        height: '140px', // Altura fixa para todos os cards
-        mb: 1.5,
-        borderRadius: '20px',
-        border: 'none',
-        overflow: 'hidden',
-        position: 'relative'
-    };
-
-    // Sem função de copiar link
 
     return (
         <Card
@@ -71,238 +162,158 @@ const MetricsCard = ({ metrics, loading }) => {
             sx={{
                 width: '100%',
                 borderRadius: '20px',
-                border: '1px solid',
-                borderColor: theme.palette.divider,
-                backgroundColor: 'white', // Fundo branco conforme solicitado
+                border: 'none',
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
                 overflow: 'visible',
             }}
         >
-            <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
-                <Typography
-                    variant="h6"
-                    fontWeight={700}
-                    color="primary.main"
-                    gutterBottom
-                    sx={{ mb: 2.5 }}
-                >
-                    Veja suas métricas
-                    <Typography component="span" color="primary" fontWeight={500}>
-                        {' '}em tempo real
+            <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                {/* Header com titulo */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                    <Typography sx={{
+                        fontWeight: 600,
+                        fontSize: '16px',
+                        color: '#0F172A',
+                        fontFamily: "'Inter', sans-serif",
+                    }}>
+                        Metricas
                     </Typography>
-                </Typography>
 
-                {/* Seleção de período */}
-                <Box
-                    sx={{
+                    {/* Seletor de periodo modernizado */}
+                    <Box sx={{
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        backgroundColor: '#fff',
-                        borderRadius: '30px',
-                        mb: 3.5,
+                        backgroundColor: '#F1F5F9',
+                        borderRadius: '9999px',
                         p: 0.5,
-                        border: '1px solid',
-                        borderColor: theme.palette.divider
-                    }}
-                >
-                    {['hoje', 'semana', 'mes', 'ano'].map((period) => (
-                        <Box
-                            key={period}
-                            onClick={() => handleTimeFrameChange(period)}
-                            sx={{
-                                py: 0.5,
-                                px: 2,
-                                flex: 1,
-                                textAlign: 'center',
-                                borderRadius: '20px',
-                                cursor: 'pointer',
-                                backgroundColor: timeFrame === period ? '#1852FE' : 'transparent',
-                                color: timeFrame === period ? '#fff' : 'text.secondary',
-                                fontWeight: 500,
-                                fontSize: '0.875rem',
-                                transition: 'all 0.2s',
-                                '&:hover': {
-                                    backgroundColor: timeFrame === period ? '#1852FE' : alpha('#1852FE', 0.05)
-                                }
-                            }}
-                        >
-                            {period.charAt(0).toUpperCase() + period.slice(1)}
-                        </Box>
-                    ))}
+                    }}>
+                        {['hoje', 'semana', 'mes'].map((period) => (
+                            <Box
+                                key={period}
+                                onClick={() => handleTimeFrameChange(period)}
+                                sx={{
+                                    py: 0.5,
+                                    px: 1.5,
+                                    borderRadius: '9999px',
+                                    cursor: 'pointer',
+                                    backgroundColor: timeFrame === period ? '#FFFFFF' : 'transparent',
+                                    boxShadow: timeFrame === period ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                    color: timeFrame === period ? '#0F172A' : '#64748B',
+                                    fontWeight: timeFrame === period ? 600 : 500,
+                                    fontSize: '12px',
+                                    transition: 'all 0.2s',
+                                    fontFamily: "'Inter', sans-serif",
+                                    '&:hover': {
+                                        backgroundColor: timeFrame === period ? '#FFFFFF' : '#E2E8F0'
+                                    }
+                                }}
+                            >
+                                {period.charAt(0).toUpperCase() + period.slice(1)}
+                            </Box>
+                        ))}
+                    </Box>
                 </Box>
 
-                {/* Card de atendimentos - Design moderno e destacado */}
+                {/* Grid de cards de estatisticas */}
+                <Grid container spacing={1.5}>
+                    {/* Atendimentos */}
+                    <Grid item xs={6}>
+                        <StatCard
+                            title={`Atendimentos ${timeFrame}`}
+                            value={getAppointmentValue()}
+                            color="#2563EB"
+                            icon={EventNoteOutlinedIcon}
+                            loading={loading}
+                        />
+                    </Grid>
+
+                    {/* Total de Pacientes */}
+                    <Grid item xs={6}>
+                        <StatCard
+                            title="Total Pacientes"
+                            value={metrics?.totalPatients || 0}
+                            color="#059669"
+                            icon={PersonOutlineIcon}
+                            trend={metrics?.patientsGrowth}
+                            trendType="up"
+                            loading={loading}
+                        />
+                    </Grid>
+
+                    {/* Receitas do Mes */}
+                    <Grid item xs={6}>
+                        <StatCard
+                            title="Receitas do Mes"
+                            value={metrics?.monthlyPrescriptions || 0}
+                            color="#D97706"
+                            icon={DescriptionOutlinedIcon}
+                            loading={loading}
+                        />
+                    </Grid>
+
+                    {/* Taxa de Recorrencia */}
+                    <Grid item xs={6}>
+                        <StatCard
+                            title="Taxa Recorrencia"
+                            value={`${metrics?.recurringRate || 0}%`}
+                            color="#7C3AED"
+                            icon={PeopleOutlineIcon}
+                            loading={loading}
+                        />
+                    </Grid>
+                </Grid>
+
+                {/* Card de Programa de Indicacao */}
                 <Card
                     elevation={0}
                     sx={{
-                        ...mainCardStyle,
-                        backgroundColor: '#1852FE',
+                        mt: 2,
+                        borderRadius: '16px',
+                        background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
                         color: 'white',
+                        overflow: 'hidden',
+                        position: 'relative',
                     }}
                 >
-                    <CardContent sx={{ p: 2.5, height: '100%', position: 'relative' }}>
-                        {/* Elementos decorativos */}
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                top: -30,
-                                right: -30,
-                                width: 150,
-                                height: 150,
-                                borderRadius: '50%',
-                                backgroundColor: alpha('#fff', 0.1)
-                            }}
-                        />
+                    {/* Elementos decorativos */}
+                    <Box sx={{
+                        position: 'absolute',
+                        top: -25,
+                        right: -25,
+                        width: 100,
+                        height: 100,
+                        borderRadius: '50%',
+                        backgroundColor: alpha('#fff', 0.1)
+                    }} />
 
-                        <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="subtitle1" fontWeight={500}>
-                                    Seus Atendimentos
-                                </Typography>
-                                <Timeline fontSize="small" />
+                    <CardContent sx={{ p: 2, position: 'relative', zIndex: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}>
+                                <PeopleOutlineIcon sx={{ width: 18, height: 18, color: '#FFFFFF' }} />
                             </Box>
-
-                            {loading ? (
-                                <Skeleton variant="text" width="50%" height={60} sx={{ bgcolor: alpha('#fff', 0.2) }} />
-                            ) : (
-                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 'auto' }}>
-                                    <Typography
-                                        variant="h2"
-                                        component="span"
-                                        fontWeight={700}
-                                        sx={{ letterSpacing: '-1px', lineHeight: 1 }}
-                                    >
-                                        {getAppointmentValue()}
-                                    </Typography>
-                                    <Typography
-                                        variant="body1"
-                                        component="span"
-                                        sx={{ ml: 1, mt: 1, opacity: 0.8 }}
-                                    >
-                                        no {timeFrame}
-                                    </Typography>
-                                </Box>
-                            )}
-                        </Box>
-                    </CardContent>
-                </Card>
-
-                {/* Card de taxa de recorrência - Com mesma altura do card anterior */}
-                <Card
-                    elevation={0}
-                    sx={{
-                        ...mainCardStyle,
-                        backgroundColor: '#E3F2FD',
-                    }}
-                >
-                    <CardContent sx={{ p: 2.5, height: '100%', position: 'relative' }}>
-                        {/* Elementos decorativos */}
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                top: -20,
-                                right: -20,
-                                width: 120,
-                                height: 120,
-                                borderRadius: '50%',
-                                backgroundColor: alpha('#1852FE', 0.05)
-                            }}
-                        />
-
-                        <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="subtitle1" fontWeight={500} color="text.primary">
-                                    Taxa de Recorrência
+                            <Box>
+                                <Typography sx={{
+                                    fontWeight: 600,
+                                    fontSize: '13px',
+                                    fontFamily: "'Inter', sans-serif",
+                                }}>
+                                    Programa de Indicacao
                                 </Typography>
-                                <TrendingUp fontSize="small" color="primary" />
-                            </Box>
-
-                            {loading ? (
-                                <Skeleton variant="text" width="50%" height={60} />
-                            ) : (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', mt: 'auto' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <Typography
-                                            variant="h2"
-                                            component="span"
-                                            fontWeight={700}
-                                            color="#1852FE"
-                                            sx={{ letterSpacing: '-1px', lineHeight: 1 }}
-                                        >
-                                            {getFormattedRecurringRate()}
-                                        </Typography>
-                                        <Typography
-                                            variant="h4"
-                                            component="span"
-                                            color="#1852FE"
-                                            fontWeight={700}
-                                            sx={{ ml: 0.5 }}
-                                        >
-                                            %
-                                        </Typography>
-                                    </Box>
-
-                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                        dos pacientes retornam em 3 meses
-                                    </Typography>
-                                </Box>
-                            )}
-                        </Box>
-                    </CardContent>
-                </Card>
-
-                {/* Novo card de indicação - Substituindo a imagem */}
-                <Card
-                    elevation={0}
-                    sx={{
-                        ...mainCardStyle,
-                        background: 'linear-gradient(135deg, #7B40F2 0%, #4A3AFF 100%)',
-                        mt: 1,
-                        color: 'white'
-                    }}
-                >
-                    <CardContent sx={{ p: 2.5, height: '100%', position: 'relative' }}>
-                        {/* Elementos decorativos */}
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                top: -25,
-                                right: -25,
-                                width: 140,
-                                height: 140,
-                                borderRadius: '50%',
-                                backgroundColor: alpha('#fff', 0.1)
-                            }}
-                        />
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                bottom: -15,
-                                left: -15,
-                                width: 80,
-                                height: 80,
-                                borderRadius: '50%',
-                                backgroundColor: alpha('#fff', 0.08)
-                            }}
-                        />
-
-                        <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="subtitle1" fontWeight={500}>
-                                    Programa de Indicação
-                                </Typography>
-                                <People fontSize="small" />
-                            </Box>
-
-                            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
-                                <Typography
-                                    variant="h5"
-                                    sx={{
-                                        fontWeight: 700,
-                                        textAlign: 'center',
-                                        mt: -1
-                                    }}
-                                >
-                                    Com 3 indicações você ganha 1 mês grátis!
+                                <Typography sx={{
+                                    fontWeight: 400,
+                                    fontSize: '11px',
+                                    opacity: 0.9,
+                                    fontFamily: "'Inter', sans-serif",
+                                }}>
+                                    3 indicacoes = 1 mes gratis!
                                 </Typography>
                             </Box>
                         </Box>
