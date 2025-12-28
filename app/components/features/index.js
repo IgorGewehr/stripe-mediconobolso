@@ -55,3 +55,6 @@ export * from './financial';
 
 // CRM System
 export * from './crm';
+
+// Fiscal System (NFSe)
+export * from './fiscal';

@@ -68,5 +68,19 @@ export {
   useDefaultTemplates,
 } from './useCRM';
 
+// NFSe/Fiscal Hooks
+export {
+  useFiscalDashboard,
+  useNfseConfiguracao,
+  useMunicipios,
+  useCertificados,
+  useRps,
+  useNfse,
+  useNfseDetails,
+  useNfseXml,
+  useLoteStatus,
+  useEmitirFromFinanceiro,
+} from './useNfse';
+
 // Re-export auth hook from providers for convenience
 export { useAuth } from '../providers';
