@@ -218,9 +218,10 @@ const Dashboard = ({ onClickPatients }) => {
                             title="Total Pacientes"
                             value={metrics.visuallyCalledNumber}
                             icon={Users}
-                            borderClass={viewOption === VIEW_OPTIONS.ALL ? "border-l-blue-600 ring-2 ring-blue-200" : "border-l-blue-500"}
+                            borderClass="border-l-blue-500"
                             bgClass="bg-blue-50"
                             iconClass="text-blue-600"
+                            ringClass="ring-blue-300"
                             onClick={() => setViewOption(VIEW_OPTIONS.ALL)}
                             active={viewOption === VIEW_OPTIONS.ALL}
                         />
@@ -228,9 +229,10 @@ const Dashboard = ({ onClickPatients }) => {
                             title="Consultas Hoje"
                             value={metrics.dailyAppointments}
                             icon={CalendarIcon}
-                            borderClass={viewOption === VIEW_OPTIONS.TODAY ? "border-l-rose-600 ring-2 ring-rose-200" : "border-l-rose-500"}
+                            borderClass="border-l-rose-500"
                             bgClass="bg-rose-50"
                             iconClass="text-rose-600"
+                            ringClass="ring-rose-300"
                             onClick={() => setViewOption(VIEW_OPTIONS.TODAY)}
                             active={viewOption === VIEW_OPTIONS.TODAY}
                         />
@@ -238,9 +240,10 @@ const Dashboard = ({ onClickPatients }) => {
                             title="Próximos"
                             value={metrics.upcomingAppointments}
                             icon={CalendarCheck}
-                            borderClass={viewOption === VIEW_OPTIONS.UPCOMING ? "border-l-emerald-600 ring-2 ring-emerald-200" : "border-l-emerald-500"}
+                            borderClass="border-l-emerald-500"
                             bgClass="bg-emerald-50"
                             iconClass="text-emerald-600"
+                            ringClass="ring-emerald-300"
                             onClick={() => setViewOption(VIEW_OPTIONS.UPCOMING)}
                             active={viewOption === VIEW_OPTIONS.UPCOMING}
                         />

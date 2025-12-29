@@ -33,10 +33,11 @@ import {
     MoreVert as MoreVertIcon,
     Assignment as AssignmentIcon
 } from '@mui/icons-material';
-import { patientsService } from '@/lib/services/api';
+import { patientsService, appointmentsService } from '@/lib/services/api';
 import { consultationModel } from '../../../../lib/modelObjects';
 import { useAuth } from '../../providers/authProvider';
 import useModuleAccess from '../../hooks/useModuleAccess';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 // Estilos personalizados
 const StyledDialog = styled(Dialog)(({ theme }) => ({
@@ -187,6 +188,8 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [patientOptions, setPatientOptions] = useState([]);
     const [selectedPatient, setSelectedPatient] = useState(null);
+    const [conflictWarning, setConflictWarning] = useState(null);
+    const [checkingConflict, setCheckingConflict] = useState(false);
 
     // Efeito para carregar pacientes ao abrir o modal
     useEffect(() => {
@@ -388,13 +391,22 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
         return Object.keys(newErrors).length === 0;
     };
 
+    // Função auxiliar para construir datetime ISO
+    const buildStartDateTime = () => {
+        const date = formData.consultationDate;
+        const [hours, minutes] = formData.consultationTime.split(':');
+        const dateObj = new Date(date);
+        dateObj.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        return dateObj.toISOString();
+    };
+
     // Handler para envio do formulário
     const handleSubmit = async (e) => {
         e.preventDefault();
         console.log('🚀 Iniciando submit do agendamento...');
 
         // Evitar múltiplas submissões
-        if (savingConsultation) {
+        if (savingConsultation || checkingConflict) {
             console.log('⏳ Submit já em andamento, ignorando...');
             return;
         }
@@ -410,13 +422,40 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
             return;
         }
 
-        console.log('✅ Validação passou, criando dados da consulta...');
-        setSavingConsultation(true);
+        // Limpar avisos anteriores
+        setConflictWarning(null);
+        setCheckingConflict(true);
 
         try {
             // Determinar o ID do médico correto
             const doctorId = isSecretary ? user.workingDoctorId : user.uid;
-            
+
+            // Verificar conflito de horário ANTES de salvar
+            console.log('🔍 Verificando conflito de horário...');
+            const startDateTime = buildStartDateTime();
+            const conflictResult = await appointmentsService.checkConflict(
+                doctorId,
+                startDateTime,
+                parseInt(formData.consultationDuration),
+                evento?.id || null, // excludeId para edição
+                null // roomId
+            );
+
+            if (conflictResult.hasConflict) {
+                console.log('⚠️ Conflito detectado:', conflictResult);
+                setConflictWarning({
+                    type: conflictResult.conflictType,
+                    message: conflictResult.message,
+                    clinicMode: conflictResult.clinicMode
+                });
+                setCheckingConflict(false);
+                return; // Não salvar se houver conflito
+            }
+
+            console.log('✅ Sem conflitos, prosseguindo com salvamento...');
+            setCheckingConflict(false);
+            setSavingConsultation(true);
+
             // Criar formato de consulta para salvar
             const consultationData = {
                 ...consultationModel,
@@ -440,15 +479,16 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
 
             console.log('📋 Dados da consulta:', consultationData);
             console.log('📞 Chamando onSave...');
-            
+
             await onSave(consultationData);
             console.log('✅ onSave completado com sucesso');
             // Modal será fechado pelo componente pai após salvar com sucesso
         } catch (error) {
-            console.error('❌ Erro durante onSave:', error);
+            console.error('❌ Erro durante submit:', error);
             setErrors(prev => ({ ...prev, general: "Erro ao salvar consulta. Tente novamente." }));
         } finally {
             setSavingConsultation(false);
+            setCheckingConflict(false);
         }
     };
 
@@ -513,6 +553,34 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                     {errors.general && (
                         <Box sx={{ mb: 2, p: 2, bgcolor: alpha('#f44336', 0.1), borderRadius: 2 }}>
                             <Typography color="error">{errors.general}</Typography>
+                        </Box>
+                    )}
+
+                    {conflictWarning && (
+                        <Box sx={{
+                            mb: 2,
+                            p: 2,
+                            bgcolor: alpha('#ff9800', 0.1),
+                            borderRadius: 2,
+                            border: `1px solid ${alpha('#ff9800', 0.3)}`,
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 1.5
+                        }}>
+                            <WarningAmberIcon sx={{ color: '#ff9800', mt: 0.3 }} />
+                            <Box>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#e65100' }}>
+                                    Conflito de Horário
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    {conflictWarning.message}
+                                </Typography>
+                                {conflictWarning.clinicMode === 'solo' && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                        Como médico individual, você só pode ter 1 consulta por horário.
+                                    </Typography>
+                                )}
+                            </Box>
                         </Box>
                     )}
 
@@ -721,9 +789,21 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
                         type="submit"
                         variant="contained"
                         color="primary"
-                        disabled={savingConsultation || loadingPatients}
+                        disabled={savingConsultation || loadingPatients || checkingConflict}
                     >
-                        {(savingConsultation || loadingPatients) ? <CircularProgress size={24} /> : evento ? 'Atualizar Consulta' : 'Agendar Consulta'}
+                        {checkingConflict ? (
+                            <>
+                                <CircularProgress size={20} sx={{ mr: 1 }} />
+                                Verificando...
+                            </>
+                        ) : savingConsultation ? (
+                            <>
+                                <CircularProgress size={20} sx={{ mr: 1 }} />
+                                Salvando...
+                            </>
+                        ) : loadingPatients ? (
+                            <CircularProgress size={24} />
+                        ) : evento ? 'Atualizar Consulta' : 'Agendar Consulta'}
                     </ActionButton>
                 </DialogActions>
             </form>

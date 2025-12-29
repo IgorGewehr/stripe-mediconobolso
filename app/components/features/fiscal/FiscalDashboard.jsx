@@ -14,6 +14,9 @@ import {
   Divider,
   Tab,
   Tabs,
+  Paper,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Receipt as NfseIcon,
@@ -40,22 +43,34 @@ const formatCurrency = (value) => {
 // KPI Card
 function KPICard({ title, value, subtitle, icon: Icon, color = 'primary', loading }) {
   return (
-    <Card sx={{ height: '100%', borderLeft: 4, borderColor: `${color}.main` }}>
-      <CardContent>
+    <Card
+      sx={{
+        height: '100%',
+        borderLeft: 4,
+        borderColor: `${color}.main`,
+        borderRadius: 2,
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
+          transform: 'translateY(-2px)',
+        },
+      }}
+    >
+      <CardContent sx={{ p: 2.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <Box>
-            <Typography color="text.secondary" variant="body2" gutterBottom>
+            <Typography color="text.secondary" variant="body2" fontWeight={500} gutterBottom>
               {title}
             </Typography>
             {loading ? (
-              <Skeleton width={100} height={32} />
+              <Skeleton width={100} height={36} sx={{ borderRadius: 1 }} />
             ) : (
               <Typography variant="h5" fontWeight="bold" sx={{ color: `${color}.main` }}>
                 {typeof value === 'number' ? formatCurrency(value) : value}
               </Typography>
             )}
             {subtitle && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                 {subtitle}
               </Typography>
             )}
@@ -67,9 +82,10 @@ function KPICard({ title, value, subtitle, icon: Icon, color = 'primary', loadin
               p: 1.5,
               display: 'flex',
               alignItems: 'center',
+              boxShadow: `inset 0 0 0 1px ${color === 'primary' ? 'rgba(0,0,0,0.04)' : 'transparent'}`,
             }}
           >
-            <Icon sx={{ color: `${color}.main` }} />
+            <Icon sx={{ color: `${color}.main`, fontSize: 24 }} />
           </Box>
         </Box>
       </CardContent>
@@ -88,6 +104,9 @@ function TabPanel({ children, value, index, ...other }) {
 
 // Main Component
 export default function FiscalDashboard() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [currentTab, setCurrentTab] = useState(0);
   const { data: dashboard, isLoading } = useFiscalDashboard();
   const { data: config } = useNfseConfiguracao();
@@ -102,7 +121,16 @@ export default function FiscalDashboard() {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
         <Box>
           <Typography variant="h4" fontWeight="bold">
             Fiscal
@@ -116,6 +144,18 @@ export default function FiscalDashboard() {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setCurrentTab(1)}
+            sx={{
+              borderRadius: '99px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3,
+              py: 1,
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)',
+              },
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
           >
             Emitir NFSe
           </Button>
@@ -124,28 +164,44 @@ export default function FiscalDashboard() {
 
       {/* Status Alert */}
       {config && !config.configurado && (
-        <Box
+        <Paper
+          variant="outlined"
           sx={{
             mb: 3,
-            p: 2,
+            p: 2.5,
             bgcolor: 'warning.lighter',
-            borderRadius: 1,
+            borderColor: 'warning.main',
+            borderRadius: 2,
             display: 'flex',
             alignItems: 'center',
             gap: 2,
+            flexWrap: 'wrap',
           }}
         >
-          <WarningIcon color="warning" />
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="subtitle2">Configuracao necessaria</Typography>
+          <WarningIcon color="warning" sx={{ fontSize: 32 }} />
+          <Box sx={{ flex: 1, minWidth: 200 }}>
+            <Typography variant="subtitle1" fontWeight="bold">
+              Configuracao necessaria
+            </Typography>
             <Typography variant="body2" color="text.secondary">
               Configure o municipio e certificado digital para comecar a emitir NFSe.
             </Typography>
           </Box>
-          <Button variant="outlined" color="warning" onClick={() => setCurrentTab(3)}>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => setCurrentTab(3)}
+            startIcon={<SettingsIcon />}
+            sx={{
+              borderRadius: '99px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3,
+            }}
+          >
             Configurar
           </Button>
-        </Box>
+        </Paper>
       )}
 
       {/* KPIs */}
@@ -197,31 +253,46 @@ export default function FiscalDashboard() {
       </Grid>
 
       {/* Tabs */}
-      <Card>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={currentTab} onChange={handleTabChange}>
-            <Tab label="Notas Emitidas" />
-            <Tab label="Emitir NFSe" />
-            <Tab label="Certificados" />
-            <Tab label="Configuracao" />
+      <Card sx={{ borderRadius: isMobile ? 2 : 3 }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 1 }}>
+          <Tabs
+            value={currentTab}
+            onChange={handleTabChange}
+            variant={isMobile ? 'scrollable' : 'standard'}
+            scrollButtons={isMobile ? 'auto' : false}
+            sx={{
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                minHeight: 56,
+              },
+            }}
+          >
+            <Tab icon={<NfseIcon sx={{ fontSize: 20 }} />} iconPosition="start" label="Notas Emitidas" />
+            <Tab icon={<AddIcon sx={{ fontSize: 20 }} />} iconPosition="start" label="Emitir NFSe" />
+            <Tab icon={<CertIcon sx={{ fontSize: 20 }} />} iconPosition="start" label="Certificados" />
+            <Tab icon={<SettingsIcon sx={{ fontSize: 20 }} />} iconPosition="start" label="Configuracao" />
           </Tabs>
         </Box>
 
-        <TabPanel value={currentTab} index={0}>
-          <NfseList />
-        </TabPanel>
+        <Box sx={{ p: isMobile ? 2 : 3 }}>
+          <TabPanel value={currentTab} index={0}>
+            <NfseList />
+          </TabPanel>
 
-        <TabPanel value={currentTab} index={1}>
-          <EmissaoNfse />
-        </TabPanel>
+          <TabPanel value={currentTab} index={1}>
+            <EmissaoNfse />
+          </TabPanel>
 
-        <TabPanel value={currentTab} index={2}>
-          <CertificadoUpload />
-        </TabPanel>
+          <TabPanel value={currentTab} index={2}>
+            <CertificadoUpload />
+          </TabPanel>
 
-        <TabPanel value={currentTab} index={3}>
-          <ConfiguracaoFiscal />
-        </TabPanel>
+          <TabPanel value={currentTab} index={3}>
+            <ConfiguracaoFiscal />
+          </TabPanel>
+        </Box>
       </Card>
     </Box>
   );

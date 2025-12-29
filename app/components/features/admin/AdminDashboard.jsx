@@ -75,8 +75,7 @@ import {
     AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 
-import { adminService } from '@/lib/services/api';
-import presenceService from '../../../../lib/presenceService';
+import { adminService, presenceApiService } from '@/lib/services/api';
 import useModuleAccess from '../../hooks/useModuleAccess';
 
 const AdminDashboard = () => {
@@ -101,8 +100,8 @@ const AdminDashboard = () => {
         loadUsers();
         loadPlatformStats();
 
-        // Setup listener para usuários online
-        const unsubscribe = presenceService.getOnlineUsers((users) => {
+        // Setup listener para usuários online (usando novo serviço API)
+        const unsubscribe = presenceApiService.getOnlineUsers((users) => {
             setOnlineUsers(users);
         });
 
@@ -741,11 +740,11 @@ const AdminDashboard = () => {
                             {onlineUsers.length > 0 ? (
                                 <Grid container spacing={2}>
                                     {onlineUsers.slice(0, 8).map((user) => (
-                                        <Grid item key={user.userId}>
-                                            <Tooltip title={`Online desde ${new Date(user.sessionStart?.toMillis()).toLocaleTimeString()}`}>
+                                        <Grid item key={user.userId || user.id}>
+                                            <Tooltip title={`Online desde ${user.sessionStart ? new Date(user.sessionStart).toLocaleTimeString() : 'N/A'}`}>
                                                 <Chip
-                                                    avatar={<Avatar sx={{ width: 24, height: 24 }} />}
-                                                    label={user.userId.substring(0, 8)}
+                                                    avatar={<Avatar sx={{ width: 24, height: 24 }}>{user.userName?.charAt(0) || '?'}</Avatar>}
+                                                    label={user.userName || user.userEmail?.split('@')[0] || (user.userId || user.id)?.substring(0, 8)}
                                                     color="success"
                                                     variant="outlined"
                                                     size="small"

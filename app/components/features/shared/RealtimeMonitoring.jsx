@@ -45,7 +45,7 @@ import {
     SignalWifiOff as UnknownIcon
 } from '@mui/icons-material';
 
-import optimizedPresenceService from '../../../../lib/presenceService';
+import { presenceApiService } from '@/lib/services/api';
 import { authService } from '@/lib/services/firebase';
 
 const EnhancedRealtimeMonitoring = () => {
@@ -72,22 +72,27 @@ const EnhancedRealtimeMonitoring = () => {
     const loadUserDetails = useCallback(async (users) => {
         const detailsMap = new Map();
         const userPromises = users.map(async (presenceData) => {
+            const userId = presenceData.userId || presenceData.id;
             try {
-                const userData = await authService.getUserData(presenceData.userId);
+                // Tenta buscar dados adicionais do Firebase se não vieram do backend
+                const userData = await authService.getUserData(userId);
                 return {
-                    userId: presenceData.userId,
+                    userId: userId,
                     userData: {
                         ...userData,
+                        // Usa dados do backend se disponíveis
+                        fullName: presenceData.userName || userData?.fullName || 'Usuário Desconhecido',
+                        email: presenceData.userEmail || userData?.email || userId,
                         presence: presenceData
                     }
                 };
             } catch (error) {
-                console.warn(`Erro ao buscar dados do usuário ${presenceData.userId}:`, error);
+                console.warn(`Erro ao buscar dados do usuário ${userId}:`, error);
                 return {
-                    userId: presenceData.userId,
+                    userId: userId,
                     userData: {
-                        fullName: 'Usuário Desconhecido',
-                        email: presenceData.userId,
+                        fullName: presenceData.userName || 'Usuário Desconhecido',
+                        email: presenceData.userEmail || userId,
                         presence: presenceData
                     }
                 };
@@ -117,13 +122,13 @@ const EnhancedRealtimeMonitoring = () => {
                 setLoading(true);
                 setError(null);
 
-                // Listener para usuários online com opções otimizadas
-                unsubscribePresence = optimizedPresenceService.getOnlineUsers(
+                // Listener para usuários online com opções otimizadas (usando novo backend API)
+                unsubscribePresence = presenceApiService.getOnlineUsers(
                     async (users) => {
                         setOnlineUsers(users);
                         setLastUpdate(new Date());
 
-                        // Carregar detalhes dos usuários
+                        // Carregar detalhes adicionais dos usuários do Firebase (se necessário)
                         await loadUserDetails(users);
                         setLoading(false);
                     },
@@ -136,7 +141,7 @@ const EnhancedRealtimeMonitoring = () => {
                 // Atualizar estatísticas periodicamente
                 const updateStats = async () => {
                     try {
-                        const stats = await optimizedPresenceService.getPresenceStats();
+                        const stats = await presenceApiService.getPresenceStats();
                         setPresenceStats(stats);
                     } catch (error) {
                         console.error('Erro ao buscar estatísticas:', error);
@@ -180,13 +185,14 @@ const EnhancedRealtimeMonitoring = () => {
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(presenceData => {
-                const user = userDetails.get(presenceData.userId);
+                const userId = presenceData.userId || presenceData.id;
+                const user = userDetails.get(userId);
                 if (!user) return false;
 
                 return (
                     user.fullName?.toLowerCase().includes(query) ||
                     user.email?.toLowerCase().includes(query) ||
-                    presenceData.userId.toLowerCase().includes(query)
+                    userId?.toLowerCase().includes(query)
                 );
             });
         }
@@ -201,7 +207,8 @@ const EnhancedRealtimeMonitoring = () => {
         // Filtro de role
         if (roleFilter !== 'all') {
             filtered = filtered.filter(presenceData => {
-                const user = userDetails.get(presenceData.userId);
+                const userId = presenceData.userId || presenceData.id;
+                const user = userDetails.get(userId);
                 if (roleFilter === 'admin') return user?.administrador === true;
                 if (roleFilter === 'premium') return user?.assinouPlano === true;
                 if (roleFilter === 'free') return user?.gratuito === true;
@@ -418,12 +425,13 @@ const EnhancedRealtimeMonitoring = () => {
         return (
             <List>
                 {filteredUsers.map((presenceData) => {
-                    const user = userDetails.get(presenceData.userId);
+                    const userId = presenceData.userId || presenceData.id;
+                    const user = userDetails.get(userId);
                     const sessionTime = formatSessionTime(presenceData.sessionDuration);
                     const sessionColor = getSessionColor(presenceData.sessionDuration);
 
                     return (
-                        <Fade in key={presenceData.userId}>
+                        <Fade in key={userId}>
                             <div>
                                 <ListItem>
                                     <ListItemAvatar>
@@ -458,7 +466,7 @@ const EnhancedRealtimeMonitoring = () => {
                                         secondary={
                                             <Box>
                                                 <Typography variant="caption" display="block">
-                                                    {user?.email || presenceData.userId}
+                                                    {user?.email || presenceData.userEmail || userId}
                                                 </Typography>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                                     <ComputerIcon sx={{ fontSize: 12 }} />

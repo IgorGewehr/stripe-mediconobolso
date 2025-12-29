@@ -122,14 +122,20 @@ export const AuthForms = () => {
                     : '✅ Login com Google concluído – usuário existente'
             );
 
-            // Se for novo usuário, provisionar no backend Rust
-            if (isNewUser) {
+            // Sempre tentar provisionar no backend Rust
+            // Se o usuário já existir, o backend retorna os dados existentes
+            // Isso resolve o caso de banco resetado ou novo dispositivo
+            try {
                 await authApiService.provision({
                     name: user.displayName || user.email.split('@')[0],
                     email: user.email,
                     phone: user.phoneNumber || null,
                     plan_type: 'free'
                 });
+            } catch (provisionError) {
+                // Se falhar, verificar se é erro de usuário não encontrado
+                // Nesse caso, não bloquear o login
+                console.warn('⚠️ Provision falhou, continuando:', provisionError);
             }
             // o AuthProvider observa a mudança e faz redirect automaticamente
         } catch (error) {

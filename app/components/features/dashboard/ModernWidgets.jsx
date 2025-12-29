@@ -122,32 +122,77 @@ export const NextAppointmentCard = ({ consultation, onDetailsClick }) => {
     );
 };
 
-export const StatsCard = ({ title, value, icon: Icon, colorClass, borderClass, bgClass, iconClass, onClick, active }) => (
+export const StatsCard = ({ title, value, icon: Icon, colorClass, borderClass, bgClass, iconClass, ringClass, onClick, active }) => (
     <Card
         className={cn(
-            "border-l-4 shadow-sm transition-all duration-200",
+            "border-l-4 shadow-sm transition-all duration-300 ease-out relative overflow-hidden",
             borderClass,
             onClick && "cursor-pointer",
             active
-                ? "ring-2 ring-offset-2 scale-[1.02] shadow-md"
-                : "hover:shadow-md hover:scale-[1.01]"
+                ? cn("ring-2 ring-offset-2 scale-[1.03] shadow-lg translate-y-[-2px]", ringClass)
+                : "hover:shadow-md hover:scale-[1.01] hover:translate-y-[-1px]"
         )}
         onClick={onClick}
     >
-        <CardContent className="p-5 flex items-center justify-between">
+        {/* Animated background glow when active */}
+        <div className={cn(
+            "absolute inset-0 transition-opacity duration-500",
+            bgClass,
+            active ? "opacity-30" : "opacity-0"
+        )} />
+
+        {/* Selection indicator bar */}
+        <div className={cn(
+            "absolute top-0 left-0 right-0 h-1 transition-all duration-300",
+            active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0",
+            iconClass?.replace("text-", "bg-")
+        )} />
+
+        <CardContent className="p-5 flex items-center justify-between relative z-10">
             <div>
-                <p className={cn("text-sm font-medium", active ? "text-slate-700" : "text-slate-500")}>{title}</p>
-                <h3 className="text-2xl font-bold mt-1 text-slate-900">{value}</h3>
+                <p className={cn(
+                    "text-sm font-medium transition-colors duration-200",
+                    active ? "text-slate-800" : "text-slate-500"
+                )}>
+                    {title}
+                </p>
+                <h3 className={cn(
+                    "text-2xl font-bold mt-1 transition-all duration-200",
+                    active ? "text-slate-900 scale-105 origin-left" : "text-slate-900"
+                )}>
+                    {value}
+                </h3>
             </div>
             <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center transition-transform",
+                "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 relative",
+                active ? "scale-110 shadow-md" : "w-10 h-10",
                 bgClass,
-                iconClass,
-                active && "scale-110"
+                iconClass
             )}>
-                <Icon className="w-5 h-5" />
+                <Icon className={cn(
+                    "transition-all duration-300",
+                    active ? "w-6 h-6" : "w-5 h-5"
+                )} />
+
+                {/* Checkmark indicator when active */}
+                <div className={cn(
+                    "absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all duration-300",
+                    iconClass?.replace("text-", "bg-"),
+                    active ? "opacity-100 scale-100" : "opacity-0 scale-0"
+                )}>
+                    ✓
+                </div>
             </div>
         </CardContent>
+
+        {/* Subtle pulse animation when active */}
+        {active && (
+            <div className={cn(
+                "absolute inset-0 rounded-xl animate-pulse",
+                bgClass,
+                "opacity-10"
+            )} />
+        )}
     </Card>
 );
 

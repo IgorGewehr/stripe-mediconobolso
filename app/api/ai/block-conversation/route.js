@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { conversationService } from '@/lib/services/firebase';
+import { aiBlocksService } from '@/lib/services/api/ai-blocks.service';
 
 export async function POST(request) {
   const requestId = `block_conversation_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -55,12 +55,12 @@ export async function POST(request) {
 
     if (action === 'block') {
       // Block AI for this conversation
-      const durationMinutes = duration || 60; // Default 1 hour
-      result = await conversationService.blockAI(doctorId, phone, durationMinutes, reason);
+      // Use phone as conversation ID (WhatsApp JID)
+      result = await aiBlocksService.blockAI(phone, 'whatsapp', reason);
 
       console.log('[BLOCK-CONVERSATION] AI blocked', {
         requestId,
-        duration: durationMinutes
+        conversationId: phone
       });
 
       return NextResponse.json({
@@ -68,8 +68,7 @@ export async function POST(request) {
         data: {
           action: 'blocked',
           phone,
-          blockedUntil: result.blockedUntil,
-          duration: durationMinutes,
+          blockedAt: result.block?.blocked_at,
           reason: reason || 'Manual takeover requested'
         },
         meta: { requestId, timestamp: new Date().toISOString() }
@@ -77,7 +76,7 @@ export async function POST(request) {
 
     } else {
       // Unblock AI for this conversation
-      result = await conversationService.unblockAI(doctorId, phone);
+      result = await aiBlocksService.unblockAI(phone);
 
       console.log('[BLOCK-CONVERSATION] AI unblocked', { requestId });
 
@@ -131,7 +130,7 @@ export async function GET(request) {
       );
     }
 
-    const blockStatus = await conversationService.getAIBlockStatus(doctorId, phone);
+    const blockStatus = await aiBlocksService.getAIBlockStatus(phone);
 
     console.log('[BLOCK-CONVERSATION] Status retrieved', {
       requestId,
@@ -143,9 +142,8 @@ export async function GET(request) {
       data: {
         phone,
         isBlocked: blockStatus.isBlocked,
-        blockedUntil: blockStatus.blockedUntil,
         blockedAt: blockStatus.blockedAt,
-        reason: blockStatus.reason,
+        reason: blockStatus.blockReason,
         aiCanRespond: !blockStatus.isBlocked
       },
       meta: { requestId, timestamp: new Date().toISOString() }

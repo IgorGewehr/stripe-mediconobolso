@@ -21,16 +21,26 @@ import {
   Chip,
   LinearProgress,
   Autocomplete,
+  Paper,
+  Skeleton,
+  Tooltip,
+  IconButton,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
   Save as SaveIcon,
   CheckCircle as ValidIcon,
   Warning as WarningIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import { useNfseConfiguracao, useMunicipios, useCertificados } from '../../hooks/useNfse';
 
 export default function ConfiguracaoFiscal() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const { data: config, isLoading, update, isUpdating, updateError } = useNfseConfiguracao();
   const { data: municipios = [] } = useMunicipios();
   const { certificados = [] } = useCertificados({ apenasAtivos: true, apenasValidos: true });
@@ -86,75 +96,134 @@ export default function ConfiguracaoFiscal() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card sx={{ borderRadius: isMobile ? 2 : 3 }}>
+        <CardHeader
+          title={<Skeleton width={200} />}
+          subheader={<Skeleton width={300} />}
+          avatar={<Skeleton variant="circular" width={40} height={40} />}
+          sx={{ borderBottom: '1px solid', borderColor: 'divider' }}
+        />
         <CardContent>
-          <LinearProgress />
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Skeleton variant="rounded" height={80} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Skeleton variant="rounded" height={56} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Skeleton variant="rounded" height={56} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Skeleton variant="rounded" height={56} />
+            </Grid>
+            <Grid item xs={12} md={8}>
+              <Skeleton variant="rounded" height={56} />
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card sx={{ borderRadius: isMobile ? 2 : 3 }}>
       <CardHeader
-        title="Configuracao Fiscal"
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SettingsIcon color="primary" />
+            <Typography variant="h6" fontWeight="bold">Configuracao Fiscal</Typography>
+          </Box>
+        }
         subheader="Configure as opcoes de emissao de NFSe"
-        avatar={<SettingsIcon />}
+        action={
+          <Tooltip title="O novo padrao nacional (ADN) com IBS/CBS entra em vigor em 2026">
+            <IconButton size="small">
+              <InfoIcon />
+            </IconButton>
+          </Tooltip>
+        }
+        sx={{ borderBottom: '1px solid', borderColor: 'divider' }}
       />
-      <CardContent>
+      <CardContent sx={{ p: isMobile ? 2 : 3 }}>
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             {/* Status atual */}
             {config && (
               <Grid item xs={12}>
-                <Box
+                <Paper
+                  variant="outlined"
                   sx={{
-                    p: 2,
+                    p: 2.5,
                     bgcolor: config.configurado ? 'success.lighter' : 'warning.lighter',
-                    borderRadius: 1,
+                    borderColor: config.configurado ? 'success.main' : 'warning.main',
+                    borderRadius: 2,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 2,
                   }}
                 >
                   {config.configurado ? (
-                    <ValidIcon color="success" />
+                    <ValidIcon color="success" sx={{ fontSize: 32 }} />
                   ) : (
-                    <WarningIcon color="warning" />
+                    <WarningIcon color="warning" sx={{ fontSize: 32 }} />
                   )}
-                  <Box>
-                    <Typography variant="subtitle2">
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">
                       {config.configurado ? 'Sistema configurado' : 'Configuracao pendente'}
                     </Typography>
                     {config.configurado && (
-                      <Typography variant="body2" color="text.secondary">
-                        Proximo RPS: {config.proximo_numero_rps} | Certificado:{' '}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1, flexWrap: 'wrap' }}>
+                        <Chip
+                          size="small"
+                          label={`Proximo RPS: ${config.proximo_numero_rps}`}
+                          variant="outlined"
+                          sx={{ fontWeight: 500 }}
+                        />
                         {config.certificado_valido ? (
-                          <Chip size="small" label={`Valido (${config.dias_expiracao_certificado} dias)`} color="success" />
+                          <Chip
+                            size="small"
+                            icon={<ValidIcon sx={{ fontSize: 16 }} />}
+                            label={`Certificado valido (${config.dias_expiracao_certificado} dias)`}
+                            color="success"
+                            sx={{ fontWeight: 600 }}
+                          />
                         ) : (
-                          <Chip size="small" label="Nao configurado" color="warning" />
+                          <Chip
+                            size="small"
+                            icon={<WarningIcon sx={{ fontSize: 16 }} />}
+                            label="Certificado nao configurado"
+                            color="warning"
+                            sx={{ fontWeight: 600 }}
+                          />
                         )}
-                      </Typography>
+                      </Box>
                     )}
                   </Box>
-                </Box>
+                </Paper>
               </Grid>
             )}
 
             {/* Alerts */}
             {successMessage && (
               <Grid item xs={12}>
-                <Alert severity="success">{successMessage}</Alert>
+                <Alert severity="success" sx={{ borderRadius: 2 }} icon={<ValidIcon />}>
+                  <Typography variant="body2" fontWeight="medium">{successMessage}</Typography>
+                </Alert>
               </Grid>
             )}
             {updateError && (
               <Grid item xs={12}>
-                <Alert severity="error">{updateError.message}</Alert>
+                <Alert severity="error" sx={{ borderRadius: 2 }}>
+                  <Typography variant="body2" fontWeight="medium">{updateError.message}</Typography>
+                </Alert>
               </Grid>
             )}
 
             <Grid item xs={12}>
-              <Divider>Dados do Prestador</Divider>
+              <Divider sx={{ my: 1 }}>
+                <Chip label="Dados do Prestador" size="small" sx={{ fontWeight: 600 }} />
+              </Divider>
             </Grid>
 
             {/* Municipio */}
@@ -229,20 +298,41 @@ export default function ConfiguracaoFiscal() {
             </Grid>
 
             <Grid item xs={12}>
-              <Divider>Reforma Tributaria 2026 (ADN)</Divider>
+              <Divider sx={{ my: 1 }}>
+                <Chip label="Reforma Tributaria 2026 (ADN)" size="small" color="info" sx={{ fontWeight: 600 }} />
+              </Divider>
             </Grid>
 
             {/* Habilitar ADN */}
             <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch checked={formData.habilitarAdn} onChange={handleChange('habilitarAdn')} />
-                }
-                label="Habilitar envio para Ambiente de Dados Nacional (ADN)"
-              />
-              <Typography variant="caption" color="text.secondary" display="block">
-                Ativa o envio de NFSe para o novo padrao nacional com IBS e CBS (Lei Complementar 214/2025)
-              </Typography>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: formData.habilitarAdn ? 'info.lighter' : 'grey.50',
+                  borderColor: formData.habilitarAdn ? 'info.main' : 'divider',
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.habilitarAdn}
+                      onChange={handleChange('habilitarAdn')}
+                      color="info"
+                    />
+                  }
+                  label={
+                    <Typography variant="subtitle2" fontWeight="medium">
+                      Habilitar envio para Ambiente de Dados Nacional (ADN)
+                    </Typography>
+                  }
+                />
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 6 }}>
+                  Ativa o envio de NFSe para o novo padrao nacional com IBS e CBS (Lei Complementar 214/2025)
+                </Typography>
+              </Paper>
             </Grid>
 
             {/* Aliquotas padrao */}
@@ -256,6 +346,7 @@ export default function ConfiguracaoFiscal() {
                     fullWidth
                     type="number"
                     inputProps={{ step: '0.01', min: '0', max: '100' }}
+                    helperText="Aliquota do Imposto sobre Bens e Servicos"
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -266,6 +357,7 @@ export default function ConfiguracaoFiscal() {
                     fullWidth
                     type="number"
                     inputProps={{ step: '0.01', min: '0', max: '100' }}
+                    helperText="Contribuicao sobre Bens e Servicos"
                   />
                 </Grid>
               </>
@@ -273,12 +365,24 @@ export default function ConfiguracaoFiscal() {
 
             {/* Submit */}
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, pt: 2 }}>
                 <Button
                   type="submit"
                   variant="contained"
-                  startIcon={<SaveIcon />}
+                  startIcon={isUpdating ? null : <SaveIcon />}
                   disabled={isUpdating}
+                  sx={{
+                    borderRadius: '99px',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 4,
+                    py: 1.25,
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.12)',
+                    },
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
                 >
                   {isUpdating ? 'Salvando...' : 'Salvar Configuracao'}
                 </Button>

@@ -27,7 +27,8 @@ import {
     ConversationsTemplate,
     ClinicManagementTemplate,
     FinancialTemplate,
-    CRMTemplate
+    CRMTemplate,
+    OnboardingProvider
 } from "../components";
 import { useRouter } from "next/navigation";
 import '../styles/mobile-fixes.css';
@@ -749,6 +750,9 @@ export default function AppLayout({ children }) {
                     />
                 )}
             </Box>
+
+            {/* ✅ ONBOARDING PARA NOVOS USUÁRIOS */}
+            <OnboardingProvider />
         </Box>
     );
 }

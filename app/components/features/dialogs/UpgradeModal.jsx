@@ -46,7 +46,9 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../providers/authProvider';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+    : null;
 
 // Tema atualizado e consistente
 const theme = createTheme({

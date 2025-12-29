@@ -34,12 +34,17 @@ import {
     PersonAdd as PersonAddIcon,
     Assessment as AssessmentIcon,
     Badge as BadgeIcon,
+    Schedule as ScheduleIcon,
+    AttachMoney as MoneyIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../providers/authProvider';
 import { useClinicPermissions } from '../hooks/useClinicPermissions';
 import DoctorsList from '../features/clinic/DoctorsList';
 import ClinicSecretaryList from '../features/clinic/ClinicSecretaryList';
+import ReminderConfigCard from '../features/crm/ReminderConfigCard';
+import ConfiguracaoFinanceiro from '../features/financial/ConfiguracaoFinanceiro';
 import clinicService from '@/lib/services/api/clinic.service';
+import crmService from '@/lib/services/api/crm.service';
 
 // Theme colors
 const themeColors = {
@@ -357,6 +362,57 @@ function ClinicInfoCard({ clinic, loading }) {
 }
 
 /**
+ * Agenda Settings Tab (Reminder Config)
+ */
+function AgendaSettingsTab() {
+    const [config, setConfig] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        loadConfig();
+    }, []);
+
+    const loadConfig = async () => {
+        setLoading(true);
+        try {
+            const data = await crmService.getReminderConfig();
+            setConfig(data);
+        } catch (err) {
+            console.error('Error loading reminder config:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async (formData) => {
+        setSaving(true);
+        setError(null);
+        try {
+            await crmService.updateReminderConfig(formData);
+            await loadConfig();
+        } catch (err) {
+            console.error('Error saving reminder config:', err);
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <ReminderConfigCard
+            config={config}
+            loading={loading}
+            saving={saving}
+            error={error}
+            onSave={handleSave}
+        />
+    );
+}
+
+/**
  * Main Clinic Management Template
  */
 export function ClinicManagementTemplate() {
@@ -472,27 +528,45 @@ export function ClinicManagementTemplate() {
                         value={tabValue}
                         onChange={handleTabChange}
                         aria-label="clinic management tabs"
+                        variant="scrollable"
+                        scrollButtons="auto"
                     >
                         <Tab
                             icon={<PeopleIcon />}
                             iconPosition="start"
-                            label="Médicos"
+                            label="Medicos"
                             id="clinic-tab-0"
                         />
                         {canManage && (
                             <Tab
                                 icon={<BadgeIcon />}
                                 iconPosition="start"
-                                label="Secretárias"
+                                label="Secretarias"
                                 id="clinic-tab-1"
+                            />
+                        )}
+                        {canManage && (
+                            <Tab
+                                icon={<ScheduleIcon />}
+                                iconPosition="start"
+                                label="Agenda"
+                                id="clinic-tab-2"
+                            />
+                        )}
+                        {canManage && (
+                            <Tab
+                                icon={<MoneyIcon />}
+                                iconPosition="start"
+                                label="Financeiro"
+                                id="clinic-tab-3"
                             />
                         )}
                         {canManage && (
                             <Tab
                                 icon={<SettingsIcon />}
                                 iconPosition="start"
-                                label="Configurações"
-                                id="clinic-tab-2"
+                                label="Geral"
+                                id="clinic-tab-4"
                             />
                         )}
                     </Tabs>
@@ -511,9 +585,23 @@ export function ClinicManagementTemplate() {
                         </TabPanel>
                     )}
 
-                    {/* Settings Tab */}
+                    {/* Agenda Settings Tab */}
                     {canManage && (
                         <TabPanel value={tabValue} index={2}>
+                            <AgendaSettingsTab />
+                        </TabPanel>
+                    )}
+
+                    {/* Financial Settings Tab */}
+                    {canManage && (
+                        <TabPanel value={tabValue} index={3}>
+                            <ConfiguracaoFinanceiro />
+                        </TabPanel>
+                    )}
+
+                    {/* General Settings Tab */}
+                    {canManage && (
+                        <TabPanel value={tabValue} index={4}>
                             <ClinicSettingsTab clinic={clinic} onUpdate={handleSettingsUpdated} />
                         </TabPanel>
                     )}

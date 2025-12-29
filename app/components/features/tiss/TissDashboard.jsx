@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -12,6 +12,7 @@ import {
   Button,
   Chip,
   Skeleton,
+  Alert,
 } from '@mui/material';
 import {
   Description as GuiaIcon,
@@ -20,8 +21,13 @@ import {
   Warning as WarningIcon,
   CheckCircle as CheckIcon,
   Send as SendIcon,
+  Gavel as GlossaIcon,
 } from '@mui/icons-material';
 import { useTiss } from '../../hooks/useTiss';
+import GuiasList from './GuiasList';
+import LotesList from './LotesList';
+import FinanceiroResumo from './FinanceiroResumo';
+import { GlossasDashboard } from '../glossas';
 
 function StatCard({ title, value, subtitle, icon: Icon, color = 'primary', loading }) {
   return (
@@ -78,12 +84,18 @@ function TabPanel({ children, value, index, ...other }) {
 }
 
 export default function TissDashboard() {
-  const { stats, loading, fetchStats, error } = useTiss();
+  const { stats, loading, fetchStats, error, isEnabled, isDisabledMessage } = useTiss();
   const [activeTab, setActiveTab] = useState(0);
 
+  const loadStats = useCallback(() => {
+    if (isEnabled) {
+      fetchStats();
+    }
+  }, [fetchStats, isEnabled]);
+
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    loadStats();
+  }, [loadStats]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -105,7 +117,7 @@ export default function TissDashboard() {
             Faturamento TISS
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Gerencie guias, lotes e faturamento de convênios
+            Gerencie guias, lotes, faturamento de convenios e glosas
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
@@ -117,6 +129,20 @@ export default function TissDashboard() {
           </Button>
         </Box>
       </Box>
+
+      {/* Module Status Alert */}
+      {!isEnabled && isDisabledMessage && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {isDisabledMessage}
+        </Alert>
+      )}
+
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -197,28 +223,27 @@ export default function TissDashboard() {
       <Card>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={activeTab} onChange={handleTabChange} aria-label="TISS tabs">
-            <Tab label="Guias Recentes" />
-            <Tab label="Lotes" />
-            <Tab label="Financeiro" />
+            <Tab icon={<GuiaIcon />} iconPosition="start" label="Guias" />
+            <Tab icon={<LoteIcon />} iconPosition="start" label="Lotes" />
+            <Tab icon={<MoneyIcon />} iconPosition="start" label="Financeiro" />
+            <Tab icon={<GlossaIcon />} iconPosition="start" label="Glosas" />
           </Tabs>
         </Box>
 
         <TabPanel value={activeTab} index={0}>
-          <Typography variant="body1" color="text.secondary" textAlign="center" py={4}>
-            Carregue o componente GuiasList aqui
-          </Typography>
+          <GuiasList />
         </TabPanel>
 
         <TabPanel value={activeTab} index={1}>
-          <Typography variant="body1" color="text.secondary" textAlign="center" py={4}>
-            Carregue o componente LotesList aqui
-          </Typography>
+          <LotesList />
         </TabPanel>
 
         <TabPanel value={activeTab} index={2}>
-          <Typography variant="body1" color="text.secondary" textAlign="center" py={4}>
-            Carregue o componente FinanceiroResumo aqui
-          </Typography>
+          <FinanceiroResumo />
+        </TabPanel>
+
+        <TabPanel value={activeTab} index={3}>
+          <GlossasDashboard />
         </TabPanel>
       </Card>
     </Box>

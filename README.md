@@ -1,265 +1,373 @@
-# 🏥 Médico no Bolso
+# Medico no Bolso
 
-> **Sistema de Gestão Médica Completo com IA Integrada**  
-> Simplifique a administração da sua clínica com tecnologia de ponta.
+Sistema de Gestao Medica Completo com IA Integrada. Frontend Next.js conectado ao backend Doctor Server (Rust).
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)
-![Firebase](https://img.shields.io/badge/Firebase-9.0-orange.svg)
-![Stripe](https://img.shields.io/badge/Stripe-Latest-purple.svg)
+## Visao Geral
 
----
+O **Medico no Bolso** e uma plataforma completa de gestao medica que combina ferramentas essenciais para profissionais de saude com recursos avancados de inteligencia artificial. O frontend e construido com Next.js 16 e React 19, comunicando-se com um backend robusto em Rust (Doctor Server).
 
-## 📋 **Índice**
+### Objetivo
 
-- [Visão Geral](#-visão-geral)
-- [Características Principais](#-características-principais)
-- [Tecnologias](#️-tecnologias)
-- [Instalação](#-instalação)
-- [Configuração](#️-configuração)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
-- [APIs e Serviços](#-apis-e-serviços)
-- [Deployment](#-deployment)
-- [Contribuição](#-contribuição)
-- [Licença](#-licença)
+Democratizar o acesso a ferramentas de gestao medica profissionais, oferecendo uma solucao robusta, segura e intuitiva para clinicas e consultorios de todos os tamanhos.
 
 ---
 
-## 🔍 **Visão Geral**
+## Arquitetura
 
-O **Médico no Bolso** é uma plataforma completa de gestão médica que combina ferramentas essenciais para profissionais de saúde com recursos avançados de inteligência artificial. Desenvolvido com as mais modernas tecnologias web, oferece uma experiência fluida tanto para médicos quanto para secretárias.
+```
++------------------------------------------------------------------+
+|                      Frontend (Next.js)                           |
+|               stripe-mediconobolso                                |
++------------------------------------------------------------------+
+         |                    |                      |
+         v                    v                      v
+   Firebase Auth        REST API              WebSocket
+         |                    |                      |
+         +--------------------+----------------------+
+                              |
+                              v
++------------------------------------------------------------------+
+|                    Backend (Rust)                                 |
+|                   doctor-server                                   |
+|    PostgreSQL + Redis + OpenAI + WhatsApp + Push                  |
++------------------------------------------------------------------+
+```
 
-### 🎯 **Objetivo**
-Democratizar o acesso a ferramentas de gestão médica profissionais, oferecendo uma solução robusta, segura e intuitiva para clínicas e consultórios de todos os tamanhos.
+### Fluxo de Comunicacao
+
+1. **Autenticacao**: Firebase Auth gerencia login/registro
+2. **API REST**: Todas as operacoes CRUD via `doctor-server`
+3. **WebSocket**: Notificacoes em tempo real
+4. **Firebase Storage**: Armazenamento de arquivos (legado)
 
 ---
 
-## ✨ **Características Principais**
+## Stack Tecnologico
 
-### 👩‍⚕️ **Gestão de Pacientes**
-- 📋 Cadastro completo com histórico médico
-- 📊 Acompanhamento longitudinal de cuidados
-- 🔒 Controle rigoroso de privacidade (LGPD)
-- 📱 Interface responsiva para acesso móvel
+### Frontend
 
-### 💊 **Sistema de Receitas**
-- ✏️ Criação digital de receitas médicas
-- 📄 Templates personalizáveis
-- 🖨️ Geração de PDF profissional
-- 📧 Envio automático por email
+| Tecnologia | Versao | Proposito |
+|------------|--------|-----------|
+| Next.js | 16.x | Framework React com App Router |
+| React | 19.x | Biblioteca UI |
+| Material-UI | 6.x | Componentes UI |
+| TanStack Query | 5.x | Gerenciamento de estado servidor |
+| Framer Motion | 12.x | Animacoes |
+| Tailwind CSS | 3.x | Estilizacao |
 
-### 📅 **Agenda Inteligente**
-- 🗓️ Agendamento online e presencial
-- ⏰ Notificações automáticas
-- 🔄 Sincronização em tempo real
-- 📈 Métricas de ocupação
+### Servicos
 
-### 🤖 **IA Médica Avançada**
-- 🔬 Análise automática de exames
-- 📋 Geração de resumos clínicos
-- 💬 Chat médico em tempo real
-- 🎯 Suporte à tomada de decisões
-
-### 👥 **Sistema de Secretárias**
-- 🔐 Permissões granulares por módulo
-- 👤 Gestão de múltiplas secretárias
-- 📊 Controle de acesso específico
-- 🔄 Ativação/desativação flexível
-
-### 💳 **Gestão de Assinaturas**
-- 💰 Integração completa com Stripe
-- 🎫 Suporte a cartão e boleto
-- 📈 Múltiplos planos (Mensal, Trimestral, Anual)
-- 🔄 Upgrades automáticos
+| Servico | Proposito |
+|---------|-----------|
+| Firebase Auth | Autenticacao |
+| Firebase Storage | Armazenamento de arquivos |
+| Stripe | Pagamentos e assinaturas |
+| Doctor Server | Backend API (Rust) |
 
 ---
 
-## 🛠️ **Tecnologias**
+## Estrutura do Projeto
 
-### **Frontend**
 ```
-Next.js 15        - Framework React com App Router
-Material-UI 5     - Biblioteca de componentes
-Framer Motion     - Animações fluidas
-```
-
-### **Backend & Database**
-```
-Firebase 9        - Autenticação, Firestore, Storage
-Next.js API       - Rotas serverless
-```
-
-### **Pagamentos & Assinaturas**
-```
-Stripe           - Processamento de pagamentos
-Webhooks         - Sincronização automática
-```
-
-### **IA & ML**
-```
-OpenAI API       - GPT-4 para análise médica
-Tesseract.js     - OCR para exames
-```
-
-### **Desenvolvimento**
-```
-TypeScript       - Tipagem estática
-ESLint          - Linting de código
-Git             - Controle de versão
+stripe-mediconobolso/
++-- app/                          # Next.js App Router
+|   +-- api/                      # API Routes (Next.js)
+|   |   +-- ai/                   # Proxy para IA
+|   |   +-- glossas/              # Proxy para glossas
+|   |   +-- tiss/                 # Proxy para TISS
+|   |   +-- webhooks/             # Stripe webhooks
+|   |   +-- create-subscription/  # Assinaturas
+|   |   +-- whatsapp/             # WhatsApp
+|   |   +-- ...
+|   +-- components/               # Componentes React
+|   |   +-- ui/                   # Componentes base
+|   |   +-- features/             # Componentes por dominio
+|   |   +-- hooks/                # Custom hooks
+|   |   +-- layout/               # Layout (Sidebar, TopBar)
+|   |   +-- templates/            # Templates de pagina
+|   |   +-- providers/            # Context providers
+|   +-- app/                      # Paginas da aplicacao
+|   +-- layout.jsx                # Layout raiz
+|   +-- page.jsx                  # Pagina inicial
+|
++-- lib/                          # Servicos e utilitarios
+|   +-- config/                   # Configuracoes
+|   |   +-- firebase.config.js    # Firebase
+|   +-- services/                 # Camada de servicos
+|   |   +-- api/                  # Servicos que chamam doctor-server
+|   |   |   +-- apiService.js     # Cliente HTTP base
+|   |   |   +-- config.js         # Configuracao da API
+|   |   |   +-- patients.service.js
+|   |   |   +-- appointments.service.js
+|   |   |   +-- prescriptions.service.js
+|   |   |   +-- financial.service.js
+|   |   |   +-- nfse.service.js
+|   |   |   +-- notifications.service.js
+|   |   |   +-- websocket.service.js
+|   |   |   +-- presence.service.js
+|   |   |   +-- ...
+|   |   +-- firebase/             # Servicos Firebase (legado/parcial)
+|   |   +-- glossas.service.js    # Glossas
+|   |   +-- tiss.service.js       # TISS
+|   +-- hooks/                    # Hooks globais
+|   +-- models/                   # Modelos de dados
+|   +-- utils/                    # Utilitarios
+|   +-- presenceService.js        # Presenca online
+|   +-- firebaseService.js        # Firebase legado
+|
++-- public/                       # Assets estaticos
++-- styles/                       # Estilos globais
++-- package.json
++-- next.config.js
++-- tailwind.config.js
 ```
 
 ---
 
-## 🚀 **Instalação**
+## Funcionalidades
 
-### **Pré-requisitos**
-- Node.js 18+ 
+### Gestao de Pacientes
+- Cadastro completo com historico medico
+- Acompanhamento longitudinal de cuidados
+- Controle rigoroso de privacidade (LGPD)
+- Interface responsiva para acesso movel
+
+### Sistema de Receitas
+- Criacao digital de receitas medicas
+- Templates personalizaveis
+- Geracao de PDF profissional
+- Envio automatico por email
+
+### Agenda Inteligente
+- Agendamento online e presencial
+- Notificacoes automaticas (push, email, WhatsApp)
+- Sincronizacao em tempo real via WebSocket
+- Metricas de ocupacao
+
+### IA Medica Avancada
+- Analise automatica de exames (Vision)
+- Geracao de resumos clinicos
+- Chat medico em tempo real
+- Transcricao de audio (Whisper)
+- Analise de glossas com IA
+
+### Faturamento TISS/TUSS
+- Geracao de guias TISS
+- Gestao de glossas e recursos
+- Relatorios de producao
+
+### Nota Fiscal Eletronica
+- Emissao de NFSe via backend
+- Consulta de status
+- Cancelamento
+
+### Notificacoes em Tempo Real
+- WebSocket para atualizacoes instantaneas
+- Push notifications (Web Push)
+- Indicador de presenca online
+
+### Gestao de Assinaturas
+- Integracao completa com Stripe
+- Suporte a cartao e boleto
+- Multiplos planos (Mensal, Trimestral, Anual)
+- Webhooks para sincronizacao
+
+---
+
+## Instalacao
+
+### Pre-requisitos
+
+- Node.js 18+
 - npm ou yarn
 - Conta Firebase
 - Conta Stripe
-- Conta OpenAI
+- Doctor Server rodando (backend Rust)
 
-### **Passos**
+### Passos
 
-1. **Clone o repositório**
+1. **Clone o repositorio**
 ```bash
-git clone https://github.com/seu-usuario/medico-no-bolso.git
-cd medico-no-bolso
+git clone https://github.com/seu-usuario/stripe-mediconobolso.git
+cd stripe-mediconobolso
 ```
 
-2. **Instale as dependências**
+2. **Instale as dependencias**
 ```bash
 npm install
 ```
 
-3. **Configure as variáveis de ambiente**
+3. **Configure as variaveis de ambiente**
 ```bash
 cp .env.example .env.local
 ```
 
-4. **Configure o Firebase**
-- Crie um projeto no [Firebase Console](https://console.firebase.google.com)
-- Ative Authentication, Firestore e Storage
-- Baixe o arquivo de configuração
-
-5. **Configure o Stripe**
-- Crie uma conta no [Stripe](https://stripe.com)
-- Obtenha as chaves API
-- Configure os webhooks
-
-6. **Inicie o desenvolvimento**
+4. **Inicie o desenvolvimento**
 ```bash
 npm run dev
 ```
 
 ---
 
-## ⚙️ **Configuração**
+## Configuracao
 
-### **Variáveis de Ambiente**
+### Variaveis de Ambiente
 
 ```env
+# API Backend (Doctor Server)
+NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+NEXT_PUBLIC_USE_NEW_API=true
+
 # Firebase
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 # Stripe
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 
-# OpenAI
+# OpenAI (para API routes que fazem proxy)
 OPENAI_API_KEY=sk-your_openai_api_key
-
-# Email
-EMAIL_FROM=noreply@mediconobolso.app
-EMAIL_PASSWORD=your_email_password
 ```
 
-### **Configuração do Stripe**
+### Configuracao da API
+
+O arquivo `lib/services/api/config.js` controla a comunicacao com o backend:
 
 ```javascript
-// Configurar produtos e preços
-const PLANS = {
-  monthly: 'price_1QyKrNI2qmEooUtqKfgYIemz',
-  quarterly: 'price_1RIH5eI2qmEooUtqsdXyxnEP', 
-  annual: 'price_1QyKwWI2qmEooUtqOJ9lCFBl'
+// Flag para usar a nova API (doctor-server)
+const USE_NEW_API = process.env.NEXT_PUBLIC_USE_NEW_API === 'true';
+
+// URLs por ambiente
+const API_URLS = {
+  development: 'http://localhost:8080/api/v1',
+  staging: 'https://staging-api.mediconobolso.com.br/api/v1',
+  production: 'https://api.mediconobolso.com.br/api/v1',
 };
 ```
 
-### **Webhooks do Stripe**
-Configure os seguintes eventos:
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-- `invoice.payment_succeeded`
-- `invoice.payment_failed`
-
 ---
 
-## 📁 **Estrutura do Projeto**
+## Servicos de API
 
+### Estrutura de Servicos
+
+Todos os servicos em `lib/services/api/` seguem o padrao:
+
+```javascript
+// patients.service.js
+import apiService from './apiService';
+
+export const patientsService = {
+  async list(params) {
+    return apiService.get('/patients', params);
+  },
+
+  async getById(id) {
+    return apiService.get(`/patients/${id}`);
+  },
+
+  async create(data) {
+    return apiService.post('/patients', data);
+  },
+
+  async update(id, data) {
+    return apiService.put(`/patients/${id}`, data);
+  },
+
+  async delete(id) {
+    return apiService.delete(`/patients/${id}`);
+  },
+};
 ```
-medico-no-bolso/
-├── app/                          # Next.js App Router
-│   ├── api/                      # Rotas da API
-│   │   ├── create-subscription/  # Criação de assinaturas
-│   │   ├── upgrade-user/         # Upgrade de planos
-│   │   ├── webhooks/            # Webhooks do Stripe
-│   │   └── generate-boleto/     # Geração de boletos
-│   ├── components/              # Componentes React
-│   │   ├── basicComponents/     # Componentes básicos
-│   │   ├── organismsComponents/ # Componentes complexos
-│   │   └── templates/           # Templates de página
-│   └── globals.css              # Estilos globais
-├── lib/                         # Utilitários e serviços
-│   ├── firebase.js              # Configuração Firebase
-│   ├── stripe.js                # Configuração Stripe
-│   ├── firebaseService.js       # Operações Firebase
-│   └── emailService.js          # Serviço de email
-├── public/                      # Arquivos estáticos
-└── CLAUDE.md                    # Instruções para IA
+
+### Servicos Disponiveis
+
+| Servico | Arquivo | Descricao |
+|---------|---------|-----------|
+| API Base | `apiService.js` | Cliente HTTP com retry e rate limiting |
+| Pacientes | `patients.service.js` | CRUD de pacientes |
+| Agendamentos | `appointments.service.js` | Gestao de agenda |
+| Prescricoes | `prescriptions.service.js` | Receitas medicas |
+| Financeiro | `financial.service.js` | Gestao financeira |
+| NFSe | `nfse.service.js` | Nota fiscal |
+| Notificacoes | `notifications.service.js` | Push, email, etc |
+| WebSocket | `websocket.service.js` | Tempo real |
+| Presenca | `presence.service.js` | Status online |
+| Clinica | `clinic.service.js` | Gestao de clinicas |
+| Secretarias | `secretary.service.js` | Secretarias |
+| Assinaturas | `subscriptions.service.js` | Stripe |
+| Storage | `storage.service.js` | Upload de arquivos |
+| IA | `ai-conversations.service.js` | Chat com IA |
+| CRM | `crm.service.js` | Relacionamento |
+
+---
+
+## WebSocket
+
+O servico de WebSocket (`websocket.service.js`) conecta ao backend para notificacoes em tempo real:
+
+```javascript
+import { websocketService } from '@/lib/services/api/websocket.service';
+
+// Conectar
+await websocketService.connect();
+
+// Escutar eventos
+websocketService.on('notification', (data) => {
+  console.log('Nova notificacao:', data);
+});
+
+websocketService.on('appointment_update', (data) => {
+  console.log('Agendamento atualizado:', data);
+});
+
+// Desconectar
+websocketService.disconnect();
 ```
 
 ---
 
-## 🔌 **APIs e Serviços**
+## Autenticacao
 
-### **Autenticação**
-- `POST /api/auth/login` - Login de usuários
-- `POST /api/auth/register` - Registro de novos usuários
-- `POST /api/auth/logout` - Logout
+O fluxo de autenticacao usa Firebase Auth:
 
-### **Assinaturas**
-- `POST /api/create-subscription` - Criar nova assinatura
-- `POST /api/upgrade-user` - Fazer upgrade de plano
-- `GET /api/subscription-status` - Status da assinatura
-- `POST /api/cancel-subscription` - Cancelar assinatura
+1. Usuario faz login via Firebase (email/senha, Google, etc)
+2. Firebase retorna um ID Token
+3. Frontend envia o token no header `Authorization: Bearer <token>`
+4. Backend valida o token e extrai as claims
 
-### **Pagamentos**
-- `POST /api/generate-boleto` - Gerar boleto bancário
-- `POST /api/send-boleto-email` - Enviar boleto por email
-- `POST /api/webhooks` - Processar webhooks do Stripe
+```javascript
+// apiService.js
+async getAuthToken() {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Usuario nao autenticado');
+  }
+  return user.getIdToken();
+}
 
-### **Secretárias**
-- `POST /api/secretaries/create` - Criar conta de secretária
-- `GET /api/secretaries/list` - Listar secretárias
-- `PUT /api/secretaries/permissions` - Atualizar permissões
-- `DELETE /api/secretaries/deactivate` - Desativar conta
-
-### **IA Médica**
-- `POST /api/ai/analyze-exam` - Analisar exame médico
-- `POST /api/ai/clinical-summary` - Gerar resumo clínico
-- `POST /api/ai/medical-chat` - Chat médico em tempo real
+async buildHeaders(customHeaders = {}) {
+  const token = await this.getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    ...customHeaders,
+  };
+}
+```
 
 ---
 
-## 📦 **Deployment**
+## Deploy
 
-### **Netlify (Recomendado)**
+### Netlify (Recomendado)
 
-1. **Configurar build settings**
 ```toml
 # netlify.toml
 [build]
@@ -270,172 +378,71 @@ medico-no-bolso/
   NODE_VERSION = "18"
 ```
 
-2. **Configurar variáveis de ambiente**
-- Acesse o painel do Netlify
-- Configure todas as variáveis do `.env.local`
-
-3. **Deploy automático**
-```bash
-git push origin main
-```
-
-### **Vercel**
+### Vercel
 
 ```bash
 npx vercel --prod
 ```
 
-### **Docker**
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
 ---
 
-## 🔒 **Segurança**
+## Comandos
 
-### **Medidas Implementadas**
-- ✅ Autenticação Firebase com JWT
-- ✅ Validação server-side em todas as APIs
-- ✅ Sanitização de dados de entrada
-- ✅ Rate limiting via Stripe
-- ✅ Webhooks assinados cryptograficamente
-- ✅ Compliance LGPD para dados médicos
-
-### **Boas Práticas**
-- 🔐 Nunca expor chaves secretas no frontend
-- 🛡️ Validar todas as entradas do usuário
-- 📝 Logs estruturados para auditoria
-- 🔄 Rotação regular de tokens de API
-
----
-
-## 📊 **Monitoramento**
-
-### **Métricas Principais**
-- 📈 Taxa de conversão de assinaturas
-- 💰 Revenue mensal recorrente (MRR)
-- 👥 Usuários ativos mensais (MAU)
-- 🚀 Performance das APIs
-
-### **Ferramentas Sugeridas**
-- **Analytics**: Google Analytics 4
-- **Monitoring**: Sentry
-- **Performance**: Lighthouse CI
-- **Uptime**: Pingdom
-
----
-
-## 🤝 **Contribuição**
-
-### **Como Contribuir**
-
-1. **Fork o repositório**
-2. **Crie uma feature branch**
 ```bash
-git checkout -b feature/nova-funcionalidade
-```
-3. **Commit suas mudanças**
-```bash
-git commit -m "feat: adiciona nova funcionalidade"
-```
-4. **Push para a branch**
-```bash
-git push origin feature/nova-funcionalidade
-```
-5. **Abra um Pull Request**
+# Desenvolvimento
+npm run dev
 
-### **Padrões de Código**
-- 📝 Use TypeScript para tipagem
-- 🎨 Siga o padrão do ESLint
-- 📋 Escreva testes para novas funcionalidades
-- 📚 Documente APIs e componentes
+# Build
+npm run build
 
-### **Commit Convention**
-```
-feat: nova funcionalidade
-fix: correção de bug
-docs: atualização de documentação
-style: mudanças de formatação
-refactor: refatoração de código
-test: adição de testes
-chore: tarefas de manutenção
+# Producao
+npm start
+
+# Stripe webhooks (desenvolvimento)
+stripe listen --forward-to localhost:3000/api/webhooks
 ```
 
 ---
 
-## 📄 **Licença**
+## Seguranca
 
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+### Implementacoes
 
----
+- Firebase Auth para autenticacao
+- Tokens validados no backend
+- Rate limiting com exponential backoff
+- Webhooks Stripe assinados
+- Sanitizacao de inputs
+- Compliance LGPD
 
-## 👨‍💻 **Equipe**
+### Boas Praticas
 
-### **Desenvolvedor Principal**
-- **Nome**: [Seu Nome]
-- **Email**: dev@mediconobolso.app
-- **LinkedIn**: [Seu LinkedIn]
-
----
-
-## 📞 **Suporte**
-
-### **Canais de Suporte**
-- 📧 **Email**: suporte@mediconobolso.app
-- 💬 **Discord**: [Link do Discord]
-- 📖 **Documentação**: [Link da Wiki]
-- 🐛 **Issues**: [GitHub Issues](https://github.com/seu-usuario/medico-no-bolso/issues)
-
-### **FAQ**
-
-**P: Como cancelar uma assinatura?**  
-R: Acesse Configurações > Assinatura > Cancelar Plano.
-
-**P: É possível usar offline?**  
-R: Algumas funcionalidades funcionam offline, mas é necessária conexão para sincronização.
-
-**P: Os dados são seguros?**  
-R: Sim, utilizamos criptografia ponta-a-ponta e compliance LGPD.
+- Nunca expor chaves secretas no frontend
+- Validar todas as entradas do usuario
+- Usar HTTPS em producao
+- Rotacao regular de tokens
 
 ---
 
-## 📈 **Roadmap**
+## Migracao Firebase -> Doctor Server
 
-### **Q1 2025**
-- 🏥 Integração com sistemas hospitalares
-- 📱 App mobile nativo
-- 🌐 Internacionalização (EN/ES)
+O projeto esta em processo de migracao do Firebase para o Doctor Server:
 
-### **Q2 2025**
-- 🔬 IA para diagnóstico diferencial
-- 📊 Dashboard avançado de métricas
-- 🤝 API pública para integrações
+1. **Servicos em `lib/services/api/`** - Usam o novo backend
+2. **Servicos em `lib/services/firebase/`** - Legado, sendo migrados
+3. **`lib/firebaseService.js`** - Facade legado, delega para novos servicos
 
-### **Q3 2025**
-- 🏗️ Arquitetura microserviços
-- ☁️ Multi-cloud deployment
-- 🛡️ Certificação SOC 2
+Para novos desenvolvimentos, sempre usar os servicos em `lib/services/api/`.
 
 ---
 
-<div align="center">
+## Licenca
 
-**⭐ Se este projeto foi útil, considere dar uma estrela no GitHub!**
-
-[![GitHub stars](https://img.shields.io/github/stars/seu-usuario/medico-no-bolso.svg?style=social&label=Star)](https://github.com/seu-usuario/medico-no-bolso)
-[![GitHub forks](https://img.shields.io/github/forks/seu-usuario/medico-no-bolso.svg?style=social&label=Fork)](https://github.com/seu-usuario/medico-no-bolso/fork)
+Proprietario - Todos os direitos reservados.
 
 ---
 
-**Desenvolvido com ❤️ para revolucionar a gestão médica**
+## Suporte
 
-</div>
+- **Email:** suporte@mediconobolso.com.br
+- **Documentacao:** https://docs.mediconobolso.com.br

@@ -1,10 +1,8 @@
 // app/api/webhook/route.js - VERSÃO COMPLETA COM SUPORTE A BOLETO E SYNC COM DOCTOR-SERVER
+// Agora usa apenas doctor-server API, sem Firebase/Firestore
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { stripe } from '../../../lib/stripe';
-import { authService } from '../../../lib/services/firebase';
-import { firestore } from '../../../lib/config/firebase.config';
-import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { sendWelcomeEmail } from '../../../lib/emailService';
 
 // Doctor-server API URL para sincronização
@@ -52,36 +50,43 @@ async function syncWithDoctorServer(eventType, data) {
   }
 }
 
-// Função auxiliar para atualização com retry
+// Função auxiliar para atualização via API do doctor-server
 async function updateUserWithRetry(uid, userData, maxRetries = 3) {
   let attempt = 0;
 
   while (attempt < maxRetries) {
     try {
-      const userRef = doc(firestore, "users", uid);
-      const userSnap = await getDoc(userRef);
+      // Chamar endpoint de atualização de usuário no doctor-server
+      const response = await fetch(`${API_URL}/users/${uid}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // Converter campos do formato frontend para backend
+          plan_type: userData.planType,
+          assinado: userData.assinouPlano,
+          payment_confirmed_at: userData.paymentConfirmedAt,
+          // Outros campos conforme necessário
+          ...userData.metadata,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
 
-      if (userSnap.exists()) {
-        await updateDoc(userRef, userData);
-      } else {
-        await setDoc(userRef, userData, { merge: true });
+      if (response.ok) {
+        console.log(`✅ Usuário ${uid} atualizado com sucesso via API (tentativa ${attempt + 1})`);
+        return true;
       }
 
-      console.log(`✅ Usuário ${uid} atualizado com sucesso (tentativa ${attempt + 1})`);
-      return true;
+      throw new Error(`API retornou status ${response.status}`);
     } catch (error) {
       attempt++;
       console.error(`❌ Tentativa ${attempt} falhou: ${error.message}`);
 
       if (attempt >= maxRetries) {
-        try {
-          await authService.editUserData(uid, userData);
-          console.log(`✅ Usuário ${uid} atualizado via firebaseService após ${maxRetries} falhas diretas`);
-          return true;
-        } catch (serviceError) {
-          console.error(`❌❌ Erro FATAL ao atualizar usuário: ${serviceError.message}`);
-          throw serviceError;
-        }
+        console.error(`❌❌ Erro FATAL ao atualizar usuário após ${maxRetries} tentativas: ${error.message}`);
+        // Não lançar erro para não quebrar o webhook - os dados foram sincronizados via syncWithDoctorServer
+        return false;
       }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -89,13 +94,25 @@ async function updateUserWithRetry(uid, userData, maxRetries = 3) {
   }
 }
 
-// Helper function using authService instead of firebaseService
+// Helper function para buscar dados do usuário via API
 async function getUserDataHelper(uid) {
-  return await authService.getUserData(uid);
-}
+  try {
+    const response = await fetch(`${API_URL}/users/${uid}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
+    });
 
-async function editUserDataHelper(uid, data) {
-  return await authService.editUserData(uid, data);
+    if (response.ok) {
+      return await response.json();
+    }
+    return null;
+  } catch (error) {
+    console.error('Erro ao buscar dados do usuário:', error);
+    return null;
+  }
 }
 
 // Função para enviar emails de boas-vindas se necessário
@@ -107,7 +124,7 @@ async function sendWelcomeEmailIfNeeded(uid, customerEmail, customerName) {
 
   try {
     // Verificar se já enviamos email para este usuário
-    const userData = await authService.getUserData(uid);
+    const userData = await getUserDataHelper(uid);
     if (userData.welcomeEmailSent) {
       console.log(`📧 Email de boas-vindas já enviado para ${customerEmail}`);
       return;
@@ -322,7 +339,7 @@ async function processEvent(event) {
 
               // 🆕 CRITICAL: Enviar email de boas-vindas quando boleto é pago
               try {
-                const userData = await authService.getUserData(uid);
+                const userData = await getUserDataHelper(uid);
                 await sendWelcomeEmailIfNeeded(uid, userData.email, userData.fullName);
               } catch (userError) {
                 console.warn('Erro ao buscar dados do usuário para email:', userError);

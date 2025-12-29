@@ -277,3 +277,86 @@ export function useEmitirFromFinanceiro() {
     data: mutation.data,
   };
 }
+
+// =============================================================================
+// EMISSÃO FROM APPOINTMENT (INTEGRAÇÃO AGENDAMENTOS)
+// =============================================================================
+
+/**
+ * Hook for creating RPS from completed appointment
+ */
+export function useCreateRpsFromAppointment() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: nfseService.createRpsFromAppointment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nfse', 'rps'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    },
+  });
+
+  return {
+    create: mutation.mutateAsync,
+    isCreating: mutation.isPending,
+    error: mutation.error,
+    data: mutation.data,
+  };
+}
+
+// =============================================================================
+// AI - CLASSIFICAÇÃO AUTOMÁTICA (REFORMA TRIBUTÁRIA 2026)
+// =============================================================================
+
+/**
+ * Hook for AI-powered service classification
+ */
+export function useClassifyServiceAI() {
+  const mutation = useMutation({
+    mutationFn: nfseService.classifyServiceAI,
+  });
+
+  return {
+    classify: mutation.mutateAsync,
+    isClassifying: mutation.isPending,
+    classification: mutation.data,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+
+/**
+ * Hook for IBS/CBS calculation (Reforma Tributária 2026)
+ */
+export function useCalcularIbsCbs() {
+  const [result, setResult] = useState(null);
+
+  const mutation = useMutation({
+    mutationFn: nfseService.calcularIbsCbs,
+    onSuccess: (data) => {
+      setResult(data);
+    },
+  });
+
+  const calculate = useCallback(async (options) => {
+    return mutation.mutateAsync(options);
+  }, [mutation]);
+
+  return {
+    calculate,
+    isCalculating: mutation.isPending,
+    result,
+    error: mutation.error,
+  };
+}
+
+/**
+ * Hook for medical service codes
+ */
+export function useCodigosServico() {
+  return useQuery({
+    queryKey: ['nfse', 'codigos-servico'],
+    queryFn: nfseService.listCodigosServico,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hour cache - codes don't change often
+  });
+}

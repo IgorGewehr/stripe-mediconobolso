@@ -2,12 +2,13 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore"; // ✅ IMPORTS CORRIGIDOS
-import { authService, secretaryService } from "../../../lib/services/firebase";
-import { auth, firestore } from "../../../lib/config/firebase.config";
+import { authService } from "../../../lib/services/firebase"; // Apenas Firebase Auth
+import { auth } from "../../../lib/config/firebase.config";
 import moduleService from "../../../lib/moduleService";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import presenceService from "../../../lib/presenceService";
+import { presenceApiService } from "@/lib/services/api";
+import secretaryApiService from "@/lib/services/api/secretary.service";
+import authApiService from "@/lib/services/api/auth.service";
 import globalCache from "../utils/globalCache";
 
 const AuthContext = createContext();
@@ -153,8 +154,13 @@ export const AuthProvider = ({ children }) => {
                 userData.referralSource = currentReferralSource;
             }
 
-            await authService.editUserData(authUser.uid, userData);
-            console.log('✅ Dados básicos criados para usuário órfão');
+            // Provisionar usuário no backend se for novo
+            await authApiService.provision({
+                name: userData.fullName,
+                email: userData.email,
+                plan_type: userData.planType,
+            });
+            console.log('✅ Dados básicos criados para usuário órfão via API');
 
             return userData;
         } catch (error) {
@@ -191,7 +197,7 @@ export const AuthProvider = ({ children }) => {
 
                 if (migrationResult.success) {
                     console.log(`✅ Usuário novo migrado para plano: ${planType}`);
-                    const updatedUserData = await authService.getUserData(uid);
+                    const updatedUserData = await authApiService.me();
                     return updatedUserData;
                 }
             }
@@ -245,22 +251,26 @@ export const AuthProvider = ({ children }) => {
 
             try {
                 // ✅ PRIMEIRO VERIFICAR SE É MÉDICO (MAIS COMUM)
-                console.log('🔍 Verificando se é médico...');
+                console.log('🔍 Verificando se é médico via API...');
                 let doctorData;
 
                 try {
-                    doctorData = await authService.getUserData(userId);
+                    // Usar API para buscar dados do usuário atual
+                    doctorData = await authApiService.me();
                 } catch (error) {
-                    console.log('⚠️ Não encontrado na collection users:', error.message);
+                    console.log('⚠️ Não encontrado via API:', error.message);
                 }
 
                 if (doctorData && doctorData.email) {
-                    console.log(`👨‍⚕️ Médico encontrado: ${doctorData.fullName || doctorData.email}`);
+                    console.log(`👨‍⚕️ Médico encontrado: ${doctorData.fullName || doctorData.name || doctorData.email}`);
 
                     const context = {
                         userType: 'doctor',
                         workingDoctorId: userId,
-                        userData: doctorData,
+                        userData: {
+                            ...doctorData,
+                            fullName: doctorData.fullName || doctorData.name,
+                        },
                         permissions: 'full',
                         isSecretary: false
                     };
@@ -268,44 +278,43 @@ export const AuthProvider = ({ children }) => {
                     return context;
                 }
 
-                // ✅ SE NÃO É MÉDICO, VERIFICAR SE É SECRETÁRIA
-                console.log('🔍 Não é médico, verificando se é secretária...');
-                const secretaryRef = doc(firestore, "secretaries", userId);
-                const secretarySnap = await getDoc(secretaryRef);
+                // ✅ SE NÃO É MÉDICO, VERIFICAR SE É SECRETÁRIA VIA API
+                console.log('🔍 Não é médico, verificando se é secretária via API...');
 
-                if (secretarySnap.exists()) {
-                    const secretaryData = secretarySnap.data();
+                try {
+                    // Buscar dados da secretária via API
+                    const secretaryData = await secretaryApiService.getById(userId);
 
-                    if (!secretaryData.active) {
-                        throw new Error("Conta de secretária desativada");
+                    if (secretaryData) {
+                        if (!secretaryData.isActive) {
+                            throw new Error("Conta de secretária desativada");
+                        }
+
+                        // Buscar dados do médico responsável via API
+                        // Para isso, precisamos buscar os dados do médico associado
+                        const doctorData = await authApiService.me();
+                        if (!doctorData) {
+                            throw new Error("Médico responsável não encontrado");
+                        }
+
+                        const context = {
+                            userType: 'secretary',
+                            workingDoctorId: secretaryData.doctorId,
+                            userData: {
+                                ...doctorData,
+                                fullName: doctorData.fullName || doctorData.name,
+                            },
+                            secretaryData: secretaryData,
+                            permissions: secretaryData.permissions || {},
+                            isSecretary: true,
+                            secretaryId: userId
+                        };
+
+                        console.log(`👩‍💼 Contexto de secretária obtido: ${secretaryData.name} -> ${doctorData.fullName || doctorData.name}`);
+                        return context;
                     }
-
-                    // Buscar dados do médico responsável
-                    const doctorData = await authService.getUserData(secretaryData.doctorId);
-                    if (!doctorData) {
-                        throw new Error("Médico responsável não encontrado");
-                    }
-
-                    // ✅ ATUALIZAR ÚLTIMO LOGIN DA SECRETÁRIA (NÃO BLOQUEANTE)
-                    updateDoc(secretaryRef, {
-                        lastLogin: new Date(),
-                        loginCount: (secretaryData.loginCount || 0) + 1
-                    }).catch(error => {
-                        console.warn('⚠️ Erro ao atualizar último login da secretária:', error);
-                    });
-
-                    const context = {
-                        userType: 'secretary',
-                        workingDoctorId: secretaryData.doctorId,
-                        userData: doctorData,
-                        secretaryData: secretaryData,
-                        permissions: secretaryData.permissions || {},
-                        isSecretary: true,
-                        secretaryId: userId
-                    };
-
-                    console.log(`👩‍💼 Contexto de secretária obtido: ${secretaryData.name} -> ${doctorData.fullName}`);
-                    return context;
+                } catch (secretaryError) {
+                    console.log('⚠️ Não é secretária válida:', secretaryError.message);
                 }
 
                 // ✅ SE NÃO É NEM MÉDICO NEM SECRETÁRIA, TENTAR CRIAR DADOS ÓRFÃOS
@@ -406,12 +415,9 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log('🔄 Iniciando criação de secretária via AuthProvider...');
 
-            const result = await secretaryService.createSecretaryAccount(
-                workingDoctorId || user.uid,
-                secretaryData
-            );
+            const result = await secretaryApiService.create(secretaryData);
 
-            if (result.success) {
+            if (result && result.id) {
                 console.log('✅ Secretária criada com sucesso!');
 
                 // ✅ INVALIDAR TODOS OS CACHES RELACIONADOS
@@ -537,13 +543,8 @@ export const AuthProvider = ({ children }) => {
 
                 setUser(displayUserData);
 
-                // ✅ REGISTRAR LOGIN (NÃO BLOQUEANTE)
-                authService.registerDetailedLogin(
-                    authUser.uid,
-                    authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email'
-                ).catch((loginError) => {
-                    console.warn('⚠️ Erro ao registrar login detalhado (não crítico):', loginError);
-                });
+                // ✅ REGISTRAR LOGIN (NÃO BLOQUEANTE) - Agora tratado pelo backend automaticamente
+                console.log(`✅ Login registrado: ${authUser.uid} via ${authUser.providerData?.[0]?.providerId || 'email'}`);
 
                 // ✅ REDIRECIONAMENTO
                 setTimeout(() => {
@@ -591,7 +592,7 @@ export const AuthProvider = ({ children }) => {
 
             if (presenceInitialized) {
                 try {
-                    await presenceService.stopPresence();
+                    await presenceApiService.stopPresence();
                     setPresenceInitialized(false);
                 } catch (error) {
                     console.warn('⚠️ Erro ao parar presença:', error);
@@ -662,11 +663,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const result = await secretaryService.updateSecretaryPermissions(
-                workingDoctorId || user.uid,
-                secretaryId,
-                newPermissions
-            );
+            const result = await secretaryApiService.updatePermissions(secretaryId, newPermissions);
 
             // ✅ INVALIDAR CACHE DO CONTEXTO APÓS ATUALIZAÇÃO
             const doctorId = workingDoctorId || user.uid;
@@ -688,10 +685,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const result = await secretaryService.deactivateSecretaryAccount(
-                workingDoctorId || user.uid,
-                secretaryId
-            );
+            const result = await secretaryApiService.deactivate(secretaryId);
 
             // ✅ INVALIDAR CACHES E RECARREGAR DADOS
             const doctorId = workingDoctorId || user.uid;
@@ -701,7 +695,7 @@ export const AuthProvider = ({ children }) => {
             invalidateVerificationCache(doctorId);
 
             // Atualizar dados do usuário
-            const updatedUserData = await authService.getUserData(doctorId);
+            const updatedUserData = await authApiService.me();
             setUser(prev => ({ ...prev, ...updatedUserData }));
 
             return result;
@@ -745,7 +739,7 @@ export const AuthProvider = ({ children }) => {
 
             // Parar sistema de presença antes do logout
             if (presenceInitialized) {
-                await presenceService.stopPresence();
+                await presenceApiService.stopPresence();
                 setPresenceInitialized(false);
             }
 
@@ -927,7 +921,7 @@ export const AuthProvider = ({ children }) => {
         if (!user?.uid) {
             // Se não há usuário, parar presença
             if (presenceInitialized) {
-                presenceService.stopPresence();
+                presenceApiService.stopPresence();
                 setPresenceInitialized(false);
             }
             return;
@@ -946,7 +940,7 @@ export const AuthProvider = ({ children }) => {
                 doctorId: workingDoctorId
             };
 
-            presenceService.startPresence(user.uid, userData)
+            presenceApiService.startPresence(user.uid, userData)
                 .then(() => {
                     setPresenceInitialized(true);
                     console.log('✅ Sistema de presença iniciado com sucesso');
@@ -959,7 +953,7 @@ export const AuthProvider = ({ children }) => {
         // Cleanup quando componente for desmontado
         return () => {
             if (presenceInitialized) {
-                presenceService.stopPresence();
+                presenceApiService.stopPresence();
                 setPresenceInitialized(false);
             }
         };
@@ -977,7 +971,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const result = await moduleService.setCustomModules(user.uid, modules, limitations);
             if (result.success) {
-                const updatedUserData = await authService.getUserData(user.uid);
+                const updatedUserData = await authApiService.me();
                 setUser({ uid: user.uid, ...updatedUserData });
 
                 // Limpar cache do contexto
@@ -996,9 +990,10 @@ export const AuthProvider = ({ children }) => {
         if (!user?.uid) return false;
 
         try {
-            const result = await authService.updateUserPlan(user.uid, newPlanType);
+            // Atualizar plano via moduleService (que já usa a API internamente)
+            const result = await moduleService.updateUserModulesFromPlan(user.uid, newPlanType);
             if (result.success) {
-                const updatedUserData = await authService.getUserData(user.uid);
+                const updatedUserData = await authApiService.me();
                 setUser({ uid: user.uid, ...updatedUserData });
 
                 // Limpar cache do contexto
@@ -1034,7 +1029,7 @@ export const AuthProvider = ({ children }) => {
 
             const result = await moduleService.updateUserModulesFromPlan(user.uid, planType);
             if (result.success) {
-                const updatedUserData = await authService.getUserData(user.uid);
+                const updatedUserData = await authApiService.me();
                 setUser({ uid: user.uid, ...updatedUserData });
 
                 // Limpar cache do contexto

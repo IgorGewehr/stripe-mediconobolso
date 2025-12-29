@@ -1,159 +1,259 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Este arquivo fornece orientacoes para Claude Code ao trabalhar com codigo neste repositorio.
 
-## Project Overview
+## Visao Geral do Projeto
 
-This is a medical practice management system built with Next.js, integrating Stripe for payments, Firebase for data storage, and OpenAI for AI-powered features. The system provides comprehensive patient management, prescription handling, appointment scheduling, and advanced analytics for medical professionals.
+Este e o frontend do sistema de gestao medica "Medico no Bolso", construido com Next.js 16 e React 19. O sistema se comunica com um backend Rust (Doctor Server) para todas as operacoes de dados, usando Firebase apenas para autenticacao e storage de arquivos.
 
-## Development Commands
+### Arquitetura
 
-```bash
-
-# Install dependencies
-npm install
-
-# Development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Stripe webhook testing (development)
-stripe listen --forward-to localhost:3000/api/webhooks
-STRIPE_WEBHOOK_SECRET=$(stripe listen --print-secret) npm run dev
+```
+Frontend (Next.js) <---> Doctor Server (Rust)
+      |                        |
+      v                        v
+ Firebase Auth            PostgreSQL
+ Firebase Storage         Redis
+                          OpenAI
+                          WhatsApp
 ```
 
-## Architecture Overview
+## Comandos de Desenvolvimento
 
-### Core Structure
-- **Next.js 15** with App Router architecture
-- **Firebase** for authentication, Firestore for database, and Storage for files
-- **Stripe** for subscription management and payments
-- **Material-UI** for UI components with custom theming
-- **OpenAI** integration for AI-powered medical analysis
+```bash
+# Instalar dependencias
+npm install
 
-### Key Directories
+# Servidor de desenvolvimento
+npm run dev
 
-#### `/app` - Next.js App Router
-- **`/api`** - 16 API routes handling subscriptions, emails, medical chat, webhooks, etc.
-- **`/components`** - Organized modular structure:
-  - `ui/` - Reusable UI elements (buttons, cards, inputs)
-  - `features/` - Feature-specific components by domain (patients, prescriptions, appointments, etc.)
-  - `providers/` - Context providers (Auth, Theme)
-  - `hooks/` - Custom React hooks
-  - `layout/` - Layout components (Sidebar, TopAppBar, ProtectedRoute)
-  - `templates/` - Page templates (Dashboard, Patient, etc.)
+# Build para producao
+npm run build
 
-#### `/lib` - Core Services
-- **`config/`** - Configuration files (firebase.config.js, stripe.js)
-- **`services/firebase/`** - Domain-specific Firebase services:
-  - `base.service.js` - Base service class with shared utilities
-  - `auth.service.js` - Authentication operations
-  - `patients.service.js` - Patient management
-  - `prescriptions.service.js` - Prescription handling
-  - `appointments.service.js` - Appointment scheduling
-  - `exams.service.js` - Exam management
-  - `notes.service.js` - Medical notes
-  - `secretary.service.js` - Secretary account management
-  - `admin.service.js` - Admin operations
-  - `ai.service.js` - AI-powered features
-  - `weather.service.js` - Weather data
-  - `storage.service.js` - File storage
-- **`utils/`** - Utility functions (date, validation, format)
-- **`models/`** - Data models
-- **`firebaseService.js`** - Legacy facade (delegates to domain services)
-- **`moduleConfig.js`** - Module system configuration
-- **`emailService.js`** - Email functionality
+# Iniciar servidor de producao
+npm start
 
-### Module System Architecture
+# Stripe webhook testing (desenvolvimento)
+stripe listen --forward-to localhost:3000/api/webhooks
+```
 
-The application uses a sophisticated module system defined in `lib/moduleConfig.js` that controls feature access based on subscription plans:
+## Estrutura do Projeto
 
-- **Free Plan**: Basic features (dashboard, limited patients, prescriptions, appointments)
-- **Monthly Plan**: Includes AI analysis and exam processing
-- **Annual Plan**: Adds bulk operations, advanced reports, and integrations
-- **Enterprise Plan**: Full access to all modules including admin features
+### Diretorios Principais
 
-Each module has dependencies and limitations that are enforced throughout the application.
+```
+/app                    # Next.js App Router
+  /api                  # API Routes (proxies e webhooks)
+  /components           # Componentes React organizados
+    /ui                 # Componentes base reutilizaveis
+    /features           # Componentes por dominio
+    /hooks              # Custom hooks
+    /layout             # Layout (Sidebar, TopBar)
+    /templates          # Templates de pagina
+    /providers          # Context providers
+  /app                  # Paginas da aplicacao
 
-### Authentication & Authorization
-- Firebase Auth for user authentication
-- Module-based access control using `useModuleAccess` hook
-- Protected routes via `ModuleProtection` component
-- Session management with `authProvider.jsx`
+/lib                    # Servicos e utilitarios
+  /config               # Configuracoes (Firebase, etc)
+  /services             # Camada de servicos
+    /api                # Servicos que chamam doctor-server (PRINCIPAL)
+    /firebase           # Servicos Firebase (legado)
+  /hooks                # Hooks globais
+  /models               # Modelos de dados
+  /utils                # Utilitarios
+```
 
-### Key Features
-- **Patient Management**: Complete patient records with medical history
-- **Prescription System**: Digital prescription creation and management
-- **Appointment Scheduling**: Calendar-based appointment system
-- **AI Medical Analysis**: OpenAI integration for medical document analysis
-- **Exam Processing**: Automated exam document processing with OCR
-- **Subscription Management**: Stripe-based subscription handling
-- **Real-time Updates**: Firebase real-time database for live updates
-- **Mobile Support**: Responsive design with mobile-specific components
+### Camada de Servicos (IMPORTANTE)
 
-## Configuration Notes
+Existem duas camadas de servicos:
 
-### Environment Variables Required
-- `STRIPE_SECRET_KEY` - Stripe secret key for payments
-- `STRIPE_WEBHOOK_SECRET` - Stripe webhook secret for webhook verification
-- Firebase configuration is directly in `lib/firebase.js` (consider moving to env vars)
-- OpenAI API key for AI features
+1. **`lib/services/api/`** - **USAR ESTA** - Servicos que chamam o backend Rust
+2. **`lib/services/firebase/`** - Legado, sendo migrados gradualmente
+
+#### Servicos API (doctor-server)
+
+| Arquivo | Descricao |
+|---------|-----------|
+| `apiService.js` | Cliente HTTP base com retry, rate limiting, auth |
+| `config.js` | Configuracao de URLs e flags |
+| `patients.service.js` | CRUD de pacientes |
+| `appointments.service.js` | Gestao de agenda |
+| `prescriptions.service.js` | Receitas medicas |
+| `financial.service.js` | Gestao financeira |
+| `nfse.service.js` | Nota fiscal eletronica |
+| `notifications.service.js` | Notificacoes |
+| `websocket.service.js` | Conexao WebSocket tempo real |
+| `presence.service.js` | Status de presenca online |
+| `clinic.service.js` | Gestao de clinicas |
+| `secretary.service.js` | Secretarias |
+| `subscriptions.service.js` | Assinaturas Stripe |
+| `storage.service.js` | Upload de arquivos |
+| `ai-conversations.service.js` | Chat com IA |
+| `crm.service.js` | CRM |
+| `admin.service.js` | Administracao |
+| `conversations.service.js` | Conversas multicanal |
+| `exams.service.js` | Exames |
+| `notes.service.js` | Anotacoes |
+
+### Autenticacao
+
+O sistema usa Firebase Auth para autenticacao:
+
+1. Usuario faz login via Firebase
+2. Frontend obtem o Firebase ID Token
+3. Token e enviado no header `Authorization: Bearer <token>`
+4. Backend (doctor-server) valida o token
+
+```javascript
+// Em apiService.js
+async getAuthToken() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Usuario nao autenticado');
+  return user.getIdToken();
+}
+```
+
+### WebSocket
+
+Notificacoes em tempo real via WebSocket:
+
+```javascript
+import { websocketService } from '@/lib/services/api/websocket.service';
+
+// Conectar
+await websocketService.connect();
+
+// Eventos
+websocketService.on('notification', handler);
+websocketService.on('appointment_update', handler);
+websocketService.on('presence_update', handler);
+```
+
+## Configuracao
+
+### Variaveis de Ambiente
+
+```env
+# API Backend
+NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+NEXT_PUBLIC_USE_NEW_API=true
+
+# Firebase
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+
+# Stripe
+STRIPE_SECRET_KEY=...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
+STRIPE_WEBHOOK_SECRET=...
+
+# OpenAI (para API routes)
+OPENAI_API_KEY=...
+```
 
 ### Next.js Configuration
-- **Output**: Standalone build for deployment
-- **Server Actions**: 10MB body size limit for file uploads
-- **Webpack**: External packages configured for server-side rendering
-- **Performance**: Increased limits for large file processing
 
-### Firebase Structure
-- **Authentication**: User management and sessions
-- **Firestore**: Document-based data storage
-- **Storage**: File uploads and document storage
-- **Realtime Database**: Live updates and presence tracking
+- **Output**: Standalone build para deploy
+- **Server Actions**: 10MB body size limit para uploads
+- **Webpack**: External packages configurados para SSR
 
-## Development Patterns
+## Padroes de Desenvolvimento
 
-### Component Organization
-- Use the modular component structure:
-  - `ui/` for reusable UI elements
-  - `features/` for domain-specific components
-  - `templates/` for page-level components
-- Import from barrel exports when possible (e.g., `import { PatientCard } from '@/features'`)
-- Path aliases configured in tsconfig.json (@/components, @/lib, @/services, etc.)
-- Follow Material-UI theming patterns
-- Implement proper loading states and error handling
+### Componentes
 
-### Data Flow
-- Firebase for persistent data storage
-- Real-time updates using Firebase listeners
-- Client-side state management with React hooks
-- Module-based feature gating
+- Usar estrutura modular em `/app/components`
+- `ui/` para componentes base reutilizaveis
+- `features/` para componentes de dominio especifico
+- Path aliases configurados: `@/components`, `@/lib`, `@/services`
+- Seguir padroes Material-UI
+- Implementar loading states e error handling
 
-### API Design
-- RESTful API routes in `/app/api`
-- Proper error handling and validation
-- Stripe webhook handling for subscription events
-- OpenAI integration for medical analysis
+### Servicos
 
-## Deployment
+Para novos desenvolvimentos, SEMPRE usar `lib/services/api/`:
 
-This project is configured for Netlify deployment with:
-- Standalone Next.js build
-- Server-side rendering support
-- Automatic deployment via `netlify.toml`
-- Environment variable management through Netlify
+```javascript
+// CORRETO - Usar servicos API
+import { patientsService } from '@/lib/services/api/patients.service';
 
-## Key Integrations
+const patients = await patientsService.list();
 
-- **Stripe**: Payment processing and subscription management
-- **Firebase**: Complete backend-as-a-service
-- **OpenAI**: AI-powered medical analysis and chat
-- **Material-UI**: Comprehensive UI component library
-- **Framer Motion**: Animation library for smooth transitions
-- **PDF Processing**: jsPDF and pdf-lib for document generation
-- **OCR**: Tesseract.js for document text extraction
+// EVITAR - Servicos Firebase legado
+import { firebaseService } from '@/lib/firebaseService';
+```
+
+### API Routes
+
+API Routes em `/app/api/` sao usadas para:
+- Webhooks do Stripe
+- Proxies para servicos que precisam de segredos server-side
+- Operacoes que nao podem ser feitas client-side
+
+### Tratamento de Erros
+
+O `apiService.js` ja implementa:
+- Retry automatico com exponential backoff
+- Rate limiting handling (429)
+- Mensagens de erro amigaveis
+
+```javascript
+try {
+  const data = await apiService.get('/endpoint');
+} catch (error) {
+  // error.message ja e amigavel
+  // error.status contem o HTTP status
+  toast.error(error.message);
+}
+```
+
+## Integracoes
+
+### Doctor Server (Backend Rust)
+
+- URL: `NEXT_PUBLIC_API_URL`
+- Auth: Firebase ID Token no header
+- WebSocket: `/api/v1/ws?token=<token>`
+
+### Firebase
+
+- Auth: Login, registro, reset de senha
+- Storage: Upload de arquivos (legado, migrando para backend)
+
+### Stripe
+
+- Assinaturas e pagamentos
+- Webhooks em `/api/webhooks`
+- Boleto brasileiro suportado
+
+## Dicas para o Assistente
+
+1. **Sempre usar servicos em `lib/services/api/`** para novas funcionalidades
+2. **Firebase Auth e mantido** - nao migrar autenticacao
+3. **WebSocket para tempo real** - usar `websocket.service.js`
+4. **Componentes em `features/`** - organizar por dominio
+5. **Path aliases** - usar `@/lib`, `@/components`, etc
+6. **TanStack Query** - para cache e estado de servidor
+7. **Material-UI** - seguir padroes de tema
+8. **Verificar `cargo check`** no backend antes de testar integracao
+9. **Nao criar arquivos desnecessarios** - preferir editar existentes
+10. **API Routes** - apenas para webhooks e proxies necessarios
+
+## Deploy
+
+### Netlify
+
+```toml
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "18"
+```
+
+### Vercel
+
+```bash
+npx vercel --prod
+```

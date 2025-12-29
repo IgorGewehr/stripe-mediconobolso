@@ -399,4 +399,5 @@ const usePatients = (options = {}) => {
   };
 };
 
+export { usePatients };
 export default usePatients;

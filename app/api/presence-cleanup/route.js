@@ -1,9 +1,7 @@
 // app/api/presence-cleanup/route.js
-// API otimizada para cleanup de presença com melhor performance e confiabilidade
+// API para cleanup de presença - usa doctor-server API
 
 import { NextResponse } from 'next/server';
-import { doc, deleteDoc, updateDoc, writeBatch, getDoc } from 'firebase/firestore';
-import { firestore } from '../../../lib/firebase';
 
 // Cache para evitar múltiplos cleanups do mesmo usuário
 const cleanupCache = new Map();
@@ -13,6 +11,9 @@ const CACHE_DURATION = 5000; // 5 segundos
 const rateLimiter = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minuto
 const MAX_REQUESTS_PER_WINDOW = 50;
+
+// API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 export async function POST(req) {
     const startTime = Date.now();
@@ -56,7 +57,6 @@ export async function POST(req) {
 
         userId = requestData.data.userId;
         const action = requestData.data.action;
-        const timestamp = requestData.data.timestamp;
 
         // Validações de dados
         if (!userId || typeof userId !== 'string' || userId.length < 3) {
@@ -92,8 +92,16 @@ export async function POST(req) {
             });
         }
 
-        // Executar cleanup com operações atômicas
-        const cleanupResult = await performAtomicCleanup(userId, timestamp);
+        // Chamar API do doctor-server para marcar offline
+        const apiResponse = await fetch(`${API_URL}/presence`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                // Se tiver um token de serviço, adicionar aqui
+            },
+            body: JSON.stringify({ user_id: userId }),
+            signal: AbortSignal.timeout(5000),
+        });
 
         // Atualizar cache
         cleanupCache.set(cacheKey, Date.now());
@@ -106,7 +114,7 @@ export async function POST(req) {
             success: true,
             userId: userId,
             processingTime: processingTime,
-            operations: cleanupResult.operations,
+            apiStatus: apiResponse.ok ? 'synced' : 'pending',
             message: 'User marked as offline successfully'
         });
 
@@ -116,25 +124,12 @@ export async function POST(req) {
         // Log detalhado do erro
         console.error(`❌ Erro no cleanup de presença para ${userId || 'unknown'}:`, {
             error: error.message,
-            stack: error.stack,
             processingTime: processingTime,
             timestamp: new Date().toISOString()
         });
 
-        // Verificar se é erro de permissão
-        if (error.code === 'permission-denied') {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: 'Insufficient permissions',
-                    code: 'PERMISSION_DENIED'
-                },
-                { status: 403 }
-            );
-        }
-
-        // Verificar se é erro de rede/Firestore
-        if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+        // Verificar se é erro de timeout
+        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
             return NextResponse.json(
                 {
                     success: false,
@@ -176,7 +171,6 @@ async function parseRequestBody(req) {
         const contentType = req.headers.get('content-type');
 
         if (contentType?.includes('application/json')) {
-            // JSON body
             const jsonData = await req.json();
             return {
                 success: true,
@@ -187,7 +181,6 @@ async function parseRequestBody(req) {
                 }
             };
         } else if (contentType?.includes('application/x-www-form-urlencoded')) {
-            // Form data (sendBeacon)
             const formData = await req.formData();
             return {
                 success: true,
@@ -198,7 +191,6 @@ async function parseRequestBody(req) {
                 }
             };
         } else {
-            // Tentar texto simples (fallback)
             const text = await req.text();
             try {
                 const jsonData = JSON.parse(text);
@@ -226,92 +218,9 @@ async function parseRequestBody(req) {
 }
 
 /**
- * Executar cleanup atômico usando batch operations
- */
-async function performAtomicCleanup(userId, timestamp) {
-    const batch = writeBatch(firestore);
-    const operations = [];
-
-    try {
-        // Referencias dos documentos
-        const userRef = doc(firestore, 'users', userId);
-        const presenceRef = doc(firestore, 'presence', userId);
-
-        // Verificar se o documento do usuário existe
-        const userExists = await checkUserExists(userRef);
-
-        if (userExists) {
-            // Atualizar documento do usuário
-            batch.update(userRef, {
-                isCurrentlyOnline: false,
-                lastSeen: new Date(),
-                sessionEndedAt: new Date(),
-                lastCleanupTimestamp: timestamp,
-                cleanupMethod: 'api'
-            });
-            operations.push('user_updated');
-        } else {
-            console.warn(`⚠️ Usuário ${userId} não encontrado no Firestore`);
-            operations.push('user_not_found');
-        }
-
-        // Verificar se o documento de presença existe antes de deletar
-        const presenceExists = await checkPresenceExists(presenceRef);
-
-        if (presenceExists) {
-            // Deletar documento de presença
-            batch.delete(presenceRef);
-            operations.push('presence_deleted');
-        } else {
-            console.warn(`⚠️ Documento de presença para ${userId} já removido`);
-            operations.push('presence_not_found');
-        }
-
-        // Executar batch
-        await batch.commit();
-
-        return {
-            success: true,
-            operations: operations
-        };
-
-    } catch (error) {
-        console.error(`❌ Erro no cleanup atômico para ${userId}:`, error);
-        throw error;
-    }
-}
-
-/**
- * Verificar se usuário existe
- */
-async function checkUserExists(userRef) {
-    try {
-        const userDoc = await getDoc(userRef);
-        return userDoc.exists();
-    } catch (error) {
-        console.warn('Erro ao verificar existência do usuário:', error);
-        return false;
-    }
-}
-
-/**
- * Verificar se documento de presença existe
- */
-async function checkPresenceExists(presenceRef) {
-    try {
-        const presenceDoc = await getDoc(presenceRef);
-        return presenceDoc.exists();
-    } catch (error) {
-        console.warn('Erro ao verificar existência da presença:', error);
-        return false;
-    }
-}
-
-/**
  * Obter IP do cliente
  */
 function getClientIP(req) {
-    // Verificar headers de proxy
     const forwarded = req.headers.get('x-forwarded-for');
     if (forwarded) {
         return forwarded.split(',')[0].trim();
@@ -322,7 +231,6 @@ function getClientIP(req) {
         return realIP;
     }
 
-    // Fallback para desenvolvimento
     return req.headers.get('x-vercel-forwarded-for') ||
         req.headers.get('cf-connecting-ip') ||
         'unknown';
@@ -335,22 +243,17 @@ function isWithinRateLimit(clientIP) {
     const now = Date.now();
     const windowStart = now - RATE_LIMIT_WINDOW;
 
-    // Obter ou criar entrada para o IP
     if (!rateLimiter.has(clientIP)) {
         rateLimiter.set(clientIP, []);
     }
 
     const requests = rateLimiter.get(clientIP);
-
-    // Remover requisições antigas
     const validRequests = requests.filter(timestamp => timestamp > windowStart);
 
-    // Verificar se excedeu o limite
     if (validRequests.length >= MAX_REQUESTS_PER_WINDOW) {
         return false;
     }
 
-    // Adicionar nova requisição
     validRequests.push(now);
     rateLimiter.set(clientIP, validRequests);
 
@@ -384,7 +287,7 @@ setInterval(() => {
             rateLimiter.set(ip, validRequests);
         }
     }
-}, 60000); // Limpar a cada minuto
+}, 60000);
 
 // ====================================================
 // SUPORTE PARA OUTROS MÉTODOS HTTP
@@ -398,7 +301,8 @@ export async function GET(req) {
         cacheSize: cleanupCache.size,
         rateLimiterSize: rateLimiter.size,
         methods: ['POST'],
-        version: '2.0.0'
+        version: '3.0.0',
+        backend: 'doctor-server'
     });
 }
 

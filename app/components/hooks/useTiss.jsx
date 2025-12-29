@@ -4,14 +4,12 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../providers/authProvider';
 
 /**
- * TISS Module - DESABILITADO
+ * TISS Module - HABILITADO
  *
- * Este módulo está temporariamente desabilitado aguardando implementação
- * completa dos endpoints no doctor-server.
- *
- * Para habilitar, defina TISS_ENABLED = true
+ * Este modulo esta habilitado e conectado ao doctor-server.
+ * Os endpoints de billing estao implementados e prontos para uso.
  */
-const TISS_ENABLED = false;
+const TISS_ENABLED = true;
 
 /**
  * Hook para gerenciar operações TISS

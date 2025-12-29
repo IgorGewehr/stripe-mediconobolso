@@ -52,7 +52,9 @@ import CreditCardIcon from '@mui/icons-material/CreditCard';
 import Image from 'next/image';
 import { FacebookEvents, generateEventId } from '../../../lib/facebookConversions';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+    : null;
 
 const CARD_ELEMENT_OPTIONS = {
     style: {

@@ -29,6 +29,10 @@ export { default as useWhatsAppStatus, WhatsAppStatusType } from './useWhatsAppS
 export { default as useAIBlockStatus } from './useAIBlockStatus';
 export { default as useNotificationSettings } from './useNotificationSettings';
 
+// Notification Hooks (Real-time + Push)
+export { default as useNotifications } from './useNotifications';
+export { default as usePushNotifications, PushPermission } from './usePushNotifications';
+
 // Domain Hooks (API-based)
 export { default as usePatients } from './usePatients';
 export { default as useAppointments } from './useAppointments';
@@ -80,7 +84,14 @@ export {
   useNfseXml,
   useLoteStatus,
   useEmitirFromFinanceiro,
+  useCreateRpsFromAppointment,
+  useClassifyServiceAI,
+  useCalcularIbsCbs,
+  useCodigosServico,
 } from './useNfse';
+
+// Glossas Hooks
+export { useGlossas } from './useGlossas';
 
 // Re-export auth hook from providers for convenience
 export { useAuth } from '../providers';
