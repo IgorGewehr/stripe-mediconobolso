@@ -5,13 +5,20 @@ import {
     Calendar as CalendarIcon,
     Plus,
     MapPin,
-    CloudSun
+    CloudSun,
+    Check
 } from "lucide-react";
 import { Avatar } from "@mui/material";
 
 // --- Generic UI Components (Shadcn-like) ---
-export const Card = ({ className, children }) => (
-    <div className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}>
+export const Card = ({ className, children, onClick }) => (
+    <div
+        className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}
+        onClick={onClick}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick(e) : undefined}
+    >
         {children}
     </div>
 );
@@ -125,74 +132,75 @@ export const NextAppointmentCard = ({ consultation, onDetailsClick }) => {
 export const StatsCard = ({ title, value, icon: Icon, colorClass, borderClass, bgClass, iconClass, ringClass, onClick, active }) => (
     <Card
         className={cn(
-            "border-l-4 shadow-sm transition-all duration-300 ease-out relative overflow-hidden",
+            "border-l-4 shadow-sm transition-all duration-300 ease-out relative overflow-hidden group",
             borderClass,
-            onClick && "cursor-pointer",
+            onClick && "cursor-pointer select-none",
             active
-                ? cn("ring-2 ring-offset-2 scale-[1.03] shadow-lg translate-y-[-2px]", ringClass)
-                : "hover:shadow-md hover:scale-[1.01] hover:translate-y-[-1px]"
+                ? cn("shadow-xl border-l-[6px] bg-white", borderClass)
+                : "hover:shadow-md hover:translate-y-[-2px] bg-white/80"
         )}
         onClick={onClick}
     >
-        {/* Animated background glow when active */}
+        {/* Gradient background when active */}
         <div className={cn(
-            "absolute inset-0 transition-opacity duration-500",
-            bgClass,
-            active ? "opacity-30" : "opacity-0"
+            "absolute inset-0 transition-all duration-500 ease-out",
+            active
+                ? cn("opacity-100", bgClass?.replace("bg-", "bg-gradient-to-br from-") + "/20 to-white")
+                : "opacity-0"
         )} />
 
-        {/* Selection indicator bar */}
+        {/* Bottom accent line that expands when active */}
         <div className={cn(
-            "absolute top-0 left-0 right-0 h-1 transition-all duration-300",
-            active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0",
-            iconClass?.replace("text-", "bg-")
+            "absolute bottom-0 left-0 h-[3px] transition-all duration-500 ease-out",
+            iconClass?.replace("text-", "bg-"),
+            active ? "w-full opacity-100" : "w-0 opacity-0 group-hover:w-1/3 group-hover:opacity-50"
         )} />
 
         <CardContent className="p-5 flex items-center justify-between relative z-10">
-            <div>
+            <div className="flex-1">
                 <p className={cn(
-                    "text-sm font-medium transition-colors duration-200",
-                    active ? "text-slate-800" : "text-slate-500"
+                    "text-sm font-medium transition-all duration-300",
+                    active ? iconClass : "text-slate-500 group-hover:text-slate-700"
                 )}>
                     {title}
                 </p>
                 <h3 className={cn(
-                    "text-2xl font-bold mt-1 transition-all duration-200",
-                    active ? "text-slate-900 scale-105 origin-left" : "text-slate-900"
+                    "text-3xl font-bold mt-1 transition-all duration-300 tracking-tight",
+                    active ? "text-slate-900" : "text-slate-800"
                 )}>
                     {value}
                 </h3>
             </div>
+
+            {/* Icon container with elegant active state */}
             <div className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 relative",
-                active ? "scale-110 shadow-md" : "w-10 h-10",
-                bgClass,
-                iconClass
+                "relative flex items-center justify-center transition-all duration-300",
+                active ? "w-14 h-14" : "w-12 h-12 group-hover:w-13 group-hover:h-13"
             )}>
-                <Icon className={cn(
-                    "transition-all duration-300",
-                    active ? "w-6 h-6" : "w-5 h-5"
+                {/* Background circle */}
+                <div className={cn(
+                    "absolute inset-0 rounded-full transition-all duration-300",
+                    bgClass,
+                    active ? "opacity-100 scale-100" : "opacity-60 scale-95 group-hover:opacity-80 group-hover:scale-100"
                 )} />
 
-                {/* Checkmark indicator when active */}
+                {/* Icon */}
+                <Icon className={cn(
+                    "relative z-10 transition-all duration-300",
+                    iconClass,
+                    active ? "w-7 h-7" : "w-5 h-5 group-hover:w-6 group-hover:h-6"
+                )} />
+
+                {/* Selection indicator badge */}
                 <div className={cn(
-                    "absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all duration-300",
+                    "absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm",
                     iconClass?.replace("text-", "bg-"),
                     active ? "opacity-100 scale-100" : "opacity-0 scale-0"
                 )}>
-                    ✓
+                    <Check className="w-3 h-3 text-white stroke-[3]" />
                 </div>
             </div>
         </CardContent>
-
-        {/* Subtle pulse animation when active */}
-        {active && (
-            <div className={cn(
-                "absolute inset-0 rounded-xl animate-pulse",
-                bgClass,
-                "opacity-10"
-            )} />
-        )}
     </Card>
 );
 

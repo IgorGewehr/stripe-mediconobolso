@@ -12,16 +12,11 @@ import {
   Tab,
   Snackbar,
   Alert,
-  Typography,
-  Button,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   Receipt as ReceiptIcon,
   Payment as PaymentIcon,
-  Store as StoreIcon,
-  TrendingUp as TrendingUpIcon,
-  Assessment as ReportIcon,
   Description as NfseIcon,
   LocalHospital as TissIcon,
 } from '@mui/icons-material';
@@ -192,9 +187,6 @@ export default function FinancialTemplate() {
     { label: 'Contas a Pagar', icon: <PaymentIcon />, index: 2 },
     { label: 'TISS / Convênios', icon: <TissIcon />, index: 3 },
     { label: 'Notas Fiscais', icon: <NfseIcon />, index: 4 },
-    { label: 'Fornecedores', icon: <StoreIcon />, index: 5 },
-    { label: 'Repasses', icon: <TrendingUpIcon />, index: 6 },
-    { label: 'Relatórios', icon: <ReportIcon />, index: 7 },
   ];
 
   return (
@@ -276,54 +268,6 @@ export default function FinancialTemplate() {
           {/* Notas Fiscais (NFSe) Tab */}
           <TabPanel value={activeTab} index={4}>
             <FiscalDashboard />
-          </TabPanel>
-
-          {/* Fornecedores Tab */}
-          <TabPanel value={activeTab} index={5}>
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <StoreIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Fornecedores
-              </Typography>
-              <Typography color="text.secondary">
-                Cadastre e gerencie seus fornecedores
-              </Typography>
-              <Button variant="outlined" sx={{ mt: 3 }} disabled>
-                Em breve
-              </Button>
-            </Box>
-          </TabPanel>
-
-          {/* Repasses Tab */}
-          <TabPanel value={activeTab} index={6}>
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <TrendingUpIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Repasses Médicos
-              </Typography>
-              <Typography color="text.secondary">
-                Acompanhe e gerencie os repasses dos profissionais
-              </Typography>
-              <Button variant="outlined" sx={{ mt: 3 }} disabled>
-                Em breve
-              </Button>
-            </Box>
-          </TabPanel>
-
-          {/* Relatórios Tab */}
-          <TabPanel value={activeTab} index={7}>
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <ReportIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Relatórios Financeiros
-              </Typography>
-              <Typography color="text.secondary">
-                DRE, fluxo de caixa, receita por convênio e mais
-              </Typography>
-              <Button variant="outlined" sx={{ mt: 3 }} disabled>
-                Em breve
-              </Button>
-            </Box>
           </TabPanel>
         </Box>
       </Box>

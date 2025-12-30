@@ -1311,6 +1311,7 @@ export function ClinicManagementTemplate() {
                     borderColor: themeColors.borderColor,
                     bgcolor: alpha('#FFFFFF', 0.7),
                     backdropFilter: 'blur(10px)',
+                    mt: 5
                 }}
             >
                 <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3, pt: 2 }}>

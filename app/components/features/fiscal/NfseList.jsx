@@ -434,7 +434,7 @@ function XmlDialog({ open, onClose, nfseId }) {
 }
 
 // Main Component
-export default function NfseList() {
+export default function NfseList({ compact = false }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedNfse, setSelectedNfse] = useState(null);
     const [cancelOpen, setCancelOpen] = useState(false);
@@ -482,127 +482,32 @@ export default function NfseList() {
         );
     }, [nfses, searchTerm]);
 
-    // Calculate stats
-    const stats = useMemo(() => {
-        const totalEmitidas = nfses?.filter(n => n.status === 'emitida').length || 0;
-        const totalValor = nfses?.reduce((sum, n) => sum + (n.valor_servicos || 0), 0) || 0;
-        const totalCanceladas = nfses?.filter(n => n.status === 'cancelada').length || 0;
-        return { totalEmitidas, totalValor, totalCanceladas, total: nfses?.length || 0 };
-    }, [nfses]);
-
     if (error) {
-        return <Alert severity="error" sx={{ borderRadius: '12px' }}>Erro ao carregar NFSes: {error.message}</Alert>;
+        return <Alert severity="error" sx={{ borderRadius: 2 }}>Erro ao carregar NFSes: {error.message}</Alert>;
     }
 
+    // Compact mode - just search and list
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: themeColors.backgroundSecondary, p: { xs: 2, md: 3 } }}>
-            {/* Header */}
-            <Box sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', md: 'row' },
-                justifyContent: 'space-between',
-                alignItems: { xs: 'flex-start', md: 'center' },
-                gap: 2,
-                mb: 4
-            }}>
-                <Box>
-                    <Typography variant="h4" fontWeight="bold" color={themeColors.textPrimary}>
-                        Notas Fiscais (NFSe)
-                    </Typography>
-                    <Typography variant="body1" color={themeColors.textSecondary} sx={{ mt: 0.5 }}>
-                        Gerencie suas notas fiscais de servico eletronicas.
-                    </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Tooltip title="Atualizar dados">
-                        <IconButton
-                            onClick={() => refetch()}
-                            disabled={isLoading}
-                            sx={{
-                                bgcolor: 'white',
-                                border: '1px solid',
-                                borderColor: themeColors.borderColor,
-                                '&:hover': { bgcolor: themeColors.backgroundSecondary },
-                            }}
-                        >
-                            <RefreshIcon />
-                        </IconButton>
-                    </Tooltip>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        sx={{
-                            borderRadius: '12px',
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            px: 3,
-                            py: 1.5,
-                            boxShadow: `0 4px 14px ${alpha(themeColors.primary, 0.3)}`,
-                        }}
-                    >
-                        Emitir NFSe
-                    </Button>
-                </Box>
-            </Box>
-
-            {/* Stats Row */}
-            <Grid container spacing={2} sx={{ mb: 4 }}>
-                <Grid item xs={6} md={3}>
-                    <StatCard
-                        title="Total de NFSe"
-                        value={stats.total}
-                        icon={NfseIcon}
-                        colorClass="primary"
-                        loading={isLoading}
-                    />
-                </Grid>
-                <Grid item xs={6} md={3}>
-                    <StatCard
-                        title="NFSe Emitidas"
-                        value={stats.totalEmitidas}
-                        icon={NfseIcon}
-                        colorClass="success"
-                        loading={isLoading}
-                    />
-                </Grid>
-                <Grid item xs={6} md={3}>
-                    <StatCard
-                        title="Valor Total"
-                        value={formatCurrency(stats.totalValor)}
-                        icon={NfseIcon}
-                        colorClass="primary"
-                        loading={isLoading}
-                    />
-                </Grid>
-                <Grid item xs={6} md={3}>
-                    <StatCard
-                        title="Canceladas"
-                        value={stats.totalCanceladas}
-                        icon={CancelIcon}
-                        colorClass="error"
-                        loading={isLoading}
-                    />
-                </Grid>
-            </Grid>
-
+        <Box>
             {/* Search */}
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: 2 }}>
                 <TextField
-                    placeholder="Buscar por numero, codigo ou tomador..."
+                    placeholder="Buscar NFSe..."
                     size="small"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    fullWidth={compact}
                     sx={{
-                        width: { xs: '100%', md: 350 },
+                        width: compact ? '100%' : { xs: '100%', md: 350 },
                         '& .MuiOutlinedInput-root': {
-                            borderRadius: '10px',
-                            bgcolor: 'white',
+                            borderRadius: 2,
+                            bgcolor: 'background.paper',
                         },
                     }}
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
-                                <SearchIcon sx={{ color: themeColors.textTertiary }} />
+                                <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
                             </InputAdornment>
                         ),
                     }}
@@ -611,7 +516,7 @@ export default function NfseList() {
 
             {/* List */}
             {isLoading ? (
-                <LinearProgress sx={{ borderRadius: '10px' }} />
+                <LinearProgress sx={{ borderRadius: 2 }} />
             ) : filteredNfses.length === 0 ? (
                 <EmptyState searchQuery={searchTerm} />
             ) : (

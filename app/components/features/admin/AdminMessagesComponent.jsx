@@ -155,12 +155,8 @@ const AdminMessagesComponent = ({ open, onClose }) => {
 
         setSending(true);
         try {
-            await adminService.addReportResponse(selectedReport.id, {
-                content: newResponse.trim(),
-                isAdmin: true,
-                authorId: currentUser.uid,
-                authorName: currentUser.fullName || 'Administrador'
-            });
+            // O backend determina is_admin automaticamente pelo auth context
+            await adminService.addReportResponse(selectedReport.id, newResponse.trim());
 
             setNewResponse('');
 
@@ -187,11 +183,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
         if (!reportId) return;
 
         try {
-            await adminService.updateReportStatus(
-                reportId,
-                'resolved',
-                currentUser.fullName || 'Administrador'
-            );
+            await adminService.updateReportStatus(reportId, 'resolved');
 
             // Atualizar localmente
             if (selectedReport?.id === reportId) {
@@ -270,9 +262,19 @@ const AdminMessagesComponent = ({ open, onClose }) => {
         }
     }, []);
 
+    // Helper para converter datas de diferentes formatos (Firebase Timestamp ou ISO string)
+    const parseDate = useCallback((date) => {
+        if (!date) return null;
+        // Firebase Timestamp
+        if (typeof date.toDate === 'function') return date.toDate();
+        // String ISO ou Date
+        return new Date(date);
+    }, []);
+
     const formatTime = useCallback((date) => {
-        if (!date) return '';
-        const messageDate = date.toDate ? date.toDate() : new Date(date);
+        const messageDate = parseDate(date);
+        if (!messageDate || isNaN(messageDate.getTime())) return '';
+
         const diffMs = Date.now() - messageDate.getTime();
         const diffMins = Math.floor(diffMs / (1000 * 60));
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -283,7 +285,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
         if (diffHours < 24) return `${diffHours}h`;
         if (diffDays < 7) return `${diffDays}d`;
         return messageDate.toLocaleDateString('pt-BR');
-    }, []);
+    }, [parseDate]);
 
     // ====================================================
     // COMPONENTES DE RENDERIZAÇÃO
@@ -667,7 +669,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
                                     </Typography>
                                     <ScheduleIcon sx={{ fontSize: 14 }} />
                                     <Typography variant="body2" color="text.secondary">
-                                        {new Date(selectedReport.createdAt.toDate?.() || selectedReport.createdAt).toLocaleString('pt-BR')}
+                                        {parseDate(selectedReport.createdAt)?.toLocaleString('pt-BR') || ''}
                                     </Typography>
                                 </Box>
                             </Box>
@@ -704,7 +706,7 @@ const AdminMessagesComponent = ({ open, onClose }) => {
                                             {response.isAdmin ? 'Administrador' : response.authorName}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary">
-                                            {new Date(response.createdAt.toDate?.() || response.createdAt).toLocaleString('pt-BR')}
+                                            {parseDate(response.createdAt)?.toLocaleString('pt-BR') || ''}
                                         </Typography>
                                     </Box>
                                     <Typography variant="body2" sx={{ lineHeight: 1.5 }}>

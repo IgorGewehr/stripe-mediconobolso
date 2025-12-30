@@ -260,143 +260,180 @@ function RelatorioCard({ onClick, isLoading, isMobile, isTablet }) {
         </>
     );
 }
-// Card de acompanhamento SEM controle de acesso (REMOVIDO CONTROLE DE ACESSO)
-function AcompanhamentoCard({ tipo, icone, onClick, variant = "default", isMobile, isTablet }) {
-    // Variante especial para o card de Resumo Clínico
-    const isInsightVariant = variant === "insight";
+// Configuração dos cards de ação - igual à referência
+const actionCardsConfig = [
+    {
+        tipo: "Anamnese",
+        icone: "/anamnesecard.svg",
+        color: "#2563EB", // blue-600
+        bgColor: "#EFF6FF", // blue-50
+        hoverBorder: "#BFDBFE", // blue-200
+        description: "Registrar consulta"
+    },
+    {
+        tipo: "Receitas",
+        icone: "/receitascard.svg",
+        color: "#059669", // emerald-600
+        bgColor: "#ECFDF5", // emerald-50
+        hoverBorder: "#A7F3D0", // emerald-200
+        description: "Prescrever medicação"
+    },
+    {
+        tipo: "Exames",
+        icone: "/examescard.png",
+        color: "#9333EA", // purple-600
+        bgColor: "#FAF5FF", // purple-50
+        hoverBorder: "#E9D5FF", // purple-200
+        description: "Solicitar ou ver"
+    },
+    {
+        tipo: "Resumo Clínico",
+        icone: null, // Usará ícone do MUI
+        color: "#D97706", // amber-600
+        bgColor: "#FFFBEB", // amber-50
+        hoverBorder: "#FDE68A", // amber-200
+        description: "Histórico clínico",
+        isAI: true
+    }
+];
 
-    // Cores baseadas na variante
-    const bgColor = isInsightVariant ? themeColors.insightLight : "white";
-    const iconBgColor = isInsightVariant ? themeColors.insight : themeColors.primary;
-    const iconHoverColor = isInsightVariant ? "#7C3AED" : "#0d47e0";
-    const shadowBase = isInsightVariant ? themeColors.cardInsightShadow : themeColors.cardShadow;
-    const shadowHover = isInsightVariant ? themeColors.cardInsightShadowHover : themeColors.cardShadowHover;
+// Card de acompanhamento - SEM SUBTÍTULOS, TAMANHO PADRONIZADO
+function AcompanhamentoCard({ tipo, icone, onClick, color, bgColor, hoverBorder, isAI = false, isMobile, isTablet }) {
+    const [isHovered, setIsHovered] = useState(false);
+    const { isFreeUser } = useAuth();
 
-    const { user, isFreeUser } = useAuth();
+    // Para o card de IA, verificar se está bloqueado
+    const isLocked = isAI && isFreeUser;
+
+    // Tamanho padronizado para todos os cards
+    const cardHeight = isMobile ? 115 : 135;
 
     return (
         <Card
             sx={{
-                width: "100%",
-                maxWidth: "100%",
-                height: isMobile ? "140px" : isTablet ? "160px" : "180px",
-                borderRadius: isMobile ? "16px" : "20px",
-                boxShadow: shadowBase,
                 position: "relative",
+                p: isMobile ? 2 : 2.5,
+                border: "1px solid transparent",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                borderRadius: "16px",
+                cursor: "pointer",
+                backgroundColor: "#fff",
+                transition: "all 0.2s ease-in-out",
+                overflow: "visible",
+                height: cardHeight,
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                p: isMobile ? 1.5 : 2,
-                cursor: "pointer",
-                backgroundColor: bgColor,
-                transition: "all 0.3s ease-in-out",
                 "&:hover": {
-                    boxShadow: shadowHover,
-                    transform: isMobile ? "scale(1.02)" : "translateY(-4px)",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    borderColor: hoverBorder,
+                    transform: "translateY(-2px)",
                 },
-                // Garantir visibilidade em mobile
-                minHeight: isMobile ? "140px" : "auto",
             }}
             onClick={onClick}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
-            <CardContent
+            <Box
                 sx={{
-                    width: "100%",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    justifyContent: "center",
-                    p: 0,
+                    textAlign: "center",
+                    gap: 1.5,
                 }}
             >
-                {/* Ícone central com animação suave no hover */}
-                {typeof icone === "string" ? (
+                {/* Caixa do ícone */}
+                <Box
+                    sx={{
+                        width: isMobile ? 48 : 56,
+                        height: isMobile ? 48 : 56,
+                        borderRadius: "16px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: bgColor,
+                        transition: "transform 0.2s ease-in-out",
+                        transform: isHovered ? "scale(1.1)" : "scale(1)",
+                    }}
+                >
                     <Box
                         component="img"
                         src={icone}
                         alt={tipo}
                         sx={{
-                            mt: isMobile ? "2px" : "5px",
-                            width: isMobile ? 60 : isTablet ? 80 : 100,
-                            height: isMobile ? 60 : isTablet ? 80 : 100,
-                            mb: isMobile ? 0.5 : 1,
-                            transition: "transform 0.3s ease",
-                            "&:hover": {
-                                transform: "scale(1.05)"
-                            }
+                            width: isMobile ? 28 : 32,
+                            height: isMobile ? 28 : 32,
                         }}
                     />
-                ) : (
-                    <Box
-                        sx={{
-                            mt: isMobile ? "2px" : "5px",
-                            width: isMobile ? 60 : isTablet ? 80 : 100,
-                            height: isMobile ? 60 : isTablet ? 80 : 100,
-                            mb: isMobile ? 0.5 : 1,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: isInsightVariant ? themeColors.insight : themeColors.primary,
-                            fontSize: isMobile ? 40 : isTablet ? 50 : 60,
-                            transition: "transform 0.3s ease",
-                            "&:hover": {
-                                transform: "scale(1.05)"
-                            }
-                        }}
-                    >
-                        {icone}
-                    </Box>
-                )}
+                </Box>
 
-                <Box
+                {/* Apenas título - SEM SUBTÍTULO */}
+                <Typography
                     sx={{
-                        display: "flex",
-                        flexDirection: "row",
-                        gap: 2,
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        width: "100%",
-                        pl: "10px",
-                        pr: "10px",
+                        fontFamily: "Gellix",
+                        fontSize: isMobile ? 14 : 15,
+                        fontWeight: 600,
+                        color: themeColors.textPrimary,
                     }}
                 >
-                    <Typography
-                        variant="h6"
+                    {tipo}
+                </Typography>
+
+                {/* Botão flutuante que aparece no hover */}
+                {!isLocked && (
+                    <IconButton
                         sx={{
-                            color: isInsightVariant ? themeColors.insight : themeColors.textPrimary,
-                            fontFamily: "Gellix",
-                            fontSize: isMobile ? 14 : isTablet ? 16 : 18,
-                            fontWeight: 600,
-                            textAlign: "center",
-                            flexGrow: 1,
-                            lineHeight: 1.2,
+                            position: "absolute",
+                            bottom: "-14px",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            width: 32,
+                            height: 32,
+                            backgroundColor: themeColors.primary,
+                            color: "#FFF",
+                            boxShadow: "0 4px 12px rgba(24, 82, 254, 0.3)",
+                            opacity: isHovered ? 1 : 0,
+                            transition: "all 0.2s ease-in-out",
+                            "&:hover": {
+                                backgroundColor: "#1E40AF",
+                            },
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onClick) onClick(true);
                         }}
                     >
-                        {tipo}
-                    </Typography>
+                        {isAI ? <AutoAwesomeIcon sx={{ fontSize: 16 }} /> : <AddIcon sx={{ fontSize: 16 }} />}
+                    </IconButton>
+                )}
 
-                    <Tooltip title={`Adicionar ${tipo}`}>
-                        <IconButton
+                {/* Badge Premium */}
+                {isLocked && (
+                    <Box
+                        sx={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                        }}
+                    >
+                        <Typography
                             sx={{
-                                width: 28,
-                                height: 28,
-                                backgroundColor: iconBgColor,
-                                color: "#FFF",
-                                "&:hover": {
-                                    backgroundColor: iconHoverColor,
-                                },
-                            }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (onClick) onClick(true);
+                                fontSize: "10px",
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                color: "rgba(217, 119, 6, 0.8)",
+                                backgroundColor: "#FFFBEB",
+                                px: 1,
+                                py: 0.25,
+                                borderRadius: "4px",
                             }}
                         >
-                            {isInsightVariant ? <AutoAwesomeIcon /> : <AddIcon />}
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-            </CardContent>
+                            Premium
+                        </Typography>
+                    </Box>
+                )}
+            </Box>
         </Card>
     );
 }
@@ -1059,7 +1096,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
     };
 
     return (
-        <Box sx={{ width: "100%", maxWidth: "840px" }}>
+        <Box sx={{ width: "100%", maxWidth: "100%" }}>
             {/* Loading animation quando gerando relatório */}
             {isLoadingRelatorio && (
                 <Backdrop
@@ -1191,27 +1228,28 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 }
             `}</style>
 
-            {/* Title with enhanced typography - Mobile optimized */}
+            {/* Título igual ao de Anotações */}
             <Typography
-                variant="h4"
                 sx={{
-                    color: themeColors.textPrimary,
                     fontFamily: "Gellix",
-                    fontSize: isMobile ? "20px" : isTablet ? "24px" : "30px",
-                    fontWeight: 500,
+                    fontSize: isMobile ? 24 : 28,
+                    fontWeight: 700,
+                    color: themeColors.textPrimary,
                     mb: isMobile ? 2 : 3,
-                    textAlign: isMobile ? "center" : "left",
                 }}
             >
                 Acompanhamento
             </Typography>
 
-            {/* Grid of cards with improved mobile layout */}
-            <Grid container spacing={isMobile ? 1.5 : isTablet ? 2 : 3}>
+            {/* Grid de cards - tamanho padronizado */}
+            <Grid container spacing={isMobile ? 1.5 : 2}>
                 <Grid item xs={6} sm={6} md={3}>
                     <AcompanhamentoCard
                         tipo="Anamnese"
-                        icone="/anamnesecard.svg"
+                        icone="/icons/anamnese-icon.svg"
+                        color="#2563EB"
+                        bgColor="#EFF6FF"
+                        hoverBorder="#BFDBFE"
                         onClick={handleAnamneseClick}
                         isMobile={isMobile}
                         isTablet={isTablet}
@@ -1220,7 +1258,10 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 <Grid item xs={6} sm={6} md={3}>
                     <AcompanhamentoCard
                         tipo="Receitas"
-                        icone="/receitascard.svg"
+                        icone="/icons/receitas-icon.svg"
+                        color="#059669"
+                        bgColor="#ECFDF5"
+                        hoverBorder="#A7F3D0"
                         onClick={handleReceitasClick}
                         isMobile={isMobile}
                         isTablet={isTablet}
@@ -1229,16 +1270,24 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 <Grid item xs={6} sm={6} md={3}>
                     <AcompanhamentoCard
                         tipo="Exames"
-                        icone="/examescard.png"
+                        icone="/icons/exames-icon.svg"
+                        color="#9333EA"
+                        bgColor="#FAF5FF"
+                        hoverBorder="#E9D5FF"
                         onClick={handleExamesClick}
                         isMobile={isMobile}
                         isTablet={isTablet}
                     />
                 </Grid>
                 <Grid item xs={6} sm={6} md={3}>
-                    <RelatorioCard
+                    <AcompanhamentoCard
+                        tipo="Resumo"
+                        icone="/icons/resumo-icon.svg"
+                        color="#D97706"
+                        bgColor="#FFFBEB"
+                        hoverBorder="#FDE68A"
+                        isAI={true}
                         onClick={handleRelatorioClick}
-                        isLoading={isLoadingRelatorio}
                         isMobile={isMobile}
                         isTablet={isTablet}
                     />

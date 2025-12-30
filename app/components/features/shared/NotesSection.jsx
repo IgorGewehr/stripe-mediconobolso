@@ -13,9 +13,14 @@ import {
     Fade,
     ButtonGroup,
     Badge,
-    Divider, CardContent,
+    Divider,
+    CardContent,
     useTheme,
-    useMediaQuery
+    useMediaQuery,
+    TextField,
+    InputAdornment,
+    Tabs,
+    Tab
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
@@ -28,6 +33,8 @@ import NotesIcon from "@mui/icons-material/Notes";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import BiotechIcon from "@mui/icons-material/Biotech";
+import SearchIcon from "@mui/icons-material/Search";
+import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { patientsService, notesService } from '@/lib/services/api';
@@ -529,7 +536,7 @@ function NotaCardSkeleton() {
     );
 }
 
-// Empty state, when no notes
+// Empty state redesenhado - mais elegante como no design de referência
 function EmptyState({ onCreate }) {
     return (
         <Box
@@ -538,61 +545,116 @@ function EmptyState({ onCreate }) {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                py: 3, // Reduced to be more compact
-                px: 2,
-                backgroundColor: "#F8F9FA",
+                py: 6,
+                px: 3,
+                backgroundColor: "rgba(244, 247, 253, 0.5)",
                 borderRadius: "16px",
-                border: `1px dashed ${themeColors.borderColor}`,
-                mt: 1, // Reduced to be closer to the header
-                mb: 1
+                border: `2px dashed rgba(24, 82, 254, 0.2)`,
+                mt: 2,
+                mb: 2,
+                minHeight: "300px",
+                position: "relative",
+                overflow: "hidden",
+                // Efeito de fundo sutil
+                "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    top: "-50px",
+                    right: "-50px",
+                    width: "150px",
+                    height: "150px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(24, 82, 254, 0.03)",
+                    zIndex: 0
+                },
+                "&::after": {
+                    content: '""',
+                    position: "absolute",
+                    bottom: "-30px",
+                    left: "-30px",
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(24, 82, 254, 0.03)",
+                    zIndex: 0
+                }
             }}
         >
+            {/* Ícone estilizado */}
             <Box
-                component="img"
-                src="/receitas.svg"
-                alt="Sem anotações"
                 sx={{
-                    width: 80, // Reduced size
-                    height: 80, // Reduced size
-                    mb: 2,
-                    opacity: 0.8
+                    width: 80,
+                    height: 80,
+                    borderRadius: "20px",
+                    backgroundColor: "rgba(24, 82, 254, 0.08)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 3,
+                    zIndex: 1,
+                    border: "2px solid rgba(24, 82, 254, 0.1)"
                 }}
-            />
+            >
+                <NotesIcon sx={{ fontSize: 40, color: "rgba(24, 82, 254, 0.5)" }} />
+            </Box>
+
             <Typography
                 variant="h6"
                 sx={{
                     fontFamily: "Gellix",
-                    fontSize: 16,
-                    fontWeight: 600,
+                    fontSize: 18,
+                    fontWeight: 700,
                     color: themeColors.textPrimary,
-                    mb: 1,
-                    textAlign: "center"
+                    mb: 1.5,
+                    textAlign: "center",
+                    zIndex: 1
                 }}
             >
                 Nenhuma anotação encontrada
             </Typography>
+
             <Typography
                 variant="body2"
                 sx={{
                     fontFamily: "Gellix",
                     fontSize: 14,
                     color: themeColors.textSecondary,
-                    mb: 2,
+                    mb: 3,
                     textAlign: "center",
-                    maxWidth: "380px"
+                    maxWidth: "400px",
+                    lineHeight: 1.6,
+                    zIndex: 1
                 }}
             >
                 Registre informações importantes sobre o paciente para acompanhar o progresso do tratamento e manter um histórico detalhado.
             </Typography>
-            <Box sx={{ display: "flex", gap: 1 }}>
-                <ActionButton
-                    onClick={onCreate}
-                    color={themeColors.primary}
-                    startIcon={<AddIcon />}
-                >
-                    Nova nota
-                </ActionButton>
-            </Box>
+
+            <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={onCreate}
+                sx={{
+                    height: 48,
+                    px: 4,
+                    borderRadius: "99px",
+                    backgroundColor: themeColors.primary,
+                    color: "#FFF",
+                    fontFamily: "Gellix",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    textTransform: "none",
+                    boxShadow: "0 4px 14px rgba(24, 82, 254, 0.25)",
+                    zIndex: 1,
+                    "&:hover": {
+                        backgroundColor: themeColors.primaryDark,
+                        boxShadow: "0 6px 20px rgba(24, 82, 254, 0.35)",
+                        transform: "translateY(-2px)"
+                    },
+                    transition: "all 0.2s ease-in-out"
+                }}
+            >
+                Nova nota
+            </Button>
         </Box>
     );
 }
@@ -998,391 +1060,312 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
         }
     };
 
+    // Estado para busca
+    const [searchQuery, setSearchQuery] = useState("");
+
+    // Filtrar notas por busca
+    const searchFilteredNotas = searchQuery
+        ? filteredNotas.filter(nota =>
+            (nota.noteTitle || nota.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (nota.noteText || nota.observations || "").toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : filteredNotas;
+
     return (
-        <Box
-            sx={{
-                width: "100%",
-                maxWidth: "1000px",
-                display: "flex",
-                flexDirection: "column",
-                height: "auto",
-            }}
-        >
-            {/* Header: only title */}
+        <Box sx={{ width: "100%", maxWidth: "100%" }}>
+            {/* Header - igual à referência */}
             <Box
                 sx={{
                     display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    alignItems: isMobile ? "flex-start" : "flex-end",
                     justifyContent: "space-between",
-                    alignItems: "center",
-                    width: "100%",
-                    mb: 2
+                    mb: 3,
+                    gap: 2,
                 }}
             >
-                <Typography
-                    variant="h4"
-                    sx={{
-                        color: themeColors.textPrimary,
-                        fontFamily: "Gellix",
-                        fontSize: isMobile ? "20px" : isTablet ? "24px" : "30px",
-                        fontWeight: 600,
-                        textAlign: isMobile ? "center" : "left",
-                    }}
-                >
-                    Anotações
-                </Typography>
-            </Box>
-
-            {/* Filters, View All and New Note buttons - mobile optimized */}
-            <Box sx={{
-                display: "flex",
-                flexDirection: isMobile ? "column" : "row",
-                alignItems: isMobile ? "stretch" : "center",
-                justifyContent: "space-between",
-                mb: 2,
-                mt: 2,
-                gap: isMobile ? 2 : 0
-            }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center',
-                    flexDirection: isMobile ? "column" : "row",
-                    gap: isMobile ? 1 : 0,
-                    width: isMobile ? "100%" : "auto"
-                }}>
-                    <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        mb: isMobile ? 1 : 0,
-                        width: isMobile ? "100%" : "auto",
-                        justifyContent: isMobile ? "flex-start" : "center"
-                    }}>
-                        <FilterAltIcon sx={{ mr: 1, color: themeColors.primary, fontSize: 18 }} />
-                        <Typography variant="body2" sx={{ color: themeColors.textSecondary, mr: 2, fontWeight: 500 }}>
-                            Filtrar por:
-                        </Typography>
-                    </Box>
-
-                    <ButtonGroup
-                        variant="outlined"
-                        aria-label="Filtro de visualização"
-                        orientation={isMobile ? "vertical" : "horizontal"}
-                        size={isMobile ? "small" : "medium"}
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                    <Typography
                         sx={{
-                            width: isMobile ? "100%" : "auto",
-                            '& .MuiButton-root': {
-                                borderColor: '#E2E8F0',
-                                color: themeColors.textSecondary,
-                                fontWeight: 500,
-                                fontSize: isMobile ? '13px' : '14px',
-                                height: isMobile ? '44px' : '36px',
-                                textTransform: 'none',
-                                fontFamily: 'Gellix',
-
-                                '&.Mui-selected, &.active': {
-                                    backgroundColor: themeColors.primary,
-                                    color: '#fff',
-                                    borderColor: themeColors.primary,
-                                },
-
-                                '&:first-of-type': {
-                                    borderTopLeftRadius: isMobile ? '12px' : '50px',
-                                    borderBottomLeftRadius: isMobile ? '12px' : '50px',
-                                    borderTopRightRadius: isMobile ? '12px' : '0px',
-                                    borderBottomRightRadius: isMobile ? '12px' : '0px',
-                                },
-                                '&:last-of-type': {
-                                    borderTopRightRadius: isMobile ? '12px' : '50px',
-                                    borderBottomRightRadius: isMobile ? '12px' : '50px',
-                                    borderTopLeftRadius: isMobile ? '12px' : '0px',
-                                    borderBottomLeftRadius: isMobile ? '12px' : '0px',
-                                },
-                                '&:not(:first-of-type):not(:last-of-type)': {
-                                    borderRadius: isMobile ? '12px' : '0px',
-                                }
-                            }
+                            fontFamily: "Gellix",
+                            fontSize: isMobile ? 24 : 28,
+                            fontWeight: 700,
+                            color: themeColors.textPrimary,
                         }}
                     >
-                        <Button
-                            onClick={() => handleFilterChange('todas')}
-                            className={activeFilter === 'todas' ? 'active' : ''}
-                            sx={{
-                                backgroundColor: activeFilter === 'todas' ? themeColors.primary : 'transparent',
-                                color: activeFilter === 'todas' ? '#fff' : themeColors.textSecondary,
-                                '&:hover': {
-                                    backgroundColor: activeFilter === 'todas' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
-                                }
-                            }}
-                        >
-                            Todas
-                            <Badge
-                                badgeContent={notasData.length}
-                                color="error"
-                                sx={{
-                                    ml: 1,
-                                    '& .MuiBadge-badge': {
-                                        fontSize: '0.6rem',
-                                        minWidth: '18px',
-                                        height: '18px',
-                                    }
-                                }}
-                            />
-                        </Button>
-                        <Button
-                            onClick={() => handleFilterChange('notas')}
-                            className={activeFilter === 'notas' ? 'active' : ''}
-                            sx={{
-                                backgroundColor: activeFilter === 'notas' ? themeColors.primary : 'transparent',
-                                color: activeFilter === 'notas' ? '#fff' : themeColors.textSecondary,
-                                '&:hover': {
-                                    backgroundColor: activeFilter === 'notas' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
-                                }
-                            }}
-                        >
-                            Notas
-                            <Badge
-                                badgeContent={metrics.notas}
-                                color="error"
-                                sx={{
-                                    ml: 1,
-                                    '& .MuiBadge-badge': {
-                                        fontSize: '0.6rem',
-                                        minWidth: '18px',
-                                        height: '18px',
-                                    }
-                                }}
-                            />
-                        </Button>
-                        <Button
-                            onClick={() => handleFilterChange('anamneses')}
-                            className={activeFilter === 'anamneses' ? 'active' : ''}
-                            sx={{
-                                backgroundColor: activeFilter === 'anamneses' ? themeColors.primary : 'transparent',
-                                color: activeFilter === 'anamneses' ? '#fff' : themeColors.textSecondary,
-                                '&:hover': {
-                                    backgroundColor: activeFilter === 'anamneses' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
-                                }
-                            }}
-                        >
-                            Anamneses
-                            <Badge
-                                badgeContent={metrics.anamneses}
-                                color="error"
-                                sx={{
-                                    ml: 1,
-                                    '& .MuiBadge-badge': {
-                                        fontSize: '0.6rem',
-                                        minWidth: '18px',
-                                        height: '18px',
-                                    }
-                                }}
-                            />
-                        </Button>
-                        <Button
-                            onClick={() => handleFilterChange('receitas')}
-                            className={activeFilter === 'receitas' ? 'active' : ''}
-                            sx={{
-                                backgroundColor: activeFilter === 'receitas' ? themeColors.primary : 'transparent',
-                                color: activeFilter === 'receitas' ? '#fff' : themeColors.textSecondary,
-                                '&:hover': {
-                                    backgroundColor: activeFilter === 'receitas' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
-                                }
-                            }}
-                        >
-                            Receitas
-                            <Badge
-                                badgeContent={metrics.receitas}
-                                color="error"
-                                sx={{
-                                    ml: 1,
-                                    '& .MuiBadge-badge': {
-                                        fontSize: '0.6rem',
-                                        minWidth: '18px',
-                                        height: '18px',
-                                    }
-                                }}
-                            />
-                        </Button>
-                        <Button
-                            onClick={() => handleFilterChange('exames')}
-                            className={activeFilter === 'exames' ? 'active' : ''}
-                            sx={{
-                                backgroundColor: activeFilter === 'exames' ? themeColors.primary : 'transparent',
-                                color: activeFilter === 'exames' ? '#fff' : themeColors.textSecondary,
-                                '&:hover': {
-                                    backgroundColor: activeFilter === 'exames' ? themeColors.primary : 'rgba(24, 82, 254, 0.04)',
-                                }
-                            }}
-                        >
-                            Exames
-                            <Badge
-                                badgeContent={metrics.exames}
-                                color="error"
-                                sx={{
-                                    ml: 1,
-                                    '& .MuiBadge-badge': {
-                                        fontSize: '0.6rem',
-                                        minWidth: '18px',
-                                        height: '18px',
-                                    }
-                                }}
-                            />
-                        </Button>
-                    </ButtonGroup>
+                        Anotações
+                    </Typography>
+                    <Typography
+                        sx={{
+                            fontFamily: "Gellix",
+                            fontSize: 14,
+                            color: "#64748B",
+                        }}
+                    >
+                        Histórico de evoluções e registros do paciente
+                    </Typography>
                 </Box>
 
-                <Box sx={{ 
-                    display: 'flex', 
-                    gap: isMobile ? 1 : 2,
-                    flexDirection: isMobile ? "column" : "row",
-                    width: isMobile ? "100%" : "auto"
-                }}>
-                    {/* View All Expanded button */}
+                {/* Botões de ação - seguindo o padrão da referência */}
+                <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
                     <Button
                         variant="outlined"
-                        startIcon={<ViewListIcon />}
+                        startIcon={<ViewListIcon sx={{ fontSize: 16 }} />}
                         onClick={handleOpenAllNotesDialog}
                         sx={{
                             height: 44,
-                            padding: "0 20px",
-                            borderRadius: isMobile ? "12px" : "99px",
-                            borderColor: themeColors.primary,
-                            color: themeColors.primary,
+                            px: 3,
+                            gap: 1,
+                            borderRadius: "8px",
+                            borderColor: "#E2E8F0",
+                            color: themeColors.textPrimary,
                             fontFamily: "Gellix",
-                            fontSize: isMobile ? 13 : 14,
+                            fontSize: 14,
                             fontWeight: 500,
                             textTransform: "none",
-                            flex: isMobile ? 1 : 'initial',
-                            '&:hover': {
-                                backgroundColor: `${themeColors.primaryLight}20`,
+                            display: isMobile ? "none" : "flex",
+                            "&:hover": {
                                 borderColor: themeColors.primary,
-                            }
+                                backgroundColor: "rgba(24, 82, 254, 0.04)",
+                            },
                         }}
                     >
                         Ver tudo expandido
                     </Button>
-
-                    {/* Create New button */}
-                    <ActionButton
+                    <Button
+                        variant="contained"
+                        startIcon={<NoteAddIcon sx={{ fontSize: 16 }} />}
                         onClick={handlePrimaryAction}
-                        color={themeColors.primary}
-                        startIcon={<AddIcon />}
-                        disabled={isLoading}
                         sx={{
-                            borderRadius: isMobile ? "12px" : "99px",
-                            fontSize: isMobile ? 13 : 14,
-                            flex: isMobile ? 1 : 'initial',
+                            height: 44,
+                            px: 3,
+                            gap: 1,
+                            borderRadius: "8px",
+                            backgroundColor: themeColors.primary,
+                            color: "#FFF",
+                            fontFamily: "Gellix",
+                            fontSize: 14,
+                            fontWeight: 600,
+                            textTransform: "none",
+                            boxShadow: "0 8px 24px rgba(24, 82, 254, 0.25)",
+                            "&:hover": {
+                                backgroundColor: "#1E40AF",
+                                boxShadow: "0 12px 32px rgba(24, 82, 254, 0.35)",
+                            },
                         }}
                     >
                         {getActionButtonText()}
-                    </ActionButton>
+                    </Button>
                 </Box>
             </Box>
 
-            {/* Success message */}
-            <Fade in={showSuccessMessage}>
-                <Box
-                    sx={{
-                        p: 1.5,
-                        mb: 1.5,
-                        backgroundColor: "#E6F7F0",
-                        color: "#10B981",
-                        borderRadius: "8px",
-                        display: "flex",
-                        alignItems: "center",
-                        fontFamily: "Gellix",
-                    }}
-                >
-                    <Box
-                        component="img"
-                        src="/checkmark.svg"
-                        alt="Sucesso"
-                        sx={{
-                            width: 18,
-                            height: 18,
-                            mr: 1
-                        }}
-                    />
-                    {activeFilter === 'exames' ? `Exame ${successAction} com sucesso!` : `Nota ${successAction} com sucesso!`}
-                </Box>
-            </Fade>
-
-            {/* Notes list */}
-            <Box
+            {/* Container principal com tabs e busca - PROPORÇÃO AUMENTADA */}
+            <Card
                 sx={{
-                    width: "100%",
-                    maxHeight: "480px",
-                    overflowY: "auto",
-                    paddingRight: 1,
-                    // Scrollbar styles
-                    "&::-webkit-scrollbar": {
-                        width: "5px",
-                        borderRadius: "3px",
-                    },
-                    "&::-webkit-scrollbar-thumb": {
-                        backgroundColor: "rgba(0,0,0,0.15)",
-                        borderRadius: "3px",
-                    },
-                    "&::-webkit-scrollbar-track": {
-                        backgroundColor: "rgba(0,0,0,0.03)",
-                        borderRadius: "3px",
-                    },
+                    borderRadius: "16px",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                    overflow: "hidden",
+                    backgroundColor: "#fff",
                 }}
             >
-                {isLoading ? (
-                    // Loading skeletons
-                    Array(3).fill().map((_, index) => (
-                        <NotaCardSkeleton key={index} />
-                    ))
-                ) : error ? (
-                    // Error message
+                {/* Área de filtros e busca - altura aumentada */}
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexDirection: isMobile ? "column" : "row",
+                        alignItems: isMobile ? "stretch" : "center",
+                        justifyContent: "space-between",
+                        gap: 2,
+                        p: 2,
+                    }}
+                >
+                    {/* Tabs estilo pill - TAMANHO AUMENTADO */}
                     <Box
                         sx={{
-                            p: 2,
-                            borderRadius: "12px",
-                            backgroundColor: "#FEE2E2",
                             display: "flex",
+                            gap: 0.5,
+                            p: 0.5,
+                            backgroundColor: "rgba(241, 245, 249, 0.8)",
+                            borderRadius: "8px",
+                            flexWrap: isMobile ? "wrap" : "nowrap",
+                        }}
+                    >
+                        {[
+                            { value: "todas", label: "Todas" },
+                            { value: "notas", label: "Notas" },
+                            { value: "anamneses", label: "Anamneses" },
+                            { value: "receitas", label: "Receitas" },
+                            { value: "exames", label: "Exames" },
+                        ].map((tab) => (
+                            <Button
+                                key={tab.value}
+                                onClick={() => setActiveFilter(tab.value)}
+                                sx={{
+                                    px: 2.5,
+                                    py: 1,
+                                    borderRadius: "6px",
+                                    fontFamily: "Gellix",
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    textTransform: "none",
+                                    minWidth: "auto",
+                                    backgroundColor: activeFilter === tab.value ? "#FFF" : "transparent",
+                                    color: activeFilter === tab.value ? themeColors.textPrimary : "#64748B",
+                                    boxShadow: activeFilter === tab.value ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                                    "&:hover": {
+                                        backgroundColor: activeFilter === tab.value ? "#FFF" : "rgba(255,255,255,0.5)",
+                                    },
+                                }}
+                            >
+                                {tab.label}
+                            </Button>
+                        ))}
+                    </Box>
+
+                    {/* Campo de busca - TAMANHO AUMENTADO */}
+                    <TextField
+                        placeholder="Filtrar registros..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        size="small"
+                        sx={{
+                            width: isMobile ? "100%" : 280,
+                            "& .MuiOutlinedInput-root": {
+                                height: 44,
+                                borderRadius: "8px",
+                                backgroundColor: "#FFF",
+                                fontFamily: "Gellix",
+                                fontSize: 14,
+                                "& fieldset": {
+                                    borderColor: "rgba(0,0,0,0.12)",
+                                },
+                                "&:hover fieldset": {
+                                    borderColor: "rgba(0,0,0,0.2)",
+                                },
+                                "&.Mui-focused fieldset": {
+                                    borderColor: themeColors.primary,
+                                },
+                            },
+                        }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ fontSize: 20, color: "#64748B" }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Box>
+
+                {/* Conteúdo - lista de notas ou empty state */}
+                {isLoading ? (
+                    <Box sx={{ p: 6, display: "flex", justifyContent: "center" }}>
+                        <CircularProgress size={40} />
+                    </Box>
+                ) : searchFilteredNotas.length === 0 ? (
+                    /* Empty state */
+                    <Box
+                        sx={{
+                            p: isMobile ? 5 : 8,
+                            minHeight: isMobile ? 280 : 340,
+                            display: "flex",
+                            flexDirection: "column",
                             alignItems: "center",
-                            color: "#EF4444",
-                            mt: 1
+                            justifyContent: "center",
+                            textAlign: "center",
+                            gap: 2.5,
+                            borderTop: "1px dashed rgba(0,0,0,0.08)",
+                            backgroundColor: "rgba(248, 250, 252, 0.5)",
+                            borderBottomLeftRadius: "16px",
+                            borderBottomRightRadius: "16px",
                         }}
                     >
                         <Box
-                            component="img"
-                            src="/error-icon.svg"
-                            alt="Erro"
                             sx={{
-                                width: 20,
-                                height: 20,
-                                mr: 1
+                                width: 64,
+                                height: 64,
+                                borderRadius: "16px",
+                                backgroundColor: "rgba(241, 245, 249, 1)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
                             }}
-                        />
-                        <Typography variant="body2">{error}</Typography>
-                        <Button
-                            variant="outlined"
-                            color="error"
-                            size="small"
-                            sx={{ ml: "auto", textTransform: "none", borderRadius: "20px", fontSize: 12 }}
-                            onClick={() => fetchNotas()}
                         >
-                            Tentar novamente
+                            <NoteAddIcon sx={{ fontSize: 32, color: "rgba(100, 116, 139, 0.5)" }} />
+                        </Box>
+                        <Box sx={{ maxWidth: 320, display: "flex", flexDirection: "column", gap: 1 }}>
+                            <Typography
+                                sx={{
+                                    fontFamily: "Gellix",
+                                    fontSize: 16,
+                                    fontWeight: 600,
+                                    color: themeColors.textPrimary,
+                                }}
+                            >
+                                Nenhuma anotação encontrada
+                            </Typography>
+                            <Typography
+                                sx={{
+                                    fontFamily: "Gellix",
+                                    fontSize: 14,
+                                    color: "#64748B",
+                                    lineHeight: 1.6,
+                                }}
+                            >
+                                Registre informações importantes sobre o paciente para acompanhar o progresso do tratamento.
+                            </Typography>
+                        </Box>
+                        <Button
+                            variant="contained"
+                            onClick={handlePrimaryAction}
+                            sx={{
+                                mt: 1.5,
+                                height: 42,
+                                px: 3,
+                                borderRadius: "10px",
+                                backgroundColor: themeColors.primary,
+                                color: "#fff",
+                                fontFamily: "Gellix",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                textTransform: "none",
+                                boxShadow: "0 4px 12px rgba(24, 82, 254, 0.2)",
+                                "&:hover": {
+                                    backgroundColor: "#1E40AF",
+                                    boxShadow: "0 6px 16px rgba(24, 82, 254, 0.3)",
+                                },
+                            }}
+                        >
+                            Criar primeira nota
                         </Button>
                     </Box>
-                ) : filteredNotas.length === 0 ? (
-                    // Empty state - no notes
-                    <EmptyState onCreate={handlePrimaryAction} />
                 ) : (
-                    // Notes list
-                    filteredNotas.map((nota) => (
-                        <NotaCard
-                            key={nota.id}
-                            nota={nota}
-                            onOpen={handleOpenNota}
-                            isMobile={isMobile}
-                            isTablet={isTablet}
-                        />
-                    ))
+                    /* Lista de notas */
+                    <Box
+                        sx={{
+                            p: 2,
+                            maxHeight: isMobile ? 380 : 480,
+                            overflowY: "auto",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 1.5,
+                            borderTop: "1px solid rgba(0,0,0,0.06)",
+                            backgroundColor: "rgba(248, 250, 252, 0.3)",
+                        }}
+                    >
+                        {searchFilteredNotas.map((nota, index) => (
+                            <NotaCard
+                                key={nota.id || index}
+                                nota={nota}
+                                onOpen={handleOpenNota}
+                                isMobile={isMobile}
+                                isTablet={isTablet}
+                            />
+                        ))}
+                    </Box>
                 )}
-            </Box>
+            </Card>
 
             {/* Dialog to create/edit note */}
             {openNoteDialog && (

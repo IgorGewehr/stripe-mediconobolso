@@ -199,21 +199,21 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                 overflow: "visible",
             }}
         >
-            {/* Card do Paciente - Layout otimizado para mobile */}
+            {/* Card do Paciente - Layout otimizado */}
             <Box
                 sx={{
                     position: "relative",
                     flexShrink: 0,
                     zIndex: 2,
-                    width: { 
-                        xs: "100%", 
-                        sm: "100%", 
-                        md: "380px" 
+                    width: {
+                        xs: "100%",
+                        sm: "100%",
+                        md: "340px"
                     },
-                    maxWidth: { 
-                        xs: "100%", 
-                        sm: "100%", 
-                        md: "380px" 
+                    maxWidth: {
+                        xs: "100%",
+                        sm: "100%",
+                        md: "340px"
                     },
                     mb: isMedium ? 1.5 : 0,
                     // Em mobile, tornar mais compacto

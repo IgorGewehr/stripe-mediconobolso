@@ -19,7 +19,8 @@ import {
     Sparkles,
     ChevronRight,
     Shield,
-    Building2
+    Building2,
+    NotebookPen
 } from "lucide-react";
 import { Avatar } from "@mui/material";
 
@@ -58,6 +59,7 @@ const Sidebar = ({
         principal: [
             { label: "Dashboard", icon: LayoutDashboard },
             { label: "Pacientes", icon: Users },
+            { label: "Notas", icon: NotebookPen },
             { label: "Receitas", icon: FileText },
             { label: "Agenda", icon: Calendar },
             { label: "Conversas", icon: MessageSquare },

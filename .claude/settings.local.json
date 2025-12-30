@@ -63,7 +63,14 @@
       "Bash(cargo build:*)",
       "Bash(npm uninstall:*)",
       "WebSearch",
-      "Bash(pgrep:*)"
+      "Bash(pgrep:*)",
+      "Bash(cargo add:*)",
+      "Bash(DATABASE_URL=\"postgres://doctor:DoctorSecure2024!@localhost:5432/doctor_db\" cargo build:*)",
+      "Bash(DATABASE_URL=\"postgres://doctor:DoctorSecure2024!@localhost:5432/doctor_db\" sqlx migrate:*)",
+      "Bash(DATABASE_URL=\"postgres://doctor:DoctorSecure2024!@localhost:5432/doctor_db\" sqlx migrate run:*)",
+      "Bash(pkill:*)",
+      "Bash(DATABASE_URL=postgres://doctor:DoctorSecure2024!@localhost:5432/doctor_db cargo build:*)",
+      "Bash(DATABASE_URL=\"postgres://doctor:DoctorSecure2024!@localhost:5432/doctor_db\" cargo check:*)"
     ],
     "deny": []
   }

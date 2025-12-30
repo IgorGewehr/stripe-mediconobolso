@@ -195,7 +195,8 @@ const DoctorAITemplate = () => {
         try {
             setIsLoadingHistory(true);
             const response = await aiConversationsService.listConversations();
-            const history = response.items || response || [];
+            // Backend returns { conversations: [...], total, page, per_page, has_more }
+            const history = response.conversations || response.items || response || [];
             setConversations(history || []);
         } catch (error) {
             console.error("Erro ao carregar histórico:", error);
@@ -500,7 +501,8 @@ const DoctorAITemplate = () => {
         };
 
         filtered.forEach(conversation => {
-            const date = validateDate(conversation.lastMessageAt);
+            // Backend uses snake_case: last_message_at
+            const date = validateDate(conversation.last_message_at || conversation.lastMessageAt);
 
             if (isToday(date)) {
                 groups.hoje.push(conversation);
@@ -613,9 +615,9 @@ const DoctorAITemplate = () => {
                                     Estatísticas de Uso
                                 </Typography>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#374151' }}>
-                                    <span>{stats.totalConversations} conversas</span>
-                                    <span>{stats.totalMessages} mensagens</span>
-                                    <span>{stats.totalTokens} tokens</span>
+                                    <span>{stats.total_conversations || stats.totalConversations || 0} conversas</span>
+                                    <span>{stats.total_messages || stats.totalMessages || 0} mensagens</span>
+                                    <span>{stats.total_tokens || stats.totalTokens || 0} tokens</span>
                                 </Box>
                             </CardContent>
                         </Card>
@@ -825,7 +827,8 @@ const DoctorAITemplate = () => {
                                                             primary={conversation.title}
                                                             secondary={
                                                                 // Usando string simples em vez de componente para evitar nesting
-                                                                `${conversation.messageCount} msgs • ${formatRelativeTime(conversation.lastMessageAt)}`
+                                                                // Backend uses snake_case: message_count, last_message_at
+                                                                `${conversation.message_count || conversation.messageCount || 0} msgs • ${formatRelativeTime(conversation.last_message_at || conversation.lastMessageAt)}`
                                                             }
                                                             primaryTypographyProps={{
                                                                 fontSize: '0.75rem !important',

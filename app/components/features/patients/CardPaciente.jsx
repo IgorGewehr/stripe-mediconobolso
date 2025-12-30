@@ -97,6 +97,42 @@ const fieldConfig = {
     cep: {required: false, label: "CEP", pattern: "\\d{5}-\\d{3}", mask: "99999-999"}
 };
 
+// Helper para extrair valores de endereço de forma segura (evita renderizar objetos)
+const getAddressValue = (formData, field) => {
+    // Mapeamento de campos para propriedades do objeto address
+    const addressMapping = {
+        rua: 'logradouro',
+        cidade: 'cidade',
+        estado: 'uf',
+        cep: 'cep'
+    };
+
+    const addressField = addressMapping[field] || field;
+
+    // Tenta obter de endereco primeiro
+    const enderecoValue = formData?.endereco?.[field];
+    if (enderecoValue && typeof enderecoValue === 'string') return enderecoValue;
+
+    // Tenta campos diretos (patientAddress, city, state, cep)
+    const directFields = {
+        rua: formData?.patientAddress,
+        cidade: formData?.city,
+        estado: formData?.state,
+        cep: formData?.cep
+    };
+    const directValue = directFields[field];
+    if (directValue && typeof directValue === 'string') return directValue;
+
+    // Tenta extrair do objeto address (formato backend)
+    if (formData?.address && typeof formData.address === 'object') {
+        const addressValue = formData.address[addressField];
+        if (addressValue && typeof addressValue === 'string') return addressValue;
+    }
+
+    // Retorna string vazia se nada foi encontrado
+    return '';
+};
+
 // Helper para máscara de telefone
 const applyPhoneMask = (value, mask) => {
     if (!value) return "";
@@ -663,11 +699,11 @@ function Card1({
         <Box
             sx={{
                 position: "relative",
-                width: isMobile ? "100%" : isTablet ? "100%" : "350px",
-                maxWidth: isMobile ? "none" : "350px",
+                width: isMobile ? "100%" : isTablet ? "100%" : "320px",
+                maxWidth: isMobile ? "none" : "320px",
                 boxSizing: "border-box",
                 backgroundColor: "#fff",
-                borderRadius: expanded && !isMedium ? (isMobile ? "16px 16px 0 0" : "40px 0 0 40px") : (isMobile ? "16px" : "40px"),
+                borderRadius: expanded && !isMedium ? (isMobile ? "16px 16px 0 0" : "32px 0 0 32px") : (isMobile ? "16px" : "32px"),
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                 zIndex: expanded ? 10 : 1,
                 display: "flex",
@@ -678,23 +714,6 @@ function Card1({
                 order: isMobile ? 1 : 'initial',
             }}
         >
-            {/* Overlay image */}
-            <Box
-                component="img"
-                src="/layeruser.png"
-                alt="Layer"
-                sx={{
-                    position: "absolute",
-                    top: 0,
-                    right: 0,
-                    width: isMobile ? "150px" : "200px",
-                    height: isMobile ? "130px" : "170px",
-                    zIndex: 0,
-                    opacity: isEditing ? 0.3 : 1,
-                    transition: "opacity 0.3s ease",
-                    display: isMobile ? "none" : "block",
-                }}
-            />
 
             {/* Edit/Save Mode Toggle */}
             <Box
@@ -771,7 +790,7 @@ function Card1({
                 )}
             </Box>
 
-            <Box sx={{p: isMobile ? 2 : 3, pb: isMobile ? 2 : 3, flexGrow: 0, height: "max-content"}}>
+            <Box sx={{p: isMobile ? 2 : 2.5, pb: isMobile ? 2 : 2.5, flexGrow: 0, height: "max-content"}}>
                 {/* Avatar/Photo */}
                 <Box
                     sx={{
@@ -798,20 +817,21 @@ function Card1({
                                 src={formData.photoPreview || formData.fotoPerfil || formData.photoURL}
                                 alt={formData.nome || formData.patientName}
                                 sx={{
-                                    width: isMobile ? 90 : 110,
-                                    height: isMobile ? 90 : 110,
-                                    border: `3px solid ${themeColors.primary}`,
+                                    width: isMobile ? 80 : 100,
+                                    height: isMobile ? 80 : 100,
+                                    border: `4px solid ${themeColors.primary}`,
+                                    boxShadow: "0 4px 16px rgba(24, 82, 254, 0.2)",
                                     position: "relative",
                                     transition: "transform 0.3s ease, box-shadow 0.3s ease",
                                     "&:hover": {
                                         transform: isEditing ? "scale(1.05)" : "none",
-                                        boxShadow: isEditing ? "0 4px 20px rgba(24, 82, 254, 0.15)" : "none",
+                                        boxShadow: isEditing ? "0 6px 20px rgba(24, 82, 254, 0.3)" : "0 4px 16px rgba(24, 82, 254, 0.2)",
                                     },
                                     cursor: isEditing ? "pointer" : "default",
                                 }}
                             >
                                 {!(formData.photoPreview || formData.fotoPerfil || formData.photoURL) && (
-                                    <PersonIcon sx={{color: "#B9D6FF", fontSize: isMobile ? 50 : 60}}/>
+                                    <PersonIcon sx={{color: "#B9D6FF", fontSize: isMobile ? 44 : 54}}/>
                                 )}
                             </Avatar>
 
@@ -862,29 +882,46 @@ function Card1({
                     />
                 </Box>
 
-                {/* Expand/Collapse Button */}
+                {/* Expand/Collapse Button - Redesenhado */}
                 <Button
                     onClick={onToggle}
                     variant="contained"
-                    endIcon={expanded ? <KeyboardArrowLeftIcon/> : <KeyboardArrowRightIcon/>}
+                    endIcon={
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 24,
+                                height: 24,
+                                borderRadius: '50%',
+                                backgroundColor: expanded ? 'rgba(24, 82, 254, 0.15)' : 'rgba(17, 30, 90, 0.08)',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            }}
+                        >
+                            {expanded ? <KeyboardArrowLeftIcon sx={{ fontSize: 18 }}/> : <KeyboardArrowRightIcon sx={{ fontSize: 18 }}/>}
+                        </Box>
+                    }
                     sx={{
-                        height: 44,
+                        height: 48,
+                        px: 3,
                         borderRadius: 99,
-                        backgroundColor: expanded ? themeColors.primaryLight : "#FFF",
-                        color: themeColors.textPrimary,
+                        backgroundColor: expanded ? 'rgba(24, 82, 254, 0.08)' : "rgba(244, 247, 253, 0.8)",
+                        color: expanded ? themeColors.primary : themeColors.textPrimary,
                         fontFamily: "Gellix, sans-serif",
                         fontSize: 14,
-                        fontWeight: 500,
+                        fontWeight: 600,
                         textTransform: "none",
-                        border: "1px solid #111E5A",
+                        border: expanded ? `1px solid ${themeColors.primary}` : "1px solid rgba(17, 30, 90, 0.15)",
                         mb: 3,
-                        transition: "all 0.3s ease",
+                        boxShadow: 'none',
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                         "&:hover": {
-                            backgroundColor: expanded ?
-                                themeColors.primaryLight :
-                                themeColors.primaryLight,
+                            backgroundColor: 'rgba(24, 82, 254, 0.12)',
                             color: themeColors.primary,
                             borderColor: themeColors.primary,
+                            boxShadow: '0 4px 12px rgba(24, 82, 254, 0.15)',
+                            transform: 'translateY(-1px)',
                         },
                     }}
                 >
@@ -1697,7 +1734,7 @@ function Card2({formData, setFormData, isEditing, validationErrors}) {
                 <Box sx={{width: '85%'}}>
                     <EditableField
                         label="Endereço"
-                        value={formData.endereco?.rua || formData.patientAddress || formData.address}
+                        value={getAddressValue(formData, 'rua')}
                         isEditing={isEditing}
                         onChange={handleChange('endereco.rua')}
                         fullWidth
@@ -1716,7 +1753,7 @@ function Card2({formData, setFormData, isEditing, validationErrors}) {
                 <Box sx={{display: 'flex', flexDirection: 'row', gap: 2, width: '85%'}}>
                     <EditableField
                         label="Cidade"
-                        value={formData.endereco?.cidade || formData.city}
+                        value={getAddressValue(formData, 'cidade')}
                         isEditing={isEditing}
                         onChange={handleChange('endereco.cidade')}
                         sx={{flex: 2}}
@@ -1727,7 +1764,7 @@ function Card2({formData, setFormData, isEditing, validationErrors}) {
                             <InputLabel id="estado-label">Estado</InputLabel>
                             <Select
                                 labelId="estado-label"
-                                value={formData.endereco?.estado || formData.state || ""}
+                                value={getAddressValue(formData, 'estado') || ""}
                                 onChange={handleChange('endereco.estado')}
                                 label="Estado"
                                 sx={{
@@ -1763,7 +1800,7 @@ function Card2({formData, setFormData, isEditing, validationErrors}) {
                 <Box sx={{width: '50%'}}>
                     <EditableField
                         label="CEP"
-                        value={formData.endereco?.cep || formData.cep}
+                        value={getAddressValue(formData, 'cep')}
                         isEditing={isEditing}
                         onChange={handleChange('endereco.cep')}
                         placeholder="99999-999"
@@ -2731,10 +2768,10 @@ export default function PacienteCard({paciente}) {
             patientEmail: cleanValue(getSafeValue(formData, 'contato.email')) || formData.patientEmail || formData.email || '',
 
             // O resto do seu código permanece o mesmo...
-            patientAddress: formData.endereco?.rua || formData.patientAddress || formData.address,
-            city: formData.endereco?.cidade || formData.city,
-            state: formData.endereco?.estado || formData.state,
-            cep: formData.endereco?.cep || formData.cep,
+            patientAddress: getAddressValue(formData, 'rua'),
+            city: getAddressValue(formData, 'cidade'),
+            state: getAddressValue(formData, 'estado'),
+            cep: getAddressValue(formData, 'cep'),
 
             // Medical info
             chronicDiseases: formData.chronicDiseases || [],

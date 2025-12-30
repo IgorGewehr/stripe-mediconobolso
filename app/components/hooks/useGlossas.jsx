@@ -26,7 +26,7 @@ export function useGlossas() {
   const [iaStatus, setIaStatus] = useState({ enabled: false, message: '' });
   const [pagination, setPagination] = useState({
     page: 1,
-    perPage: 20,
+    perPage: 10,
     total: 0,
     totalPages: 0,
   });

@@ -30,6 +30,7 @@ import {
     CRMTemplate,
     OnboardingProvider
 } from "../components";
+import { ClinicalNotesPage } from "../components/features/clinical-notes";
 import { useRouter } from "next/navigation";
 import '../styles/mobile-fixes.css';
 
@@ -439,6 +440,18 @@ export default function AppLayout({ children }) {
             case "crm":
                 // Sistema de CRM
                 return <CRMTemplate />;
+
+            case "notas":
+                // Notas Clínicas Avançadas (Tiptap/Notion-like)
+                return (
+                    <ProtectedRoute
+                        requiredModule="notes"
+                        requiredAction="read"
+                        fallbackMessage="Voce precisa de permissao para acessar as notas."
+                    >
+                        <ClinicalNotesPage />
+                    </ProtectedRoute>
+                );
 
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;

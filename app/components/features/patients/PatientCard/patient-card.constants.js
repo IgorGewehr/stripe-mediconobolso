@@ -29,6 +29,8 @@ export const themeColors = {
 };
 
 // Field configuration for validation and form control
+// NOTA: Apenas nome é obrigatório. Outros campos são opcionais para permitir
+// cadastros flexíveis (ex: pacientes de marketing só com nome e WhatsApp)
 export const fieldConfig = {
     nome: { required: true, label: "Nome completo", maxLength: 100 },
     tipoSanguineo: {
@@ -36,10 +38,11 @@ export const fieldConfig = {
         label: "Tipo Sanguíneo",
         options: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
     },
-    dataNascimento: { required: true, label: "Data de Nascimento" },
-    celular: { required: true, label: "Celular", pattern: "\\(\\d{2}\\)\\s\\d{5}-\\d{4}", mask: "(99) 99999-9999" },
+    dataNascimento: { required: false, label: "Data de Nascimento" },
+    celular: { required: false, label: "Celular/WhatsApp", pattern: "\\(\\d{2}\\)\\s\\d{5}-\\d{4}", mask: "(99) 99999-9999" },
     fixo: { required: false, label: "Telefone Fixo", pattern: "\\(\\d{2}\\)\\s\\d{4}-\\d{4}", mask: "(99) 9999-9999" },
-    email: { required: true, label: "E-mail", pattern: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$" },
+    email: { required: false, label: "E-mail", pattern: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$" },
+    cpf: { required: false, label: "CPF", pattern: "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}", mask: "999.999.999-99" },
     endereco: { required: false, label: "Endereço", maxLength: 150 },
     cidade: { required: false, label: "Cidade", maxLength: 100 },
     estado: {

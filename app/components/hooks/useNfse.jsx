@@ -25,13 +25,25 @@ export function useFiscalDashboard() {
 
 /**
  * Hook for NFSe configuration
+ * Handles 404 gracefully when endpoint is not yet implemented
  */
 export function useNfseConfiguracao() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['nfse', 'configuracao'],
-    queryFn: nfseService.getConfiguracao,
+    queryFn: async () => {
+      try {
+        return await nfseService.getConfiguracao();
+      } catch (error) {
+        // Return default config if endpoint not implemented
+        if (error?.status === 404) {
+          return { configurado: false, message: 'Endpoint não disponível' };
+        }
+        throw error;
+      }
+    },
+    retry: false,
   });
 
   const updateMutation = useMutation({
@@ -66,13 +78,25 @@ export function useMunicipios() {
 
 /**
  * Hook for certificate management
+ * Handles 404 gracefully when endpoint is not yet implemented
  */
 export function useCertificados(options = {}) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['nfse', 'certificados', options],
-    queryFn: () => nfseService.listCertificados(options),
+    queryFn: async () => {
+      try {
+        return await nfseService.listCertificados(options);
+      } catch (error) {
+        // Return empty array if endpoint not implemented
+        if (error?.status === 404) {
+          return [];
+        }
+        throw error;
+      }
+    },
+    retry: false,
   });
 
   const uploadMutation = useMutation({
@@ -127,7 +151,7 @@ export function useCertificados(options = {}) {
 export function useRps(options = {}) {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(options.page || 1);
-  const [perPage, setPerPage] = useState(options.perPage || 20);
+  const [perPage, setPerPage] = useState(options.perPage || 10);
 
   const query = useQuery({
     queryKey: ['nfse', 'rps', { page, perPage }],
@@ -165,7 +189,7 @@ export function useRps(options = {}) {
 export function useNfse(options = {}) {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(options.page || 1);
-  const [perPage, setPerPage] = useState(options.perPage || 20);
+  const [perPage, setPerPage] = useState(options.perPage || 10);
   const [filters, setFilters] = useState({
     status: options.status,
     dataInicio: options.dataInicio,
