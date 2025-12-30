@@ -5,6 +5,7 @@
  */
 
 export { default as ConversationItem } from './ConversationItem';
+export { default as ConversationQueue } from './ConversationQueue';
 export { default as MessageBubble } from './MessageBubble';
 export { default as MessageInput } from './MessageInput';
 export { default as AIControlButton } from './AIControlButton';

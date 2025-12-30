@@ -62,7 +62,8 @@
       "Bash(cargo clean:*)",
       "Bash(cargo build:*)",
       "Bash(npm uninstall:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(pgrep:*)"
     ],
     "deny": []
   }

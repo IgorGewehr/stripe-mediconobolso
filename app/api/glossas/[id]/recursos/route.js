@@ -3,18 +3,28 @@
  */
 
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 
 const BACKEND_URL = process.env.DOCTOR_SERVER_URL || 'http://localhost:8080';
 
 async function getAuthHeaders() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token')?.value || cookieStore.get('token')?.value;
+  const headersList = await headers();
+  const authorization = headersList.get('authorization');
+
+  if (!authorization) {
+    return null;
+  }
 
   return {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    'Authorization': authorization,
   };
+}
+
+// Helper to safely parse JSON response (handles empty bodies)
+async function safeJsonParse(response) {
+  const text = await response.text();
+  return text ? JSON.parse(text) : {};
 }
 
 /**
@@ -23,18 +33,22 @@ async function getAuthHeaders() {
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const headers = await getAuthHeaders();
+    const authHeaders = await getAuthHeaders();
+
+    if (!authHeaders) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
 
     const response = await fetch(`${BACKEND_URL}/api/v1/glossas/${id}/recursos`, {
       method: 'GET',
-      headers,
+      headers: authHeaders,
     });
 
-    const data = await response.json();
+    const data = await safeJsonParse(response);
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.error || 'Erro ao buscar recursos' },
+        { error: data.error || data.message || 'Erro ao buscar recursos' },
         { status: response.status }
       );
     }
@@ -55,20 +69,25 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   try {
     const { id } = await params;
-    const headers = await getAuthHeaders();
+    const authHeaders = await getAuthHeaders();
+
+    if (!authHeaders) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const response = await fetch(`${BACKEND_URL}/api/v1/glossas/${id}/recursos`, {
       method: 'POST',
-      headers,
+      headers: authHeaders,
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data = await safeJsonParse(response);
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.error || 'Erro ao criar recurso' },
+        { error: data.error || data.message || 'Erro ao criar recurso' },
         { status: response.status }
       );
     }

@@ -425,7 +425,7 @@ export default function AppLayout({ children }) {
                 return isAdmin ? (
                     <UnifiedUserManagement />
                 ) : (
-                    <Dashboard onClickPatients={handlePatientClick} />
+                    <DashboardTemplate onClickPatients={handlePatientClick} />
                 );
 
             case "gestão da clínica":
@@ -699,7 +699,7 @@ export default function AppLayout({ children }) {
                             onIndexChange={handleSwipeIndexChange}
                         >
                             <Box sx={{ height: '100%', overflow: 'auto', padding: '8px' }}>
-                                <Dashboard onClickPatients={handlePatientClick} />
+                                <DashboardTemplate onClickPatients={handlePatientClick} />
                             </Box>
                             <Box sx={{ height: '100%', overflow: 'auto', padding: '8px' }}>
                                 <ProtectedRoute

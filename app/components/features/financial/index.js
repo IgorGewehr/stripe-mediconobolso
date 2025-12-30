@@ -16,3 +16,8 @@ export { default as FinancialDashboard } from './FinancialDashboard';
 export { default as ContasReceberList } from './ContasReceberList';
 export { default as ContaReceberForm } from './ContaReceberForm';
 export { default as RecebimentoDialog } from './RecebimentoDialog';
+
+// Contas a Pagar
+export { default as ContasPagarList } from './ContasPagarList';
+export { default as ContaPagarForm } from './ContaPagarForm';
+export { default as PagamentoDialog } from './PagamentoDialog';

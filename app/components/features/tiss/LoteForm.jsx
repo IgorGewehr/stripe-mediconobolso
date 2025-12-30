@@ -25,8 +25,9 @@ import {
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ptBR } from 'date-fns/locale';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import OperadoraSelect from './OperadoraSelect';
 import { useTiss } from '../../hooks/useTiss';
 
@@ -35,8 +36,8 @@ export default function LoteForm({ onSave, onCancel }) {
 
   const [formData, setFormData] = useState({
     operadora: null,
-    data_inicio_competencia: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    data_fim_competencia: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
+    data_inicio_competencia: dayjs().startOf('month'),
+    data_fim_competencia: dayjs().endOf('month'),
   });
 
   const [selectedGuias, setSelectedGuias] = useState([]);
@@ -101,8 +102,8 @@ export default function LoteForm({ onSave, onCancel }) {
     try {
       await createLote({
         operadora_id: formData.operadora.id,
-        data_inicio_competencia: formData.data_inicio_competencia.toISOString().split('T')[0],
-        data_fim_competencia: formData.data_fim_competencia.toISOString().split('T')[0],
+        data_inicio_competencia: formData.data_inicio_competencia.format('YYYY-MM-DD'),
+        data_fim_competencia: formData.data_fim_competencia.format('YYYY-MM-DD'),
         guia_ids: selectedGuias,
       });
       onSave?.();
@@ -124,7 +125,7 @@ export default function LoteForm({ onSave, onCancel }) {
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
       <Box component="form" onSubmit={handleSubmit}>
         <Card sx={{ mb: 3 }}>
           <CardContent>

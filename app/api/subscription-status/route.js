@@ -1,12 +1,33 @@
 // app/api/subscription-status/route.js - VERSÃO CORRIGIDA
 import { NextResponse } from 'next/server';
 import { stripe } from '../../../lib/stripe';
-import { authService } from '../../../lib/services/firebase';
+
+// Helper to fetch user data from the backend API
+async function fetchUserDataFromBackend(authToken) {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    const response = await fetch(`${apiUrl}/account/me`, {
+        headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Failed to fetch user data: ${response.status} - ${error}`);
+    }
+
+    return response.json();
+}
 
 export async function GET(req) {
     try {
         const { searchParams } = new URL(req.url);
         const uid = searchParams.get('uid');
+
+        // Get authorization token from header
+        const authHeader = req.headers.get('authorization');
+        const authToken = authHeader?.replace('Bearer ', '');
 
         if (!uid) {
             return NextResponse.json(
@@ -15,10 +36,26 @@ export async function GET(req) {
             );
         }
 
+        if (!authToken) {
+            return NextResponse.json(
+                { message: 'Token de autorização é obrigatório' },
+                { status: 401 }
+            );
+        }
+
         console.log(`🔍 Buscando status da assinatura para usuário: ${uid}`);
 
-        // 1. Buscar dados do usuário no Firebase
-        const userData = await authService.getUserData(uid);
+        // 1. Buscar dados do usuário via backend API
+        let userData;
+        try {
+            userData = await fetchUserDataFromBackend(authToken);
+        } catch (apiError) {
+            console.error('Erro ao buscar dados do usuário via API:', apiError);
+            return NextResponse.json(
+                { message: 'Erro ao buscar dados do usuário' },
+                { status: 500 }
+            );
+        }
 
         if (!userData) {
             return NextResponse.json(
@@ -28,10 +65,12 @@ export async function GET(req) {
         }
 
         // 2. Determinar status base do usuário
+        // Note: Backend returns 'role' (admin/super_admin), 'assinouPlano', 'gratuito', 'planType'
         let baseStatus = 'free';
         let planType = 'free';
+        const isAdmin = userData.role === 'admin' || userData.role === 'super_admin';
 
-        if (userData.administrador === true) {
+        if (isAdmin) {
             baseStatus = 'admin';
             planType = 'admin';
         } else if (userData.assinouPlano === true) {
@@ -48,7 +87,8 @@ export async function GET(req) {
         let invoices = { data: [] }; // Inicializar com estrutura padrão
         let subscriptionStatus = baseStatus;
 
-        if (baseStatus === 'active' || userData.checkoutStarted) {
+        // Check Stripe data for active subscriptions or if the user has any subscription history
+        if (baseStatus === 'active' || userData.assinouPlano) {
             try {
                 const customers = await stripe.customers.list({
                     email: userData.email,
@@ -303,14 +343,15 @@ export async function GET(req) {
             // Histórico
             paymentHistory,
 
-            // Dados do Firebase para referência
-            firebaseData: {
+            // Dados do usuário para referência (from backend API)
+            userData: {
                 assinouPlano: userData.assinouPlano,
                 planType: userData.planType,
-                paymentMethod: userData.paymentMethod,
-                lastLoginFormatted: userData.lastLoginFormatted,
-                createdAt: userData.createdAt,
-                isAdmin: userData.administrador === true
+                paymentMethod: paymentMethod, // From Stripe detection
+                lastLoginAt: userData.last_login_at,
+                createdAt: userData.created_at,
+                isAdmin: isAdmin,
+                role: userData.role
             },
 
             // Metadados para debug

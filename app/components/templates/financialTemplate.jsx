@@ -22,6 +22,8 @@ import {
   Store as StoreIcon,
   TrendingUp as TrendingUpIcon,
   Assessment as ReportIcon,
+  Description as NfseIcon,
+  LocalHospital as TissIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../providers/authProvider';
 import { useSnackbar } from '../hooks/useDialogState';
@@ -30,7 +32,12 @@ import {
   ContasReceberList,
   ContaReceberForm,
   RecebimentoDialog,
+  ContasPagarList,
+  ContaPagarForm,
+  PagamentoDialog,
 } from '../features/financial';
+import { FiscalDashboard } from '../features/fiscal';
+import { TissDashboard } from '../features/tiss';
 
 // Theme colors
 const themeColors = {
@@ -74,11 +81,17 @@ export default function FinancialTemplate() {
   // Tab state
   const [activeTab, setActiveTab] = useState(0);
 
-  // Dialog states
+  // Dialog states - Contas a Receber
   const [contaFormOpen, setContaFormOpen] = useState(false);
   const [contaToEdit, setContaToEdit] = useState(null);
   const [recebimentoDialogOpen, setRecebimentoDialogOpen] = useState(false);
   const [selectedConta, setSelectedConta] = useState(null);
+
+  // Dialog states - Contas a Pagar
+  const [contaPagarFormOpen, setContaPagarFormOpen] = useState(false);
+  const [contaPagarToEdit, setContaPagarToEdit] = useState(null);
+  const [pagamentoDialogOpen, setPagamentoDialogOpen] = useState(false);
+  const [selectedContaPagar, setSelectedContaPagar] = useState(null);
 
   // Handle tab change
   const handleTabChange = (event, newValue) => {
@@ -129,13 +142,59 @@ export default function FinancialTemplate() {
     snackbar.success('Recebimento registrado com sucesso!');
   }, [snackbar]);
 
+  // Conta a Pagar handlers
+  const handleAddContaPagar = useCallback(() => {
+    setContaPagarToEdit(null);
+    setContaPagarFormOpen(true);
+  }, []);
+
+  const handleViewContaPagar = useCallback((conta) => {
+    // TODO: Implement view dialog
+    console.log('View conta a pagar:', conta);
+  }, []);
+
+  const handleEditContaPagar = useCallback((conta) => {
+    setContaPagarToEdit(conta);
+    setContaPagarFormOpen(true);
+  }, []);
+
+  const handleDeleteContaPagar = useCallback((conta) => {
+    // TODO: Implement delete confirmation
+    console.log('Delete conta a pagar:', conta);
+  }, []);
+
+  const handlePaymentContaPagar = useCallback((conta) => {
+    setSelectedContaPagar(conta);
+    setPagamentoDialogOpen(true);
+  }, []);
+
+  const handleContaPagarFormClose = useCallback(() => {
+    setContaPagarFormOpen(false);
+    setContaPagarToEdit(null);
+  }, []);
+
+  const handleContaPagarFormSuccess = useCallback(() => {
+    snackbar.success(contaPagarToEdit ? 'Conta atualizada com sucesso!' : 'Conta criada com sucesso!');
+  }, [contaPagarToEdit, snackbar]);
+
+  const handlePagamentoClose = useCallback(() => {
+    setPagamentoDialogOpen(false);
+    setSelectedContaPagar(null);
+  }, []);
+
+  const handlePagamentoSuccess = useCallback(() => {
+    snackbar.success('Pagamento registrado com sucesso!');
+  }, [snackbar]);
+
   const tabs = [
     { label: 'Dashboard', icon: <DashboardIcon />, index: 0 },
     { label: 'Contas a Receber', icon: <ReceiptIcon />, index: 1 },
     { label: 'Contas a Pagar', icon: <PaymentIcon />, index: 2 },
-    { label: 'Fornecedores', icon: <StoreIcon />, index: 3 },
-    { label: 'Repasses', icon: <TrendingUpIcon />, index: 4 },
-    { label: 'Relatórios', icon: <ReportIcon />, index: 5 },
+    { label: 'TISS / Convênios', icon: <TissIcon />, index: 3 },
+    { label: 'Notas Fiscais', icon: <NfseIcon />, index: 4 },
+    { label: 'Fornecedores', icon: <StoreIcon />, index: 5 },
+    { label: 'Repasses', icon: <TrendingUpIcon />, index: 6 },
+    { label: 'Relatórios', icon: <ReportIcon />, index: 7 },
   ];
 
   return (
@@ -200,22 +259,27 @@ export default function FinancialTemplate() {
 
           {/* Contas a Pagar Tab */}
           <TabPanel value={activeTab} index={2}>
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <PaymentIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Contas a Pagar
-              </Typography>
-              <Typography color="text.secondary">
-                Gerencie suas despesas e contas a pagar
-              </Typography>
-              <Button variant="outlined" sx={{ mt: 3 }} disabled>
-                Em breve
-              </Button>
-            </Box>
+            <ContasPagarList
+              onAdd={handleAddContaPagar}
+              onView={handleViewContaPagar}
+              onEdit={handleEditContaPagar}
+              onDelete={handleDeleteContaPagar}
+              onPayment={handlePaymentContaPagar}
+            />
+          </TabPanel>
+
+          {/* TISS / Convênios Tab */}
+          <TabPanel value={activeTab} index={3}>
+            <TissDashboard />
+          </TabPanel>
+
+          {/* Notas Fiscais (NFSe) Tab */}
+          <TabPanel value={activeTab} index={4}>
+            <FiscalDashboard />
           </TabPanel>
 
           {/* Fornecedores Tab */}
-          <TabPanel value={activeTab} index={3}>
+          <TabPanel value={activeTab} index={5}>
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <StoreIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
               <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -231,7 +295,7 @@ export default function FinancialTemplate() {
           </TabPanel>
 
           {/* Repasses Tab */}
-          <TabPanel value={activeTab} index={4}>
+          <TabPanel value={activeTab} index={6}>
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <TrendingUpIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
               <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -247,7 +311,7 @@ export default function FinancialTemplate() {
           </TabPanel>
 
           {/* Relatórios Tab */}
-          <TabPanel value={activeTab} index={5}>
+          <TabPanel value={activeTab} index={7}>
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <ReportIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
               <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -277,6 +341,21 @@ export default function FinancialTemplate() {
         onClose={handleRecebimentoClose}
         conta={selectedConta}
         onSuccess={handleRecebimentoSuccess}
+      />
+
+      {/* Contas a Pagar Dialogs */}
+      <ContaPagarForm
+        open={contaPagarFormOpen}
+        onClose={handleContaPagarFormClose}
+        contaToEdit={contaPagarToEdit}
+        onSuccess={handleContaPagarFormSuccess}
+      />
+
+      <PagamentoDialog
+        open={pagamentoDialogOpen}
+        onClose={handlePagamentoClose}
+        conta={selectedContaPagar}
+        onSuccess={handlePagamentoSuccess}
       />
 
       {/* Snackbar */}

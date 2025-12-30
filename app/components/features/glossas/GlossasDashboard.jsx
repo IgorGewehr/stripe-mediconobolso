@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Grid,
   Card,
   CardContent,
+  CardHeader,
   Typography,
   Tabs,
   Tab,
@@ -16,7 +17,7 @@ import {
   Alert,
   IconButton,
   Tooltip,
-  Paper,
+  Divider,
 } from '@mui/material';
 import {
   Warning as WarningIcon,
@@ -27,49 +28,73 @@ import {
   AutoAwesome as AIIcon,
   Assessment as ReportIcon,
   Gavel as GlossaIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
 } from '@mui/icons-material';
 import { useGlossas } from '../../hooks/useGlossas';
 import GlossasList from './GlossasList';
 import GlossasAnalytics from './GlossasAnalytics';
 import GlossaForm from './GlossaForm';
 
-function StatCard({ title, value, subtitle, icon: Icon, color = 'primary', loading, trend }) {
+// Format currency helper
+const formatCurrencyValue = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+  }).format(value || 0);
+};
+
+// KPI Card Component - seguindo o padrao do FinancialDashboard
+function KPICard({ title, value, subtitle, icon: Icon, color = 'primary', loading, trend }) {
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card
+      sx={{
+        height: '100%',
+        borderLeft: 4,
+        borderColor: `${color}.main`,
+      }}
+    >
       <CardContent>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <Box>
+          <Box sx={{ flex: 1 }}>
             <Typography color="text.secondary" variant="body2" gutterBottom>
               {title}
             </Typography>
             {loading ? (
-              <Skeleton width={80} height={40} />
+              <Skeleton width={120} height={40} />
             ) : (
-              <Typography variant="h4" component="div" fontWeight="bold">
+              <Typography
+                variant="h5"
+                component="div"
+                fontWeight="bold"
+                sx={{ color: `${color}.main` }}
+              >
                 {value}
               </Typography>
             )}
             {subtitle && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                <Typography variant="body2" color="text.secondary">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                {trend !== undefined && trend !== null && (
+                  <>
+                    {trend > 0 ? (
+                      <TrendingUpIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                    ) : trend < 0 ? (
+                      <TrendingDownIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                    ) : null}
+                  </>
+                )}
+                <Typography variant="caption" color="text.secondary">
                   {subtitle}
                 </Typography>
-                {trend && (
-                  <Chip
-                    size="small"
-                    label={trend}
-                    color={trend.startsWith('+') ? 'success' : 'error'}
-                    sx={{ height: 20, fontSize: '0.7rem' }}
-                  />
-                )}
               </Box>
             )}
           </Box>
           <Box
             sx={{
-              bgcolor: `${color}.light`,
+              bgcolor: `${color}.lighter`,
               borderRadius: 2,
-              p: 1,
+              p: 1.5,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -83,41 +108,53 @@ function StatCard({ title, value, subtitle, icon: Icon, color = 'primary', loadi
   );
 }
 
-function ProgressCard({ title, value, total, color = 'primary', loading }) {
+// Progress Card Component
+function ProgressCard({ title, value, total, color = 'primary', loading, subtitle }) {
   const percentage = total > 0 ? (value / total) * 100 : 0;
 
   return (
     <Card sx={{ height: '100%' }}>
+      <CardHeader
+        title={title}
+        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 'bold' }}
+      />
+      <Divider />
       <CardContent>
-        <Typography color="text.secondary" variant="body2" gutterBottom>
-          {title}
-        </Typography>
         {loading ? (
-          <Skeleton width="100%" height={40} />
+          <Skeleton height={60} />
         ) : (
-          <>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-              <Typography variant="h4" component="div" fontWeight="bold">
-                {percentage.toFixed(1)}%
-              </Typography>
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="body2" color="text.secondary">
-                ({value} de {total})
+                {subtitle || 'Progresso'}
+              </Typography>
+              <Typography variant="body2" fontWeight="bold" color={`${color}.main`}>
+                {percentage.toFixed(1)}%
               </Typography>
             </Box>
             <LinearProgress
               variant="determinate"
-              value={percentage}
+              value={Math.min(percentage, 100)}
               color={color}
-              sx={{ mt: 2, height: 8, borderRadius: 4 }}
+              sx={{ height: 10, borderRadius: 5 }}
             />
-          </>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {formatCurrencyValue(value)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {formatCurrencyValue(total)}
+              </Typography>
+            </Box>
+          </Box>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function UrgentGlossaCard({ glossa, formatCurrency }) {
+// Urgent Glossas List Component
+function UrgentGlossasList({ urgentes, loading, formatCurrency }) {
   const getDaysColor = (days) => {
     if (days <= 3) return 'error';
     if (days <= 7) return 'warning';
@@ -125,37 +162,128 @@ function UrgentGlossaCard({ glossa, formatCurrency }) {
   };
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2,
-        mb: 1,
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 2,
-        '&:hover': { bgcolor: 'action.hover' },
-      }}
-    >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="subtitle2" fontWeight="bold">
-            {glossa.codigoGlossa}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {formatCurrency(glossa.valorGlosado)}
-          </Typography>
-        </Box>
-        <Chip
-          size="small"
-          icon={<TimerIcon />}
-          label={`${glossa.diasRestantes} dias`}
-          color={getDaysColor(glossa.diasRestantes)}
-        />
-      </Box>
-    </Paper>
+    <Card sx={{ height: '100%' }}>
+      <CardHeader
+        title="Prazo Expirando"
+        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 'bold' }}
+        action={
+          <Chip
+            size="small"
+            label={`${urgentes?.length || 0} urgentes`}
+            color="error"
+            variant="outlined"
+          />
+        }
+      />
+      <Divider />
+      <CardContent sx={{ maxHeight: 300, overflow: 'auto' }}>
+        {loading ? (
+          <>
+            <Skeleton variant="rectangular" height={56} sx={{ mb: 1, borderRadius: 1 }} />
+            <Skeleton variant="rectangular" height={56} sx={{ mb: 1, borderRadius: 1 }} />
+            <Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} />
+          </>
+        ) : !urgentes || urgentes.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 3 }}>
+            <CheckIcon sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              Nenhuma glossa com prazo proximo
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {urgentes.slice(0, 5).map((glossa, index) => (
+              <Box
+                key={glossa.id || index}
+                sx={{
+                  p: 1.5,
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper',
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box>
+                    <Typography variant="body2" fontWeight="medium">
+                      {glossa.codigoGlossa}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatCurrency(glossa.valorGlosado)}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    size="small"
+                    icon={<TimerIcon sx={{ fontSize: 14 }} />}
+                    label={`${glossa.diasRestantes} dias`}
+                    color={getDaysColor(glossa.diasRestantes)}
+                    variant="outlined"
+                  />
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
+// Status Summary Card
+function StatusSummaryCard({ porStatus, loading }) {
+  return (
+    <Card sx={{ height: '100%' }}>
+      <CardHeader
+        title="Status das Glosas"
+        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 'bold' }}
+      />
+      <Divider />
+      <CardContent>
+        {loading ? (
+          <Grid container spacing={2}>
+            {[1, 2, 3, 4].map((i) => (
+              <Grid item xs={6} sm={3} key={i}>
+                <Skeleton height={80} />
+              </Grid>
+            ))}
+          </Grid>
+        ) : !porStatus || porStatus.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+            Nenhum dado disponivel
+          </Typography>
+        ) : (
+          <Grid container spacing={2}>
+            {porStatus.map((item, index) => (
+              <Grid item xs={6} sm={4} md={3} key={item.status || index}>
+                <Box
+                  sx={{
+                    textAlign: 'center',
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: 'action.hover',
+                  }}
+                >
+                  <Typography variant="h6" fontWeight="bold">
+                    {item.quantidade}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {item.status}
+                  </Typography>
+                  <Typography variant="caption" color="primary.main">
+                    {formatCurrencyValue(item.valor)}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Tab Panel Component
 function TabPanel({ children, value, index, ...other }) {
   return (
     <div
@@ -170,6 +298,7 @@ function TabPanel({ children, value, index, ...other }) {
   );
 }
 
+// Main Dashboard Component
 export default function GlossasDashboard() {
   const {
     loading,
@@ -213,24 +342,29 @@ export default function GlossasDashboard() {
     loadData();
   };
 
-  const metricas = dashboard?.metricasGerais || {};
-  const porStatus = dashboard?.porStatus || [];
-  const urgentes = dashboard?.urgentes || [];
-  const performance = dashboard?.performance || {};
+  // Memoized data
+  const metricas = useMemo(() => dashboard?.metricasGerais || {}, [dashboard]);
+  const porStatus = useMemo(() => dashboard?.porStatus || [], [dashboard]);
+  const urgentes = useMemo(() => dashboard?.urgentes || [], [dashboard]);
+  const performance = useMemo(() => dashboard?.performance || {}, [dashboard]);
+
+  // Calculate recovery stats
+  const recursosDeferidos = performance.recursosDeferidos || 0;
+  const recursosTotal = recursosDeferidos + (performance.recursosIndeferidos || 0);
 
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
-          <Typography variant="h4" fontWeight="bold">
+          <Typography variant="h5" fontWeight="bold">
             Gestao de Glosas
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body2" color="text.secondary">
             Gerencie contestacoes e recupere valores glosados
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Atualizar dados">
             <IconButton onClick={loadData} disabled={loading}>
               <RefreshIcon />
@@ -241,11 +375,17 @@ export default function GlossasDashboard() {
               variant="outlined"
               startIcon={<AIIcon />}
               color="secondary"
+              size="small"
             >
               Analise IA
             </Button>
           )}
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateGlossa}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreateGlossa}
+            size="small"
+          >
             Nova Glossa
           </Button>
         </Box>
@@ -258,40 +398,41 @@ export default function GlossasDashboard() {
         </Alert>
       )}
 
-      {/* IA Status */}
+      {/* IA Status Alert */}
       {iaStatus?.enabled && (
-        <Alert severity="info" icon={<AIIcon />} sx={{ mb: 3 }}>
+        <Alert severity="info" icon={<AIIcon />} sx={{ mb: 3 }} variant="outlined">
           Analise com IA disponivel! Use para analisar glossas e gerar recursos automaticamente.
         </Alert>
       )}
 
-      {/* Main Stats */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* KPI Cards Row */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard
+          <KPICard
             title="Total de Glosas"
             value={metricas.totalGlossas || 0}
-            subtitle={`R$ ${formatCurrency(metricas.valorTotalGlosado)}`}
+            subtitle={formatCurrencyValue(metricas.valorTotalGlosado)}
             icon={WarningIcon}
             color="warning"
             loading={loading}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard
+          <KPICard
             title="Valor Recuperado"
-            value={formatCurrency(metricas.valorTotalRecuperado)}
-            subtitle={`${metricas.taxaRecuperacaoPercentual?.toFixed(1) || 0}% de recuperacao`}
+            value={formatCurrencyValue(metricas.valorTotalRecuperado)}
+            subtitle={`${(metricas.taxaRecuperacaoPercentual || 0).toFixed(1)}% de recuperacao`}
             icon={CheckIcon}
             color="success"
             loading={loading}
+            trend={metricas.taxaRecuperacaoPercentual > 50 ? 1 : -1}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard
+          <KPICard
             title="Em Aberto"
             value={metricas.glossasEmAberto || 0}
-            subtitle={formatCurrency(metricas.valorEmAberto)}
+            subtitle={formatCurrencyValue(metricas.valorEmAberto)}
             icon={TimerIcon}
             color="info"
             loading={loading}
@@ -299,103 +440,59 @@ export default function GlossasDashboard() {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <ProgressCard
-            title="Taxa de Sucesso em Recursos"
-            value={performance.recursosDeferidos || 0}
-            total={(performance.recursosDeferidos || 0) + (performance.recursosIndeferidos || 0)}
+            title="Taxa de Sucesso"
+            value={recursosDeferidos}
+            total={recursosTotal}
             color="success"
             loading={loading}
+            subtitle="Recursos deferidos"
           />
         </Grid>
       </Grid>
 
-      {/* Secondary Stats */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* Status and Urgent Row */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Status das Glosas
-              </Typography>
-              <Grid container spacing={2}>
-                {porStatus.map((item) => (
-                  <Grid item xs={6} sm={4} md={3} key={item.status}>
-                    <Box
-                      sx={{
-                        textAlign: 'center',
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: 'action.hover',
-                      }}
-                    >
-                      <Typography variant="h5" fontWeight="bold">
-                        {item.quantidade}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.status}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatCurrency(item.valor)}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
+          <StatusSummaryCard porStatus={porStatus} loading={loading} />
         </Grid>
         <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  Prazo Expirando
-                </Typography>
-                <Chip
-                  size="small"
-                  label={`${urgentes.length} urgentes`}
-                  color="error"
-                />
-              </Box>
-              {loading ? (
-                <>
-                  <Skeleton variant="rectangular" height={60} sx={{ mb: 1 }} />
-                  <Skeleton variant="rectangular" height={60} sx={{ mb: 1 }} />
-                  <Skeleton variant="rectangular" height={60} />
-                </>
-              ) : urgentes.length > 0 ? (
-                urgentes.slice(0, 5).map((glossa) => (
-                  <UrgentGlossaCard
-                    key={glossa.id}
-                    glossa={glossa}
-                    formatCurrency={formatCurrency}
-                  />
-                ))
-              ) : (
-                <Typography variant="body2" color="text.secondary" textAlign="center" py={4}>
-                  Nenhuma glossa com prazo proximo
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
+          <UrgentGlossasList
+            urgentes={urgentes}
+            loading={loading}
+            formatCurrency={formatCurrency}
+          />
         </Grid>
       </Grid>
 
       {/* Tabs */}
       <Card>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={activeTab} onChange={handleTabChange} aria-label="Glossas tabs">
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            aria-label="Glossas tabs"
+            sx={{
+              '& .MuiTab-root': {
+                minHeight: 56,
+                textTransform: 'none',
+                fontWeight: 500,
+              },
+            }}
+          >
             <Tab icon={<GlossaIcon />} iconPosition="start" label="Glosas" />
             <Tab icon={<ReportIcon />} iconPosition="start" label="Analytics" />
           </Tabs>
         </Box>
 
-        <TabPanel value={activeTab} index={0}>
-          <GlossasList onCreate={handleCreateGlossa} />
-        </TabPanel>
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
+          <TabPanel value={activeTab} index={0}>
+            <GlossasList onCreate={handleCreateGlossa} />
+          </TabPanel>
 
-        <TabPanel value={activeTab} index={1}>
-          <GlossasAnalytics />
-        </TabPanel>
+          <TabPanel value={activeTab} index={1}>
+            <GlossasAnalytics />
+          </TabPanel>
+        </Box>
       </Card>
 
       {/* Glossa Form Dialog */}

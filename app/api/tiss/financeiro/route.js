@@ -4,24 +4,38 @@
  */
 
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 
 const TISS_SERVICE_URL = process.env.TISS_SERVICE_URL || 'http://localhost:8080/api/v1';
+
+// Helper to safely parse JSON response (handles empty bodies)
+async function safeJsonParse(response, defaultValue = {}) {
+  try {
+    const text = await response.text();
+    if (!text) return defaultValue;
+    return JSON.parse(text);
+  } catch {
+    return defaultValue;
+  }
+}
 
 /**
  * GET /api/tiss/financeiro - List contas a receber or get resumo/previsao
  */
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action');
-    const doctorId = searchParams.get('doctor_id');
+    const headersList = await headers();
+    const authorization = headersList.get('authorization');
 
-    if (!doctorId) {
+    if (!authorization) {
       return NextResponse.json(
-        { success: false, error: 'doctor_id é obrigatório' },
-        { status: 400 }
+        { success: false, error: 'Não autorizado' },
+        { status: 401 }
       );
     }
+
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
 
     let endpoint;
 
@@ -36,14 +50,13 @@ export async function GET(request) {
         );
       }
 
-      endpoint = `/contas-receber/resumo?doctor_id=${doctorId}&data_inicio=${dataInicio}&data_fim=${dataFim}`;
+      endpoint = `/billing/financeiro/resumo?data_inicio=${dataInicio}&data_fim=${dataFim}`;
     } else if (action === 'previsao') {
       const meses = searchParams.get('meses') || '3';
-      endpoint = `/contas-receber/previsao?doctor_id=${doctorId}&meses=${meses}`;
+      endpoint = `/billing/financeiro/previsao?meses=${meses}`;
     } else {
       // List contas a receber
       const queryParams = new URLSearchParams();
-      queryParams.append('doctor_id', doctorId);
 
       const params = ['operadora_id', 'status', 'data_inicio', 'data_fim', 'page', 'per_page'];
       params.forEach((param) => {
@@ -51,13 +64,27 @@ export async function GET(request) {
         if (value) queryParams.append(param, value);
       });
 
-      endpoint = `/contas-receber?${queryParams.toString()}`;
+      endpoint = `/billing/contas-receber?${queryParams.toString()}`;
     }
 
-    const response = await fetch(`${TISS_SERVICE_URL}${endpoint}`);
-    const data = await response.json();
+    const response = await fetch(`${TISS_SERVICE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': authorization,
+        'Content-Type': 'application/json',
+      },
+    });
 
-    return NextResponse.json(data, { status: response.status });
+    const data = await safeJsonParse(response, {});
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { success: false, error: data.error || data.message || 'Erro ao buscar dados financeiros' },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching financial data:', error);
     return NextResponse.json(
@@ -72,6 +99,21 @@ export async function GET(request) {
  */
 export async function POST(request) {
   try {
+    const headersList = await headers();
+    const authorization = headersList.get('authorization');
+
+    if (!authorization) {
+      return NextResponse.json(
+        { success: false, error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
+
+    const authHeaders = {
+      'Authorization': authorization,
+      'Content-Type': 'application/json',
+    };
+
     const body = await request.json();
     const { action, ...data } = body;
 
@@ -85,9 +127,9 @@ export async function POST(request) {
             { status: 400 }
           );
         }
-        response = await fetch(`${TISS_SERVICE_URL}/contas-receber/lote/${data.lote_id}`, {
+        response = await fetch(`${TISS_SERVICE_URL}/billing/contas-receber/lote/${data.lote_id}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify({ dias_para_pagamento: data.dias_para_pagamento || 45 }),
         });
         break;
@@ -99,9 +141,9 @@ export async function POST(request) {
             { status: 400 }
           );
         }
-        response = await fetch(`${TISS_SERVICE_URL}/contas-receber/${data.conta_id}/recebimento`, {
+        response = await fetch(`${TISS_SERVICE_URL}/billing/contas-receber/${data.conta_id}/recebimento`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify({
             valor_recebido: data.valor_recebido,
             valor_glosado: data.valor_glosado,
@@ -114,15 +156,23 @@ export async function POST(request) {
 
       default:
         // Create new conta a receber
-        response = await fetch(`${TISS_SERVICE_URL}/contas-receber`, {
+        response = await fetch(`${TISS_SERVICE_URL}/billing/contas-receber`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify(data),
         });
     }
 
-    const responseData = await response.json();
-    return NextResponse.json(responseData, { status: response.status });
+    const responseData = await safeJsonParse(response, {});
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { success: false, error: responseData.error || responseData.message || 'Erro na operação financeira' },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error in financial operation:', error);
     return NextResponse.json(

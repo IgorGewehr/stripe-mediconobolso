@@ -32,8 +32,9 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ptBR } from 'date-fns/locale';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import OperadoraSelect from './OperadoraSelect';
 import TussAutocomplete from './TussAutocomplete';
 import { useTiss } from '../../hooks/useTiss';
@@ -58,9 +59,9 @@ export default function GuiaForm({ guia, onSave, onCancel }) {
     tipo_guia: guia?.tipo_guia || 'consulta',
     operadora: guia?.operadora || null,
     beneficiario_id: guia?.beneficiario_id || null,
-    data_atendimento: guia?.data_atendimento ? new Date(guia.data_atendimento) : new Date(),
-    hora_inicial: guia?.hora_inicial ? new Date(`2000-01-01T${guia.hora_inicial}`) : null,
-    hora_final: guia?.hora_final ? new Date(`2000-01-01T${guia.hora_final}`) : null,
+    data_atendimento: guia?.data_atendimento ? dayjs(guia.data_atendimento) : dayjs(),
+    hora_inicial: guia?.hora_inicial ? dayjs(`2000-01-01T${guia.hora_inicial}`) : null,
+    hora_final: guia?.hora_final ? dayjs(`2000-01-01T${guia.hora_final}`) : null,
     tipo_consulta: guia?.tipo_consulta || '1',
     cid_principal: guia?.cid_principal || '',
     cid_secundario: guia?.cid_secundario || '',
@@ -115,9 +116,9 @@ export default function GuiaForm({ guia, onSave, onCancel }) {
       tipo_guia: formData.tipo_guia,
       operadora_id: formData.operadora?.id,
       beneficiario_id: formData.beneficiario_id,
-      data_atendimento: formData.data_atendimento?.toISOString().split('T')[0],
-      hora_inicial: formData.hora_inicial?.toTimeString().slice(0, 8),
-      hora_final: formData.hora_final?.toTimeString().slice(0, 8),
+      data_atendimento: formData.data_atendimento?.format('YYYY-MM-DD'),
+      hora_inicial: formData.hora_inicial?.format('HH:mm:ss'),
+      hora_final: formData.hora_final?.format('HH:mm:ss'),
       tipo_consulta: formData.tipo_consulta,
       cid_principal: formData.cid_principal,
       cid_secundario: formData.cid_secundario,
@@ -153,7 +154,7 @@ export default function GuiaForm({ guia, onSave, onCancel }) {
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
       <Box component="form" onSubmit={handleSubmit}>
         <Card sx={{ mb: 3 }}>
           <CardContent>

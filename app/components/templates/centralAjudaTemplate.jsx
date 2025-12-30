@@ -88,24 +88,10 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
         try {
             console.log('🔄 Carregando reports para usuário:', user.uid);
 
-            // Primeira tentativa - método padrão
-            let userReports = await adminService.getUserReports(user.uid);
+            // Buscar reports do usuário usando o método listMyReports
+            const result = await adminService.listMyReports();
+            const userReports = result.reports || result || [];
             console.log(`📊 Reports encontrados: ${userReports.length}`);
-
-            // Se não encontrou nada, tentar busca manual como fallback
-            if (userReports.length === 0) {
-                console.log('🔍 Tentando busca manual como fallback...');
-                userReports = await adminService.debugUserReports(user.uid);
-
-                // Se ainda assim não encontrou, verificar se há reports para corrigir
-                if (userReports.length === 0) {
-                    const fixResult = await adminService.fixUserReports?.(user.uid);
-                    if (fixResult?.fixedCount > 0) {
-                        // Se corrigiu algum, tentar buscar novamente
-                        userReports = await adminService.getUserReports(user.uid);
-                    }
-                }
-            }
 
             setReports(userReports);
             console.log(`✅ ${userReports.length} reports carregados com sucesso`);
@@ -131,14 +117,14 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
             console.log('📤 Enviando novo report...');
 
             // Criar o report
-            const reportId = await adminService.createReport(user.uid, {
+            const result = await adminService.createReport({
                 subject: newReport.subject.trim(),
                 content: newReport.content.trim(),
                 type: newReport.type,
                 priority: newReport.priority
             });
 
-            console.log('✅ Report criado com ID:', reportId);
+            console.log('✅ Report criado com ID:', result?.id);
 
             // Limpar formulário
             setNewReport({ subject: "", content: "", type: "support", priority: "medium" });
@@ -202,12 +188,8 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
         try {
             console.log('📤 Enviando resposta do usuário...');
 
-            await adminService.addReportResponse(selectedReport.id, {
-                content: newResponse.trim(),
-                isAdmin: false,
-                authorId: user.uid,
-                authorName: user.fullName || user.email
-            });
+            // O backend identifica o autor pela autenticação
+            await adminService.addReportResponse(selectedReport.id, newResponse.trim());
 
             setNewResponse("");
 

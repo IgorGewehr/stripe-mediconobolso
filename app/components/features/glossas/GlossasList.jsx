@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
+  CardHeader,
   Table,
   TableBody,
   TableCell,
@@ -27,6 +28,7 @@ import {
   CircularProgress,
   Alert,
   Button,
+  Divider,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -39,6 +41,7 @@ import {
   Gavel as RecursoIcon,
   AutoAwesome as AIIcon,
   Add as AddIcon,
+  FilterList as FilterIcon,
 } from '@mui/icons-material';
 import { useGlossas } from '../../hooks/useGlossas';
 
@@ -76,6 +79,15 @@ const TIPO_LABELS = {
   OUTROS: 'Outros',
 };
 
+// Format currency helper
+const formatCurrencyValue = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+  }).format(value || 0);
+};
+
 export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate }) {
   const {
     loading,
@@ -88,7 +100,6 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
     perderGlossa,
     setPage,
     setPerPage,
-    formatCurrency,
     formatDate,
   } = useGlossas();
 
@@ -97,6 +108,7 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
   const [tipoFilter, setTipoFilter] = useState('');
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedGlossa, setSelectedGlossa] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const loadGlossas = useCallback(() => {
     const filters = {
@@ -188,66 +200,98 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
     );
   });
 
+  const activeFiltersCount = [statusFilter, tipoFilter].filter(Boolean).length;
+
   return (
     <Box>
-      {/* Header with Filters */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <TextField
+      {/* Header with Search and Filters */}
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flex: 1 }}>
+            <TextField
+              size="small"
+              placeholder="Buscar por codigo, descricao ou lote..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ minWidth: 300 }}
+            />
+            <Button
+              variant={showFilters ? 'contained' : 'outlined'}
+              startIcon={<FilterIcon />}
+              onClick={() => setShowFilters(!showFilters)}
+              size="small"
+              color={activeFiltersCount > 0 ? 'primary' : 'inherit'}
+            >
+              Filtros {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+            </Button>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={onCreate}
             size="small"
-            placeholder="Buscar glosas..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ minWidth: 250 }}
-          />
-
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={statusFilter}
-              label="Status"
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <MenuItem key={value} value={value}>
-                  {label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>Tipo</InputLabel>
-            <Select
-              value={tipoFilter}
-              label="Tipo"
-              onChange={(e) => setTipoFilter(e.target.value)}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {Object.entries(TIPO_LABELS).map(([value, label]) => (
-                <MenuItem key={value} value={value}>
-                  {value} - {label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          >
+            Nova Glossa
+          </Button>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={onCreate}
-        >
-          Nova Glossa
-        </Button>
+        {/* Collapsible Filters */}
+        {showFilters && (
+          <Card variant="outlined" sx={{ p: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                    <MenuItem key={value} value={value}>
+                      {label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel>Tipo de Glosa</InputLabel>
+                <Select
+                  value={tipoFilter}
+                  label="Tipo de Glosa"
+                  onChange={(e) => setTipoFilter(e.target.value)}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {Object.entries(TIPO_LABELS).map(([value, label]) => (
+                    <MenuItem key={value} value={value}>
+                      {value} - {label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {activeFiltersCount > 0 && (
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setStatusFilter('');
+                    setTipoFilter('');
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </Box>
+          </Card>
+        )}
       </Box>
 
       {/* Error Alert */}
@@ -260,43 +304,62 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
       {/* Table */}
       <Card>
         <TableContainer>
-          <Table>
+          <Table size="small">
             <TableHead>
-              <TableRow>
-                <TableCell>Codigo</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Descricao</TableCell>
-                <TableCell align="right">Valor Glosado</TableCell>
-                <TableCell align="right">Recuperado</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Prazo</TableCell>
-                <TableCell align="center">Acoes</TableCell>
+              <TableRow sx={{ bgcolor: 'action.hover' }}>
+                <TableCell sx={{ fontWeight: 600 }}>Codigo</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Tipo</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Descricao</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>Valor Glosado</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>Recuperado</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Prazo</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600 }}>Acoes</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={32} />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Carregando glosas...
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : filteredGlossas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                     <Typography color="text.secondary">
                       Nenhuma glossa encontrada
                     </Typography>
+                    <Button
+                      variant="outlined"
+                      startIcon={<AddIcon />}
+                      onClick={onCreate}
+                      sx={{ mt: 2 }}
+                      size="small"
+                    >
+                      Criar primeira glossa
+                    </Button>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredGlossas.map((glossa) => (
-                  <TableRow key={glossa.id} hover>
+                  <TableRow
+                    key={glossa.id}
+                    hover
+                    sx={{
+                      '&:hover': { bgcolor: 'action.hover' },
+                      cursor: 'pointer',
+                    }}
+                  >
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">
                         {glossa.codigoGlossa}
                       </Typography>
                       {glossa.numeroLote && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" display="block">
                           Lote: {glossa.numeroLote}
                         </Typography>
                       )}
@@ -307,25 +370,34 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
                           size="small"
                           label={glossa.tipoGlossa}
                           variant="outlined"
+                          sx={{ fontSize: '0.75rem' }}
                         />
                       </Tooltip>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          maxWidth: 180,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {glossa.descricaoGlossa || '-'}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight="medium" color="error.main">
-                        {formatCurrency(glossa.valorGlosado)}
+                        {formatCurrencyValue(glossa.valorGlosado)}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight="medium" color="success.main">
-                        {formatCurrency(glossa.valorRecuperado)}
+                        {formatCurrencyValue(glossa.valorRecuperado)}
                       </Typography>
                       {glossa.percentualRecuperado > 0 && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" display="block">
                           ({glossa.percentualRecuperado.toFixed(0)}%)
                         </Typography>
                       )}
@@ -335,23 +407,25 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
                         size="small"
                         label={STATUS_LABELS[glossa.status] || glossa.status}
                         color={STATUS_COLORS[glossa.status] || 'default'}
+                        sx={{ fontSize: '0.75rem' }}
                       />
                     </TableCell>
                     <TableCell>
                       {glossa.dentroDoPrazo ? (
                         <Box>
-                          <Typography variant="body2">
+                          <Typography variant="caption" display="block">
                             {formatDate(glossa.prazoRecurso)}
                           </Typography>
                           <Chip
                             size="small"
-                            label={`${glossa.diasRestantes} dias`}
+                            label={`${glossa.diasRestantes}d`}
                             color={glossa.diasRestantes <= 7 ? 'error' : 'default'}
-                            sx={{ mt: 0.5 }}
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem', height: 20, mt: 0.5 }}
                           />
                         </Box>
                       ) : (
-                        <Chip size="small" label="Expirado" color="error" />
+                        <Chip size="small" label="Expirado" color="error" sx={{ fontSize: '0.75rem' }} />
                       )}
                     </TableCell>
                     <TableCell align="center">
@@ -359,7 +433,7 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
                         size="small"
                         onClick={(e) => handleMenuClick(e, glossa)}
                       >
-                        <MoreIcon />
+                        <MoreIcon fontSize="small" />
                       </IconButton>
                     </TableCell>
                   </TableRow>
@@ -369,6 +443,7 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
           </Table>
         </TableContainer>
 
+        <Divider />
         <TablePagination
           component="div"
           count={pagination.total}
@@ -377,8 +452,10 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           rowsPerPageOptions={[10, 25, 50]}
-          labelRowsPerPage="Linhas por pagina:"
-          labelDisplayedRows={({ from, to }) => `${from}-${to}`}
+          labelRowsPerPage="Por pagina:"
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+          }
         />
       </Card>
 
@@ -387,6 +464,8 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <MenuItem onClick={handleView}>
           <ListItemIcon>
@@ -401,10 +480,12 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
           <ListItemText>Editar</ListItemText>
         </MenuItem>
 
+        <Divider sx={{ my: 0.5 }} />
+
         {selectedGlossa?.podeRecursar && (
           <MenuItem onClick={handleCriarRecurso}>
             <ListItemIcon>
-              <RecursoIcon fontSize="small" />
+              <RecursoIcon fontSize="small" color="primary" />
             </ListItemIcon>
             <ListItemText>Criar Recurso</ListItemText>
           </MenuItem>
@@ -419,6 +500,8 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
           </MenuItem>
         )}
 
+        <Divider sx={{ my: 0.5 }} />
+
         {selectedGlossa?.status === 'pendente' && (
           <MenuItem onClick={handleAceitar}>
             <ListItemIcon>
@@ -429,20 +512,20 @@ export default function GlossasList({ onSelectGlossa, onCreateRecurso, onCreate 
         )}
 
         {['pendente', 'em_recurso'].includes(selectedGlossa?.status) && (
-          <MenuItem onClick={handlePerder} sx={{ color: 'error.main' }}>
+          <MenuItem onClick={handlePerder}>
             <ListItemIcon>
               <RejectIcon fontSize="small" color="error" />
             </ListItemIcon>
-            <ListItemText>Marcar como Perdida</ListItemText>
+            <ListItemText sx={{ color: 'error.main' }}>Marcar como Perdida</ListItemText>
           </MenuItem>
         )}
 
         {selectedGlossa?.status === 'pendente' && (
-          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+          <MenuItem onClick={handleDelete}>
             <ListItemIcon>
               <DeleteIcon fontSize="small" color="error" />
             </ListItemIcon>
-            <ListItemText>Excluir</ListItemText>
+            <ListItemText sx={{ color: 'error.main' }}>Excluir</ListItemText>
           </MenuItem>
         )}
       </Menu>

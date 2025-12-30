@@ -53,7 +53,9 @@ export async function GET(request) {
       });
     }
 
-    const data = await response.json();
+    // Safely parse JSON (handle empty responses)
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : {};
 
     // Map doctor-server response to frontend format
     return NextResponse.json({

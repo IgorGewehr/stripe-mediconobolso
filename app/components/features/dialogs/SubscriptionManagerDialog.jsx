@@ -525,7 +525,14 @@ const SubscriptionManagerDialog = ({ open, onClose }) => {
             setLoading(true);
             setError('');
 
-            const response = await fetch(`/api/subscription-status?uid=${user.uid}`);
+            // Get Firebase token to authenticate with the backend
+            const token = await user.getIdToken();
+
+            const response = await fetch(`/api/subscription-status?uid=${user.uid}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
             const rawData = await response.json();
 
             if (!response.ok) {

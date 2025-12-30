@@ -4,17 +4,21 @@
  */
 
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 
 const BACKEND_URL = process.env.DOCTOR_SERVER_URL || 'http://localhost:8080';
 
 async function getAuthHeaders() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token')?.value || cookieStore.get('token')?.value;
+  const headersList = await headers();
+  const authorization = headersList.get('authorization');
+
+  if (!authorization) {
+    return null; // No auth header
+  }
 
   return {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    'Authorization': authorization,
   };
 }
 
@@ -24,7 +28,14 @@ async function getAuthHeaders() {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const headers = await getAuthHeaders();
+    const authHeaders = await getAuthHeaders();
+
+    if (!authHeaders) {
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
 
     // Determinar qual endpoint chamar baseado nos parametros
     let endpoint = '/api/v1/glossas';
@@ -56,14 +67,25 @@ export async function GET(request) {
 
     const response = await fetch(url, {
       method: 'GET',
-      headers,
+      headers: authHeaders,
     });
 
-    const data = await response.json();
+    // Handle empty or non-JSON responses
+    const text = await response.text();
+    let data = {};
+
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // Backend returned non-JSON (e.g., "Requested resource not found")
+        data = { error: text };
+      }
+    }
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.error || 'Erro ao buscar glossas' },
+        { error: data.error || data.message || 'Erro ao buscar glossas' },
         { status: response.status }
       );
     }
@@ -72,7 +94,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Glossas API Error:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: error.message || 'Erro interno do servidor' },
       { status: 500 }
     );
   }
@@ -83,7 +105,15 @@ export async function GET(request) {
  */
 export async function POST(request) {
   try {
-    const headers = await getAuthHeaders();
+    const authHeaders = await getAuthHeaders();
+
+    if (!authHeaders) {
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     // Checar se e uma acao especial
@@ -99,15 +129,25 @@ export async function POST(request) {
 
     const response = await fetch(`${BACKEND_URL}${endpoint}`, {
       method: 'POST',
-      headers,
+      headers: authHeaders,
       body: JSON.stringify(payload),
     });
 
-    const responseData = await response.json();
+    // Handle empty or non-JSON responses
+    const text = await response.text();
+    let responseData = {};
+
+    if (text) {
+      try {
+        responseData = JSON.parse(text);
+      } catch {
+        responseData = { error: text };
+      }
+    }
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: responseData.error || 'Erro ao criar glossa' },
+        { error: responseData.error || responseData.message || 'Erro ao criar glossa' },
         { status: response.status }
       );
     }
@@ -116,7 +156,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('Glossas API Error:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: error.message || 'Erro interno do servidor' },
       { status: 500 }
     );
   }

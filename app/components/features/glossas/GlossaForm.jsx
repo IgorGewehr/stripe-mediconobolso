@@ -20,8 +20,9 @@ import {
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ptBR } from 'date-fns/locale';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import { Save as SaveIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { useGlossas } from '../../hooks/useGlossas';
 
@@ -54,7 +55,7 @@ export default function GlossaForm({ open, onClose, glossa, guiaId, convenioId, 
     descricaoGlossa: glossa?.descricaoGlossa || '',
     valorOriginal: glossa?.valorOriginal || '',
     valorGlosado: glossa?.valorGlosado || '',
-    dataGlossa: glossa?.dataGlossa ? new Date(glossa.dataGlossa) : new Date(),
+    dataGlossa: glossa?.dataGlossa ? dayjs(glossa.dataGlossa) : dayjs(),
     prazoDias: glossa?.prazoDias || 30,
     observacoesInternas: glossa?.observacoesInternas || '',
   });
@@ -72,7 +73,7 @@ export default function GlossaForm({ open, onClose, glossa, guiaId, convenioId, 
       ...formData,
       valorOriginal: parseFloat(formData.valorOriginal) || 0,
       valorGlosado: parseFloat(formData.valorGlosado) || 0,
-      dataGlossa: formData.dataGlossa?.toISOString().split('T')[0],
+      dataGlossa: formData.dataGlossa?.format('YYYY-MM-DD'),
       prazoDias: parseInt(formData.prazoDias, 10) || 30,
     };
 
@@ -103,7 +104,7 @@ export default function GlossaForm({ open, onClose, glossa, guiaId, convenioId, 
             </Alert>
           )}
 
-          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
+          <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
             <Grid container spacing={2} sx={{ mt: 1 }}>
               {/* Identificacao */}
               <Grid item xs={12}>
