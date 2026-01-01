@@ -40,7 +40,7 @@ import {
 } from '@mui/icons-material';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { prescriptionsService } from '@/lib/services/api';
+import verificationService from '@/lib/services/api/verification.service';
 
 // Status do documento
 const DOCUMENT_STATUS = {
@@ -103,7 +103,7 @@ export default function VerificationPage() {
         setError(null);
 
         try {
-            const result = await prescriptionsService.verifyDocument(verificationCode);
+            const result = await verificationService.verifyDocument(verificationCode);
             setVerificationResult(result);
         } catch (err) {
             console.error('Erro ao verificar documento:', err);
