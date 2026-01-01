@@ -101,8 +101,7 @@ export default function FiscalDashboard() {
   return (
     <Box>
       {/* Compact Header */}
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" fontWeight="bold">Fiscal</Typography>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Atualizar">
             <IconButton size="small" onClick={() => refetch()}>

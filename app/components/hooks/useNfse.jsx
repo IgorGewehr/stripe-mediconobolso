@@ -62,13 +62,26 @@ export function useNfseConfiguracao() {
 }
 
 /**
- * Hook for supported municipalities
+ * Hook for NFSe system info
+ * @description Com o Padrão Nacional 2026, todos os municípios são suportados.
+ * Este hook retorna informações sobre o sistema.
  */
 export function useMunicipios() {
   return useQuery({
     queryKey: ['nfse', 'municipios'],
     queryFn: nfseService.getMunicipios,
-    staleTime: 1000 * 60 * 60, // 1 hour cache
+    staleTime: 1000 * 60 * 60 * 24, // 24 hour cache - info doesn't change
+  });
+}
+
+/**
+ * Hook for NFSe events (Padrão Nacional 2026)
+ */
+export function useNfseEventos(nfseId) {
+  return useQuery({
+    queryKey: ['nfse', 'eventos', nfseId],
+    queryFn: () => nfseService.listEventosNfse(nfseId),
+    enabled: !!nfseId,
   });
 }
 

@@ -31,6 +31,9 @@ import {
     OnboardingProvider
 } from "../components";
 import { ClinicalNotesPage } from "../components/features/clinical-notes";
+import { TissDashboard } from "../components/features/tiss";
+import { GlossasDashboard } from "../components/features/glossas";
+import { FiscalDashboard } from "../components/features/fiscal";
 import { useRouter } from "next/navigation";
 import '../styles/mobile-fixes.css';
 
@@ -453,6 +456,44 @@ export default function AppLayout({ children }) {
                     </ProtectedRoute>
                 );
 
+            case "glossas":
+                // Gestão de Glossas com IA
+                return (
+                    <ProtectedRoute
+                        requiredModule="billing"
+                        requiredAction="read"
+                        fallbackMessage="Você precisa de permissão para acessar a gestão de glossas."
+                    >
+                        <GlossasDashboard />
+                    </ProtectedRoute>
+                );
+
+            case "tiss":
+            case "faturamento":
+                // Sistema TISS - Faturamento de Convênios
+                return (
+                    <ProtectedRoute
+                        requiredModule="billing"
+                        requiredAction="read"
+                        fallbackMessage="Você precisa de permissão para acessar o faturamento TISS."
+                    >
+                        <TissDashboard />
+                    </ProtectedRoute>
+                );
+
+            case "nfse":
+            case "fiscal":
+                // Sistema Fiscal - NFSe
+                return (
+                    <ProtectedRoute
+                        requiredModule="billing"
+                        requiredAction="read"
+                        fallbackMessage="Você precisa de permissão para acessar o sistema fiscal."
+                    >
+                        <FiscalDashboard />
+                    </ProtectedRoute>
+                );
+
             default:
                 return <DashboardTemplate onClickPatients={handlePatientClick} />;
         }
@@ -554,6 +595,14 @@ export default function AppLayout({ children }) {
                         {", gerencie seus pacientes"}
                     </>
                 );
+            case "tiss":
+            case "faturamento":
+                return "Faturamento TISS - Guias e Lotes";
+            case "glossas":
+                return "Gestão de Glossas";
+            case "nfse":
+            case "fiscal":
+                return "Nota Fiscal de Serviço Eletrônica";
             default:
                 return activePage;
         }

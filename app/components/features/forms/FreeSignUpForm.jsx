@@ -7,15 +7,10 @@ import { authService } from '../../../../lib/services/firebase';
 import { authApiService } from '../../../../lib/services/api';
 import {
     Box,
-    TextField,
     Button,
     Typography,
-    CircularProgress,
-    Alert,
     Checkbox,
     FormControlLabel,
-    InputAdornment,
-    IconButton,
     Collapse,
     MenuItem,
     FormControl,
@@ -27,11 +22,18 @@ import {
     useMediaQuery,
     Container
 } from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import GoogleButton from '../auth/GoogleButton';
 import {FacebookEvents} from "../../../../lib/facebookConversions";
+import {
+    useFeedback,
+    StyledInput,
+    PhoneInput,
+    CPFInput,
+    CEPInput,
+    LoadingButton,
+    CircleSpinner
+} from '../../ui/feedback';
 
 // Lista de estados brasileiros
 const brazilianStates = [
@@ -67,6 +69,7 @@ const brazilianStates = [
 const FreeSignupForm = () => {
     const router = useRouter();
     const { referralSource } = useAuth();
+    const { success: showSuccess, error: showError } = useFeedback();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -74,10 +77,9 @@ const FreeSignupForm = () => {
 
     // Estados do formulário
     const [step, setStep] = useState(1); // 1 = básico, 2 = endereço
-    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
-    const [success, setSuccess] = useState(false);
+    const [successState, setSuccessState] = useState(false);
 
     // Estados dos dados
     const [formData, setFormData] = useState({
@@ -114,33 +116,6 @@ const FreeSignupForm = () => {
 
     // Estados de erro
     const [errors, setErrors] = useState({});
-    const [globalError, setGlobalError] = useState('');
-
-    // Função para formatar CEP
-    const formatCEP = (value) => {
-        value = value.replace(/\D/g, '');
-        value = value.replace(/^(\d{5})(\d)/, '$1-$2');
-        return value;
-    };
-
-    // Função para formatar CPF
-    const formatCPF = (value) => {
-        value = value.replace(/\D/g, '');
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-        return value;
-    };
-
-    // Função para formatar telefone
-    const formatPhone = (value) => {
-        value = value.replace(/\D/g, '');
-        if (value.length <= 11) {
-            value = value.replace(/^(\d{2})(\d)/g, '$1 $2');
-            value = value.replace(/(\d{5})(\d)/, '$1-$2');
-        }
-        return value;
-    };
 
     // Handler para mudanças nos inputs
     const handleInputChange = (e) => {
@@ -148,26 +123,13 @@ const FreeSignupForm = () => {
 
         if (type === 'checkbox') {
             setFormData(prev => ({ ...prev, [name]: checked }));
-        } else if (name === 'cep') {
-            const formattedValue = formatCEP(value);
-            setFormData(prev => ({ ...prev, [name]: formattedValue }));
-        } else if (name === 'cpf') {
-            const formattedValue = formatCPF(value);
-            setFormData(prev => ({ ...prev, [name]: formattedValue }));
-        } else if (name === 'phone') {
-            const formattedValue = formatPhone(value);
-            setFormData(prev => ({ ...prev, [name]: formattedValue }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
 
         // Limpar erro quando usuário começar a digitar
         if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: false }));
-        }
-
-        if (globalError) {
-            setGlobalError('');
+            setErrors(prev => ({ ...prev, [name]: null }));
         }
     };
 
@@ -294,7 +256,6 @@ const FreeSignupForm = () => {
     // Handler para cadastro com Google
     const handleGoogleSignup = async () => {
         setGoogleLoading(true);
-        setGlobalError('');
 
         try {
             console.log('🆓 Iniciando cadastro gratuito com Google...');
@@ -318,14 +279,16 @@ const FreeSignupForm = () => {
                 user.displayName || user.email.split('@')[0]
             ).catch(console.error);
 
-            setSuccess(true);
+            setSuccessState(true);
+            showSuccess("Conta criada com sucesso!", {
+                description: "Redirecionando para o aplicativo..."
+            });
 
             try {
                 await FacebookEvents.CompleteRegistration(
                     {
                         email: user.email,
                         fullName: user.displayName,
-                        // Google pode não fornecer todos os dados
                     },
                     {
                         method: 'google',
@@ -345,13 +308,18 @@ const FreeSignupForm = () => {
         } catch (error) {
             console.error("❌ Erro no cadastro gratuito com Google:", error);
 
+            let errorMessage = "Erro no cadastro com Google";
+            let errorDescription = "Tente novamente.";
+
             if (error.message === 'Login cancelado pelo usuário') {
-                setGlobalError("Cadastro cancelado.");
+                errorMessage = "Cadastro cancelado";
+                errorDescription = "Você fechou o popup antes de concluir.";
             } else if (error.message === 'Pop-up bloqueado pelo navegador') {
-                setGlobalError("Pop-up bloqueado. Permita pop-ups para este site e tente novamente.");
-            } else {
-                setGlobalError("Erro no cadastro com Google. Tente novamente.");
+                errorMessage = "Pop-up bloqueado";
+                errorDescription = "Permita pop-ups para este site e tente novamente.";
             }
+
+            showError(errorMessage, { description: errorDescription });
         } finally {
             setGoogleLoading(false);
         }
@@ -364,7 +332,6 @@ const FreeSignupForm = () => {
         }
 
         setLoading(true);
-        setGlobalError('');
 
         try {
             console.log('🆓 Starting free signup process...');
@@ -427,7 +394,10 @@ const FreeSignupForm = () => {
                 console.error('❌ Erro não tratado no envio de emails:', error);
             });
 
-            setSuccess(true);
+            setSuccessState(true);
+            showSuccess("Conta criada com sucesso!", {
+                description: "Bem-vindo ao Médico no Bolso!"
+            });
 
             // Aguardar antes de redirecionar
             setTimeout(() => {
@@ -436,19 +406,16 @@ const FreeSignupForm = () => {
 
         } catch (error) {
             console.error("❌ Erro no cadastro gratuito:", error);
-            setGlobalError(mapFirebaseError(error));
+            showError("Erro no cadastro", {
+                description: mapFirebaseError(error)
+            });
         } finally {
             setLoading(false);
         }
     };
 
-    // Toggle visibilidade da senha
-    const handleTogglePasswordVisibility = () => {
-        setShowPassword(prev => !prev);
-    };
-
     // Tela de sucesso minimalista
-    if (success) {
+    if (successState) {
         return (
             <Box sx={{
                 minHeight: '100vh',
@@ -461,42 +428,54 @@ const FreeSignupForm = () => {
                 <Container maxWidth="xs">
                     <Box sx={{
                         backgroundColor: 'white',
-                        borderRadius: 3,
-                        p: { xs: 3, sm: 4 },
+                        borderRadius: '16px',
+                        p: { xs: 4, sm: 5 },
                         textAlign: 'center',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                        border: '1px solid #f0f0f0'
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                        border: '1px solid rgba(16, 185, 129, 0.2)'
                     }}>
-                        <CheckCircleIcon
-                            sx={{
-                                fontSize: 48,
-                                color: '#4CAF50',
-                                mb: 2
-                            }}
-                        />
+                        <Box sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: '50%',
+                            backgroundColor: '#ECFDF5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mx: 'auto',
+                            mb: 3
+                        }}>
+                            <CheckCircleIcon
+                                sx={{
+                                    fontSize: 32,
+                                    color: '#10B981',
+                                }}
+                            />
+                        </Box>
                         <Typography
                             variant="h6"
                             sx={{
-                                fontWeight: 600,
+                                fontWeight: 700,
                                 mb: 1,
-                                color: '#333'
+                                color: '#111E5A'
                             }}
                         >
-                            Conta criada com sucesso
+                            Conta criada com sucesso!
                         </Typography>
                         <Typography
                             variant="body2"
                             sx={{
                                 color: '#666',
-                                mb: 3,
+                                mb: 4,
                                 lineHeight: 1.5
                             }}
                         >
                             Redirecionando para o aplicativo...
                         </Typography>
-                        <CircularProgress
-                            size={24}
-                            sx={{ color: '#4CAF50' }}
+                        <CircleSpinner
+                            size={32}
+                            color="#10B981"
+                            secondaryColor="#ECFDF5"
                         />
                     </Box>
                 </Container>
@@ -650,154 +629,89 @@ const FreeSignupForm = () => {
                             // Step 1: Informações Básicas
                             <Collapse in={step === 1} timeout={500}>
                                 <Stack spacing={{ xs: 2, sm: 2.5 }}>
-                                    <TextField
+                                    <StyledInput
                                         label="E-mail"
-                                        variant="outlined"
-                                        fullWidth
-                                        size={isMobile ? "medium" : "medium"}
-                                        sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                                borderRadius: 2
-                                            }
-                                        }}
                                         name="email"
+                                        type="email"
                                         value={formData.email}
                                         onChange={handleInputChange}
                                         error={Boolean(errors.email)}
-                                        helperText={errors.email || ""}
+                                        helperText={errors.email}
+                                        placeholder="seu@email.com"
                                     />
 
-                                    <TextField
+                                    <StyledInput
                                         label="Nome Completo"
-                                        variant="outlined"
-                                        fullWidth
-                                        size={isMobile ? "medium" : "medium"}
-                                        sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                                borderRadius: 2
-                                            }
-                                        }}
                                         name="fullName"
                                         value={formData.fullName}
                                         onChange={handleInputChange}
                                         error={Boolean(errors.fullName)}
-                                        helperText={errors.fullName || ""}
+                                        helperText={errors.fullName}
+                                        placeholder="Dr. João Silva"
                                     />
 
-                                    <TextField
+                                    <PhoneInput
                                         label="Telefone"
-                                        variant="outlined"
-                                        fullWidth
-                                        size={isMobile ? "medium" : "medium"}
-                                        InputProps={{
-                                            startAdornment: <InputAdornment position="start">+55</InputAdornment>,
-                                        }}
-                                        sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                                borderRadius: 2
-                                            }
-                                        }}
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleInputChange}
                                         error={Boolean(errors.phone)}
-                                        helperText={errors.phone || ""}
+                                        helperText={errors.phone}
                                     />
 
-                                    <TextField
+                                    <StyledInput
                                         label="Senha"
-                                        type={showPassword ? "text" : "password"}
-                                        variant="outlined"
-                                        fullWidth
-                                        size={isMobile ? "medium" : "medium"}
-                                        sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                                borderRadius: 2
-                                            }
-                                        }}
                                         name="password"
+                                        type="password"
                                         value={formData.password}
                                         onChange={handleInputChange}
                                         error={Boolean(errors.password)}
-                                        helperText={errors.password || ""}
-                                        InputProps={{
-                                            endAdornment: (
-                                                <InputAdornment position="end">
-                                                    <IconButton
-                                                        aria-label="toggle password visibility"
-                                                        onClick={handleTogglePasswordVisibility}
-                                                        edge="end"
-                                                        size={isMobile ? "small" : "medium"}
-                                                    >
-                                                        {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                                                    </IconButton>
-                                                </InputAdornment>
-                                            ),
-                                        }}
+                                        helperText={errors.password}
+                                        placeholder="Mínimo 6 caracteres"
                                     />
 
-                                    {globalError && (
-                                        <Alert severity="error" sx={{ borderRadius: 2 }}>
-                                            {globalError}
-                                        </Alert>
-                                    )}
-
-                                    <Button
+                                    <LoadingButton
                                         variant="contained"
                                         color="primary"
                                         fullWidth
                                         onClick={handleContinue}
-                                        size={isMobile ? "medium" : "large"}
                                         sx={{
-                                            borderRadius: 2,
-                                            py: { xs: 1.2, sm: 1.5 },
-                                            mt: { xs: 2, sm: 3 },
+                                            borderRadius: '12px',
+                                            py: { xs: 1.5, sm: 1.75 },
+                                            mt: { xs: 1, sm: 2 },
                                             textTransform: 'none',
-                                            fontWeight: 600
+                                            fontWeight: 600,
+                                            fontSize: '15px',
+                                            boxShadow: '0 2px 8px rgba(24, 82, 254, 0.25)',
+                                            '&:hover': {
+                                                boxShadow: '0 4px 12px rgba(24, 82, 254, 0.35)',
+                                            }
                                         }}
                                     >
                                         Continuar
-                                    </Button>
+                                    </LoadingButton>
                                 </Stack>
                             </Collapse>
                         ) : (
                             // Step 2: Endereço e Finalização
                             <Collapse in={step === 2} timeout={500}>
                                 <Stack spacing={{ xs: 2, sm: 2.5 }}>
-                                    <TextField
+                                    <CPFInput
                                         label="CPF"
-                                        variant="outlined"
-                                        fullWidth
-                                        size={isMobile ? "medium" : "medium"}
-                                        sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                                borderRadius: 2
-                                            }
-                                        }}
                                         name="cpf"
                                         value={formData.cpf}
                                         onChange={handleInputChange}
                                         error={Boolean(errors.cpf)}
-                                        helperText={errors.cpf || ""}
-                                        inputProps={{ maxLength: 14 }}
+                                        helperText={errors.cpf}
                                     />
 
-                                    <TextField
+                                    <CEPInput
                                         label="CEP"
-                                        variant="outlined"
-                                        fullWidth
-                                        size={isMobile ? "medium" : "medium"}
-                                        sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                                borderRadius: 2
-                                            }
-                                        }}
                                         name="cep"
                                         value={formData.cep}
                                         onChange={handleInputChange}
                                         error={Boolean(errors.cep)}
-                                        helperText={errors.cep || ""}
-                                        inputProps={{ maxLength: 9 }}
+                                        helperText={errors.cep}
                                     />
 
                                     <Box sx={{
@@ -805,31 +719,24 @@ const FreeSignupForm = () => {
                                         gap: { xs: 1.5, sm: 2 },
                                         flexDirection: { xs: 'column', sm: 'row' }
                                     }}>
-                                        <TextField
+                                        <StyledInput
                                             label="Cidade"
-                                            variant="outlined"
-                                            sx={{
-                                                flex: 1,
-                                                '& .MuiOutlinedInput-root': {
-                                                    borderRadius: 2
-                                                }
-                                            }}
-                                            size={isMobile ? "medium" : "medium"}
                                             name="city"
                                             value={formData.city}
                                             onChange={handleInputChange}
                                             error={Boolean(errors.city)}
-                                            helperText={errors.city || ""}
+                                            helperText={errors.city}
+                                            placeholder="São Paulo"
+                                            sx={{ flex: 1 }}
                                         />
                                         <FormControl
                                             sx={{
-                                                flex: { xs: 1, sm: 1 },
+                                                flex: { xs: 1, sm: 0.6 },
                                                 '& .MuiOutlinedInput-root': {
-                                                    borderRadius: 2
+                                                    borderRadius: '12px'
                                                 }
                                             }}
                                             error={Boolean(errors.state)}
-                                            size={isMobile ? "medium" : "medium"}
                                         >
                                             <InputLabel>Estado</InputLabel>
                                             <Select
@@ -837,7 +744,7 @@ const FreeSignupForm = () => {
                                                 label="Estado"
                                                 name="state"
                                                 onChange={handleInputChange}
-                                                sx={{ borderRadius: 2 }}
+                                                sx={{ borderRadius: '12px' }}
                                             >
                                                 {brazilianStates.map((state) => (
                                                     <MenuItem key={state.value} value={state.value}>
@@ -846,7 +753,7 @@ const FreeSignupForm = () => {
                                                 ))}
                                             </Select>
                                             {errors.state && (
-                                                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
+                                                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1 }}>
                                                     {errors.state}
                                                 </Typography>
                                             )}
@@ -860,18 +767,23 @@ const FreeSignupForm = () => {
                                                 name="termsAccepted"
                                                 onChange={handleInputChange}
                                                 color="primary"
-                                                size={isMobile ? "medium" : "medium"}
+                                                sx={{
+                                                    '&.Mui-checked': {
+                                                        color: '#10B981',
+                                                    }
+                                                }}
                                             />
                                         }
                                         label={
-                                            <Typography variant={isMobile ? "body2" : "body2"}>
+                                            <Typography variant="body2" sx={{ color: '#4B5574' }}>
                                                 Aceito os{' '}
                                                 <Typography
                                                     component="span"
                                                     sx={{
                                                         textDecoration: 'underline',
-                                                        color: 'primary.main',
-                                                        cursor: 'pointer'
+                                                        color: '#1852FE',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 500
                                                     }}
                                                 >
                                                     Termos e Condições
@@ -881,26 +793,21 @@ const FreeSignupForm = () => {
                                                     component="span"
                                                     sx={{
                                                         textDecoration: 'underline',
-                                                        color: 'primary.main',
-                                                        cursor: 'pointer'
+                                                        color: '#1852FE',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 500
                                                     }}
                                                 >
                                                     Política de Privacidade
                                                 </Typography>
                                             </Typography>
                                         }
-                                        sx={{ alignItems: 'flex-start' }}
+                                        sx={{ alignItems: 'flex-start', mt: 1 }}
                                     />
                                     {errors.termsAccepted && (
-                                        <Typography variant="caption" color="error">
+                                        <Typography variant="caption" sx={{ color: '#EF4444', ml: 4, mt: -1 }}>
                                             {errors.termsAccepted}
                                         </Typography>
-                                    )}
-
-                                    {globalError && (
-                                        <Alert severity="error" sx={{ borderRadius: 2 }}>
-                                            {globalError}
-                                        </Alert>
                                     )}
 
                                     <Box sx={{
@@ -913,38 +820,44 @@ const FreeSignupForm = () => {
                                             variant="outlined"
                                             onClick={handleBack}
                                             disabled={loading}
-                                            size={isMobile ? "medium" : "large"}
                                             sx={{
-                                                borderRadius: 2,
-                                                flex: { xs: 1, sm: 0.3 },
-                                                textTransform: 'none'
+                                                borderRadius: '12px',
+                                                flex: { xs: 1, sm: 0.35 },
+                                                textTransform: 'none',
+                                                fontWeight: 500,
+                                                py: 1.5,
+                                                borderColor: 'rgba(17, 30, 90, 0.2)',
+                                                color: '#4B5574',
+                                                '&:hover': {
+                                                    borderColor: 'rgba(17, 30, 90, 0.4)',
+                                                    backgroundColor: 'rgba(17, 30, 90, 0.02)',
+                                                }
                                             }}
                                         >
                                             Voltar
                                         </Button>
-                                        <Button
+                                        <LoadingButton
                                             variant="contained"
                                             onClick={handleRegister}
-                                            disabled={loading}
-                                            size={isMobile ? "medium" : "large"}
+                                            loading={loading}
+                                            loadingText="Criando conta..."
                                             sx={{
-                                                borderRadius: 2,
-                                                py: { xs: 1.2, sm: 1.5 },
+                                                borderRadius: '12px',
+                                                py: 1.5,
                                                 flex: 1,
-                                                background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
+                                                background: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
                                                 textTransform: 'none',
                                                 fontWeight: 600,
+                                                fontSize: '15px',
+                                                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
                                                 '&:hover': {
-                                                    background: 'linear-gradient(135deg, #43A047 0%, #5CB85C 100%)',
+                                                    background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                                                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                                                 },
-                                                '&:disabled': {
-                                                    background: '#ccc'
-                                                }
                                             }}
-                                            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
                                         >
-                                            {loading ? 'Criando conta...' : 'Criar Conta Gratuita'}
-                                        </Button>
+                                            Criar Conta Gratuita
+                                        </LoadingButton>
                                     </Box>
                                 </Stack>
                             </Collapse>

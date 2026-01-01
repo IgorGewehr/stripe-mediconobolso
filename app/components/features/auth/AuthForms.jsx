@@ -5,28 +5,22 @@ import {
     Button,
     Link,
     Stack,
-    TextField,
     Typography,
     Slide,
-    Alert,
-    Snackbar,
     useMediaQuery,
     useTheme,
-    InputAdornment,
-    IconButton
 } from "@mui/material";
 import React, { useState } from "react";
 import { authService } from "../../../../lib/services/firebase";
 import { authApiService } from "../../../../lib/services/api";
 import { useRouter } from "next/navigation";
 import { useAuth } from '../../providers/authProvider';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import GoogleButton from './GoogleButton';
+import { useFeedback, StyledInput, LoadingButton } from '../../ui/feedback';
 
 export const AuthForms = () => {
-    const [showPassword, setShowPassword] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [loginLoading, setLoginLoading] = useState(false);
 
     const initialFormData = {
         email: "",
@@ -35,10 +29,9 @@ export const AuthForms = () => {
 
     const [formData, setFormData] = useState(initialFormData);
     const [errors, setErrors] = useState({});
-    const [authError, setAuthError] = useState("");
-    const [passwordResetSent, setPasswordResetSent] = useState(false);
     const router = useRouter();
     const { setUserId, referralSource } = useAuth();
+    const { success, error: showError } = useFeedback();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -48,14 +41,10 @@ export const AuthForms = () => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
 
-        // Resetar erros de autenticação quando o usuário digita no email ou senha
-        if ((name === "email" || name === "password") && authError) {
-            setAuthError("");
+        // Limpar erros quando o usuário digita
+        if (errors[name]) {
+            setErrors((prev) => ({ ...prev, [name]: null }));
         }
-    };
-
-    const handleTogglePasswordVisibility = () => {
-        setShowPassword(!showPassword);
     };
 
     const handlePasswordReset = async (e) => {
@@ -65,52 +54,62 @@ export const AuthForms = () => {
                 ...prev,
                 email: "Informe seu e-mail para recuperar a senha",
             }));
-            setTimeout(() => setErrors((prev) => ({ ...prev, email: false })), 3000);
             return;
         }
         try {
             await authService.sendPasswordResetEmail(formData.email);
-            setPasswordResetSent(true);
-            setTimeout(() => setPasswordResetSent(false), 6000);
+            success("Email de recuperação enviado!", {
+                description: "Verifique sua caixa de entrada e spam."
+            });
         } catch (error) {
             console.error("Erro ao enviar email de recuperação:", error);
-            setAuthError("Não foi possível enviar o email de recuperação. Verifique se o email está correto.");
+            showError("Não foi possível enviar o email", {
+                description: "Verifique se o email está correto e tente novamente."
+            });
         }
     };
 
     const handleLogin = async () => {
         const newErrors = {};
-        if (!formData.email.trim()) newErrors.email = true;
-        if (!formData.password.trim()) newErrors.password = true;
+        if (!formData.email.trim()) newErrors.email = "Email é obrigatório";
+        if (!formData.password.trim()) newErrors.password = "Senha é obrigatória";
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
-            setTimeout(() => setErrors({}), 2000);
             return;
         }
 
+        setLoginLoading(true);
         try {
             await authService.login(formData.email, formData.password);
-            // O redirecionamento é tratado pelo AuthProvider
+            success("Login realizado com sucesso!", {
+                description: "Redirecionando..."
+            });
         } catch (error) {
             console.error("Erro no login:", error);
+            let errorMessage = "Erro na autenticação";
+            let errorDescription = "Tente novamente.";
+
             if (error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
-                setAuthError("Email ou senha incorretos.");
+                errorMessage = "Credenciais inválidas";
+                errorDescription = "Email ou senha incorretos.";
             } else if (error.code === "auth/invalid-email") {
-                setAuthError("Email inválido.");
+                errorMessage = "Email inválido";
+                errorDescription = "Verifique o formato do email.";
             } else if (error.code === "auth/too-many-requests") {
-                setAuthError("Muitas tentativas. Tente novamente mais tarde.");
-            } else {
-                setAuthError("Erro na autenticação. Tente novamente.");
+                errorMessage = "Muitas tentativas";
+                errorDescription = "Aguarde alguns minutos e tente novamente.";
             }
+
+            showError(errorMessage, { description: errorDescription });
+        } finally {
+            setLoginLoading(false);
         }
     };
 
-    // Handler para login/signup com Google CORRIGIDO
-    // components/AuthForms.jsx (só a função interna)
+    // Handler para login/signup com Google
     const handleGoogleLogin = async () => {
         setGoogleLoading(true);
-        setAuthError("");
 
         try {
             console.log('🔄 Iniciando login/signup com Google...');
@@ -123,8 +122,6 @@ export const AuthForms = () => {
             );
 
             // Sempre tentar provisionar no backend Rust
-            // Se o usuário já existir, o backend retorna os dados existentes
-            // Isso resolve o caso de banco resetado ou novo dispositivo
             try {
                 await authApiService.provision({
                     name: user.displayName || user.email.split('@')[0],
@@ -133,23 +130,31 @@ export const AuthForms = () => {
                     plan_type: 'free'
                 });
             } catch (provisionError) {
-                // Se falhar, verificar se é erro de usuário não encontrado
-                // Nesse caso, não bloquear o login
                 console.warn('⚠️ Provision falhou, continuando:', provisionError);
             }
-            // o AuthProvider observa a mudança e faz redirect automaticamente
+
+            success("Login realizado com sucesso!", {
+                description: "Bem-vindo de volta!"
+            });
         } catch (error) {
             console.error('❌ Erro no login/signup com Google:', error);
+            let errorMessage = "Erro no login com Google";
+            let errorDescription = "Tente novamente.";
+
             switch (error.code) {
                 case 'auth/popup-closed-by-user':
-                    setAuthError("Você fechou o popup antes de concluir. Tente novamente.");
+                    errorMessage = "Login cancelado";
+                    errorDescription = "Você fechou o popup antes de concluir.";
                     break;
                 case 'auth/popup-blocked':
-                    setAuthError("Pop-up bloqueado. Permita pop-ups e tente de novo.");
+                    errorMessage = "Pop-up bloqueado";
+                    errorDescription = "Permita pop-ups no navegador e tente novamente.";
                     break;
                 default:
-                    setAuthError(error.message || "Erro no login com Google. Tente novamente.");
+                    errorDescription = error.message || "Tente novamente.";
             }
+
+            showError(errorMessage, { description: errorDescription });
         } finally {
             setGoogleLoading(false);
         }
@@ -180,17 +185,6 @@ export const AuthForms = () => {
                 position: 'relative'
             }}
         >
-            <Snackbar
-                open={passwordResetSent}
-                autoHideDuration={6000}
-                onClose={() => setPasswordResetSent(false)}
-                anchorOrigin={{ vertical: "top", horizontal: "center" }}
-            >
-                <Alert severity="success" sx={{ width: "100%" }}>
-                    Email de recuperação enviado com sucesso!
-                </Alert>
-            </Snackbar>
-
             {/* Logo apenas no mobile */}
             {isMobile && (
                 <Box
@@ -212,7 +206,7 @@ export const AuthForms = () => {
                     <Typography variant="h4" component="h1" sx={{
                         color: "primary.main",
                         fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                        fontWeight: { xs: 600, md: 'normal' },
+                        fontWeight: 600,
                         textAlign: 'center'
                     }}>
                         Entrar
@@ -276,91 +270,53 @@ export const AuthForms = () => {
                 }} />
             </Box>
 
-            {authError && (
-                <Alert severity="error" sx={{
-                    width: "100%",
-                    fontSize: { xs: '0.875rem', md: '1rem' },
-                    borderRadius: { xs: 2, md: 1 }
-                }}>
-                    {authError}
-                </Alert>
-            )}
-
-            <Stack spacing={{ xs: 2, sm: 2.5, md: 1.5 }} width="100%">
-                <TextField
+            <Stack spacing={{ xs: 2, sm: 2.5, md: 2 }} width="100%">
+                <StyledInput
                     label="E-mail"
-                    variant="outlined"
-                    fullWidth
                     name="email"
+                    type="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    error={Boolean(errors.email) || authError.includes("Email")}
-                    helperText={errors.email ? (typeof errors.email === "string" ? errors.email : "Campo obrigatório") : ""}
-                    color={(Boolean(errors.email) || authError.includes("Email")) ? "error" : "primary"}
+                    error={Boolean(errors.email)}
+                    helperText={errors.email}
+                    placeholder="seu@email.com"
                     size={isSmallMobile ? "small" : "medium"}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: { xs: 2, md: 1 },
-                            fontSize: { xs: '1rem', md: 'inherit' }
-                        },
-                        '& .MuiInputLabel-root': {
-                            fontSize: { xs: '1rem', md: 'inherit' }
-                        }
-                    }}
-                />
-                <TextField
-                    label="Senha"
-                    type={showPassword ? "text" : "password"}
-                    variant="outlined"
-                    fullWidth
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    error={Boolean(errors.password) || authError.includes("senha")}
-                    helperText={errors.password ? "Campo obrigatório" : ""}
-                    color={(Boolean(errors.password) || authError.includes("senha")) ? "error" : "primary"}
-                    size={isSmallMobile ? "small" : "medium"}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: { xs: 2, md: 1 },
-                            fontSize: { xs: '1rem', md: 'inherit' }
-                        },
-                        '& .MuiInputLabel-root': {
-                            fontSize: { xs: '1rem', md: 'inherit' }
-                        }
-                    }}
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    aria-label="toggle password visibility"
-                                    onClick={handleTogglePasswordVisibility}
-                                    edge="end"
-                                    size={isSmallMobile ? "small" : "medium"}
-                                >
-                                    {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                                </IconButton>
-                            </InputAdornment>
-                        ),
-                    }}
                 />
 
-                <Button
+                <StyledInput
+                    label="Senha"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    error={Boolean(errors.password)}
+                    helperText={errors.password}
+                    placeholder="Sua senha"
+                    size={isSmallMobile ? "small" : "medium"}
+                />
+
+                <LoadingButton
                     variant="contained"
                     color="primary"
                     fullWidth
+                    loading={loginLoading}
+                    loadingText="Entrando..."
                     onClick={handleLogin}
                     sx={{
-                        borderRadius: { xs: 2, sm: 8, md: 8 },
-                        py: { xs: 1.2, sm: 1.5, md: 1.5 },
-                        mt: { xs: 2, md: 1 },
-                        fontSize: { xs: '1rem', md: 'inherit' },
-                        fontWeight: { xs: 600, md: 'normal' },
-                        textTransform: { xs: 'none', md: 'uppercase' }
+                        borderRadius: '12px',
+                        py: { xs: 1.5, sm: 1.75 },
+                        mt: { xs: 1, md: 0.5 },
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        boxShadow: '0 2px 8px rgba(24, 82, 254, 0.25)',
+                        '&:hover': {
+                            boxShadow: '0 4px 12px rgba(24, 82, 254, 0.35)',
+                        }
                     }}
                 >
                     Entrar
-                </Button>
+                </LoadingButton>
             </Stack>
 
             <Box

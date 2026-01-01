@@ -1066,6 +1066,348 @@ export const useFinancialReports = () => {
   };
 };
 
+/**
+ * Hook for managing contas bancárias
+ */
+export const useContasBancarias = (options = {}) => {
+  const { autoLoad = true } = options;
+  const { user } = useAuth();
+
+  const [contas, setContas] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadContas = useCallback(async () => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await financialService.listContasBancarias();
+      setContas(data);
+    } catch (err) {
+      console.error('[useContasBancarias] Error loading:', err);
+      setError('Erro ao carregar contas bancárias');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const getConta = useCallback(async (id) => {
+    if (!user) return null;
+
+    try {
+      return await financialService.getContaBancaria(id);
+    } catch (err) {
+      console.error('[useContasBancarias] Error getting:', err);
+      setError('Erro ao carregar conta bancária');
+      return null;
+    }
+  }, [user]);
+
+  const createConta = useCallback(async (data) => {
+    if (!user) throw new Error('Usuário não autenticado');
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const result = await financialService.createContaBancaria(data);
+      await loadContas();
+      return result;
+    } catch (err) {
+      console.error('[useContasBancarias] Error creating:', err);
+      setError('Erro ao criar conta bancária');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [user, loadContas]);
+
+  const updateConta = useCallback(async (id, data) => {
+    if (!user) throw new Error('Usuário não autenticado');
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updated = await financialService.updateContaBancaria(id, data);
+      setContas((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
+      );
+      return updated;
+    } catch (err) {
+      console.error('[useContasBancarias] Error updating:', err);
+      setError('Erro ao atualizar conta bancária');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [user]);
+
+  const getExtrato = useCallback(async (contaId, dataInicio, dataFim) => {
+    if (!user) return null;
+
+    try {
+      return await financialService.getExtratoBancario(contaId, { dataInicio, dataFim });
+    } catch (err) {
+      console.error('[useContasBancarias] Error getting extrato:', err);
+      setError('Erro ao carregar extrato');
+      return null;
+    }
+  }, [user]);
+
+  // Calculate total balance
+  const saldoTotal = useMemo(() => {
+    return contas.reduce((sum, c) => sum + (c.saldoAtual || 0), 0);
+  }, [contas]);
+
+  useEffect(() => {
+    if (autoLoad && user) {
+      loadContas();
+    }
+  }, [autoLoad, user]);
+
+  return {
+    contas,
+    saldoTotal,
+    loading,
+    saving,
+    error,
+    loadContas,
+    getConta,
+    createConta,
+    updateConta,
+    getExtrato,
+  };
+};
+
+/**
+ * Hook for managing movimentações bancárias
+ */
+export const useMovimentacoesBancarias = (options = {}) => {
+  const { autoLoad = true, contaBancariaId = null } = options;
+  const { user } = useAuth();
+
+  const [movimentacoes, setMovimentacoes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    perPage: 20,
+    total: 0,
+    totalPages: 0,
+  });
+
+  const [filters, setFilters] = useState({
+    contaBancariaId: contaBancariaId,
+    tipo: null,
+    dataInicio: null,
+    dataFim: null,
+  });
+
+  const loadMovimentacoes = useCallback(async (page = 1) => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await financialService.listMovimentacoesBancarias({
+        ...filters,
+        page,
+        perPage: pagination.perPage,
+      });
+
+      setMovimentacoes(response.items || response);
+      if (response.total !== undefined) {
+        setPagination({
+          page: response.page,
+          perPage: response.perPage,
+          total: response.total,
+          totalPages: response.totalPages,
+        });
+      }
+    } catch (err) {
+      console.error('[useMovimentacoesBancarias] Error loading:', err);
+      setError('Erro ao carregar movimentações');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, filters, pagination.perPage]);
+
+  const createTransferencia = useCallback(async (data) => {
+    if (!user) throw new Error('Usuário não autenticado');
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const result = await financialService.createTransferenciaBancaria(data);
+      await loadMovimentacoes(1);
+      return result;
+    } catch (err) {
+      console.error('[useMovimentacoesBancarias] Error creating transfer:', err);
+      setError('Erro ao criar transferência');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [user, loadMovimentacoes]);
+
+  const refresh = useCallback(() => {
+    loadMovimentacoes(pagination.page);
+  }, [loadMovimentacoes, pagination.page]);
+
+  const goToPage = useCallback((page) => {
+    loadMovimentacoes(page);
+  }, [loadMovimentacoes]);
+
+  useEffect(() => {
+    if (autoLoad && user) {
+      loadMovimentacoes(1);
+    }
+  }, [autoLoad, user]);
+
+  useEffect(() => {
+    if (!autoLoad || !user) return;
+
+    const timer = setTimeout(() => {
+      loadMovimentacoes(1);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [filters.contaBancariaId, filters.tipo, filters.dataInicio, filters.dataFim]);
+
+  return {
+    movimentacoes,
+    loading,
+    saving,
+    error,
+    pagination,
+    filters,
+    setFilters,
+    loadMovimentacoes,
+    createTransferencia,
+    refresh,
+    goToPage,
+  };
+};
+
+/**
+ * Hook for managing sugestões financeiras
+ */
+export const useSugestoesFinanceiras = (options = {}) => {
+  const { autoLoad = true } = options;
+  const { user } = useAuth();
+
+  const [sugestoes, setSugestoes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadSugestoes = useCallback(async () => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await financialService.listSugestoesFinanceiras();
+      setSugestoes(data);
+    } catch (err) {
+      console.error('[useSugestoesFinanceiras] Error loading:', err);
+      setError('Erro ao carregar sugestões');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const getSugestao = useCallback(async (id) => {
+    if (!user) return null;
+
+    try {
+      return await financialService.getSugestaoFinanceira(id);
+    } catch (err) {
+      console.error('[useSugestoesFinanceiras] Error getting:', err);
+      setError('Erro ao carregar sugestão');
+      return null;
+    }
+  }, [user]);
+
+  const aceitarSugestao = useCallback(async (id) => {
+    if (!user) throw new Error('Usuário não autenticado');
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const result = await financialService.aceitarSugestao(id);
+      setSugestoes((prev) => prev.filter((s) => s.id !== id));
+      return result;
+    } catch (err) {
+      console.error('[useSugestoesFinanceiras] Error accepting:', err);
+      setError('Erro ao aceitar sugestão');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [user]);
+
+  const rejeitarSugestao = useCallback(async (id, motivo) => {
+    if (!user) throw new Error('Usuário não autenticado');
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await financialService.rejeitarSugestao(id, { motivo });
+      setSugestoes((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      console.error('[useSugestoesFinanceiras] Error rejecting:', err);
+      setError('Erro ao rejeitar sugestão');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [user]);
+
+  const refresh = useCallback(() => {
+    loadSugestoes();
+  }, [loadSugestoes]);
+
+  // Count by type
+  const countByType = useMemo(() => {
+    const counts = {};
+    sugestoes.forEach((s) => {
+      counts[s.tipo] = (counts[s.tipo] || 0) + 1;
+    });
+    return counts;
+  }, [sugestoes]);
+
+  useEffect(() => {
+    if (autoLoad && user) {
+      loadSugestoes();
+    }
+  }, [autoLoad, user]);
+
+  return {
+    sugestoes,
+    countByType,
+    loading,
+    saving,
+    error,
+    loadSugestoes,
+    getSugestao,
+    aceitarSugestao,
+    rejeitarSugestao,
+    refresh,
+  };
+};
+
 // Default export for convenience
 const useFinancial = useFinancialDashboard;
 export default useFinancial;

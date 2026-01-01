@@ -2,7 +2,8 @@
 
 /**
  * @fileoverview Financial Management Template
- * @description Main page template for financial system (Sistema Financeiro)
+ * @description Gestão Financeira completa com todos os recursos
+ * Separado de TISS/Glossas/NFSe que possuem páginas próprias
  */
 
 import React, { useState, useCallback } from 'react';
@@ -12,13 +13,18 @@ import {
   Tab,
   Snackbar,
   Alert,
+  Typography,
+  Badge,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
-  Receipt as ReceiptIcon,
-  Payment as PaymentIcon,
-  Description as NfseIcon,
-  LocalHospital as TissIcon,
+  TrendingUp as ReceitasIcon,
+  TrendingDown as DespesasIcon,
+  AccountBalance as FluxoCaixaIcon,
+  Business as FornecedoresIcon,
+  CreditCard as ContasBancariasIcon,
+  Lightbulb as SugestoesIcon,
+  PeopleAlt as RepassesIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../providers/authProvider';
 import { useSnackbar } from '../hooks/useDialogState';
@@ -30,9 +36,16 @@ import {
   ContasPagarList,
   ContaPagarForm,
   PagamentoDialog,
+  FornecedoresList,
+  FornecedorForm,
+  ContasBancariasList,
+  ContaBancariaForm,
+  TransferenciaDialog,
+  SugestoesFinanceirasList,
+  RepassesList,
 } from '../features/financial';
-import { FiscalDashboard } from '../features/fiscal';
-import { TissDashboard } from '../features/tiss';
+import CashFlowView from '../features/financial/CashFlowView';
+import { useSugestoesFinanceiras } from '../hooks/useFinancial';
 
 // Theme colors
 const themeColors = {
@@ -68,6 +81,7 @@ function TabPanel({ children, value, index, ...other }) {
 
 /**
  * Financial Management Template
+ * Focado em Fluxo de Caixa e Eficiência Operacional
  */
 export default function FinancialTemplate() {
   const { user } = useAuth();
@@ -88,6 +102,19 @@ export default function FinancialTemplate() {
   const [pagamentoDialogOpen, setPagamentoDialogOpen] = useState(false);
   const [selectedContaPagar, setSelectedContaPagar] = useState(null);
 
+  // Dialog states - Fornecedores
+  const [fornecedorFormOpen, setFornecedorFormOpen] = useState(false);
+  const [fornecedorToEdit, setFornecedorToEdit] = useState(null);
+
+  // Dialog states - Contas Bancarias
+  const [contaBancariaFormOpen, setContaBancariaFormOpen] = useState(false);
+  const [contaBancariaToEdit, setContaBancariaToEdit] = useState(null);
+  const [transferenciaDialogOpen, setTransferenciaDialogOpen] = useState(false);
+  const [selectedContaBancaria, setSelectedContaBancaria] = useState(null);
+
+  // Sugestoes count for badge
+  const { sugestoes } = useSugestoesFinanceiras();
+
   // Handle tab change
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -100,7 +127,6 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleViewConta = useCallback((conta) => {
-    // TODO: Implement view dialog
     console.log('View conta:', conta);
   }, []);
 
@@ -110,7 +136,6 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleDeleteConta = useCallback((conta) => {
-    // TODO: Implement delete confirmation
     console.log('Delete conta:', conta);
   }, []);
 
@@ -144,7 +169,6 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleViewContaPagar = useCallback((conta) => {
-    // TODO: Implement view dialog
     console.log('View conta a pagar:', conta);
   }, []);
 
@@ -154,7 +178,6 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleDeleteContaPagar = useCallback((conta) => {
-    // TODO: Implement delete confirmation
     console.log('Delete conta a pagar:', conta);
   }, []);
 
@@ -181,12 +204,104 @@ export default function FinancialTemplate() {
     snackbar.success('Pagamento registrado com sucesso!');
   }, [snackbar]);
 
+  // Fornecedor handlers
+  const handleAddFornecedor = useCallback(() => {
+    setFornecedorToEdit(null);
+    setFornecedorFormOpen(true);
+  }, []);
+
+  const handleViewFornecedor = useCallback((fornecedor) => {
+    console.log('View fornecedor:', fornecedor);
+  }, []);
+
+  const handleEditFornecedor = useCallback((fornecedor) => {
+    setFornecedorToEdit(fornecedor);
+    setFornecedorFormOpen(true);
+  }, []);
+
+  const handleDeactivateFornecedor = useCallback((fornecedor) => {
+    console.log('Deactivate fornecedor:', fornecedor);
+  }, []);
+
+  const handleFornecedorFormClose = useCallback(() => {
+    setFornecedorFormOpen(false);
+    setFornecedorToEdit(null);
+  }, []);
+
+  const handleFornecedorFormSuccess = useCallback(() => {
+    snackbar.success(fornecedorToEdit ? 'Fornecedor atualizado com sucesso!' : 'Fornecedor criado com sucesso!');
+  }, [fornecedorToEdit, snackbar]);
+
+  // Conta Bancaria handlers
+  const handleAddContaBancaria = useCallback(() => {
+    setContaBancariaToEdit(null);
+    setContaBancariaFormOpen(true);
+  }, []);
+
+  const handleEditContaBancaria = useCallback((conta) => {
+    setContaBancariaToEdit(conta);
+    setContaBancariaFormOpen(true);
+  }, []);
+
+  const handleTransfer = useCallback((conta) => {
+    setSelectedContaBancaria(conta);
+    setTransferenciaDialogOpen(true);
+  }, []);
+
+  const handleExtrato = useCallback((conta) => {
+    console.log('View extrato:', conta);
+  }, []);
+
+  const handleContaBancariaFormClose = useCallback(() => {
+    setContaBancariaFormOpen(false);
+    setContaBancariaToEdit(null);
+  }, []);
+
+  const handleContaBancariaFormSuccess = useCallback(() => {
+    snackbar.success(contaBancariaToEdit ? 'Conta atualizada com sucesso!' : 'Conta criada com sucesso!');
+  }, [contaBancariaToEdit, snackbar]);
+
+  const handleTransferenciaClose = useCallback(() => {
+    setTransferenciaDialogOpen(false);
+    setSelectedContaBancaria(null);
+  }, []);
+
+  const handleTransferenciaSuccess = useCallback(() => {
+    snackbar.success('Transferencia realizada com sucesso!');
+  }, [snackbar]);
+
+  // Repasses handlers
+  const handleAddRepasse = useCallback(() => {
+    console.log('Add repasse');
+  }, []);
+
+  const handleViewRepasse = useCallback((repasse) => {
+    console.log('View repasse:', repasse);
+  }, []);
+
+  const handlePayRepasse = useCallback((repasse) => {
+    console.log('Pay repasse:', repasse);
+  }, []);
+
   const tabs = [
-    { label: 'Dashboard', icon: <DashboardIcon />, index: 0 },
-    { label: 'Contas a Receber', icon: <ReceiptIcon />, index: 1 },
-    { label: 'Contas a Pagar', icon: <PaymentIcon />, index: 2 },
-    { label: 'TISS / Convênios', icon: <TissIcon />, index: 3 },
-    { label: 'Notas Fiscais', icon: <NfseIcon />, index: 4 },
+    { label: 'Visão Geral', icon: <DashboardIcon />, index: 0 },
+    { label: 'Receitas', icon: <ReceitasIcon />, index: 1 },
+    { label: 'Despesas', icon: <DespesasIcon />, index: 2 },
+    { label: 'Fluxo de Caixa', icon: <FluxoCaixaIcon />, index: 3 },
+    { label: 'Contas Bancarias', icon: <ContasBancariasIcon />, index: 4 },
+    { label: 'Fornecedores', icon: <FornecedoresIcon />, index: 5 },
+    { label: 'Repasses', icon: <RepassesIcon />, index: 6 },
+    {
+      label: 'Sugestoes',
+      icon: sugestoes.length > 0 ? (
+        <Badge badgeContent={sugestoes.length} color="error">
+          <SugestoesIcon />
+        </Badge>
+      ) : (
+        <SugestoesIcon />
+      ),
+      index: 7
+    },
   ];
 
   return (
@@ -238,7 +353,7 @@ export default function FinancialTemplate() {
             <FinancialDashboard />
           </TabPanel>
 
-          {/* Contas a Receber Tab */}
+          {/* Receitas (Contas a Receber) Tab */}
           <TabPanel value={activeTab} index={1}>
             <ContasReceberList
               onAdd={handleAddConta}
@@ -249,7 +364,7 @@ export default function FinancialTemplate() {
             />
           </TabPanel>
 
-          {/* Contas a Pagar Tab */}
+          {/* Despesas (Contas a Pagar) Tab */}
           <TabPanel value={activeTab} index={2}>
             <ContasPagarList
               onAdd={handleAddContaPagar}
@@ -260,19 +375,48 @@ export default function FinancialTemplate() {
             />
           </TabPanel>
 
-          {/* TISS / Convênios Tab */}
+          {/* Fluxo de Caixa Tab */}
           <TabPanel value={activeTab} index={3}>
-            <TissDashboard />
+            <CashFlowView />
           </TabPanel>
 
-          {/* Notas Fiscais (NFSe) Tab */}
+          {/* Contas Bancarias Tab */}
           <TabPanel value={activeTab} index={4}>
-            <FiscalDashboard />
+            <ContasBancariasList
+              onAdd={handleAddContaBancaria}
+              onEdit={handleEditContaBancaria}
+              onTransfer={handleTransfer}
+              onExtrato={handleExtrato}
+            />
+          </TabPanel>
+
+          {/* Fornecedores Tab */}
+          <TabPanel value={activeTab} index={5}>
+            <FornecedoresList
+              onAdd={handleAddFornecedor}
+              onView={handleViewFornecedor}
+              onEdit={handleEditFornecedor}
+              onDeactivate={handleDeactivateFornecedor}
+            />
+          </TabPanel>
+
+          {/* Repasses Tab */}
+          <TabPanel value={activeTab} index={6}>
+            <RepassesList
+              onAdd={handleAddRepasse}
+              onView={handleViewRepasse}
+              onPay={handlePayRepasse}
+            />
+          </TabPanel>
+
+          {/* Sugestoes Tab */}
+          <TabPanel value={activeTab} index={7}>
+            <SugestoesFinanceirasList />
           </TabPanel>
         </Box>
       </Box>
 
-      {/* Dialogs */}
+      {/* Dialogs - Contas a Receber */}
       <ContaReceberForm
         open={contaFormOpen}
         onClose={handleContaFormClose}
@@ -287,7 +431,7 @@ export default function FinancialTemplate() {
         onSuccess={handleRecebimentoSuccess}
       />
 
-      {/* Contas a Pagar Dialogs */}
+      {/* Dialogs - Contas a Pagar */}
       <ContaPagarForm
         open={contaPagarFormOpen}
         onClose={handleContaPagarFormClose}
@@ -300,6 +444,29 @@ export default function FinancialTemplate() {
         onClose={handlePagamentoClose}
         conta={selectedContaPagar}
         onSuccess={handlePagamentoSuccess}
+      />
+
+      {/* Dialogs - Fornecedores */}
+      <FornecedorForm
+        open={fornecedorFormOpen}
+        onClose={handleFornecedorFormClose}
+        fornecedorToEdit={fornecedorToEdit}
+        onSuccess={handleFornecedorFormSuccess}
+      />
+
+      {/* Dialogs - Contas Bancarias */}
+      <ContaBancariaForm
+        open={contaBancariaFormOpen}
+        onClose={handleContaBancariaFormClose}
+        contaToEdit={contaBancariaToEdit}
+        onSuccess={handleContaBancariaFormSuccess}
+      />
+
+      <TransferenciaDialog
+        open={transferenciaDialogOpen}
+        onClose={handleTransferenciaClose}
+        contaOrigem={selectedContaBancaria}
+        onSuccess={handleTransferenciaSuccess}
       />
 
       {/* Snackbar */}

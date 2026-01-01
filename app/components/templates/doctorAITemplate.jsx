@@ -524,6 +524,7 @@ const DoctorAITemplate = () => {
         <Box sx={{
             display: 'flex',
             height: isMobile ? 'calc(100vh - 130px)' : 'calc(100vh - 100px)',
+            maxHeight: isMobile ? 'calc(100vh - 130px)' : 'calc(100vh - 100px)',
             minHeight: 0,
             backgroundColor: '#F4F9FF',
             borderRadius: '20px',

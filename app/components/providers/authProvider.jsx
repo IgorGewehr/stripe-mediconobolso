@@ -80,7 +80,8 @@ export const AuthProvider = ({ children }) => {
     const mountedRef = useRef(true);
     const processingRef = useRef(false);
 
-    const isFreeUser = Boolean(user?.gratuito);
+    // TODAS AS FUNCIONALIDADES LIBERADAS PARA TODOS OS USUÁRIOS
+    const isFreeUser = false;
 
     // ✅ FUNÇÃO AUXILIAR PARA EXTRAIR REFERÊNCIA - MEMOIZADA
     const extractReferralSource = useCallback((path) => {

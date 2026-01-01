@@ -134,16 +134,6 @@ export default function CRMDashboard() {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold">
-          CRM - Gestão de Relacionamento
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Gerencie follow-ups, lembretes e engajamento de pacientes
-        </Typography>
-      </Box>
-
       {/* Stats Cards */}
       <Box sx={{ mb: 3 }}>
         <CRMStatsCards

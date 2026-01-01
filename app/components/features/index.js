@@ -58,3 +58,9 @@ export * from './crm';
 
 // Fiscal System (NFSe)
 export * from './fiscal';
+
+// TISS/Faturamento System
+export * from './tiss';
+
+// Glossas Management
+export * from './glossas';

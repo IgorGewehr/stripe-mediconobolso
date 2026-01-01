@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ThemeProvider from './themeProvider';
 import { AuthProvider } from './authProvider';
+import { FeedbackProvider } from '../ui/feedback';
 
 export default function ClientProviders({ children }) {
     // Create a stable QueryClient instance
@@ -21,7 +22,9 @@ export default function ClientProviders({ children }) {
         <QueryClientProvider client={queryClient}>
             <AuthProvider>
                 <ThemeProvider>
-                    {children}
+                    <FeedbackProvider>
+                        {children}
+                    </FeedbackProvider>
                 </ThemeProvider>
             </AuthProvider>
         </QueryClientProvider>

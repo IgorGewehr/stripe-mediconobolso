@@ -20,7 +20,10 @@ import {
     ChevronRight,
     Shield,
     Building2,
-    NotebookPen
+    NotebookPen,
+    Receipt,
+    FileX,
+    FileCheck2
 } from "lucide-react";
 import { Avatar } from "@mui/material";
 
@@ -66,6 +69,11 @@ const Sidebar = ({
             { label: "CRM", icon: BarChart3 },
             { label: "Financeiro", icon: DollarSign }
         ],
+        faturamento: [
+            { label: "TISS", icon: Receipt },
+            { label: "Glossas", icon: FileX },
+            { label: "NFSe", icon: FileCheck2 }
+        ],
         admin: [
             ...(canManageClinic ? [{ label: "Gestão da Clínica", icon: Building2 }] : []),
             ...(user && user.administrador === true ? [{ label: "Dados", icon: Shield }] : [])
@@ -88,6 +96,7 @@ const Sidebar = ({
 
         return {
             principal: filterItems(menuItems.principal),
+            faturamento: filterItems(menuItems.faturamento),
             admin: filterItems(menuItems.admin),
             ia: filterItems(menuItems.ia),
             suporte: filterItems(menuItems.suporte)
@@ -197,6 +206,16 @@ const Sidebar = ({
                         Principal
                     </div>
                     {visibleItems.principal.map((item) => (
+                        <NavItem key={item.label} item={item} />
+                    ))}
+                </div>
+
+                {/* Faturamento */}
+                <div>
+                    <div className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-3 px-2">
+                        Faturamento
+                    </div>
+                    {visibleItems.faturamento.map((item) => (
                         <NavItem key={item.label} item={item} />
                     ))}
                 </div>

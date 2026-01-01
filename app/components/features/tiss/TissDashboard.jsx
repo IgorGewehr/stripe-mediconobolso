@@ -292,20 +292,11 @@ export default function TissDashboard() {
             {/* Header */}
             <Box sx={{
                 display: 'flex',
-                flexDirection: { xs: 'column', md: 'row' },
-                justifyContent: 'space-between',
-                alignItems: { xs: 'flex-start', md: 'center' },
+                justifyContent: 'flex-end',
+                alignItems: 'center',
                 gap: 2,
-                mb: 4
+                mb: 3
             }}>
-                <Box>
-                    <Typography variant="h4" fontWeight="bold" color={themeColors.textPrimary}>
-                        Faturamento TISS/TUSS
-                    </Typography>
-                    <Typography variant="body1" color={themeColors.textSecondary} sx={{ mt: 0.5 }}>
-                        Gerencie guias, lotes, faturamento e glosas em um so lugar.
-                    </Typography>
-                </Box>
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <Tooltip title="Atualizar dados">
                         <IconButton

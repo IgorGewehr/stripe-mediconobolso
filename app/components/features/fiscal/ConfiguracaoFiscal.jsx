@@ -35,23 +35,23 @@ import {
   Warning as WarningIcon,
   Info as InfoIcon,
 } from '@mui/icons-material';
-import { useNfseConfiguracao, useMunicipios, useCertificados } from '../../hooks/useNfse';
+import { useNfseConfiguracao, useCertificados } from '../../hooks/useNfse';
 
 export default function ConfiguracaoFiscal() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const { data: config, isLoading, update, isUpdating, updateError } = useNfseConfiguracao();
-  const { data: municipios = [] } = useMunicipios();
   const { certificados = [] } = useCertificados({ apenasAtivos: true, apenasValidos: true });
 
   const [formData, setFormData] = useState({
     codigoMunicipio: '',
-    ambiente: 'homologacao',
+    inscricaoMunicipal: '',
+    ambiente: 'producao_restrita', // Padrão Nacional 2026
     serieRps: 'RPS',
-    tokenAutenticacao: '',
     certificadoId: null,
-    habilitarAdn: false,
+    habilitarIbsCbs: true, // IBS/CBS da Reforma Tributária 2026
+    aliquotaIss: '',
     aliquotaIbsPadrao: '',
     aliquotaCbsPadrao: '',
   });
@@ -63,11 +63,12 @@ export default function ConfiguracaoFiscal() {
     if (config && config.configurado) {
       setFormData({
         codigoMunicipio: config.codigo_municipio || '',
-        ambiente: config.ambiente || 'homologacao',
+        inscricaoMunicipal: config.inscricao_municipal || '',
+        ambiente: config.ambiente || 'producao_restrita',
         serieRps: config.serie_rps || 'RPS',
-        tokenAutenticacao: '',
         certificadoId: config.certificado_id || null,
-        habilitarAdn: config.habilitar_adn || false,
+        habilitarIbsCbs: config.habilitar_ibs_cbs !== false,
+        aliquotaIss: config.aliquota_iss || '',
         aliquotaIbsPadrao: config.aliquota_ibs_padrao || '',
         aliquotaCbsPadrao: config.aliquota_cbs_padrao || '',
       });
@@ -91,8 +92,6 @@ export default function ConfiguracaoFiscal() {
       console.error('Erro ao salvar configuracao:', err);
     }
   };
-
-  const selectedMunicipio = municipios.find((m) => m.codigo_ibge === formData.codigoMunicipio);
 
   if (isLoading) {
     return (
@@ -137,7 +136,7 @@ export default function ConfiguracaoFiscal() {
         }
         subheader="Configure as opcoes de emissao de NFSe"
         action={
-          <Tooltip title="O novo padrao nacional (ADN) com IBS/CBS entra em vigor em 2026">
+          <Tooltip title="Padrão Nacional NFSe 2026 - Todos os municípios brasileiros são suportados via API unificada gov.br">
             <IconButton size="small">
               <InfoIcon />
             </IconButton>
@@ -227,29 +226,35 @@ export default function ConfiguracaoFiscal() {
             </Grid>
 
             {/* Municipio */}
-            <Grid item xs={12} md={6}>
-              <Autocomplete
-                options={municipios}
-                getOptionLabel={(option) => `${option.nome} - ${option.uf} (${option.codigo_ibge})`}
-                value={selectedMunicipio || null}
-                onChange={(_, newValue) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    codigoMunicipio: newValue?.codigo_ibge || '',
-                  }));
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Municipio" required helperText="Selecione o municipio do prestador" />
-                )}
+            <Grid item xs={12} md={4}>
+              <TextField
+                label="Codigo IBGE do Municipio"
+                value={formData.codigoMunicipio}
+                onChange={handleChange('codigoMunicipio')}
+                fullWidth
+                required
+                helperText="Codigo IBGE com 7 digitos (ex: 3550308 = Sao Paulo)"
+                inputProps={{ maxLength: 7 }}
+              />
+            </Grid>
+
+            {/* Inscricao Municipal */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                label="Inscricao Municipal"
+                value={formData.inscricaoMunicipal}
+                onChange={handleChange('inscricaoMunicipal')}
+                fullWidth
+                helperText="Inscricao municipal do prestador"
               />
             </Grid>
 
             {/* Ambiente */}
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>Ambiente</InputLabel>
                 <Select value={formData.ambiente} label="Ambiente" onChange={handleChange('ambiente')}>
-                  <MenuItem value="homologacao">Homologacao (Testes)</MenuItem>
+                  <MenuItem value="producao_restrita">Producao Restrita (Testes gov.br)</MenuItem>
                   <MenuItem value="producao">Producao</MenuItem>
                 </Select>
               </FormControl>
@@ -285,60 +290,69 @@ export default function ConfiguracaoFiscal() {
               </FormControl>
             </Grid>
 
-            {/* Token (alguns provedores) */}
-            <Grid item xs={12}>
-              <TextField
-                label="Token de Autenticacao (opcional)"
-                value={formData.tokenAutenticacao}
-                onChange={handleChange('tokenAutenticacao')}
-                fullWidth
-                helperText="Alguns municipios requerem token adicional"
-                type="password"
-              />
-            </Grid>
-
             <Grid item xs={12}>
               <Divider sx={{ my: 1 }}>
-                <Chip label="Reforma Tributaria 2026 (ADN)" size="small" color="info" sx={{ fontWeight: 600 }} />
+                <Chip label="Aliquotas - Reforma Tributaria 2026" size="small" color="info" sx={{ fontWeight: 600 }} />
               </Divider>
             </Grid>
 
-            {/* Habilitar ADN */}
+            {/* Info sobre Padrao Nacional */}
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ borderRadius: 2 }}>
+                <Typography variant="body2">
+                  <strong>Padrao Nacional NFSe 2026:</strong> Todos os municipios brasileiros sao suportados
+                  atraves da API unificada gov.br. A autenticacao e feita via certificado digital A1 (mTLS).
+                </Typography>
+              </Alert>
+            </Grid>
+
+            {/* Habilitar IBS/CBS */}
             <Grid item xs={12}>
               <Paper
                 variant="outlined"
                 sx={{
                   p: 2,
                   borderRadius: 2,
-                  bgcolor: formData.habilitarAdn ? 'info.lighter' : 'grey.50',
-                  borderColor: formData.habilitarAdn ? 'info.main' : 'divider',
+                  bgcolor: formData.habilitarIbsCbs ? 'info.lighter' : 'grey.50',
+                  borderColor: formData.habilitarIbsCbs ? 'info.main' : 'divider',
                   transition: 'all 0.2s ease-in-out',
                 }}
               >
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={formData.habilitarAdn}
-                      onChange={handleChange('habilitarAdn')}
+                      checked={formData.habilitarIbsCbs}
+                      onChange={handleChange('habilitarIbsCbs')}
                       color="info"
                     />
                   }
                   label={
                     <Typography variant="subtitle2" fontWeight="medium">
-                      Habilitar envio para Ambiente de Dados Nacional (ADN)
+                      Habilitar campos IBS/CBS (Reforma Tributaria 2026)
                     </Typography>
                   }
                 />
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 6 }}>
-                  Ativa o envio de NFSe para o novo padrao nacional com IBS e CBS (Lei Complementar 214/2025)
+                  Inclui campos de IBS e CBS nas notas fiscais (Lei Complementar 214/2025)
                 </Typography>
               </Paper>
             </Grid>
 
             {/* Aliquotas padrao */}
-            {formData.habilitarAdn && (
+            <Grid item xs={12} md={4}>
+              <TextField
+                label="Aliquota ISS Padrao (%)"
+                value={formData.aliquotaIss}
+                onChange={handleChange('aliquotaIss')}
+                fullWidth
+                type="number"
+                inputProps={{ step: '0.01', min: '0', max: '100' }}
+                helperText="Aliquota ISS do municipio (ex: 2.00)"
+              />
+            </Grid>
+            {formData.habilitarIbsCbs && (
               <>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={4}>
                   <TextField
                     label="Aliquota IBS Padrao (%)"
                     value={formData.aliquotaIbsPadrao}
@@ -346,10 +360,10 @@ export default function ConfiguracaoFiscal() {
                     fullWidth
                     type="number"
                     inputProps={{ step: '0.01', min: '0', max: '100' }}
-                    helperText="Aliquota do Imposto sobre Bens e Servicos"
+                    helperText="10% para saude com reducao 60%"
                   />
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={4}>
                   <TextField
                     label="Aliquota CBS Padrao (%)"
                     value={formData.aliquotaCbsPadrao}
@@ -357,7 +371,7 @@ export default function ConfiguracaoFiscal() {
                     fullWidth
                     type="number"
                     inputProps={{ step: '0.01', min: '0', max: '100' }}
-                    helperText="Contribuicao sobre Bens e Servicos"
+                    helperText="3.52% para saude com reducao 60%"
                   />
                 </Grid>
               </>
