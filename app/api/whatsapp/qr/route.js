@@ -127,6 +127,7 @@ export async function GET(request) {
 
 /**
  * Map doctor-server status to frontend status
+ * Backend sends PascalCase enum: Disconnected, Connecting, QrCode, Connected, Reconnecting, Error
  */
 function mapStatus(status) {
   if (!status) return 'disconnected';
@@ -136,15 +137,20 @@ function mapStatus(status) {
   switch (statusStr) {
     case 'connected':
       return 'connected';
+    case 'qrcode':
+    case 'qr_code':
     case 'qr_ready':
     case 'waiting_qr':
+    case 'qr':
       return 'qr';
     case 'connecting':
+    case 'reconnecting':
     case 'initializing':
       return 'connecting';
     case 'error':
     case 'failed':
       return 'error';
+    case 'disconnected':
     default:
       return 'disconnected';
   }

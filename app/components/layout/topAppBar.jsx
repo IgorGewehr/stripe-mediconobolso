@@ -10,7 +10,7 @@ import {
     FileText
 } from "lucide-react";
 import NotificationComponent from "../features/shared/NotificationComponent";
-import { WhatsAppStatusButton } from "../features/conversations";
+import { ChannelConnectionButton } from "../features/conversations";
 import { useAuth } from "../providers/authProvider";
 import { cn } from "@/lib/utils";
 
@@ -105,8 +105,8 @@ const TopAppBar = ({
                     <NotificationComponent onMessageClick={handleNotificationClick} />
                 </div>
 
-                {/* WhatsApp Status Button */}
-                <WhatsAppStatusButton variant={isMobile ? "chip" : "button"} />
+                {/* Channel Connection Button (WhatsApp + Facebook) */}
+                <ChannelConnectionButton />
 
                 {/* Botoes de acao - apenas no desktop */}
                 {!isMobile && (

@@ -10,6 +10,8 @@ export { default as MessageBubble } from './MessageBubble';
 export { default as MessageInput } from './MessageInput';
 export { default as AIControlButton } from './AIControlButton';
 export { default as WhatsAppStatusButton } from './WhatsAppStatusButton';
+export { default as FacebookStatusButton } from './FacebookStatusButton';
+export { default as ChannelConnectionButton } from './ChannelConnectionButton';
 export { default as NotificationSettingsDialog } from './NotificationSettingsDialog';
 
 // Skeletons

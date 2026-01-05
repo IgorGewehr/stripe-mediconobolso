@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+/**
+ * useConversations Hook
+ *
+ * Manages conversations state using WebSocket for real-time updates.
+ * Replaces the old polling-based approach with efficient WebSocket events.
+ */
+
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../providers/authProvider';
+import { useWebSocket, WS_EVENT_TYPES } from '../providers/WebSocketProvider';
 import { conversationsService } from '@/lib/services/api/conversations.service';
 
 /**
@@ -16,11 +24,12 @@ export const ConversationStatus = {
 
 /**
  * Hook for managing conversations state and operations
- * Uses polling-based updates from doctor-server
+ * Uses WebSocket for real-time updates
  */
 const useConversations = (options = {}) => {
   const { autoLoad = true, limit = 50 } = options;
   const { user, isSecretary, workingDoctorId } = useAuth();
+  const { subscribe, isConnected: wsConnected } = useWebSocket();
 
   // Get effective doctor ID (for secretaries, use the doctor they work for)
   const doctorId = isSecretary ? workingDoctorId : user?.uid;
@@ -41,6 +50,15 @@ const useConversations = (options = {}) => {
     channel: 'all',
     tags: []
   });
+
+  // Ref to track if we've done initial fetch
+  const initialFetchDone = useRef(false);
+  const selectedConversationRef = useRef(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   /**
    * Load conversations from API
@@ -269,60 +287,216 @@ const useConversations = (options = {}) => {
     unread: conversations.filter(c => !c.isRead).length
   }), [conversations]);
 
-  // Auto-load on mount
+  /**
+   * Initial fetch when doctorId changes
+   */
   useEffect(() => {
-    if (autoLoad && doctorId) {
+    if (autoLoad && doctorId && !initialFetchDone.current) {
+      initialFetchDone.current = true;
       loadConversations();
     }
   }, [autoLoad, doctorId, loadConversations]);
 
-  // Polling-based subscription for conversations
+  /**
+   * Reset initial fetch flag when doctorId changes
+   */
   useEffect(() => {
-    if (!autoLoad || !doctorId) return;
+    initialFetchDone.current = false;
+  }, [doctorId]);
 
-    console.log('[useConversations] Setting up polling listener');
-
-    const unsubscribe = conversationsService.subscribeToConversations(doctorId, (data) => {
-      console.log('[useConversations] Polling update:', data.length, 'conversations');
-      setConversations(data);
-      setLoading(false);
-      setHasMore(data.length === limit);
-    }, limit);
-
-    return () => {
-      console.log('[useConversations] Cleaning up polling');
-      unsubscribe();
-    };
-  }, [autoLoad, doctorId, limit]);
-
-  // Polling-based subscription for messages
+  /**
+   * Subscribe to WebSocket events for real-time conversation updates
+   */
   useEffect(() => {
-    if (!doctorId || !selectedConversation?.id) return;
+    if (!wsConnected || !doctorId) return;
 
-    console.log('[useConversations] Setting up message polling for:', selectedConversation.id);
+    console.log('[useConversations] Setting up WebSocket subscriptions');
 
-    const unsubscribe = conversationsService.subscribeToMessages(
-      doctorId,
-      selectedConversation.id,
-      (data) => {
-        console.log('[useConversations] Messages updated:', data.length);
-        setMessages(data);
-        setLoadingMessages(false);
+    // Handle new conversation created
+    const unsubNew = subscribe(WS_EVENT_TYPES.CONVERSATION_NEW, (event) => {
+      const { payload } = event;
+      console.log('[useConversations] New conversation via WebSocket:', payload);
+
+      // Only process events for our tenant
+      if (payload.tenant_id !== doctorId) return;
+
+      const newConversation = {
+        id: payload.conversation_id,
+        clientName: payload.client_name || 'Desconhecido',
+        clientPhone: payload.client_phone || '',
+        channel: payload.channel || 'whatsapp',
+        status: 'active',
+        isRead: false,
+        unreadCount: 1,
+        messageCount: 1,
+        lastMessage: payload.last_message || '',
+        lastMessageAt: new Date(),
+        tags: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      setConversations(prev => [newConversation, ...prev]);
+    });
+
+    // Handle conversation update (status, read state, etc.)
+    const unsubUpdate = subscribe(WS_EVENT_TYPES.CONVERSATION_UPDATE, (event) => {
+      const { payload } = event;
+      console.log('[useConversations] Conversation update via WebSocket:', payload);
+
+      if (payload.tenant_id !== doctorId) return;
+
+      setConversations(prev => prev.map(conv => {
+        if (conv.id !== payload.conversation_id) return conv;
+
+        return {
+          ...conv,
+          status: payload.status ?? conv.status,
+          isRead: payload.is_read ?? conv.isRead,
+          unreadCount: payload.unread_count ?? conv.unreadCount,
+          lastMessage: payload.last_message ?? conv.lastMessage,
+          lastMessageAt: payload.last_message_at ? new Date(payload.last_message_at) : conv.lastMessageAt,
+          updatedAt: new Date()
+        };
+      }));
+
+      // Update selected conversation if it's the one being updated
+      if (selectedConversationRef.current?.id === payload.conversation_id) {
+        setSelectedConversation(prev => prev ? {
+          ...prev,
+          status: payload.status ?? prev.status,
+          isRead: payload.is_read ?? prev.isRead,
+          unreadCount: payload.unread_count ?? prev.unreadCount,
+          lastMessage: payload.last_message ?? prev.lastMessage,
+          lastMessageAt: payload.last_message_at ? new Date(payload.last_message_at) : prev.lastMessageAt,
+          updatedAt: new Date()
+        } : null);
       }
-    );
+    });
+
+    // Handle new message in a conversation
+    const unsubMessage = subscribe(WS_EVENT_TYPES.CONVERSATION_MESSAGE, (event) => {
+      const { payload } = event;
+      console.log('[useConversations] New message via WebSocket:', payload);
+
+      if (payload.tenant_id !== doctorId) return;
+
+      // Update conversation list with new message info
+      setConversations(prev => {
+        const updated = prev.map(conv => {
+          if (conv.id !== payload.conversation_id) return conv;
+
+          const isCurrentlyViewing = selectedConversationRef.current?.id === conv.id;
+
+          return {
+            ...conv,
+            lastMessage: payload.content?.substring(0, 100) || conv.lastMessage,
+            lastMessageAt: new Date(),
+            messageCount: conv.messageCount + 1,
+            // Only increment unread if not currently viewing this conversation
+            unreadCount: isCurrentlyViewing ? conv.unreadCount : conv.unreadCount + 1,
+            isRead: isCurrentlyViewing ? conv.isRead : false
+          };
+        });
+
+        // Move conversation to top if it exists
+        const convIndex = updated.findIndex(c => c.id === payload.conversation_id);
+        if (convIndex > 0) {
+          const [conv] = updated.splice(convIndex, 1);
+          updated.unshift(conv);
+        }
+
+        return updated;
+      });
+
+      // If this message is for the currently selected conversation, add it to messages
+      if (selectedConversationRef.current?.id === payload.conversation_id) {
+        const newMessage = {
+          id: payload.message_id,
+          content: payload.content || '',
+          sender: payload.sender || 'user',
+          senderName: payload.sender_name || '',
+          timestamp: new Date(),
+          isFromUser: payload.sender === 'user' || payload.is_from_user,
+          whatsappMessageId: payload.whatsapp_message_id || null
+        };
+
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(m => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage];
+        });
+      }
+    });
+
+    // Handle WhatsApp-specific message events (incoming messages from WhatsApp)
+    const unsubWhatsApp = subscribe(WS_EVENT_TYPES.WHATSAPP_MESSAGE, (event) => {
+      const { payload } = event;
+      console.log('[useConversations] WhatsApp message via WebSocket:', payload);
+
+      if (payload.tenant_id !== doctorId) return;
+
+      // If there's a conversation_id, update it
+      if (payload.conversation_id) {
+        setConversations(prev => {
+          let found = false;
+          const updated = prev.map(conv => {
+            if (conv.id !== payload.conversation_id) return conv;
+            found = true;
+
+            const isCurrentlyViewing = selectedConversationRef.current?.id === conv.id;
+
+            return {
+              ...conv,
+              lastMessage: payload.content?.substring(0, 100) || conv.lastMessage,
+              lastMessageAt: new Date(),
+              messageCount: conv.messageCount + 1,
+              unreadCount: isCurrentlyViewing ? conv.unreadCount : conv.unreadCount + 1,
+              isRead: isCurrentlyViewing ? conv.isRead : false,
+              clientName: payload.sender_name || conv.clientName
+            };
+          });
+
+          // Move conversation to top if found
+          if (found) {
+            const convIndex = updated.findIndex(c => c.id === payload.conversation_id);
+            if (convIndex > 0) {
+              const [conv] = updated.splice(convIndex, 1);
+              updated.unshift(conv);
+            }
+          }
+
+          return updated;
+        });
+
+        // Add message to current conversation if viewing it
+        if (selectedConversationRef.current?.id === payload.conversation_id) {
+          const newMessage = {
+            id: payload.message_id,
+            content: payload.content || '',
+            sender: 'user',
+            senderName: payload.sender_name || payload.from || '',
+            timestamp: new Date(),
+            isFromUser: true,
+            whatsappMessageId: payload.message_id
+          };
+
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMessage.id || m.whatsappMessageId === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
+        }
+      }
+    });
 
     return () => {
-      console.log('[useConversations] Cleaning up message polling');
-      unsubscribe();
+      console.log('[useConversations] Cleaning up WebSocket subscriptions');
+      unsubNew();
+      unsubUpdate();
+      unsubMessage();
+      unsubWhatsApp();
     };
-  }, [doctorId, selectedConversation?.id]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      conversationsService.cleanup();
-    };
-  }, []);
+  }, [wsConnected, doctorId, subscribe]);
 
   return {
     // State
@@ -352,7 +526,10 @@ const useConversations = (options = {}) => {
 
     // Context
     doctorId,
-    isSecretary
+    isSecretary,
+
+    // WebSocket status
+    isWebSocketConnected: wsConnected
   };
 };
 

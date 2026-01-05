@@ -1,7 +1,15 @@
 "use client";
 
+/**
+ * useWhatsAppStatus Hook
+ *
+ * Manages WhatsApp connection status using WebSocket for real-time updates.
+ * Replaces the old polling-based approach with efficient WebSocket events.
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../providers/authProvider';
+import { useWebSocket, WS_EVENT_TYPES } from '../providers/WebSocketProvider';
 import { auth } from '@/lib/config/firebase.config';
 
 /**
@@ -14,18 +22,6 @@ export const WhatsAppStatusType = {
   CONNECTED: 'connected',
   ERROR: 'error'
 };
-
-// Cache configuration based on status
-const CACHE_TTL = {
-  connected: 300000,    // 5 minutes when connected
-  disconnected: 60000,  // 1 minute when disconnected
-  error: 30000,         // 30 seconds on error
-  connecting: 8000,     // 8 seconds when connecting
-  qr: 8000              // 8 seconds waiting for QR
-};
-
-// Shared cache between hook instances
-const statusCache = new Map();
 
 /**
  * Get current user's Firebase auth token
@@ -41,11 +37,11 @@ const getAuthToken = async () => {
 };
 
 /**
- * Hook for managing WhatsApp connection status
- * Provides status monitoring, QR code handling, and connection management
+ * Hook for managing WhatsApp connection status via WebSocket
  */
-const useWhatsAppStatus = (autoRefresh = false) => {
+const useWhatsAppStatus = () => {
   const { user, isSecretary, workingDoctorId } = useAuth();
+  const { subscribe, isConnected: wsConnected } = useWebSocket();
 
   // Get effective doctor ID
   const doctorId = isSecretary ? workingDoctorId : user?.uid;
@@ -55,51 +51,47 @@ const useWhatsAppStatus = (autoRefresh = false) => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [phoneNumber, setPhoneNumber] = useState(null);
-  const [businessName, setBusinessName] = useState(null);
+  const [profileName, setProfileName] = useState(null);
   const [qrCode, setQrCode] = useState(null);
   const [error, setError] = useState(null);
 
-  // Refs
-  const autoRefreshIntervalRef = useRef(null);
-  const lastCheckRef = useRef(0);
+  // Ref to track if we've done initial fetch
+  const initialFetchDone = useRef(false);
 
   /**
-   * Check WhatsApp connection status
+   * Map backend status to frontend status
    */
-  const checkStatus = useCallback(async (forceRefresh = false) => {
+  const mapStatus = useCallback((backendStatus, connected) => {
+    if (connected) return WhatsAppStatusType.CONNECTED;
+
+    const statusLower = String(backendStatus || '').toLowerCase();
+    switch (statusLower) {
+      case 'connected':
+        return WhatsAppStatusType.CONNECTED;
+      case 'qr_code':
+      case 'qrcode':
+      case 'qr':
+        return WhatsAppStatusType.QR;
+      case 'connecting':
+      case 'reconnecting':
+        return WhatsAppStatusType.CONNECTING;
+      case 'error':
+        return WhatsAppStatusType.ERROR;
+      default:
+        return WhatsAppStatusType.DISCONNECTED;
+    }
+  }, []);
+
+  /**
+   * Fetch current status from API (initial load only)
+   */
+  const fetchStatus = useCallback(async () => {
     if (!user || !doctorId) return null;
-
-    const cacheKey = `whatsapp-status-${doctorId}`;
-    const now = Date.now();
-
-    // Check cache first (unless force refresh)
-    if (!forceRefresh) {
-      const cached = statusCache.get(cacheKey);
-      if (cached) {
-        const ttl = CACHE_TTL[cached.status] || 30000;
-        if (now - cached.timestamp < ttl) {
-          // Use cached data
-          setStatus(cached.status);
-          setPhoneNumber(cached.data.phoneNumber || null);
-          setBusinessName(cached.data.businessName || null);
-          setQrCode(cached.data.qrCode || null);
-          setLastUpdated(new Date(cached.timestamp));
-          return cached.data;
-        }
-      }
-    }
-
-    // Throttle requests
-    if (!forceRefresh && now - lastCheckRef.current < 5000) {
-      return null;
-    }
-    lastCheckRef.current = now;
 
     try {
       setIsLoading(true);
       setError(null);
 
-      // Get auth token
       const token = await getAuthToken();
       const headers = {
         'Content-Type': 'application/json',
@@ -109,58 +101,32 @@ const useWhatsAppStatus = (autoRefresh = false) => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/whatsapp/session', {
-        headers
-      });
+      const response = await fetch('/api/whatsapp/session', { headers });
 
       if (response.ok) {
         const result = await response.json();
-        const statusData = result.data || {};
+        const data = result.data || {};
 
-        // Map status from backend
-        let mappedStatus = WhatsAppStatusType.DISCONNECTED;
-
-        if (statusData.connected) {
-          mappedStatus = WhatsAppStatusType.CONNECTED;
-        } else if (statusData.status === 'qr' || statusData.status === 'qr_ready') {
-          mappedStatus = WhatsAppStatusType.QR;
-        } else if (statusData.status === 'connecting' || statusData.status === 'initializing') {
-          mappedStatus = WhatsAppStatusType.CONNECTING;
-        } else if (statusData.status === 'error') {
-          mappedStatus = WhatsAppStatusType.ERROR;
-        }
-
-        // Update state
+        const mappedStatus = mapStatus(data.status, data.connected);
         setStatus(mappedStatus);
-        setPhoneNumber(statusData.phoneNumber || null);
-        setBusinessName(statusData.businessName || null);
-        setQrCode(statusData.qrCode || null);
+        setPhoneNumber(data.phoneNumber || null);
+        setProfileName(data.businessName || null);
+        setQrCode(data.qrCode || null);
         setLastUpdated(new Date());
 
-        // Save to cache
-        statusCache.set(cacheKey, {
-          data: statusData,
-          timestamp: now,
-          status: mappedStatus
-        });
-
-        return statusData;
+        return data;
       } else {
         setStatus(WhatsAppStatusType.DISCONNECTED);
-        setPhoneNumber(null);
-        setBusinessName(null);
-        setQrCode(null);
         return null;
       }
     } catch (err) {
-      console.warn('[useWhatsAppStatus] Error checking status:', err);
-      setStatus(WhatsAppStatusType.ERROR);
-      setError(err.message || 'Erro ao verificar status');
+      console.warn('[useWhatsAppStatus] Error fetching status:', err);
+      setError(err.message);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [user, doctorId]);
+  }, [user, doctorId, mapStatus]);
 
   /**
    * Request QR code for connection
@@ -172,7 +138,6 @@ const useWhatsAppStatus = (autoRefresh = false) => {
       setIsLoading(true);
       setError(null);
 
-      // Get auth token
       const token = await getAuthToken();
       const headers = {
         'Content-Type': 'application/json',
@@ -189,8 +154,11 @@ const useWhatsAppStatus = (autoRefresh = false) => {
 
       if (response.ok) {
         const result = await response.json();
-        setQrCode(result.qrCode || null);
-        setStatus(WhatsAppStatusType.QR);
+        // QR code will arrive via WebSocket, but we also get it in response
+        if (result.qrCode) {
+          setQrCode(result.qrCode);
+          setStatus(WhatsAppStatusType.QR);
+        }
         return result.qrCode;
       } else {
         const errorData = await response.json();
@@ -214,7 +182,6 @@ const useWhatsAppStatus = (autoRefresh = false) => {
     try {
       setIsLoading(true);
 
-      // Get auth token
       const token = await getAuthToken();
       const headers = {
         'Content-Type': 'application/json',
@@ -232,11 +199,8 @@ const useWhatsAppStatus = (autoRefresh = false) => {
       if (response.ok) {
         setStatus(WhatsAppStatusType.DISCONNECTED);
         setPhoneNumber(null);
-        setBusinessName(null);
+        setProfileName(null);
         setQrCode(null);
-
-        // Clear cache
-        statusCache.delete(`whatsapp-status-${doctorId}`);
       }
     } catch (err) {
       console.error('[useWhatsAppStatus] Error disconnecting:', err);
@@ -250,17 +214,8 @@ const useWhatsAppStatus = (autoRefresh = false) => {
    * Refresh status manually
    */
   const refreshStatus = useCallback(() => {
-    return checkStatus(true);
-  }, [checkStatus]);
-
-  /**
-   * Clear cache
-   */
-  const clearCache = useCallback(() => {
-    if (doctorId) {
-      statusCache.delete(`whatsapp-status-${doctorId}`);
-    }
-  }, [doctorId]);
+    return fetchStatus();
+  }, [fetchStatus]);
 
   /**
    * Get visual indicator configuration
@@ -309,48 +264,67 @@ const useWhatsAppStatus = (autoRefresh = false) => {
     }
   }, [status, phoneNumber]);
 
-  // Initial status check
+  /**
+   * Subscribe to WebSocket events for WhatsApp status updates
+   */
   useEffect(() => {
-    if (user && doctorId) {
-      checkStatus();
+    if (!wsConnected || !doctorId) return;
+
+    // Subscribe to WhatsApp status events
+    const unsubStatus = subscribe(WS_EVENT_TYPES.WHATSAPP_STATUS, (event) => {
+      const { payload } = event;
+      console.log('[useWhatsAppStatus] Status update via WebSocket:', payload);
+
+      // Only process events for our tenant
+      if (payload.tenant_id !== doctorId) return;
+
+      const mappedStatus = mapStatus(payload.status, payload.connected);
+      setStatus(mappedStatus);
+      setPhoneNumber(payload.phone_number || null);
+      setProfileName(payload.profile_name || null);
+      setLastUpdated(new Date());
+
+      // Clear QR code if connected
+      if (mappedStatus === WhatsAppStatusType.CONNECTED) {
+        setQrCode(null);
+      }
+    });
+
+    // Subscribe to QR code events
+    const unsubQr = subscribe(WS_EVENT_TYPES.WHATSAPP_QR_CODE, (event) => {
+      const { payload } = event;
+      console.log('[useWhatsAppStatus] QR Code via WebSocket:', payload.tenant_id);
+
+      // Only process events for our tenant
+      if (payload.tenant_id !== doctorId) return;
+
+      setQrCode(payload.qr_code);
+      setStatus(WhatsAppStatusType.QR);
+      setLastUpdated(new Date());
+    });
+
+    return () => {
+      unsubStatus();
+      unsubQr();
+    };
+  }, [wsConnected, doctorId, subscribe, mapStatus]);
+
+  /**
+   * Initial status fetch when component mounts or doctorId changes
+   */
+  useEffect(() => {
+    if (user && doctorId && !initialFetchDone.current) {
+      initialFetchDone.current = true;
+      fetchStatus();
     }
-  }, [user, doctorId, checkStatus]);
+  }, [user, doctorId, fetchStatus]);
 
-  // Auto refresh based on status
+  /**
+   * Reset initial fetch flag when doctorId changes
+   */
   useEffect(() => {
-    if (!autoRefresh || !user || !doctorId) return;
-
-    const getRefreshInterval = () => {
-      switch (status) {
-        case WhatsAppStatusType.CONNECTED:
-          return 300000; // 5 minutes
-        case WhatsAppStatusType.CONNECTING:
-        case WhatsAppStatusType.QR:
-          return 10000;  // 10 seconds
-        default:
-          return 60000;  // 1 minute
-      }
-    };
-
-    autoRefreshIntervalRef.current = setInterval(() => {
-      checkStatus();
-    }, getRefreshInterval());
-
-    return () => {
-      if (autoRefreshIntervalRef.current) {
-        clearInterval(autoRefreshIntervalRef.current);
-      }
-    };
-  }, [autoRefresh, user, doctorId, status, checkStatus]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (autoRefreshIntervalRef.current) {
-        clearInterval(autoRefreshIntervalRef.current);
-      }
-    };
-  }, []);
+    initialFetchDone.current = false;
+  }, [doctorId]);
 
   return {
     // Status
@@ -358,16 +332,15 @@ const useWhatsAppStatus = (autoRefresh = false) => {
     isLoading,
     lastUpdated,
     phoneNumber,
-    businessName,
+    businessName: profileName,
     qrCode,
     error,
 
     // Actions
-    checkStatus,
+    checkStatus: fetchStatus,
     requestQRCode,
     disconnect,
     refreshStatus,
-    clearCache,
     getIndicator,
 
     // Helpers
@@ -375,7 +348,10 @@ const useWhatsAppStatus = (autoRefresh = false) => {
     isConnecting: status === WhatsAppStatusType.CONNECTING,
     needsQR: status === WhatsAppStatusType.QR,
     hasError: status === WhatsAppStatusType.ERROR,
-    isDisconnected: status === WhatsAppStatusType.DISCONNECTED
+    isDisconnected: status === WhatsAppStatusType.DISCONNECTED,
+
+    // WebSocket status
+    isWebSocketConnected: wsConnected
   };
 };
 

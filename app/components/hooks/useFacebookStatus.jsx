@@ -1,240 +1,320 @@
 "use client";
 
+/**
+ * useFacebookStatus Hook
+ *
+ * Manages Facebook connection status using WebSocket for real-time updates.
+ * Replaces the old polling-based approach with efficient WebSocket events.
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../providers/authProvider';
+import { useWebSocket, WS_EVENT_TYPES } from '../providers/WebSocketProvider';
 import facebookService from '@/lib/services/api/facebook.service';
 
 /**
- * Hook para gerenciar o status da conexão Facebook
- * @param {boolean} autoRefresh - Se deve atualizar automaticamente
- * @returns {Object} Status e funções de controle
+ * Facebook connection status types
  */
-const useFacebookStatus = (autoRefresh = false) => {
-  const [status, setStatus] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const FacebookStatusType = {
+  DISCONNECTED: 'disconnected',
+  CONNECTING: 'connecting',
+  CONNECTED: 'connected',
+  TOKEN_EXPIRED: 'token_expired',
+  ERROR: 'error'
+};
+
+/**
+ * Hook for managing Facebook connection status via WebSocket
+ */
+const useFacebookStatus = () => {
+  const { user, isSecretary, workingDoctorId } = useAuth();
+  const { subscribe, isConnected: wsConnected } = useWebSocket();
+
+  // Get effective doctor ID
+  const doctorId = isSecretary ? workingDoctorId : user?.uid;
+
+  // State
+  const [status, setStatus] = useState(FacebookStatusType.DISCONNECTED);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pageId, setPageId] = useState(null);
+  const [pageName, setPageName] = useState(null);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
   const [error, setError] = useState(null);
 
-  const intervalRef = useRef(null);
-  const lastFetchRef = useRef(0);
+  // Ref to track if we've done initial fetch
+  const initialFetchDone = useRef(false);
 
-  // Configuração de cache
-  const CACHE_TTL = {
-    connected: 5 * 60 * 1000,      // 5 minutos se conectado
-    disconnected: 60 * 1000,        // 1 minuto se desconectado
-    error: 30 * 1000,               // 30 segundos em caso de erro
-  };
+  /**
+   * Map backend status to frontend status
+   */
+  const mapStatus = useCallback((backendStatus, connected) => {
+    if (connected) return FacebookStatusType.CONNECTED;
 
-  // Buscar status
-  const fetchStatus = useCallback(async (force = false) => {
-    // Throttle de requisições
-    const now = Date.now();
-    if (!force && now - lastFetchRef.current < 5000) {
-      return;
+    const statusLower = String(backendStatus || '').toLowerCase();
+    switch (statusLower) {
+      case 'connected':
+        return FacebookStatusType.CONNECTED;
+      case 'connecting':
+        return FacebookStatusType.CONNECTING;
+      case 'token_expired':
+        return FacebookStatusType.TOKEN_EXPIRED;
+      case 'error':
+        return FacebookStatusType.ERROR;
+      default:
+        return FacebookStatusType.DISCONNECTED;
     }
+  }, []);
+
+  /**
+   * Fetch current status from API (initial load only)
+   */
+  const fetchStatus = useCallback(async () => {
+    if (!user || !doctorId) return null;
 
     try {
       setIsLoading(true);
       setError(null);
 
       const data = await facebookService.getStatus();
-      setStatus(data);
-      lastFetchRef.current = now;
+
+      const mappedStatus = mapStatus(data.status, data.connected);
+      setStatus(mappedStatus);
+      setPageId(data.page_id || null);
+      setPageName(data.page_name || null);
+      setAiEnabled(data.ai_enabled || false);
+      setTokenExpiresAt(data.token_expires_at || null);
+
+      return data;
     } catch (err) {
-      console.error('Error fetching Facebook status:', err);
+      console.warn('[useFacebookStatus] Error fetching status:', err);
       setError(err.message);
-      setStatus({
-        connected: false,
-        status: 'error',
-        error: err.message,
-      });
+      setStatus(FacebookStatusType.ERROR);
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user, doctorId, mapStatus]);
 
-  // Atualizar status
-  const refreshStatus = useCallback(() => {
-    return fetchStatus(true);
-  }, [fetchStatus]);
-
-  // Iniciar OAuth
+  /**
+   * Start OAuth flow
+   */
   const startOAuth = useCallback(async () => {
-    try {
-      // Obtém o tenantId do usuário atual
-      const { auth } = await import('@/lib/config/firebase.config');
-      const user = auth.currentUser;
+    if (!doctorId) return;
 
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { authUrl } = await facebookService.startOAuth(user.uid);
-
-      // Redireciona para o Facebook
-      window.location.href = authUrl;
-    } catch (err) {
-      console.error('Error starting OAuth:', err);
-      setError(err.message);
-      throw err;
-    }
-  }, []);
-
-  // Conectar página
-  const connectPage = useCallback(async (pageData) => {
     try {
       setIsLoading(true);
-      await facebookService.connectPage(pageData);
-      await refreshStatus();
+      const { authUrl } = await facebookService.startOAuth(doctorId);
+      window.location.href = authUrl;
     } catch (err) {
-      console.error('Error connecting page:', err);
+      console.error('[useFacebookStatus] Error starting OAuth:', err);
       setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [refreshStatus]);
+  }, [doctorId]);
 
-  // Desconectar
+  /**
+   * Connect a Facebook page
+   */
+  const connectPage = useCallback(async (pageData) => {
+    if (!doctorId) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      await facebookService.connectPage(pageData);
+      // Status will be updated via WebSocket
+      await fetchStatus();
+    } catch (err) {
+      console.error('[useFacebookStatus] Error connecting page:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [doctorId, fetchStatus]);
+
+  /**
+   * Disconnect Facebook page
+   */
   const disconnect = useCallback(async () => {
+    if (!doctorId) return;
+
     try {
       setIsLoading(true);
       await facebookService.disconnectPage();
-      setStatus({
-        connected: false,
-        status: 'disconnected',
-      });
+
+      setStatus(FacebookStatusType.DISCONNECTED);
+      setPageId(null);
+      setPageName(null);
+      setAiEnabled(false);
+      setTokenExpiresAt(null);
     } catch (err) {
-      console.error('Error disconnecting:', err);
+      console.error('[useFacebookStatus] Error disconnecting:', err);
       setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [doctorId]);
 
-  // Toggle IA
+  /**
+   * Toggle AI for Facebook
+   */
   const toggleAI = useCallback(async (enabled) => {
+    if (!doctorId) return;
+
     try {
       await facebookService.toggleAI(enabled);
-      setStatus(prev => ({
-        ...prev,
-        ai_enabled: enabled,
-      }));
+      setAiEnabled(enabled);
     } catch (err) {
-      console.error('Error toggling AI:', err);
+      console.error('[useFacebookStatus] Error toggling AI:', err);
       setError(err.message);
       throw err;
     }
-  }, []);
+  }, [doctorId]);
 
-  // Enviar mensagem
-  const sendMessage = useCallback(async (messageData) => {
-    try {
-      return await facebookService.sendMessage(messageData);
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setError(err.message);
-      throw err;
-    }
-  }, []);
-
-  // Estado derivado
-  const isConnected = status?.connected === true && status?.status === 'connected';
-  const isConnecting = status?.status === 'connecting';
-  const hasError = status?.status === 'error' || !!error;
-  const isDisconnected = !isConnected && !isConnecting;
-  const aiEnabled = status?.ai_enabled || false;
-  const pageName = status?.page_name;
-  const pageId = status?.page_id;
-  const tokenExpiry = status?.token_expires_at
-    ? facebookService.formatTokenExpiry(status)
-    : null;
-
-  // Efeito para busca inicial
-  useEffect(() => {
-    fetchStatus();
+  /**
+   * Refresh status manually
+   */
+  const refreshStatus = useCallback(() => {
+    return fetchStatus();
   }, [fetchStatus]);
 
-  // Efeito para auto-refresh
+  /**
+   * Format token expiry for display
+   */
+  const formatTokenExpiry = useCallback(() => {
+    if (!tokenExpiresAt) return null;
+    return facebookService.formatTokenExpiry({ token_expires_at: tokenExpiresAt });
+  }, [tokenExpiresAt]);
+
+  /**
+   * Get visual indicator configuration
+   */
+  const getIndicator = useCallback(() => {
+    switch (status) {
+      case FacebookStatusType.CONNECTED:
+        return {
+          color: 'success',
+          label: 'Conectado',
+          tooltip: `Facebook conectado: ${pageName || 'Página'}`,
+          bgColor: '#1877F2'
+        };
+
+      case FacebookStatusType.CONNECTING:
+        return {
+          color: 'warning',
+          label: 'Conectando',
+          tooltip: 'Conectando ao Facebook...',
+          bgColor: '#FFA726'
+        };
+
+      case FacebookStatusType.TOKEN_EXPIRED:
+        return {
+          color: 'warning',
+          label: 'Token Expirado',
+          tooltip: 'Token expirado - reconecte',
+          bgColor: '#FFA726'
+        };
+
+      case FacebookStatusType.ERROR:
+        return {
+          color: 'error',
+          label: 'Erro',
+          tooltip: error || 'Erro na conexão',
+          bgColor: '#EF5350'
+        };
+
+      default: // disconnected
+        return {
+          color: 'default',
+          label: 'Desconectado',
+          tooltip: 'Facebook não conectado',
+          bgColor: '#9E9E9E'
+        };
+    }
+  }, [status, pageName, error]);
+
+  /**
+   * Subscribe to WebSocket events for Facebook status updates
+   */
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!wsConnected || !doctorId) return;
 
-    // Determina intervalo baseado no status
-    const getInterval = () => {
-      if (isConnected) return CACHE_TTL.connected;
-      if (hasError) return CACHE_TTL.error;
-      return CACHE_TTL.disconnected;
-    };
+    // Subscribe to Facebook status events
+    const unsubStatus = subscribe(WS_EVENT_TYPES.FACEBOOK_STATUS, (event) => {
+      const { payload } = event;
+      console.log('[useFacebookStatus] Status update via WebSocket:', payload);
 
-    const startPolling = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      // Only process events for our tenant
+      if (payload.tenant_id !== doctorId) return;
+
+      const mappedStatus = mapStatus(payload.status, payload.connected);
+      setStatus(mappedStatus);
+      setPageId(payload.page_id || null);
+      setPageName(payload.page_name || null);
+      setAiEnabled(payload.ai_enabled || false);
+
+      // Clear error on successful connection
+      if (mappedStatus === FacebookStatusType.CONNECTED) {
+        setError(null);
       }
-      intervalRef.current = setInterval(fetchStatus, getInterval());
-    };
-
-    startPolling();
+    });
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      unsubStatus();
     };
-  }, [autoRefresh, isConnected, hasError, fetchStatus]);
+  }, [wsConnected, doctorId, subscribe, mapStatus]);
 
-  // Indicador visual
-  const getIndicator = useCallback(() => {
-    if (isConnected) {
-      return {
-        color: 'success',
-        label: 'Conectado',
-        tooltip: `Facebook conectado: ${pageName || 'Página'}`,
-      };
+  /**
+   * Initial status fetch when component mounts or doctorId changes
+   */
+  useEffect(() => {
+    if (user && doctorId && !initialFetchDone.current) {
+      initialFetchDone.current = true;
+      fetchStatus();
     }
-    if (isConnecting) {
-      return {
-        color: 'warning',
-        label: 'Conectando',
-        tooltip: 'Conectando ao Facebook...',
-      };
-    }
-    if (hasError) {
-      return {
-        color: 'error',
-        label: 'Erro',
-        tooltip: error || 'Erro na conexão',
-      };
-    }
-    return {
-      color: 'default',
-      label: 'Desconectado',
-      tooltip: 'Facebook não conectado',
-    };
-  }, [isConnected, isConnecting, hasError, pageName, error]);
+  }, [user, doctorId, fetchStatus]);
+
+  /**
+   * Reset initial fetch flag when doctorId changes
+   */
+  useEffect(() => {
+    initialFetchDone.current = false;
+  }, [doctorId]);
 
   return {
-    // Estado
+    // Status
     status,
     isLoading,
-    error,
-    isConnected,
-    isConnecting,
-    hasError,
-    isDisconnected,
-    aiEnabled,
-    pageName,
     pageId,
-    tokenExpiry,
+    pageName,
+    aiEnabled,
+    tokenExpiresAt,
+    error,
 
-    // Ações
-    refreshStatus,
+    // Actions
     startOAuth,
     connectPage,
     disconnect,
     toggleAI,
-    sendMessage,
+    refreshStatus,
 
     // Helpers
+    isConnected: status === FacebookStatusType.CONNECTED,
+    isConnecting: status === FacebookStatusType.CONNECTING,
+    isDisconnected: status === FacebookStatusType.DISCONNECTED,
+    hasError: status === FacebookStatusType.ERROR,
+    isTokenExpired: status === FacebookStatusType.TOKEN_EXPIRED,
+    formatTokenExpiry,
     getIndicator,
+
+    // WebSocket status
+    isWebSocketConnected: wsConnected
   };
 };
 
