@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
     Box,
     Typography,
@@ -130,14 +130,10 @@ const DoctorAITemplate = () => {
         }
     }, [user]);
 
-    // Auto scroll para a última mensagem
-    const scrollToBottom = () => {
+    // Scroll para a última mensagem - apenas quando o usuário envia uma mensagem
+    const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+    }, []);
 
     // Focar no input quando carregar
     useEffect(() => {
@@ -271,10 +267,20 @@ const DoctorAITemplate = () => {
         try {
             const conversation = await aiConversationsService.getConversation(conversationId);
             if (conversation) {
-                setMessages(conversation.messages || []);
+                // Mapear mensagens do backend (snake_case) para o frontend (camelCase)
+                const mappedMessages = (conversation.messages || []).map(msg => ({
+                    id: msg.id,
+                    role: msg.role,
+                    content: msg.content,
+                    timestamp: msg.created_at || msg.createdAt || new Date(),
+                    tokensUsed: msg.tokens_used || msg.tokensUsed || 0,
+                    model: msg.model
+                }));
+
+                setMessages(mappedMessages);
                 setCurrentConversationId(conversationId);
                 setError('');
-                
+
                 // Fechar sidebar no mobile após carregar conversa
                 if (isMobile) {
                     setSidebarOpen(false);
@@ -283,42 +289,6 @@ const DoctorAITemplate = () => {
         } catch (error) {
             console.error("Erro ao carregar conversa:", error);
             setError("Erro ao carregar conversa");
-        }
-    };
-
-    // Salvar conversa
-    const saveConversation = async (messagesData, conversationId = null) => {
-        try {
-            if (!user?.uid || messagesData.length === 0) return null;
-
-            const conversationData = {
-                messages: messagesData,
-                title: generateConversationTitle(messagesData[0]?.content || "Nova conversa"),
-                lastMessageAt: new Date(),
-                messageCount: messagesData.length
-            };
-
-            let savedId;
-            if (conversationId) {
-                await aiConversationsService.updateConversation(conversationId, conversationData.title);
-                savedId = conversationId;
-            } else {
-                const created = await aiConversationsService.createConversation({
-                    title: conversationData.title,
-                    conversationType: 'chat',
-                    initialMessage: messagesData[0]?.content
-                });
-                savedId = created.id;
-            }
-
-            // Recarregar histórico e stats
-            await loadConversationHistory();
-            await loadStats();
-            return savedId;
-        } catch (error) {
-            console.error("Erro ao salvar conversa:", error);
-            setError("Erro ao salvar conversa");
-            return null;
         }
     };
 
@@ -371,7 +341,7 @@ const DoctorAITemplate = () => {
         setError('');
         setIsLoading(true);
 
-        // Adicionar mensagem do usuário
+        // Adicionar mensagem do usuário localmente
         const newUserMessage = {
             id: Date.now(),
             role: 'user',
@@ -383,50 +353,66 @@ const DoctorAITemplate = () => {
         setMessages(updatedMessages);
 
         try {
-            // Preparar histórico para enviar à API
+            // Se não existe conversa, criar uma nova primeiro
+            let conversationId = currentConversationId;
+            if (!conversationId) {
+                const created = await aiConversationsService.createConversation({
+                    title: generateConversationTitle(userMessage),
+                    conversationType: 'chat'
+                });
+                conversationId = created.id;
+                setCurrentConversationId(conversationId);
+            }
+
+            // ✅ SALVAR MENSAGEM DO USUÁRIO NO BACKEND
+            await aiConversationsService.addMessage(conversationId, {
+                role: 'user',
+                content: userMessage
+            });
+
+            // Preparar histórico para enviar à API de chat
             const conversationHistory = messages.map(msg => ({
                 role: msg.role,
                 content: msg.content
             }));
 
-            const response = await fetch('/api/medical-chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: userMessage,
-                    conversationHistory: conversationHistory,
-                    userId: user?.uid
-                }),
-            });
+            // Chamar a IA
+            const result = await aiConversationsService.medicalChat(userMessage, conversationHistory);
 
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || `Erro ${response.status}`);
+            if (!result.success) {
+                throw new Error(result.error || 'Erro ao processar mensagem');
             }
 
-            // Adicionar resposta da IA
+            const aiContent = result.data?.message || result.message || '';
+            const tokensUsed = result.data?.tokens_used || result.tokensUsed || 0;
+            const modelUsed = result.data?.model || 'gpt-4o';
+
+            // Adicionar resposta da IA localmente
             const aiMessage = {
                 id: Date.now() + 1,
                 role: 'assistant',
-                content: result.message,
+                content: aiContent,
                 timestamp: new Date(),
-                tokensUsed: result.tokensUsed
+                tokensUsed: tokensUsed
             };
 
             const finalMessages = [...updatedMessages, aiMessage];
             setMessages(finalMessages);
 
+            // ✅ SALVAR RESPOSTA DA IA NO BACKEND
+            await aiConversationsService.addMessage(conversationId, {
+                role: 'assistant',
+                content: aiContent,
+                tokensUsed: tokensUsed,
+                model: modelUsed
+            });
+
             // ✅ INCREMENTAR CONTADOR DE USOS FREE APÓS SUCESSO
             incrementFreeUsage();
 
-            // Salvar conversa automaticamente
-            const savedId = await saveConversation(finalMessages, currentConversationId);
-            if (!currentConversationId && savedId) {
-                setCurrentConversationId(savedId);
-            }
+            // Recarregar histórico e stats
+            await loadConversationHistory();
+            await loadStats();
 
         } catch (error) {
             console.error('Erro ao enviar mensagem:', error);
@@ -523,8 +509,8 @@ const DoctorAITemplate = () => {
     return (
         <Box sx={{
             display: 'flex',
-            height: isMobile ? 'calc(100vh - 130px)' : 'calc(100vh - 100px)',
-            maxHeight: isMobile ? 'calc(100vh - 130px)' : 'calc(100vh - 100px)',
+            height: isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 120px)',
+            maxHeight: isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 120px)',
             minHeight: 0,
             backgroundColor: '#F4F9FF',
             borderRadius: '20px',

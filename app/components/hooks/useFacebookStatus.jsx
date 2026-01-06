@@ -250,8 +250,7 @@ const useFacebookStatus = () => {
       const { payload } = event;
       console.log('[useFacebookStatus] Status update via WebSocket:', payload);
 
-      // Only process events for our tenant
-      if (payload.tenant_id !== doctorId) return;
+      // Note: Tenant filtering is done server-side by WebSocket routing
 
       const mappedStatus = mapStatus(payload.status, payload.connected);
       setStatus(mappedStatus);

@@ -6,6 +6,7 @@ import { Sparkles, Send, Mic, Lock } from "lucide-react";
 import { CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import AudioProcessingDialog from '../dialogs/AudioProcessingDialog';
 import { useAuth } from '../../providers/authProvider';
+import aiConversationsService from '@/lib/services/api/ai-conversations.service';
 
 const MiniChatCard = () => {
     const { user, isFreeUser } = useAuth();
@@ -100,28 +101,19 @@ const MiniChatCard = () => {
                 content: msg.content
             }));
 
-            const response = await fetch('/api/medical-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: userMessage,
-                    conversationHistory: conversationHistory,
-                    userId: user?.uid
-                }),
-            });
+            // Usar o service com autenticação
+            const result = await aiConversationsService.medicalChat(userMessage, conversationHistory);
 
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || `Erro ${response.status}`);
+            if (!result.success) {
+                throw new Error(result.error || 'Erro ao processar mensagem');
             }
 
             const aiMessage = {
                 id: Date.now() + 1,
                 role: 'assistant',
-                content: result.message,
+                content: result.data?.message || result.message || '',
                 timestamp: new Date(),
-                tokensUsed: result.tokensUsed
+                tokensUsed: result.data?.tokens_used || result.tokensUsed
             };
 
             setMessages([...updatedMessages, aiMessage]);

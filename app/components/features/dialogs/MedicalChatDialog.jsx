@@ -20,6 +20,7 @@ import SendIcon from "@mui/icons-material/Send";
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
+import aiConversationsService from '@/lib/services/api/ai-conversations.service';
 
 const MedicalChatDialog = ({ open, onClose }) => {
     const [messages, setMessages] = useState([]);
@@ -85,30 +86,20 @@ const MedicalChatDialog = ({ open, onClose }) => {
                 content: msg.content
             }));
 
-            const response = await fetch('/api/medical-chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: userMessage,
-                    conversationHistory: conversationHistory
-                }),
-            });
+            // Usar o service com autenticação
+            const result = await aiConversationsService.medicalChat(userMessage, conversationHistory);
 
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || `Erro ${response.status}`);
+            if (!result.success) {
+                throw new Error(result.error || 'Erro ao processar mensagem');
             }
 
             // Adicionar resposta da IA
             const aiMessage = {
                 id: Date.now() + 1,
                 role: 'assistant',
-                content: result.message,
+                content: result.data?.message || result.message || '',
                 timestamp: new Date(),
-                tokensUsed: result.tokensUsed
+                tokensUsed: result.data?.tokens_used || result.tokensUsed
             };
 
             setMessages(prev => [...prev, aiMessage]);

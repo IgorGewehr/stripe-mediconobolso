@@ -99,6 +99,14 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
         return `${year}-${month}-${day}`;
     };
 
+    // Função para formatar datetime completo ISO 8601 para o backend
+    const formatDateTimeForBackend = (date, time) => {
+        const d = new Date(date);
+        const [hour, minute] = (time || '00:00').split(':').map(Number);
+        d.setHours(hour, minute, 0, 0);
+        return d.toISOString();
+    };
+
     useEffect(() => {
         if (initialConsultationId && eventos.length > 0) {
             const consultation = eventos.find(ev => ev.id === initialConsultationId);
@@ -270,18 +278,31 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
 
             console.log('📋 Criando consulta para paciente:', patientId);
 
-            // Garantir que a data está formatada corretamente antes de salvar
-            const dataToSave = {
-                ...consultationData,
-                consultationDate: formatDateForFirebase(consultationData.consultationDate)
+            // Formatar dados para o backend
+            // Nota: professionalId não é enviado - o backend usa o usuário autenticado
+            const consultationTime = consultationData.consultationTime || consultationData.time || '00:00';
+            console.log('📋 consultationData recebido:', consultationData);
+            console.log('📋 consultationTime extraído:', consultationTime);
+            console.log('📋 consultationDate:', consultationData.consultationDate);
+
+            const appointmentData = {
+                patientId: patientId,
+                startTime: formatDateTimeForBackend(consultationData.consultationDate, consultationTime),
+                endTime: consultationData.endTime || null,
+                type: consultationData.type || consultationData.consultationType || 'Consulta',
+                notes: consultationData.notes || consultationData.observation || '',
+                isTelemedicine: consultationData.isTelemedicine || consultationData.telemedicine || false,
+                telemedicineLink: consultationData.telemedicineLink || null,
+                value: consultationData.value || null,
+                paymentMethod: consultationData.paymentMethod || null,
+                convenioId: consultationData.convenioId || null,
             };
 
-            // Create consultation in Firebase
-            const consultationId = await appointmentsService.createConsultation(
-                doctorId,
-                patientId,
-                dataToSave
-            );
+            console.log('📋 appointmentData formatado:', appointmentData);
+
+            // Criar agendamento via API
+            const result = await appointmentsService.create(appointmentData);
+            const consultationId = result.id;
 
             console.log('🆔 Consulta criada com ID:', consultationId);
 
@@ -350,21 +371,26 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
 
             console.log('📋 Atualizando consulta ID:', consultationId);
 
-            // Garantir que a data está formatada corretamente antes de salvar
-            const dataToSave = {
-                ...consultationData,
-                consultationDate: formatDateForFirebase(consultationData.consultationDate)
+            // Formatar dados para o backend
+            // Nota: professionalId não é enviado - o backend usa o usuário autenticado
+            const consultationTime = consultationData.consultationTime || consultationData.time || '00:00';
+            const appointmentData = {
+                patientId: patientId,
+                startTime: formatDateTimeForBackend(consultationData.consultationDate, consultationTime),
+                endTime: consultationData.endTime || null,
+                type: consultationData.type || consultationData.consultationType || 'Consulta',
+                notes: consultationData.notes || consultationData.observation || '',
+                isTelemedicine: consultationData.isTelemedicine || consultationData.telemedicine || false,
+                telemedicineLink: consultationData.telemedicineLink || null,
+                value: consultationData.value || null,
+                paymentMethod: consultationData.paymentMethod || null,
+                convenioId: consultationData.convenioId || null,
             };
 
-            // Update in Firebase
-            await appointmentsService.updateConsultation(
-                doctorId,
-                patientId,
-                consultationId,
-                dataToSave
-            );
+            // Atualizar via API
+            await appointmentsService.update(consultationId, appointmentData);
 
-            console.log('✅ Consulta atualizada no Firebase');
+            console.log('✅ Consulta atualizada no backend');
 
             // Crie o objeto de evento atualizado
             const patient = await patientsService.getById(patientId);
@@ -457,22 +483,26 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
 
             const patientId = consultationToUpdate.patientId;
 
-            // MODIFICAÇÃO AQUI: Preservar a data original formatada corretamente
-            const updateData = {
-                status: newStatus,
-                // Incluir a data original da consulta para preservá-la
-                consultationDate: formatDateForFirebase(consultationToUpdate.consultationDate || consultationToUpdate.data),
-                // Garantir que o campo 'data' também seja preservado (usado em algumas partes do código)
-                data: formatDateForFirebase(consultationToUpdate.consultationDate || consultationToUpdate.data)
+            // Usar os métodos específicos de status do serviço
+            const statusMap = {
+                'Confirmado': () => appointmentsService.confirm(consultationId),
+                'Cancelado': () => appointmentsService.cancel(consultationId, 'Cancelado pelo médico'),
+                'Chegou': () => appointmentsService.checkIn(consultationId),
+                'Em Atendimento': () => appointmentsService.start(consultationId),
+                'Finalizado': () => appointmentsService.complete(consultationId),
+                'Faltou': () => appointmentsService.noShow(consultationId),
             };
 
-            // Atualizar no Firebase com a data preservada
-            await appointmentsService.updateConsultation(
-                doctorId,
-                patientId,
-                consultationId,
-                updateData  // Enviar status E data
-            );
+            const updateFn = statusMap[newStatus];
+            if (updateFn) {
+                await updateFn();
+            } else {
+                // Fallback: atualizar via método genérico
+                const updateTime = consultationToUpdate.consultationTime || consultationToUpdate.time || '00:00';
+                await appointmentsService.update(consultationId, {
+                    startTime: formatDateTimeForBackend(consultationToUpdate.consultationDate || consultationToUpdate.data, updateTime),
+                });
+            }
 
             // Atualizar o estado local (sem modificação necessária aqui)
             setEventos(prev => {

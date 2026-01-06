@@ -176,7 +176,7 @@ const ChannelDialog = ({
           pb: 0,
         }}
       >
-        <Typography variant="h6" fontWeight={600}>
+        <Typography variant="h6" component="span" fontWeight={600}>
           Canais de Comunicação
         </Typography>
         <IconButton onClick={onClose} size="small">
@@ -222,7 +222,19 @@ const ChannelDialog = ({
 
       <DialogContent sx={{ p: 0 }}>
         {activeTab === 0 ? (
-          <WhatsAppPanel {...whatsapp} />
+          <WhatsAppPanel
+            isConnected={whatsapp.isConnected}
+            isConnecting={whatsapp.isConnecting}
+            isLoading={whatsapp.isLoading}
+            phoneNumber={whatsapp.phoneNumber}
+            businessName={whatsapp.businessName}
+            qrCode={whatsapp.qrCode}
+            requestQRCode={whatsapp.requestQRCode}
+            disconnect={whatsapp.disconnect}
+            refreshStatus={whatsapp.refreshStatus}
+            needsQR={whatsapp.needsQR}
+            hasError={whatsapp.hasError}
+          />
         ) : (
           <FacebookPanel {...facebook} />
         )}
@@ -250,6 +262,7 @@ const StatusDot = ({ connected }) => (
  */
 const WhatsAppPanel = ({
   isConnected,
+  isConnecting,
   isLoading,
   phoneNumber,
   businessName,
@@ -263,6 +276,7 @@ const WhatsAppPanel = ({
   const [isRequestingQR, setIsRequestingQR] = useState(false);
 
   const handleRequestQR = useCallback(async () => {
+    if (isRequestingQR || isLoading || isConnecting) return; // Prevent multiple clicks
     setIsRequestingQR(true);
     try {
       await requestQRCode();
@@ -271,7 +285,7 @@ const WhatsAppPanel = ({
     } finally {
       setIsRequestingQR(false);
     }
-  }, [requestQRCode]);
+  }, [requestQRCode, isRequestingQR, isLoading, isConnecting]);
 
   const handleDisconnect = useCallback(async () => {
     try {
@@ -282,7 +296,7 @@ const WhatsAppPanel = ({
     }
   }, [disconnect, refreshStatus]);
 
-  const loading = isLoading || isRequestingQR;
+  const loading = isLoading || isRequestingQR || isConnecting;
 
   if (isConnected) {
     return (
@@ -345,8 +359,14 @@ const WhatsAppPanel = ({
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <CircularProgress size={48} sx={{ mb: 2 }} />
         <Typography color="text.secondary">
-          {isRequestingQR ? 'Gerando QR Code...' : 'Carregando...'}
+          {isConnecting ? 'Aguardando QR Code do servidor...' :
+           isRequestingQR ? 'Gerando QR Code...' : 'Carregando...'}
         </Typography>
+        {isConnecting && (
+          <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+            O QR Code aparecerá automaticamente
+          </Typography>
+        )}
       </Box>
     );
   }

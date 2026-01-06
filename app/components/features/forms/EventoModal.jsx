@@ -422,19 +422,21 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
             return;
         }
 
+        // Determinar o ID do médico correto (secretária usa workingDoctorId)
+        // Nota: O backend usa auth.profissional_id como fallback, então este campo
+        // é principalmente para referência local e compatibilidade com o componente pai
+        const doctorId = isSecretary ? user.workingDoctorId : user.uid;
+
         // Limpar avisos anteriores
         setConflictWarning(null);
         setCheckingConflict(true);
 
         try {
-            // Determinar o ID do médico correto
-            const doctorId = isSecretary ? user.workingDoctorId : user.uid;
-
             // Verificar conflito de horário ANTES de salvar
+            // Nota: profissional_id não é enviado - backend usa auth.user_id
             console.log('🔍 Verificando conflito de horário...');
             const startDateTime = buildStartDateTime();
             const conflictResult = await appointmentsService.checkConflict(
-                doctorId,
                 startDateTime,
                 parseInt(formData.consultationDuration),
                 evento?.id || null, // excludeId para edição

@@ -317,8 +317,7 @@ const useConversations = (options = {}) => {
       const { payload } = event;
       console.log('[useConversations] New conversation via WebSocket:', payload);
 
-      // Only process events for our tenant
-      if (payload.tenant_id !== doctorId) return;
+      // Note: Tenant filtering is done server-side by WebSocket routing
 
       const newConversation = {
         id: payload.conversation_id,
@@ -344,7 +343,7 @@ const useConversations = (options = {}) => {
       const { payload } = event;
       console.log('[useConversations] Conversation update via WebSocket:', payload);
 
-      if (payload.tenant_id !== doctorId) return;
+      // Note: Tenant filtering is done server-side by WebSocket routing
 
       setConversations(prev => prev.map(conv => {
         if (conv.id !== payload.conversation_id) return conv;
@@ -379,7 +378,7 @@ const useConversations = (options = {}) => {
       const { payload } = event;
       console.log('[useConversations] New message via WebSocket:', payload);
 
-      if (payload.tenant_id !== doctorId) return;
+      // Note: Tenant filtering is done server-side by WebSocket routing
 
       // Update conversation list with new message info
       setConversations(prev => {
@@ -434,7 +433,7 @@ const useConversations = (options = {}) => {
       const { payload } = event;
       console.log('[useConversations] WhatsApp message via WebSocket:', payload);
 
-      if (payload.tenant_id !== doctorId) return;
+      // Note: Tenant filtering is done server-side by WebSocket routing
 
       // If there's a conversation_id, update it
       if (payload.conversation_id) {

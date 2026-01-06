@@ -58,6 +58,9 @@ const useWhatsAppStatus = () => {
   // Ref to track if we've done initial fetch
   const initialFetchDone = useRef(false);
 
+  // Ref to track QR timeout
+  const qrTimeoutRef = useRef(null);
+
   /**
    * Map backend status to frontend status
    */
@@ -137,6 +140,8 @@ const useWhatsAppStatus = () => {
     try {
       setIsLoading(true);
       setError(null);
+      // Set connecting status immediately so UI shows we're working
+      setStatus(WhatsAppStatusType.CONNECTING);
 
       const token = await getAuthToken();
       const headers = {
@@ -154,10 +159,32 @@ const useWhatsAppStatus = () => {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('[useWhatsAppStatus] QR request response:', result);
+
         // QR code will arrive via WebSocket, but we also get it in response
         if (result.qrCode) {
           setQrCode(result.qrCode);
           setStatus(WhatsAppStatusType.QR);
+          setIsLoading(false);
+        } else {
+          // No QR in response - keep connecting status and wait for WebSocket
+          // Set a timeout to avoid infinite loading
+          console.log('[useWhatsAppStatus] No QR in response, waiting for WebSocket...');
+
+          // Clear any existing timeout
+          if (qrTimeoutRef.current) {
+            clearTimeout(qrTimeoutRef.current);
+          }
+
+          // Set timeout - if no QR arrives in 30 seconds, show error
+          qrTimeoutRef.current = setTimeout(() => {
+            if (status === WhatsAppStatusType.CONNECTING && !qrCode) {
+              console.warn('[useWhatsAppStatus] QR code timeout');
+              setError('Tempo esgotado aguardando QR Code. Tente novamente.');
+              setStatus(WhatsAppStatusType.ERROR);
+              setIsLoading(false);
+            }
+          }, 30000);
         }
         return result.qrCode;
       } else {
@@ -167,9 +194,9 @@ const useWhatsAppStatus = () => {
     } catch (err) {
       console.error('[useWhatsAppStatus] Error requesting QR:', err);
       setError(err.message);
-      throw err;
-    } finally {
+      setStatus(WhatsAppStatusType.ERROR);
       setIsLoading(false);
+      throw err;
     }
   }, [doctorId]);
 
@@ -271,12 +298,10 @@ const useWhatsAppStatus = () => {
     if (!wsConnected || !doctorId) return;
 
     // Subscribe to WhatsApp status events
+    // Note: WebSocket já filtra eventos por tenant no backend (send_to_tenant)
     const unsubStatus = subscribe(WS_EVENT_TYPES.WHATSAPP_STATUS, (event) => {
       const { payload } = event;
       console.log('[useWhatsAppStatus] Status update via WebSocket:', payload);
-
-      // Only process events for our tenant
-      if (payload.tenant_id !== doctorId) return;
 
       const mappedStatus = mapStatus(payload.status, payload.connected);
       setStatus(mappedStatus);
@@ -291,21 +316,31 @@ const useWhatsAppStatus = () => {
     });
 
     // Subscribe to QR code events
+    // Note: WebSocket já filtra eventos por tenant no backend (send_to_tenant)
     const unsubQr = subscribe(WS_EVENT_TYPES.WHATSAPP_QR_CODE, (event) => {
       const { payload } = event;
-      console.log('[useWhatsAppStatus] QR Code via WebSocket:', payload.tenant_id);
+      console.log('[useWhatsAppStatus] QR Code via WebSocket:', payload);
 
-      // Only process events for our tenant
-      if (payload.tenant_id !== doctorId) return;
+      // Clear timeout since QR arrived
+      if (qrTimeoutRef.current) {
+        clearTimeout(qrTimeoutRef.current);
+        qrTimeoutRef.current = null;
+      }
 
       setQrCode(payload.qr_code);
       setStatus(WhatsAppStatusType.QR);
+      setIsLoading(false); // Clear loading when QR arrives
       setLastUpdated(new Date());
     });
 
     return () => {
       unsubStatus();
       unsubQr();
+      // Clear timeout on cleanup
+      if (qrTimeoutRef.current) {
+        clearTimeout(qrTimeoutRef.current);
+        qrTimeoutRef.current = null;
+      }
     };
   }, [wsConnected, doctorId, subscribe, mapStatus]);
 
