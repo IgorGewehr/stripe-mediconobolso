@@ -1,9 +1,8 @@
 'use client';
 
 /**
- * @fileoverview Financial Management Template
- * @description Gestão Financeira completa com todos os recursos
- * Separado de TISS/Glossas/NFSe que possuem páginas próprias
+ * @fileoverview Financial Management Template - Redesign Minimalista
+ * @description Interface limpa e focada: 3 abas principais + configurações
  */
 
 import React, { useState, useCallback } from 'react';
@@ -13,18 +12,27 @@ import {
   Tab,
   Snackbar,
   Alert,
+  IconButton,
+  Tooltip,
+  Drawer,
   Typography,
+  Divider,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
   Badge,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   TrendingUp as ReceitasIcon,
   TrendingDown as DespesasIcon,
-  AccountBalance as FluxoCaixaIcon,
+  Settings as SettingsIcon,
   Business as FornecedoresIcon,
   CreditCard as ContasBancariasIcon,
-  Lightbulb as SugestoesIcon,
-  PeopleAlt as RepassesIcon,
+  Category as CategoriasIcon,
+  Close as CloseIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../providers/authProvider';
 import { useSnackbar } from '../hooks/useDialogState';
@@ -41,54 +49,185 @@ import {
   ContasBancariasList,
   ContaBancariaForm,
   TransferenciaDialog,
-  SugestoesFinanceirasList,
   RepassesList,
 } from '../features/financial';
-import CashFlowView from '../features/financial/CashFlowView';
 import { useSugestoesFinanceiras } from '../hooks/useFinancial';
 
-// Theme colors
-const themeColors = {
+// Theme colors - Design system minimalista
+const theme = {
   primary: '#1852FE',
-  primaryLight: '#E9EFFF',
-  primaryDark: '#0A3AA8',
-  success: '#0CAF60',
-  error: '#FF4B55',
-  warning: '#FFAB2B',
-  textPrimary: '#111E5A',
-  textSecondary: '#4B5574',
-  backgroundPrimary: '#FFFFFF',
-  backgroundSecondary: '#F4F7FF',
-  borderColor: 'rgba(17, 30, 90, 0.1)',
+  background: '#FAFBFC',
+  surface: '#FFFFFF',
+  border: 'rgba(0, 0, 0, 0.08)',
+  text: {
+    primary: '#1A1A2E',
+    secondary: '#6B7280',
+  },
 };
 
 /**
- * TabPanel component
+ * TabPanel - Renderiza conteudo da aba ativa
  */
-function TabPanel({ children, value, index, ...other }) {
+function TabPanel({ children, value, index }) {
+  if (value !== index) return null;
+  return <Box sx={{ pt: 3 }}>{children}</Box>;
+}
+
+/**
+ * ConfigDrawer - Drawer lateral para configuracoes
+ */
+function ConfigDrawer({ open, onClose, onSelectOption }) {
+  const configOptions = [
+    { id: 'fornecedores', label: 'Fornecedores', icon: FornecedoresIcon, description: 'Gerenciar fornecedores' },
+    { id: 'contas-bancarias', label: 'Contas Bancarias', icon: ContasBancariasIcon, description: 'Gerenciar contas' },
+    { id: 'categorias', label: 'Categorias', icon: CategoriasIcon, description: 'Categorias financeiras' },
+  ];
+
   return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`financial-tabpanel-${index}`}
-      aria-labelledby={`financial-tab-${index}`}
-      {...other}
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          width: 320,
+          bgcolor: theme.surface,
+        },
+      }}
     >
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" fontWeight={600}>
+          Configuracoes
+        </Typography>
+        <IconButton onClick={onClose} size="small">
+          <CloseIcon />
+        </IconButton>
+      </Box>
+      <Divider />
+      <List sx={{ pt: 1 }}>
+        {configOptions.map((option) => (
+          <ListItemButton
+            key={option.id}
+            onClick={() => onSelectOption(option.id)}
+            sx={{
+              mx: 1,
+              borderRadius: 2,
+              mb: 0.5,
+              '&:hover': { bgcolor: 'rgba(24, 82, 254, 0.04)' },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <option.icon sx={{ color: theme.text.secondary }} />
+            </ListItemIcon>
+            <ListItemText
+              primary={option.label}
+              secondary={option.description}
+              primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }}
+              secondaryTypographyProps={{ fontSize: '0.8rem' }}
+            />
+            <ChevronRightIcon sx={{ color: theme.text.secondary, fontSize: 20 }} />
+          </ListItemButton>
+        ))}
+      </List>
+    </Drawer>
   );
 }
 
 /**
- * Financial Management Template
- * Focado em Fluxo de Caixa e Eficiência Operacional
+ * DespesasUnificadas - Aba de Despesas com toggle para Repasses
+ */
+function DespesasUnificadas({
+  onAddContaPagar,
+  onViewContaPagar,
+  onEditContaPagar,
+  onDeleteContaPagar,
+  onPaymentContaPagar,
+  onAddRepasse,
+  onViewRepasse,
+  onPayRepasse,
+}) {
+  const [viewMode, setViewMode] = useState('despesas'); // 'despesas' | 'repasses'
+
+  return (
+    <Box>
+      {/* Toggle simples */}
+      <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+        <Box
+          onClick={() => setViewMode('despesas')}
+          sx={{
+            px: 2,
+            py: 0.75,
+            borderRadius: 2,
+            cursor: 'pointer',
+            bgcolor: viewMode === 'despesas' ? theme.primary : 'transparent',
+            color: viewMode === 'despesas' ? '#fff' : theme.text.secondary,
+            fontWeight: 500,
+            fontSize: '0.875rem',
+            transition: 'all 0.2s',
+            '&:hover': {
+              bgcolor: viewMode === 'despesas' ? theme.primary : 'rgba(0,0,0,0.04)',
+            },
+          }}
+        >
+          Despesas
+        </Box>
+        <Box
+          onClick={() => setViewMode('repasses')}
+          sx={{
+            px: 2,
+            py: 0.75,
+            borderRadius: 2,
+            cursor: 'pointer',
+            bgcolor: viewMode === 'repasses' ? theme.primary : 'transparent',
+            color: viewMode === 'repasses' ? '#fff' : theme.text.secondary,
+            fontWeight: 500,
+            fontSize: '0.875rem',
+            transition: 'all 0.2s',
+            '&:hover': {
+              bgcolor: viewMode === 'repasses' ? theme.primary : 'rgba(0,0,0,0.04)',
+            },
+          }}
+        >
+          Repasses
+        </Box>
+      </Box>
+
+      {/* Conteudo */}
+      {viewMode === 'despesas' ? (
+        <ContasPagarList
+          onAdd={onAddContaPagar}
+          onView={onViewContaPagar}
+          onEdit={onEditContaPagar}
+          onDelete={onDeleteContaPagar}
+          onPayment={onPaymentContaPagar}
+        />
+      ) : (
+        <RepassesList
+          onAdd={onAddRepasse}
+          onView={onViewRepasse}
+          onPay={onPayRepasse}
+        />
+      )}
+    </Box>
+  );
+}
+
+/**
+ * Financial Management Template - Versao Minimalista
  */
 export default function FinancialTemplate() {
   const { user } = useAuth();
   const snackbar = useSnackbar();
 
-  // Tab state
+  // Debug: Log user info on mount
+  console.log('[FinancialTemplate] Rendered with user:', user?.email, 'clinicMode:', user?.clinicMode);
+
+  // Tab state - apenas 3 abas
   const [activeTab, setActiveTab] = useState(0);
+
+  // Config drawer state
+  const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
+  const [configView, setConfigView] = useState(null); // 'fornecedores' | 'contas-bancarias' | null
 
   // Dialog states - Contas a Receber
   const [contaFormOpen, setContaFormOpen] = useState(false);
@@ -112,22 +251,33 @@ export default function FinancialTemplate() {
   const [transferenciaDialogOpen, setTransferenciaDialogOpen] = useState(false);
   const [selectedContaBancaria, setSelectedContaBancaria] = useState(null);
 
-  // Sugestoes count for badge
+  // Sugestoes count
   const { sugestoes } = useSugestoesFinanceiras();
 
-  // Handle tab change
+  // Tab change handler
   const handleTabChange = (event, newValue) => {
+    console.log('[FinancialTemplate] Tab changed to:', newValue === 0 ? 'Resumo' : newValue === 1 ? 'Receber' : 'Pagar');
     setActiveTab(newValue);
   };
 
+  // Config drawer handlers
+  const handleConfigSelect = useCallback((option) => {
+    setConfigView(option);
+  }, []);
+
+  const handleConfigBack = useCallback(() => {
+    setConfigView(null);
+  }, []);
+
   // Conta a Receber handlers
   const handleAddConta = useCallback(() => {
+    console.log('[FinancialTemplate] handleAddConta - Opening form');
     setContaToEdit(null);
     setContaFormOpen(true);
   }, []);
 
   const handleViewConta = useCallback((conta) => {
-    console.log('View conta:', conta);
+    console.log('[FinancialTemplate] handleViewConta:', conta?.id, conta?.descricao);
   }, []);
 
   const handleEditConta = useCallback((conta) => {
@@ -150,7 +300,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleContaFormSuccess = useCallback(() => {
-    snackbar.success(contaToEdit ? 'Conta atualizada com sucesso!' : 'Conta criada com sucesso!');
+    snackbar.success(contaToEdit ? 'Conta atualizada!' : 'Conta criada!');
   }, [contaToEdit, snackbar]);
 
   const handleRecebimentoClose = useCallback(() => {
@@ -159,7 +309,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleRecebimentoSuccess = useCallback(() => {
-    snackbar.success('Recebimento registrado com sucesso!');
+    snackbar.success('Recebimento registrado!');
   }, [snackbar]);
 
   // Conta a Pagar handlers
@@ -192,7 +342,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleContaPagarFormSuccess = useCallback(() => {
-    snackbar.success(contaPagarToEdit ? 'Conta atualizada com sucesso!' : 'Conta criada com sucesso!');
+    snackbar.success(contaPagarToEdit ? 'Conta atualizada!' : 'Conta criada!');
   }, [contaPagarToEdit, snackbar]);
 
   const handlePagamentoClose = useCallback(() => {
@@ -201,7 +351,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handlePagamentoSuccess = useCallback(() => {
-    snackbar.success('Pagamento registrado com sucesso!');
+    snackbar.success('Pagamento registrado!');
   }, [snackbar]);
 
   // Fornecedor handlers
@@ -229,7 +379,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleFornecedorFormSuccess = useCallback(() => {
-    snackbar.success(fornecedorToEdit ? 'Fornecedor atualizado com sucesso!' : 'Fornecedor criado com sucesso!');
+    snackbar.success(fornecedorToEdit ? 'Fornecedor atualizado!' : 'Fornecedor criado!');
   }, [fornecedorToEdit, snackbar]);
 
   // Conta Bancaria handlers
@@ -258,7 +408,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleContaBancariaFormSuccess = useCallback(() => {
-    snackbar.success(contaBancariaToEdit ? 'Conta atualizada com sucesso!' : 'Conta criada com sucesso!');
+    snackbar.success(contaBancariaToEdit ? 'Conta atualizada!' : 'Conta criada!');
   }, [contaBancariaToEdit, snackbar]);
 
   const handleTransferenciaClose = useCallback(() => {
@@ -267,7 +417,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleTransferenciaSuccess = useCallback(() => {
-    snackbar.success('Transferencia realizada com sucesso!');
+    snackbar.success('Transferencia realizada!');
   }, [snackbar]);
 
   // Repasses handlers
@@ -283,77 +433,155 @@ export default function FinancialTemplate() {
     console.log('Pay repasse:', repasse);
   }, []);
 
+  // Tabs config - apenas 3 abas principais
   const tabs = [
-    { label: 'Visão Geral', icon: <DashboardIcon />, index: 0 },
-    { label: 'Receitas', icon: <ReceitasIcon />, index: 1 },
-    { label: 'Despesas', icon: <DespesasIcon />, index: 2 },
-    { label: 'Fluxo de Caixa', icon: <FluxoCaixaIcon />, index: 3 },
-    { label: 'Contas Bancarias', icon: <ContasBancariasIcon />, index: 4 },
-    { label: 'Fornecedores', icon: <FornecedoresIcon />, index: 5 },
-    { label: 'Repasses', icon: <RepassesIcon />, index: 6 },
-    {
-      label: 'Sugestoes',
-      icon: sugestoes.length > 0 ? (
-        <Badge badgeContent={sugestoes.length} color="error">
-          <SugestoesIcon />
-        </Badge>
-      ) : (
-        <SugestoesIcon />
-      ),
-      index: 7
-    },
+    { label: 'Visao Geral', icon: <DashboardIcon /> },
+    { label: 'Receitas', icon: <ReceitasIcon /> },
+    { label: 'Despesas', icon: <DespesasIcon /> },
   ];
+
+  // Render config content
+  const renderConfigContent = () => {
+    if (configView === 'fornecedores') {
+      return (
+        <Box>
+          <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={handleConfigBack} size="small">
+              <CloseIcon />
+            </IconButton>
+            <Typography variant="h6" fontWeight={600}>
+              Fornecedores
+            </Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <FornecedoresList
+              onAdd={handleAddFornecedor}
+              onView={handleViewFornecedor}
+              onEdit={handleEditFornecedor}
+              onDeactivate={handleDeactivateFornecedor}
+            />
+          </Box>
+        </Box>
+      );
+    }
+
+    if (configView === 'contas-bancarias') {
+      return (
+        <Box>
+          <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={handleConfigBack} size="small">
+              <CloseIcon />
+            </IconButton>
+            <Typography variant="h6" fontWeight={600}>
+              Contas Bancarias
+            </Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <ContasBancariasList
+              onAdd={handleAddContaBancaria}
+              onEdit={handleEditContaBancaria}
+              onTransfer={handleTransfer}
+              onExtrato={handleExtrato}
+            />
+          </Box>
+        </Box>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        bgcolor: themeColors.backgroundSecondary,
+        bgcolor: theme.background,
         p: { xs: 2, md: 3 },
       }}
     >
-      {/* Tabs */}
+      {/* Container principal */}
       <Box
         sx={{
-          bgcolor: themeColors.backgroundPrimary,
-          borderRadius: '16px',
-          border: '1px solid',
-          borderColor: themeColors.borderColor,
+          bgcolor: theme.surface,
+          borderRadius: 3,
+          border: `1px solid ${theme.border}`,
           overflow: 'hidden',
         }}
       >
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+        {/* Header com tabs e config */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${theme.border}`,
+            px: 2,
+          }}
+        >
           <Tabs
             value={activeTab}
             onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
             sx={{
               '& .MuiTab-root': {
-                minHeight: 64,
+                minHeight: 56,
                 textTransform: 'none',
                 fontWeight: 500,
+                fontSize: '0.925rem',
+                color: theme.text.secondary,
+                '&.Mui-selected': {
+                  color: theme.primary,
+                },
+              },
+              '& .MuiTabs-indicator': {
+                backgroundColor: theme.primary,
+                height: 2,
               },
             }}
           >
-            {tabs.map((tab) => (
+            {tabs.map((tab, index) => (
               <Tab
-                key={tab.index}
+                key={index}
                 icon={tab.icon}
                 iconPosition="start"
                 label={tab.label}
+                sx={{ gap: 1 }}
               />
             ))}
           </Tabs>
+
+          {/* Botao de configuracoes */}
+          <Tooltip title="Configuracoes">
+            <IconButton
+              onClick={() => setConfigDrawerOpen(true)}
+              sx={{
+                color: theme.text.secondary,
+                '&:hover': {
+                  bgcolor: 'rgba(24, 82, 254, 0.08)',
+                  color: theme.primary,
+                },
+              }}
+            >
+              <Badge
+                badgeContent={sugestoes?.length || 0}
+                color="error"
+                sx={{ '& .MuiBadge-badge': { fontSize: '0.65rem' } }}
+              >
+                <SettingsIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
         </Box>
 
+        {/* Conteudo das abas */}
         <Box sx={{ p: { xs: 2, md: 3 } }}>
-          {/* Dashboard Tab */}
+          {/* Visao Geral */}
           <TabPanel value={activeTab} index={0}>
             <FinancialDashboard />
           </TabPanel>
 
-          {/* Receitas (Contas a Receber) Tab */}
+          {/* Receitas */}
           <TabPanel value={activeTab} index={1}>
             <ContasReceberList
               onAdd={handleAddConta}
@@ -364,57 +592,48 @@ export default function FinancialTemplate() {
             />
           </TabPanel>
 
-          {/* Despesas (Contas a Pagar) Tab */}
+          {/* Despesas (unificado com Repasses) */}
           <TabPanel value={activeTab} index={2}>
-            <ContasPagarList
-              onAdd={handleAddContaPagar}
-              onView={handleViewContaPagar}
-              onEdit={handleEditContaPagar}
-              onDelete={handleDeleteContaPagar}
-              onPayment={handlePaymentContaPagar}
+            <DespesasUnificadas
+              onAddContaPagar={handleAddContaPagar}
+              onViewContaPagar={handleViewContaPagar}
+              onEditContaPagar={handleEditContaPagar}
+              onDeleteContaPagar={handleDeleteContaPagar}
+              onPaymentContaPagar={handlePaymentContaPagar}
+              onAddRepasse={handleAddRepasse}
+              onViewRepasse={handleViewRepasse}
+              onPayRepasse={handlePayRepasse}
             />
-          </TabPanel>
-
-          {/* Fluxo de Caixa Tab */}
-          <TabPanel value={activeTab} index={3}>
-            <CashFlowView />
-          </TabPanel>
-
-          {/* Contas Bancarias Tab */}
-          <TabPanel value={activeTab} index={4}>
-            <ContasBancariasList
-              onAdd={handleAddContaBancaria}
-              onEdit={handleEditContaBancaria}
-              onTransfer={handleTransfer}
-              onExtrato={handleExtrato}
-            />
-          </TabPanel>
-
-          {/* Fornecedores Tab */}
-          <TabPanel value={activeTab} index={5}>
-            <FornecedoresList
-              onAdd={handleAddFornecedor}
-              onView={handleViewFornecedor}
-              onEdit={handleEditFornecedor}
-              onDeactivate={handleDeactivateFornecedor}
-            />
-          </TabPanel>
-
-          {/* Repasses Tab */}
-          <TabPanel value={activeTab} index={6}>
-            <RepassesList
-              onAdd={handleAddRepasse}
-              onView={handleViewRepasse}
-              onPay={handlePayRepasse}
-            />
-          </TabPanel>
-
-          {/* Sugestoes Tab */}
-          <TabPanel value={activeTab} index={7}>
-            <SugestoesFinanceirasList />
           </TabPanel>
         </Box>
       </Box>
+
+      {/* Config Drawer */}
+      <Drawer
+        anchor="right"
+        open={configDrawerOpen}
+        onClose={() => {
+          setConfigDrawerOpen(false);
+          setConfigView(null);
+        }}
+        PaperProps={{
+          sx: {
+            width: configView ? 600 : 320,
+            bgcolor: theme.surface,
+            transition: 'width 0.3s',
+          },
+        }}
+      >
+        {configView ? (
+          renderConfigContent()
+        ) : (
+          <ConfigDrawer
+            open={true}
+            onClose={() => setConfigDrawerOpen(false)}
+            onSelectOption={handleConfigSelect}
+          />
+        )}
+      </Drawer>
 
       {/* Dialogs - Contas a Receber */}
       <ContaReceberForm
@@ -472,7 +691,7 @@ export default function FinancialTemplate() {
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
+        autoHideDuration={3000}
         onClose={snackbar.handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
@@ -480,6 +699,7 @@ export default function FinancialTemplate() {
           onClose={snackbar.handleClose}
           severity={snackbar.severity}
           variant="filled"
+          sx={{ borderRadius: 2 }}
         >
           {snackbar.message}
         </Alert>

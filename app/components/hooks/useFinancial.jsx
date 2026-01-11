@@ -18,16 +18,21 @@ export const useFinancialDashboard = (options = {}) => {
   const [error, setError] = useState(null);
 
   const loadDashboard = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('[useFinancialDashboard] loadDashboard - Skipping: no user');
+      return;
+    }
 
+    console.log('[useFinancialDashboard] loadDashboard - Starting...');
     setLoading(true);
     setError(null);
 
     try {
       const data = await financialService.getDashboard();
+      console.log('[useFinancialDashboard] loadDashboard - Success:', data);
       setDashboard(data);
     } catch (err) {
-      console.error('[useFinancialDashboard] Error loading dashboard:', err);
+      console.error('[useFinancialDashboard] loadDashboard - Error:', err);
       setError('Erro ao carregar dados financeiros');
     } finally {
       setLoading(false);
@@ -118,8 +123,12 @@ export const useContasReceber = (options = {}) => {
   });
 
   const loadContas = useCallback(async (page = 1) => {
-    if (!user) return;
+    if (!user) {
+      console.log('[useContasReceber] loadContas - Skipping: no user');
+      return;
+    }
 
+    console.log('[useContasReceber] loadContas - Starting with filters:', filters, 'page:', page);
     setLoading(true);
     setError(null);
 
@@ -130,6 +139,7 @@ export const useContasReceber = (options = {}) => {
         perPage: pagination.perPage,
       });
 
+      console.log('[useContasReceber] loadContas - Success:', response.items?.length, 'contas');
       setContas(response.items);
       setPagination({
         page: response.page,
@@ -138,7 +148,7 @@ export const useContasReceber = (options = {}) => {
         totalPages: response.totalPages,
       });
     } catch (err) {
-      console.error('[useContasReceber] Error loading:', err);
+      console.error('[useContasReceber] loadContas - Error:', err);
       setError('Erro ao carregar contas a receber');
     } finally {
       setLoading(false);

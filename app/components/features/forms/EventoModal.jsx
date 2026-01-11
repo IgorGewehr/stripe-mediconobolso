@@ -403,28 +403,38 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
     // Handler para envio do formulário
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('🚀 Iniciando submit do agendamento...');
+
+        // Log de contexto para debug
+        const userContext = getUserContext ? getUserContext() : null;
+        console.log('[EventoModal] SUBMIT - Auth Context:', {
+            userId: user?.uid,
+            isSecretary,
+            workingDoctorId: user?.workingDoctorId,
+            clinicMode: userContext?.clinicMode || 'unknown',
+            effectiveDoctorId: isSecretary ? user?.workingDoctorId : user?.uid,
+            note: 'profissional_id will be determined by backend based on auth context'
+        });
 
         // Evitar múltiplas submissões
         if (savingConsultation || checkingConflict) {
-            console.log('⏳ Submit já em andamento, ignorando...');
+            console.log('[EventoModal] SUBMIT - Already in progress, ignoring...');
             return;
         }
 
         if (!validateForm()) {
-            console.log('❌ Validação falhou');
+            console.log('[EventoModal] SUBMIT - Validation failed');
             return;
         }
 
         if (!user) {
             setErrors({ general: "Usuário não autenticado. Faça login novamente." });
-            console.log('❌ Usuário não autenticado');
+            console.log('[EventoModal] SUBMIT - User not authenticated');
             return;
         }
 
         // Determinar o ID do médico correto (secretária usa workingDoctorId)
-        // Nota: O backend usa auth.profissional_id como fallback, então este campo
-        // é principalmente para referência local e compatibilidade com o componente pai
+        // NOTA: Este campo é usado apenas para referência local e compatibilidade
+        // O backend determina profissional_id automaticamente via auth context
         const doctorId = isSecretary ? user.workingDoctorId : user.uid;
 
         // Limpar avisos anteriores
@@ -459,10 +469,12 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
             setSavingConsultation(true);
 
             // Criar formato de consulta para salvar
+            // NOTA: doctorId aqui é apenas para referência local
+            // O backend determina profissional_id via auth context
             const consultationData = {
                 ...consultationModel,
                 patientId: formData.patientId,
-                doctorId: doctorId,
+                doctorId: doctorId, // Referência local, não enviado ao backend
                 consultationDate: formData.consultationDate,
                 consultationTime: formData.consultationTime,
                 consultationDuration: parseInt(formData.consultationDuration),
@@ -474,13 +486,13 @@ const EventoModal = ({ isOpen, onClose, onSave, evento }) => {
             // Se for edição, manter o ID original
             if (evento?.id) {
                 consultationData.id = evento.id;
-                console.log('🔄 Modo edição, ID:', evento.id);
-            } else {
-                console.log('➕ Modo criação');
             }
 
-            console.log('📋 Dados da consulta:', consultationData);
-            console.log('📞 Chamando onSave...');
+            console.log('[EventoModal] SUBMIT - Consultation Data:', {
+                ...consultationData,
+                mode: evento?.id ? 'UPDATE' : 'CREATE',
+                note: 'doctorId is for local reference only - backend determines profissional_id'
+            });
 
             await onSave(consultationData);
             console.log('✅ onSave completado com sucesso');

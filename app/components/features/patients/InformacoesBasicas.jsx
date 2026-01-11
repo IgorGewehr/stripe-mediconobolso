@@ -35,84 +35,134 @@ import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 
-// ------------------ ESTILOS ------------------
+// ------------------ ESTILOS MODERNOS ------------------
 const FormLabel = styled(Typography)(() => ({
-    color: "#111E5A",
+    color: "#4B5574",
     fontWeight: 500,
     fontSize: "14px",
     marginBottom: "8px",
+    transition: "color 0.2s ease",
 }));
 
-const StyledTextField = styled(TextField)(() => ({
+const StyledTextField = styled(TextField)(({ error }) => ({
     "& .MuiOutlinedInput-root": {
-        borderRadius: "999px",
+        borderRadius: "12px",
         backgroundColor: "#FFFFFF",
+        transition: "all 0.2s ease",
         "& fieldset": {
-            border: "1px solid rgba(17, 30, 90, 0.30)",
+            border: error ? "1.5px solid #EF4444" : "1.5px solid rgba(17, 30, 90, 0.15)",
+            transition: "all 0.2s ease",
         },
         "&:hover fieldset": {
-            borderColor: "rgba(17, 30, 90, 0.50)",
+            borderColor: error ? "#DC2626" : "rgba(24, 82, 254, 0.4)",
         },
         "&.Mui-focused fieldset": {
-            borderColor: "#111E5A",
+            borderColor: error ? "#EF4444" : "#1852FE",
+            borderWidth: "2px",
+            boxShadow: error
+                ? "0 0 0 3px rgba(239, 68, 68, 0.1)"
+                : "0 0 0 3px rgba(24, 82, 254, 0.1)",
+        },
+        "&.Mui-disabled": {
+            backgroundColor: "#F8FAFF",
+            "& fieldset": {
+                borderColor: "rgba(17, 30, 90, 0.08)",
+            },
         },
     },
     "& .MuiInputBase-input": {
-        padding: "12px 16px",
+        padding: "14px 16px",
+        fontSize: "15px",
+        "&::placeholder": {
+            color: "#9CA3AF",
+            opacity: 1,
+        },
+    },
+    "& .MuiFormHelperText-root": {
+        marginLeft: "4px",
+        marginTop: "6px",
+        fontSize: "12px",
+        fontWeight: 500,
+        "&.Mui-error": {
+            color: "#EF4444",
+        },
     },
 }));
 
-const StyledSelect = styled(TextField)(() => ({
+const StyledSelect = styled(TextField)(({ error }) => ({
     "& .MuiOutlinedInput-root": {
-        borderRadius: "999px",
+        borderRadius: "12px",
         backgroundColor: "#FFFFFF",
+        transition: "all 0.2s ease",
         "& fieldset": {
-            border: "1px solid rgba(17, 30, 90, 0.30)",
+            border: error ? "1.5px solid #EF4444" : "1.5px solid rgba(17, 30, 90, 0.15)",
+            transition: "all 0.2s ease",
         },
         "&:hover fieldset": {
-            borderColor: "rgba(17, 30, 90, 0.50)",
+            borderColor: error ? "#DC2626" : "rgba(24, 82, 254, 0.4)",
         },
         "&.Mui-focused fieldset": {
-            borderColor: "#111E5A",
+            borderColor: error ? "#EF4444" : "#1852FE",
+            borderWidth: "2px",
+            boxShadow: error
+                ? "0 0 0 3px rgba(239, 68, 68, 0.1)"
+                : "0 0 0 3px rgba(24, 82, 254, 0.1)",
         },
     },
     "& .MuiInputBase-input": {
-        padding: "12px 16px",
+        padding: "14px 16px",
+        fontSize: "15px",
+    },
+    "& .MuiSelect-icon": {
+        color: "#9CA3AF",
+        transition: "transform 0.2s ease",
+    },
+    "&:hover .MuiSelect-icon": {
+        color: "#1852FE",
     },
 }));
 
 const GenderButton = styled(Button)(({ selected }) => ({
-    borderRadius: "999px",
-    backgroundColor: selected ? "#E8EAF6" : "#FFFFFF",
-    border: `1px solid ${selected ? "#111E5A" : "rgba(17, 30, 90, 0.30)"}`,
-    color: "#111E5A",
+    borderRadius: "12px",
+    backgroundColor: selected ? "rgba(24, 82, 254, 0.08)" : "#FFFFFF",
+    border: `2px solid ${selected ? "#1852FE" : "rgba(17, 30, 90, 0.12)"}`,
+    color: selected ? "#1852FE" : "#4B5574",
     textTransform: "none",
-    padding: "10px 16px",
+    padding: "12px 16px",
+    fontWeight: selected ? 600 : 500,
+    transition: "all 0.2s ease",
     "&:hover": {
-        backgroundColor: selected ? "#E8EAF6" : "#F9FAFB",
-        borderColor: selected ? "#111E5A" : "#D1D5DB",
+        backgroundColor: selected ? "rgba(24, 82, 254, 0.12)" : "rgba(24, 82, 254, 0.04)",
+        borderColor: selected ? "#1852FE" : "rgba(24, 82, 254, 0.3)",
+        transform: "translateY(-1px)",
     },
     width: "100%",
-    justifyContent: "flex-start",
+    justifyContent: "center",
+    gap: "8px",
 }));
 
 const PhotoUploadButton = styled(Button)(() => ({
     borderRadius: "16px",
-    border: "1px dashed rgba(17, 30, 90, 0.30)",
-    backgroundColor: "#FFFFFF",
-    color: "#111E5A",
+    border: "2px dashed rgba(24, 82, 254, 0.2)",
+    backgroundColor: "rgba(24, 82, 254, 0.02)",
+    color: "#4B5574",
     textTransform: "none",
-    padding: "12px 16px",
+    padding: "16px",
+    transition: "all 0.25s ease",
     "&:hover": {
-        backgroundColor: "#F9FAFB",
-        borderColor: "#D1D5DB",
+        backgroundColor: "rgba(24, 82, 254, 0.06)",
+        borderColor: "rgba(24, 82, 254, 0.4)",
+        color: "#1852FE",
+        transform: "translateY(-2px)",
+        boxShadow: "0 4px 12px rgba(24, 82, 254, 0.1)",
     },
     width: "100%",
-    height: "100px",
+    height: "120px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
+    gap: "8px",
 }));
 
 // Botão AI para extração de dados

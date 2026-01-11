@@ -263,13 +263,30 @@ export default function TissDashboard() {
     const [newGuiaOpen, setNewGuiaOpen] = useState(false);
     const [newLoteOpen, setNewLoteOpen] = useState(false);
 
+    // Debug: Log state changes
+    useEffect(() => {
+        console.log('[TissDashboard] Estado atualizado:', {
+            loading,
+            isEnabled,
+            hasStats: !!stats,
+            error: error?.message || null,
+            stats: stats ? {
+                totalGuias: stats?.guias?.total_guias,
+                totalLotes: stats?.lotes?.total_lotes,
+                valorTotal: stats?.financeiro?.valor_total,
+            } : null
+        });
+    }, [stats, loading, error, isEnabled]);
+
     const loadStats = useCallback(() => {
+        console.log('[TissDashboard] loadStats chamado, isEnabled:', isEnabled);
         if (isEnabled) {
             fetchStats();
         }
     }, [fetchStats, isEnabled]);
 
     useEffect(() => {
+        console.log('[TissDashboard] useEffect inicial, carregando stats...');
         loadStats();
     }, [loadStats]);
 

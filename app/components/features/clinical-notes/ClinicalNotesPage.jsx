@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import MedicalEditor from './MedicalEditor';
 import { NOTE_TEMPLATES } from './templates';
+import AttachmentUploader from './AttachmentUploader';
 import clinicalNotesService from '@/lib/services/api/clinical-notes.service';
 import {
   Plus,
@@ -37,6 +38,10 @@ import {
   PanelLeft,
   Sparkles,
   MoreHorizontal,
+  Lock,
+  Unlock,
+  AlertTriangle,
+  Paperclip,
 } from 'lucide-react';
 import {
   TextField,
@@ -847,6 +852,8 @@ const ClinicalNotesPage = () => {
   const [editedTags, setEditedTags] = useState([]);
   const [editedCover, setEditedCover] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [conflictData, setConflictData] = useState(null);
 
   // Dialog State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -948,25 +955,117 @@ const ClinicalNotesPage = () => {
     onError: () => showError('Erro ao excluir nota'),
   });
 
-  // Debounced auto-save
+  // Mutation para assinar nota
+  const signMutation = useMutation({
+    mutationFn: (noteId) => clinicalNotesService.sign(noteId),
+    onSuccess: (signedNote) => {
+      queryClient.invalidateQueries(['clinical-notes']);
+      setSelectedNote(signedNote);
+      showSuccess('Nota assinada e bloqueada');
+    },
+    onError: () => showError('Erro ao assinar nota'),
+  });
+
+  // Handlers para anexos
+  const handleAttachmentAdded = useCallback(async (fileId) => {
+    if (!selectedNote?.id) return;
+    try {
+      const updatedNote = await clinicalNotesService.addAttachment(selectedNote.id, fileId);
+      queryClient.invalidateQueries(['clinical-notes']);
+      setSelectedNote(updatedNote);
+      showSuccess('Anexo adicionado');
+    } catch (error) {
+      showError('Erro ao adicionar anexo');
+    }
+  }, [selectedNote?.id, queryClient]);
+
+  const handleAttachmentRemoved = useCallback(async (fileId) => {
+    if (!selectedNote?.id) return;
+    try {
+      const updatedNote = await clinicalNotesService.removeAttachment(selectedNote.id, fileId);
+      queryClient.invalidateQueries(['clinical-notes']);
+      setSelectedNote(updatedNote);
+      showSuccess('Anexo removido');
+    } catch (error) {
+      showError('Erro ao remover anexo');
+    }
+  }, [selectedNote?.id, queryClient]);
+
+  // Handler para resolver conflito
+  const handleResolveConflict = useCallback(async (action) => {
+    if (!conflictData) return;
+
+    if (action === 'discard') {
+      // Descarta alteracoes e recarrega a nota
+      const freshNote = await clinicalNotesService.getById(conflictData.noteId);
+      setSelectedNote(freshNote);
+      setEditedContent(freshNote.content);
+      setEditedTitle(freshNote.title);
+      setEditedTags(freshNote.tags);
+      setEditedCover(freshNote.coverUrl);
+      showSuccess('Alteracoes descartadas');
+    } else if (action === 'overwrite') {
+      // Forca a gravacao sem verificar versao
+      try {
+        const updatedNote = await clinicalNotesService.update(conflictData.noteId, {
+          content: conflictData.content,
+          title: conflictData.title,
+          tags: conflictData.tags,
+          coverUrl: conflictData.coverUrl,
+          // Sem expectedUpdatedAt para forcar gravacao
+        });
+        queryClient.invalidateQueries(['clinical-notes']);
+        setSelectedNote(updatedNote);
+        showSuccess('Nota salva (sobrescrita)');
+      } catch (error) {
+        showError('Erro ao salvar nota');
+      }
+    }
+
+    setConflictDialogOpen(false);
+    setConflictData(null);
+  }, [conflictData, queryClient]);
+
+  // Debounced auto-save com optimistic locking
   const debouncedSave = useMemo(
-    () => debounce((noteId, content, title, tags, coverUrl) => {
+    () => debounce((noteId, content, title, tags, coverUrl, expectedUpdatedAt) => {
       if (!noteId) return;
+      // Nao salva se nota esta bloqueada
+      if (selectedNote?.isLocked) {
+        console.log('[ClinicalNotes] Nota assinada - salvamento bloqueado');
+        return;
+      }
       setIsSaving(true);
-      clinicalNotesService.update(noteId, { content, title, tags, coverUrl })
-        .then(() => queryClient.invalidateQueries(['clinical-notes']))
+      clinicalNotesService.update(noteId, { content, title, tags, coverUrl, expectedUpdatedAt })
+        .then((updatedNote) => {
+          queryClient.invalidateQueries(['clinical-notes']);
+          // Atualiza a nota selecionada com a nova versao
+          if (selectedNote?.id === noteId) {
+            setSelectedNote(updatedNote);
+          }
+        })
+        .catch((error) => {
+          // Verifica se e erro de conflito (HTTP 409)
+          if (error?.response?.status === 409 || error?.status === 409) {
+            console.log('[ClinicalNotes] Conflito detectado!');
+            setConflictData({ noteId, content, title, tags, coverUrl });
+            setConflictDialogOpen(true);
+          } else {
+            showError('Erro ao salvar nota');
+          }
+        })
         .finally(() => setIsSaving(false));
     }, 2000),
-    [queryClient]
+    [queryClient, selectedNote]
   );
 
   // Handlers
   const handleContentUpdate = useCallback((content) => {
     setEditedContent(content);
-    if (selectedNote?.id) {
-      debouncedSave(selectedNote.id, content, editedTitle, editedTags, editedCover);
+    if (selectedNote?.id && !selectedNote?.isLocked) {
+      debouncedSave(selectedNote.id, content, editedTitle, editedTags, editedCover, selectedNote?.updatedAt);
     }
-  }, [selectedNote?.id, editedTitle, editedTags, editedCover, debouncedSave]);
+  }, [selectedNote?.id, selectedNote?.isLocked, selectedNote?.updatedAt, editedTitle, editedTags, editedCover, debouncedSave]);
 
   const handleTitleChange = useCallback((e) => {
     const title = e.target.value;
@@ -1092,6 +1191,7 @@ const ClinicalNotesPage = () => {
                   onChange={handleTitleChange}
                   placeholder="Titulo da nota..."
                   className="text-2xl font-semibold text-slate-900 bg-transparent border-none outline-none flex-1 placeholder-slate-300"
+                  disabled={selectedNote.isLocked}
                 />
                 <div className="flex items-center gap-2">
                   {isSaving && (
@@ -1100,34 +1200,72 @@ const ClinicalNotesPage = () => {
                       Salvando...
                     </span>
                   )}
+                  {/* Badge de nota assinada */}
+                  {selectedNote.isLocked && (
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-200 rounded-full text-green-700 text-xs font-medium">
+                      <Lock className="w-3.5 h-3.5" />
+                      Assinada
+                    </span>
+                  )}
+                  {/* Botao de assinatura */}
+                  {!selectedNote.isLocked && (
+                    <Tooltip title="Assinar e bloquear nota" arrow>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        startIcon={<Lock className="w-4 h-4" />}
+                        onClick={() => signMutation.mutate(selectedNote.id)}
+                        disabled={signMutation.isPending}
+                        className="text-xs"
+                      >
+                        {signMutation.isPending ? 'Assinando...' : 'Assinar'}
+                      </Button>
+                    </Tooltip>
+                  )}
+                  {/* Anexos */}
+                  <AttachmentUploader
+                    noteId={selectedNote.id}
+                    attachments={selectedNote.attachments || []}
+                    isLocked={selectedNote.isLocked}
+                    onAttachmentAdded={handleAttachmentAdded}
+                    onAttachmentRemoved={handleAttachmentRemoved}
+                  />
                   <Tooltip title={selectedNote.isPinned ? "Desafixar" : "Fixar"} arrow>
-                    <IconButton size="small" onClick={() => handleTogglePin(selectedNote)}>
+                    <IconButton size="small" onClick={() => handleTogglePin(selectedNote)} disabled={selectedNote.isLocked}>
                       <Pin className={cn("w-4 h-4", selectedNote.isPinned && "text-amber-500 fill-amber-500")} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={selectedNote.isArchived ? "Restaurar" : "Arquivar"} arrow>
-                    <IconButton size="small" onClick={() => handleToggleArchive(selectedNote)}>
+                    <IconButton size="small" onClick={() => handleToggleArchive(selectedNote)} disabled={selectedNote.isLocked}>
                       <Archive className={cn("w-4 h-4", selectedNote.isArchived && "text-blue-500")} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Excluir" arrow>
-                    <IconButton size="small" onClick={() => handleDeleteNote(selectedNote)}>
+                    <IconButton size="small" onClick={() => handleDeleteNote(selectedNote)} disabled={selectedNote.isLocked}>
                       <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
                     </IconButton>
                   </Tooltip>
                 </div>
               </div>
-              <TagEditor tags={editedTags} onChange={handleTagsChange} />
+              <TagEditor tags={editedTags} onChange={handleTagsChange} disabled={selectedNote.isLocked} />
             </div>
 
             {/* Editor */}
             <div className="flex-1 overflow-y-auto px-8 py-6">
+              {selectedNote.isLocked && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 text-sm flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  Esta nota foi assinada e nao pode ser editada.
+                </div>
+              )}
               <MedicalEditor
                 content={editedContent}
                 onUpdate={handleContentUpdate}
                 placeholder="Comece a escrever ou digite '/' para ver comandos..."
                 autoFocus
                 className="min-h-[500px] border-0 shadow-none"
+                editable={!selectedNote.isLocked}
               />
             </div>
           </>
@@ -1205,6 +1343,30 @@ const ClinicalNotesPage = () => {
           <Button onClick={() => setDeleteFolderDialogOpen(false)}>Cancelar</Button>
           <Button onClick={confirmDeleteFolder} color="error" variant="contained" disabled={deleteFolderMutation.isPending}>
             {deleteFolderMutation.isPending ? 'Excluindo...' : 'Excluir'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de conflito de versao */}
+      <Dialog open={conflictDialogOpen} onClose={() => setConflictDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <AlertTriangle className="w-5 h-5 text-yellow-500" />
+          Conflito de Edicao
+        </DialogTitle>
+        <DialogContent>
+          <p className="text-gray-600 mb-4">
+            Esta nota foi modificada por outro usuario ou em outra aba enquanto voce estava editando.
+          </p>
+          <p className="text-gray-600">
+            O que deseja fazer?
+          </p>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => handleResolveConflict('discard')} color="inherit">
+            Descartar minhas alteracoes
+          </Button>
+          <Button onClick={() => handleResolveConflict('overwrite')} color="error" variant="contained">
+            Sobrescrever com minhas alteracoes
           </Button>
         </DialogActions>
       </Dialog>

@@ -311,7 +311,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
 
             // Crie o objeto de evento usando nossa função
             const newEvent = createEventObject(
-                { ...dataToSave, id: consultationId },
+                { ...consultationData, id: consultationId },
                 patient ? (patient.patientName || patient.nome) : "Paciente"
             );
 
@@ -395,7 +395,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
             // Crie o objeto de evento atualizado
             const patient = await patientsService.getById(patientId);
             const updatedEvent = createEventObject(
-                dataToSave,
+                { ...consultationData, id: consultationId },
                 patient ? (patient.patientName || patient.nome) : "Paciente"
             );
 

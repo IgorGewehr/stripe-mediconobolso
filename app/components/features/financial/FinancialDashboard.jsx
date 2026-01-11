@@ -1,20 +1,24 @@
 'use client';
 
+/**
+ * @fileoverview Financial Dashboard - Redesign Minimalista
+ * @description Dashboard limpo com KPIs essenciais e widget de sugestoes integrado
+ */
+
 import { useState, useMemo } from 'react';
 import {
   Box,
   Grid,
   Card,
   CardContent,
-  CardHeader,
   Typography,
   Skeleton,
   Chip,
   IconButton,
   Tooltip,
   Alert,
-  LinearProgress,
-  Divider,
+  Collapse,
+  Button,
 } from '@mui/material';
 import {
   TrendingUp as RevenueIcon,
@@ -24,15 +28,33 @@ import {
   Refresh as RefreshIcon,
   ArrowUpward as UpIcon,
   ArrowDownward as DownIcon,
+  Lightbulb as SuggestionIcon,
+  ExpandMore as ExpandIcon,
+  ExpandLess as CollapseIcon,
+  Check as AcceptIcon,
+  Close as RejectIcon,
 } from '@mui/icons-material';
-import { useFinancialDashboard } from '../../hooks/useFinancial';
+import { useFinancialDashboard, useSugestoesFinanceiras } from '../../hooks/useFinancial';
+
+// Theme minimalista
+const theme = {
+  primary: '#1852FE',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  text: {
+    primary: '#1F2937',
+    secondary: '#6B7280',
+  },
+};
 
 // Format currency
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(value || 0);
 };
 
@@ -40,328 +62,300 @@ const formatCurrency = (value) => {
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
-  return date.toLocaleDateString('pt-BR');
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 };
 
-// KPI Card Component
-function KPICard({ title, value, subtitle, icon: Icon, color = 'primary', loading, trend }) {
+/**
+ * KPI Card - Design minimalista
+ */
+function KPICard({ title, value, subtitle, color = theme.primary, loading }) {
   return (
     <Card
       sx={{
         height: '100%',
-        borderLeft: 4,
-        borderColor: `${color}.main`,
+        border: 'none',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        borderRadius: 2,
       }}
     >
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography color="text.secondary" variant="body2" gutterBottom>
-              {title}
-            </Typography>
-            {loading ? (
-              <Skeleton width={120} height={40} />
-            ) : (
-              <Typography
-                variant="h5"
-                component="div"
-                fontWeight="bold"
-                sx={{ color: `${color}.main` }}
-              >
-                {typeof value === 'number' ? formatCurrency(value) : value}
-              </Typography>
-            )}
-            {subtitle && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                {trend && (
-                  <>
-                    {trend > 0 ? (
-                      <UpIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                    ) : (
-                      <DownIcon sx={{ fontSize: 16, color: 'error.main' }} />
-                    )}
-                  </>
-                )}
-                <Typography variant="caption" color="text.secondary">
-                  {subtitle}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-          <Box
+      <CardContent sx={{ p: 2.5 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: theme.text.secondary,
+            fontWeight: 500,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            fontSize: '0.7rem',
+          }}
+        >
+          {title}
+        </Typography>
+        {loading ? (
+          <Skeleton width={100} height={36} sx={{ mt: 0.5 }} />
+        ) : (
+          <Typography
+            variant="h5"
             sx={{
-              bgcolor: `${color}.lighter`,
-              borderRadius: 2,
-              p: 1.5,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              fontWeight: 700,
+              color: color,
+              mt: 0.5,
+              fontSize: '1.5rem',
             }}
           >
-            <Icon sx={{ color: `${color}.main`, fontSize: 28 }} />
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Cash Flow Chart (simplified bar visualization)
-function CashFlowChart({ data, loading }) {
-  if (loading) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Skeleton variant="rectangular" height={200} />
-      </Box>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="text.secondary">
-          Nenhum dado de fluxo de caixa disponível
-        </Typography>
-      </Box>
-    );
-  }
-
-  // Get last 7 days for display
-  const chartData = data.slice(-7);
-  const maxValue = Math.max(
-    ...chartData.flatMap((d) => [d.entradas || 0, d.saidas || 0])
-  );
-
-  return (
-    <Box sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 12, height: 12, bgcolor: 'success.main', borderRadius: 1 }} />
-          <Typography variant="caption">Entradas</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 12, height: 12, bgcolor: 'error.main', borderRadius: 1 }} />
-          <Typography variant="caption">Saídas</Typography>
-        </Box>
-      </Box>
-
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', height: 150 }}>
-        {chartData.map((item, index) => (
-          <Box key={index} sx={{ flex: 1, textAlign: 'center' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, height: 120, justifyContent: 'flex-end' }}>
-              <Tooltip title={`Entradas: ${formatCurrency(item.entradas)}`}>
-                <Box
-                  sx={{
-                    bgcolor: 'success.main',
-                    height: `${maxValue > 0 ? ((item.entradas || 0) / maxValue) * 100 : 0}%`,
-                    minHeight: item.entradas > 0 ? 4 : 0,
-                    borderRadius: '4px 4px 0 0',
-                    transition: 'height 0.3s',
-                  }}
-                />
-              </Tooltip>
-              <Tooltip title={`Saídas: ${formatCurrency(item.saidas)}`}>
-                <Box
-                  sx={{
-                    bgcolor: 'error.main',
-                    height: `${maxValue > 0 ? ((item.saidas || 0) / maxValue) * 100 : 0}%`,
-                    minHeight: item.saidas > 0 ? 4 : 0,
-                    borderRadius: '4px 4px 0 0',
-                    transition: 'height 0.3s',
-                  }}
-                />
-              </Tooltip>
-            </Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: 'block', mt: 1 }}
-            >
-              {formatDate(item.data).slice(0, 5)}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
-    </Box>
-  );
-}
-
-// Summary Card
-function SummaryCard({ title, items, loading }) {
-  return (
-    <Card sx={{ height: '100%' }}>
-      <CardHeader
-        title={title}
-        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 'bold' }}
-      />
-      <Divider />
-      <CardContent>
-        {loading ? (
-          <>
-            <Skeleton height={24} sx={{ mb: 1 }} />
-            <Skeleton height={24} sx={{ mb: 1 }} />
-            <Skeleton height={24} />
-          </>
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {items.map((item, index) => (
-              <Box
-                key={index}
-                sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <Typography variant="body2" color="text.secondary">
-                  {item.label}
-                </Typography>
-                <Chip
-                  label={typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
-                  size="small"
-                  color={item.color || 'default'}
-                  variant={item.variant || 'filled'}
-                />
-              </Box>
-            ))}
-          </Box>
+            {typeof value === 'number' ? formatCurrency(value) : value}
+          </Typography>
+        )}
+        {subtitle && (
+          <Typography
+            variant="caption"
+            sx={{ color: theme.text.secondary, display: 'block', mt: 0.5 }}
+          >
+            {subtitle}
+          </Typography>
         )}
       </CardContent>
     </Card>
   );
 }
 
-// Alerts Section
-function AlertsSection({ dashboard, loading }) {
+/**
+ * Mini Cash Flow Chart - Ultimos 7 dias
+ */
+function MiniCashFlow({ data, loading }) {
   if (loading) {
-    return <Skeleton height={60} />;
+    return <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 1 }} />;
   }
 
-  const alerts = [];
-
-  if (dashboard?.qtdVencidas > 0) {
-    alerts.push({
-      severity: 'error',
-      message: `${dashboard.qtdVencidas} conta(s) vencida(s) totalizando ${formatCurrency(dashboard.totalVencido)}`,
-    });
+  if (!data || data.length === 0) {
+    return (
+      <Box sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          Sem dados de fluxo
+        </Typography>
+      </Box>
+    );
   }
 
-  if (dashboard?.vencendo7Dias > 0) {
-    alerts.push({
-      severity: 'warning',
-      message: `${formatCurrency(dashboard.vencendo7Dias)} vencendo nos próximos 7 dias`,
-    });
+  const chartData = data.slice(-7);
+  const maxValue = Math.max(...chartData.flatMap((d) => [d.entradas || 0, d.saidas || 0]), 1);
+
+  return (
+    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-end', height: 60 }}>
+      {chartData.map((item, index) => {
+        const saldo = (item.entradas || 0) - (item.saidas || 0);
+        return (
+          <Tooltip
+            key={index}
+            title={`${formatDate(item.data)}: ${formatCurrency(saldo)}`}
+          >
+            <Box
+              sx={{
+                flex: 1,
+                bgcolor: saldo >= 0 ? theme.success : theme.error,
+                height: `${Math.max((Math.abs(saldo) / maxValue) * 100, 8)}%`,
+                borderRadius: 0.5,
+                opacity: 0.8,
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+                '&:hover': { opacity: 1 },
+              }}
+            />
+          </Tooltip>
+        );
+      })}
+    </Box>
+  );
+}
+
+/**
+ * Alert Banner - Contas vencidas
+ */
+function AlertBanner({ dashboard, loading }) {
+  if (loading || !dashboard?.qtdVencidas) return null;
+
+  return (
+    <Alert
+      severity="error"
+      variant="outlined"
+      sx={{
+        mb: 3,
+        borderRadius: 2,
+        '& .MuiAlert-message': { width: '100%' },
+      }}
+    >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <Typography variant="body2">
+          <strong>{dashboard.qtdVencidas}</strong> conta(s) vencida(s) - {formatCurrency(dashboard.totalVencido)}
+        </Typography>
+        <Chip
+          label="Ver detalhes"
+          size="small"
+          color="error"
+          variant="outlined"
+          sx={{ cursor: 'pointer' }}
+        />
+      </Box>
+    </Alert>
+  );
+}
+
+/**
+ * Suggestions Widget - Colapsavel
+ */
+function SuggestionsWidget() {
+  const { sugestoes, loading, saving, aceitarSugestao, rejeitarSugestao } = useSugestoesFinanceiras();
+  const [expanded, setExpanded] = useState(true);
+
+  if (loading) {
+    return <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2 }} />;
   }
 
-  if (alerts.length === 0) {
+  if (!sugestoes || sugestoes.length === 0) {
     return null;
   }
 
+  const handleAccept = async (id) => {
+    try {
+      await aceitarSugestao(id);
+    } catch (err) {
+      console.error('Error:', err);
+    }
+  };
+
+  const handleReject = async (id) => {
+    try {
+      await rejeitarSugestao(id);
+    } catch (err) {
+      console.error('Error:', err);
+    }
+  };
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      {alerts.map((alert, index) => (
-        <Alert key={index} severity={alert.severity} variant="outlined">
-          {alert.message}
-        </Alert>
-      ))}
-    </Box>
+    <Card
+      sx={{
+        border: `1px solid ${theme.warning}40`,
+        bgcolor: `${theme.warning}08`,
+        borderRadius: 2,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Header */}
+      <Box
+        onClick={() => setExpanded(!expanded)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: 2,
+          cursor: 'pointer',
+          '&:hover': { bgcolor: `${theme.warning}10` },
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <SuggestionIcon sx={{ color: theme.warning }} />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>
+              {sugestoes.length} sugestao(es) pendente(s)
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Lancamentos automaticos para revisar
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton size="small">
+          {expanded ? <CollapseIcon /> : <ExpandIcon />}
+        </IconButton>
+      </Box>
+
+      {/* Content */}
+      <Collapse in={expanded}>
+        <Box sx={{ px: 2, pb: 2 }}>
+          {sugestoes.slice(0, 3).map((sugestao) => {
+            const dados = sugestao.dadosSugeridos || {};
+            const isReceita = sugestao.tipo === 'conta_receber';
+
+            return (
+              <Box
+                key={sugestao.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  py: 1.5,
+                  borderBottom: '1px solid rgba(0,0,0,0.06)',
+                  '&:last-child': { borderBottom: 'none' },
+                }}
+              >
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
+                    {dados.descricao || 'Lancamento'}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {isReceita ? 'Receita' : 'Despesa'} - {formatDate(dados.dataVencimento)}
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    color: isReceita ? theme.success : theme.error,
+                    mx: 2,
+                  }}
+                >
+                  {formatCurrency(dados.valor || dados.valorBruto || 0)}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleReject(sugestao.id)}
+                    disabled={saving}
+                    sx={{ color: theme.error }}
+                  >
+                    <RejectIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleAccept(sugestao.id)}
+                    disabled={saving}
+                    sx={{ color: theme.success }}
+                  >
+                    <AcceptIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Box>
+            );
+          })}
+
+          {sugestoes.length > 3 && (
+            <Button
+              size="small"
+              sx={{ mt: 1, color: theme.warning }}
+            >
+              Ver todas ({sugestoes.length})
+            </Button>
+          )}
+        </Box>
+      </Collapse>
+    </Card>
   );
 }
 
-// Progress indicator for receivables
-function ReceivablesProgress({ received, total, loading }) {
-  if (loading) {
-    return <Skeleton height={40} />;
-  }
-
-  const percentage = total > 0 ? (received / total) * 100 : 0;
-
-  return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-        <Typography variant="body2" color="text.secondary">
-          Recebido do mês
-        </Typography>
-        <Typography variant="body2" fontWeight="bold">
-          {percentage.toFixed(1)}%
-        </Typography>
-      </Box>
-      <LinearProgress
-        variant="determinate"
-        value={Math.min(percentage, 100)}
-        sx={{ height: 8, borderRadius: 4 }}
-      />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-        <Typography variant="caption" color="text.secondary">
-          {formatCurrency(received)}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {formatCurrency(total)}
-        </Typography>
-      </Box>
-    </Box>
-  );
-}
-
-// Main Dashboard Component
+/**
+ * Main Dashboard Component
+ */
 export default function FinancialDashboard() {
   const { dashboard, fluxoCaixa, loading, error, refresh } = useFinancialDashboard();
 
-  // Calculate summary items
-  const receivablesSummary = useMemo(() => [
-    {
-      label: 'Total Pendente',
-      value: dashboard?.totalPendente || 0,
-      color: 'warning',
-    },
-    {
-      label: 'Total Vencido',
-      value: dashboard?.totalVencido || 0,
-      color: 'error',
-    },
-    {
-      label: 'Vencendo em 7 dias',
-      value: dashboard?.vencendo7Dias || 0,
-      color: 'info',
-      variant: 'outlined',
-    },
-    {
-      label: 'Contas Pendentes',
-      value: `${dashboard?.qtdPendentes || 0} contas`,
-      color: 'default',
-      variant: 'outlined',
-    },
-  ], [dashboard]);
-
-  const expensesSummary = useMemo(() => [
-    {
-      label: 'Despesas do Mês',
-      value: dashboard?.despesasMes || 0,
-      color: 'error',
-    },
-    {
-      label: 'Saldo em Contas',
-      value: dashboard?.saldoContas || 0,
-      color: 'success',
-    },
-  ], [dashboard]);
-
-  // Calculate cash flow totals
-  const cashFlowTotals = useMemo(() => {
-    if (!fluxoCaixa || fluxoCaixa.length === 0) {
-      return { entradas: 0, saidas: 0, saldo: 0 };
-    }
-
-    const last7Days = fluxoCaixa.slice(-7);
-    return {
-      entradas: last7Days.reduce((sum, d) => sum + (d.entradas || 0), 0),
-      saidas: last7Days.reduce((sum, d) => sum + (d.saidas || 0), 0),
-      saldo: last7Days.reduce((sum, d) => sum + (d.saldoDia || 0), 0),
-    };
+  // Calcular saldo do periodo
+  const saldoPeriodo = useMemo(() => {
+    if (!fluxoCaixa || fluxoCaixa.length === 0) return 0;
+    const last7 = fluxoCaixa.slice(-7);
+    return last7.reduce((sum, d) => sum + ((d.entradas || 0) - (d.saidas || 0)), 0);
   }, [fluxoCaixa]);
 
   if (error) {
-    return (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
-      </Alert>
-    );
+    return <Alert severity="error">{error}</Alert>;
   }
 
   return (
@@ -369,130 +363,128 @@ export default function FinancialDashboard() {
       {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
-          <Typography variant="h5" fontWeight="bold">
-            Dashboard Financeiro
+          <Typography variant="h5" fontWeight={700} color={theme.text.primary}>
+            Financeiro
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Visão geral das finanças da clínica
+          <Typography variant="body2" color={theme.text.secondary}>
+            Resumo do mes atual
           </Typography>
         </Box>
-        <Tooltip title="Atualizar dados">
-          <IconButton onClick={refresh} disabled={loading}>
+        <Tooltip title="Atualizar">
+          <IconButton onClick={refresh} disabled={loading} size="small">
             <RefreshIcon />
           </IconButton>
         </Tooltip>
       </Box>
 
-      {/* Alerts */}
-      <Box sx={{ mb: 3 }}>
-        <AlertsSection dashboard={dashboard} loading={loading} />
-      </Box>
+      {/* Alert de contas vencidas */}
+      <AlertBanner dashboard={dashboard} loading={loading} />
 
-      {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      {/* KPI Cards - 4 principais */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={6} md={3}>
           <KPICard
-            title="Receita do Mês"
+            title="Receita do Mes"
             value={dashboard?.receitaMes}
-            subtitle="Valor faturado"
-            icon={RevenueIcon}
-            color="primary"
+            subtitle="Total faturado"
+            color={theme.primary}
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} md={3}>
           <KPICard
             title="Recebido"
             value={dashboard?.recebidoMes}
-            subtitle="Pagamentos confirmados"
-            icon={ReceivedIcon}
-            color="success"
+            subtitle="Confirmado"
+            color={theme.success}
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} md={3}>
           <KPICard
             title="Pendente"
             value={dashboard?.totalPendente}
             subtitle={`${dashboard?.qtdPendentes || 0} contas`}
-            icon={PendingIcon}
-            color="warning"
+            color={theme.warning}
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} md={3}>
           <KPICard
             title="Vencido"
             value={dashboard?.totalVencido}
             subtitle={`${dashboard?.qtdVencidas || 0} contas`}
-            icon={OverdueIcon}
-            color="error"
+            color={theme.error}
             loading={loading}
           />
         </Grid>
       </Grid>
 
-      {/* Progress and Charts Row */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardHeader
-              title="Progresso do Mês"
-              titleTypographyProps={{ variant: 'subtitle1', fontWeight: 'bold' }}
-            />
-            <Divider />
-            <CardContent>
-              <ReceivablesProgress
-                received={dashboard?.recebidoMes || 0}
-                total={dashboard?.receitaMes || 0}
-                loading={loading}
-              />
+      {/* Segunda linha: Fluxo de Caixa + Sugestoes */}
+      <Grid container spacing={2}>
+        {/* Fluxo de Caixa mini */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Fluxo de Caixa (7 dias)
+                </Typography>
+                <Chip
+                  label={formatCurrency(saldoPeriodo)}
+                  size="small"
+                  sx={{
+                    bgcolor: saldoPeriodo >= 0 ? `${theme.success}15` : `${theme.error}15`,
+                    color: saldoPeriodo >= 0 ? theme.success : theme.error,
+                    fontWeight: 600,
+                  }}
+                />
+              </Box>
+              <MiniCashFlow data={fluxoCaixa} loading={loading} />
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={8}>
-          <Card sx={{ height: '100%' }}>
-            <CardHeader
-              title="Fluxo de Caixa (Últimos 7 dias)"
-              titleTypographyProps={{ variant: 'subtitle1', fontWeight: 'bold' }}
-              action={
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <Chip
-                    label={`Entradas: ${formatCurrency(cashFlowTotals.entradas)}`}
-                    size="small"
-                    color="success"
-                    variant="outlined"
-                  />
-                  <Chip
-                    label={`Saídas: ${formatCurrency(cashFlowTotals.saidas)}`}
-                    size="small"
-                    color="error"
-                    variant="outlined"
-                  />
+
+        {/* Resumo rapido */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', height: '100%' }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
+                Resumo Rapido
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Despesas do mes
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600} color={theme.error}>
+                    {formatCurrency(dashboard?.despesasMes || 0)}
+                  </Typography>
                 </Box>
-              }
-            />
-            <Divider />
-            <CashFlowChart data={fluxoCaixa} loading={loading} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Saldo em contas
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600} color={theme.success}>
+                    {formatCurrency(dashboard?.saldoContas || 0)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Vencendo em 7 dias
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600} color={theme.warning}>
+                    {formatCurrency(dashboard?.vencendo7Dias || 0)}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
           </Card>
         </Grid>
-      </Grid>
 
-      {/* Summary Cards Row */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <SummaryCard
-            title="Contas a Receber"
-            items={receivablesSummary}
-            loading={loading}
-          />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <SummaryCard
-            title="Resumo Financeiro"
-            items={expensesSummary}
-            loading={loading}
-          />
+        {/* Widget de Sugestoes */}
+        <Grid item xs={12}>
+          <SuggestionsWidget />
         </Grid>
       </Grid>
     </Box>

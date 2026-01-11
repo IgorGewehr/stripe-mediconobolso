@@ -89,6 +89,8 @@ import { formatDistance } from 'date-fns';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { styled } from '@mui/material/styles';
 import ReceitaDialog from "../features/dialogs/ReceitasDialog";
+// Novo dialog minimalista (adicao rapida de medicamentos)
+import { PrescriptionDialog } from "../features/prescriptions";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -214,6 +216,10 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
 
     const [receitaDialogOpen, setReceitaDialogOpen] = useState(false);
+    // Flag para usar o novo dialog minimalista (PrescriptionDialog)
+    // Altere para true para usar o novo design
+    const [useNewDialog, setUseNewDialog] = useState(true);
+    const [newDialogOpen, setNewDialogOpen] = useState(false);
     // Load prescriptions and medications
     useEffect(() => {
         const fetchData = async () => {
@@ -552,11 +558,16 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
     const handleOpenReceitaDialog = () => {
         console.log('🔵 Opening new prescription dialog via FAB');
-        setReceitaDialogOpen(true);
+        if (useNewDialog) {
+            setNewDialogOpen(true);
+        } else {
+            setReceitaDialogOpen(true);
+        }
     };
 
     const handleCloseReceitaDialog = () => {
         setReceitaDialogOpen(false);
+        setNewDialogOpen(false);
     };
 
     // Expose functions to parent component via ref
@@ -3304,11 +3315,22 @@ const PrescriptionsPage = forwardRef((props, ref) => {
                 </Box>
             </Drawer>
 
+            {/* Dialog antigo (mantido para compatibilidade) */}
             <ReceitaDialog
                 open={receitaDialogOpen}
                 onClose={handleCloseReceitaDialog}
                 doctorId={doctorId}
                 onSave={handleSaveReceita}
+            />
+
+            {/* Novo dialog minimalista */}
+            <PrescriptionDialog
+                open={newDialogOpen}
+                onClose={handleCloseReceitaDialog}
+                onSuccess={() => {
+                    loadPrescriptions();
+                    handleCloseReceitaDialog();
+                }}
             />
 
             {/* Snackbar for messages */}

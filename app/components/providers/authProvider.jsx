@@ -474,6 +474,7 @@ export const AuthProvider = ({ children }) => {
                 let context;
                 let retries = 0;
                 const maxRetries = 3;
+                let userProvisionAttempted = false;
 
                 while (retries < maxRetries) {
                     try {
@@ -489,21 +490,39 @@ export const AuthProvider = ({ children }) => {
                         retries++;
                         console.warn(`⚠️ Tentativa ${retries}/${maxRetries} falhou:`, error.message);
 
-                        // ✅ SE É USUÁRIO ÓRFÃO, TENTAR CRIAR DADOS
-                        if (error.message.includes('Usuário não encontrado') && retries === 1) {
+                        // ✅ SE É USUÁRIO ÓRFÃO E AINDA NÃO TENTOU PROVISIONAR
+                        if (error.message.includes('Usuário não encontrado') && !userProvisionAttempted) {
+                            userProvisionAttempted = true;
                             console.log('🔧 Tentando criar dados para usuário órfão...');
                             try {
                                 const orphanData = await createOrphanUserData(authUser);
-                                context = {
-                                    userType: 'doctor',
-                                    workingDoctorId: authUser.uid,
-                                    userData: orphanData,
-                                    permissions: 'full',
-                                    isSecretary: false
-                                };
-                                break;
+                                console.log('✅ Usuário órfão provisionado, aguardando propagação...');
+
+                                // Aguardar propagação no banco
+                                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                                // Invalidar cache e tentar novamente
+                                globalCache.invalidate('userContext', authUser.uid);
+
+                                // Tentar buscar contexto atualizado
+                                try {
+                                    context = await getUserUnifiedContextCached(authUser.uid, true);
+                                    console.log('✅ Contexto obtido após provisão');
+                                    break;
+                                } catch (retryError) {
+                                    console.log('⚠️ Usando dados locais da provisão');
+                                    context = {
+                                        userType: 'doctor',
+                                        workingDoctorId: authUser.uid,
+                                        userData: orphanData,
+                                        permissions: 'full',
+                                        isSecretary: false
+                                    };
+                                    break;
+                                }
                             } catch (orphanError) {
                                 console.error('❌ Erro ao criar usuário órfão:', orphanError);
+                                throw new Error('Não foi possível criar sua conta. Tente novamente.');
                             }
                         }
 

@@ -63,20 +63,22 @@ const STATUS_LABELS = {
   aceita: 'Aceita',
 };
 
+// Labels conforme codigos ANS (sincronizados com backend)
 const TIPO_LABELS = {
-  M01: 'Nao autorizado',
-  M02: 'Fora da cobertura',
-  M03: 'Sem documentacao',
-  M04: 'Duplicado',
-  M05: 'Erro de codificacao',
-  M06: 'Sem justificativa',
-  M07: 'Valor acima',
-  M08: 'Data inconsistente',
-  M09: 'Beneficiario invalido',
-  M10: 'Prestador invalido',
-  M11: 'Carencia',
-  M12: 'CID incompativel',
-  OUTROS: 'Outros',
+  M01: 'Nao coberto pelo plano',
+  M02: 'Nao autorizado previamente',
+  M03: 'Quantidade excedida',
+  M04: 'Valor divergente',
+  M05: 'Duplicidade de cobranca',
+  M06: 'Beneficiario inelegivel',
+  M07: 'Prestador nao credenciado',
+  M08: 'Falta de documentacao',
+  M09: 'Prazo excedido',
+  M10: 'CID incompativel',
+  M11: 'Incluido em pacote',
+  M12: 'Mat/Med nao autorizado',
+  OUT: 'Outros motivos',
+  OUTROS: 'Outros motivos',
 };
 
 // Format currency helper

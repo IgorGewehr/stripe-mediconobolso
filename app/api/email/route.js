@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import {
     sendWelcomeEmail,
     sendHelpVideoEmail,
-    sendBothWelcomeEmails
+    sendBothWelcomeEmails,
+    sendCustomEmail
 } from '../../../lib/emailService';
 
 export async function POST(request) {
@@ -12,8 +13,10 @@ export async function POST(request) {
         const {
             email,
             name,
-            type = 'both', // 'welcome', 'help', 'both'
-            appLink
+            type = 'both', // 'welcome', 'help', 'both', 'custom'
+            appLink,
+            subject, // Para emails customizados
+            body: emailBody // Para emails customizados
         } = body;
 
         // Validação básica
@@ -49,6 +52,17 @@ export async function POST(request) {
 
             case 'help':
                 result = await sendHelpVideoEmail(email, userName, finalAppLink);
+                break;
+
+            case 'custom':
+                // Validar campos obrigatorios para email customizado
+                if (!subject || !emailBody) {
+                    return NextResponse.json(
+                        { success: false, message: 'Subject e body sao obrigatorios para emails customizados' },
+                        { status: 400 }
+                    );
+                }
+                result = await sendCustomEmail(email, userName, subject, emailBody);
                 break;
 
             case 'both':

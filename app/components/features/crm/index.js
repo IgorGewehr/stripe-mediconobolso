@@ -11,3 +11,4 @@ export { default as FollowUpRuleForm } from './FollowUpRuleForm';
 export { default as ReminderConfigCard } from './ReminderConfigCard';
 export { default as PendingFollowUpsList } from './PendingFollowUpsList';
 export { default as InactivePatientsTable } from './InactivePatientsTable';
+export { default as EmailCampaignSection } from './EmailCampaignSection';

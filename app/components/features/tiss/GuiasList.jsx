@@ -291,7 +291,19 @@ export default function GuiasList({ searchQuery = '', onEdit, onView, onAdd }) {
     const [statusFilter, setStatusFilter] = useState('');
     const [tipoFilter, setTipoFilter] = useState('');
 
+    // Debug: Log guias state changes
     useEffect(() => {
+        console.log('[GuiasList] Estado atualizado:', {
+            loading,
+            guiasCount: guias?.length || 0,
+            statusFilter,
+            tipoFilter,
+            guias: guias?.slice(0, 3) // Log first 3 guias
+        });
+    }, [guias, loading, statusFilter, tipoFilter]);
+
+    useEffect(() => {
+        console.log('[GuiasList] Buscando guias com filtros:', { statusFilter, tipoFilter });
         fetchGuias({
             status: statusFilter || undefined,
             tipo_guia: tipoFilter || undefined,

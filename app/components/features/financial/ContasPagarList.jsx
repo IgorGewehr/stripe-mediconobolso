@@ -1,10 +1,14 @@
 'use client';
 
+/**
+ * @fileoverview Contas a Pagar List - Redesign Minimalista
+ * @description Lista limpa e funcional de contas a pagar (despesas)
+ */
+
 import { useState, useMemo } from 'react';
 import {
   Box,
   Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -19,32 +23,35 @@ import {
   TextField,
   InputAdornment,
   Button,
-  Menu,
-  MenuItem,
   Skeleton,
   Alert,
-  FormControlLabel,
-  Switch,
-  Paper,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Add as AddIcon,
   Payment as PaymentIcon,
-  Visibility as ViewIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  FilterList as FilterIcon,
-  MoreVert as MoreIcon,
-  Receipt as ReceiptIcon,
 } from '@mui/icons-material';
 import { useContasPagar } from '../../hooks/useFinancial';
+
+// Theme
+const theme = {
+  primary: '#1852FE',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  text: {
+    primary: '#1F2937',
+    secondary: '#6B7280',
+  },
+};
 
 // Format currency
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
+    minimumFractionDigits: 0,
   }).format(value || 0);
 };
 
@@ -52,81 +59,78 @@ const formatCurrency = (value) => {
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
   const date = new Date(dateStr);
-  return date.toLocaleDateString('pt-BR');
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 };
 
-// Status chip color mapping
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'pago':
-      return 'success';
-    case 'pendente':
-      return 'warning';
-    case 'parcial':
-      return 'info';
-    case 'vencido':
-      return 'error';
-    case 'cancelado':
-      return 'default';
-    case 'agendado':
-      return 'primary';
-    default:
-      return 'default';
+// Status config
+const statusConfig = {
+  pago: { label: 'Pago', color: theme.success, bg: `${theme.success}15` },
+  pendente: { label: 'Pendente', color: theme.warning, bg: `${theme.warning}15` },
+  parcial: { label: 'Parcial', color: theme.primary, bg: `${theme.primary}15` },
+  vencido: { label: 'Vencido', color: theme.error, bg: `${theme.error}15` },
+  agendado: { label: 'Agendado', color: theme.primary, bg: `${theme.primary}15` },
+  cancelado: { label: 'Cancelado', color: theme.text.secondary, bg: 'rgba(0,0,0,0.05)' },
+};
+
+/**
+ * Quick Stats
+ */
+function QuickStats({ contas, loading }) {
+  const stats = useMemo(() => {
+    const pendentes = contas.filter((c) => ['pendente', 'parcial', 'agendado'].includes(c.status));
+    const vencidos = contas.filter((c) => c.status === 'vencido');
+    return {
+      totalPendente: pendentes.reduce((sum, c) => sum + (c.valorPendente || 0), 0),
+      totalVencido: vencidos.reduce((sum, c) => sum + (c.valorPendente || 0), 0),
+      qtdPendentes: pendentes.length,
+    };
+  }, [contas]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <Skeleton width={120} height={32} sx={{ borderRadius: 2 }} />
+        <Skeleton width={120} height={32} sx={{ borderRadius: 2 }} />
+      </Box>
+    );
   }
-};
 
-// Status label mapping
-const getStatusLabel = (status) => {
-  switch (status) {
-    case 'pago':
-      return 'Pago';
-    case 'pendente':
-      return 'Pendente';
-    case 'parcial':
-      return 'Parcial';
-    case 'vencido':
-      return 'Vencido';
-    case 'cancelado':
-      return 'Cancelado';
-    case 'agendado':
-      return 'Agendado';
-    default:
-      return status;
-  }
-};
+  return (
+    <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+      <Chip
+        label={`A pagar: ${formatCurrency(stats.totalPendente)}`}
+        size="small"
+        sx={{
+          bgcolor: `${theme.warning}15`,
+          color: theme.warning,
+          fontWeight: 600,
+          border: 'none',
+        }}
+      />
+      {stats.totalVencido > 0 && (
+        <Chip
+          label={`Vencido: ${formatCurrency(stats.totalVencido)}`}
+          size="small"
+          sx={{
+            bgcolor: `${theme.error}15`,
+            color: theme.error,
+            fontWeight: 600,
+            border: 'none',
+          }}
+        />
+      )}
+      <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+        {stats.qtdPendentes} pendente(s)
+      </Typography>
+    </Box>
+  );
+}
 
-// Tipo despesa label
-const getTipoDespesaLabel = (tipo) => {
-  const labels = {
-    fixa: 'Fixa',
-    variavel: 'Variavel',
-    operacional: 'Operacional',
-    investimento: 'Investimento',
-    tributo: 'Tributo',
-    pessoal: 'Pessoal',
-    outros: 'Outros',
-  };
-  return labels[tipo] || tipo;
-};
-
-// Table Row Component
-function ContaPagarRow({ conta, onView, onEdit, onDelete, onPayment }) {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const open = Boolean(anchorEl);
-
-  const handleMenuClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleAction = (action) => {
-    handleMenuClose();
-    action(conta);
-  };
-
+/**
+ * Table Row
+ */
+function ContaRow({ conta, onEdit, onPayment }) {
+  const status = statusConfig[conta.status] || statusConfig.pendente;
   const isOverdue = conta.status === 'vencido';
   const canPay = ['pendente', 'parcial', 'vencido', 'agendado'].includes(conta.status);
 
@@ -134,123 +138,91 @@ function ContaPagarRow({ conta, onView, onEdit, onDelete, onPayment }) {
     <TableRow
       hover
       sx={{
-        bgcolor: isOverdue ? 'error.lighter' : 'inherit',
-        '&:hover': {
-          bgcolor: isOverdue ? 'error.light' : undefined,
-        },
+        '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
+        bgcolor: isOverdue ? `${theme.error}05` : 'transparent',
       }}
     >
-      <TableCell>
-        <Typography variant="body2" fontWeight="medium">
-          {conta.numeroDocumento || '-'}
-        </Typography>
-      </TableCell>
-      <TableCell>
-        <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
-          {conta.descricao}
-        </Typography>
-        {conta.fornecedorNome && (
-          <Typography variant="caption" color="text.secondary" display="block">
-            {conta.fornecedorNome}
+      <TableCell sx={{ py: 1.5 }}>
+        <Box>
+          <Typography variant="body2" fontWeight={500} noWrap sx={{ maxWidth: 200 }}>
+            {conta.descricao}
           </Typography>
-        )}
+          {conta.fornecedorNome && (
+            <Typography variant="caption" color="text.secondary">
+              {conta.fornecedorNome}
+            </Typography>
+          )}
+        </Box>
       </TableCell>
-      <TableCell>
-        <Chip
-          label={getTipoDespesaLabel(conta.tipoDespesa)}
-          size="small"
-          variant="outlined"
-        />
-      </TableCell>
-      <TableCell align="right">
-        <Typography variant="body2">
+      <TableCell sx={{ py: 1.5 }}>
+        <Typography variant="body2" fontWeight={600}>
           {formatCurrency(conta.valorLiquido)}
         </Typography>
       </TableCell>
-      <TableCell align="right">
+      <TableCell sx={{ py: 1.5 }}>
         <Typography
           variant="body2"
-          color={conta.valorPendente > 0 ? 'error.main' : 'success.main'}
-          fontWeight="medium"
-        >
-          {formatCurrency(conta.valorPendente)}
-        </Typography>
-      </TableCell>
-      <TableCell>
-        <Typography
-          variant="body2"
-          color={isOverdue ? 'error.main' : 'text.primary'}
+          sx={{
+            color: isOverdue ? theme.error : theme.text.primary,
+            fontWeight: isOverdue ? 600 : 400,
+          }}
         >
           {formatDate(conta.dataVencimento)}
         </Typography>
       </TableCell>
-      <TableCell>
+      <TableCell sx={{ py: 1.5 }}>
         <Chip
-          label={getStatusLabel(conta.status)}
+          label={status.label}
           size="small"
-          color={getStatusColor(conta.status)}
+          sx={{
+            bgcolor: status.bg,
+            color: status.color,
+            fontWeight: 500,
+            fontSize: '0.75rem',
+            height: 24,
+          }}
         />
       </TableCell>
-      <TableCell align="right">
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <TableCell align="right" sx={{ py: 1.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
           {canPay && (
-            <Tooltip title="Registrar Pagamento">
+            <Tooltip title="Pagar">
               <IconButton
                 size="small"
-                color="primary"
                 onClick={() => onPayment(conta)}
+                sx={{ color: theme.primary }}
               >
                 <PaymentIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          <IconButton size="small" onClick={handleMenuClick}>
-            <MoreIcon fontSize="small" />
-          </IconButton>
-          <Menu
-            anchorEl={anchorEl}
-            open={open}
-            onClose={handleMenuClose}
-          >
-            <MenuItem onClick={() => handleAction(onView)}>
-              <ViewIcon fontSize="small" sx={{ mr: 1 }} />
-              Visualizar
-            </MenuItem>
-            {conta.status !== 'pago' && (
-              <MenuItem onClick={() => handleAction(onEdit)}>
-                <EditIcon fontSize="small" sx={{ mr: 1 }} />
-                Editar
-              </MenuItem>
-            )}
-            {conta.status === 'pendente' && (
-              <MenuItem
-                onClick={() => handleAction(onDelete)}
-                sx={{ color: 'error.main' }}
-              >
-                <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-                Excluir
-              </MenuItem>
-            )}
-          </Menu>
+          <Tooltip title="Editar">
+            <IconButton
+              size="small"
+              onClick={() => onEdit(conta)}
+              sx={{ color: theme.text.secondary }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
       </TableCell>
     </TableRow>
   );
 }
 
-// Loading Skeleton
+/**
+ * Loading Skeleton
+ */
 function TableSkeleton() {
   return (
     <>
       {[1, 2, 3, 4, 5].map((i) => (
         <TableRow key={i}>
-          <TableCell><Skeleton /></TableCell>
-          <TableCell><Skeleton /></TableCell>
-          <TableCell><Skeleton width={60} /></TableCell>
-          <TableCell><Skeleton width={80} /></TableCell>
-          <TableCell><Skeleton width={80} /></TableCell>
+          <TableCell><Skeleton width="80%" /></TableCell>
           <TableCell><Skeleton width={80} /></TableCell>
           <TableCell><Skeleton width={60} /></TableCell>
+          <TableCell><Skeleton width={70} height={24} sx={{ borderRadius: 1 }} /></TableCell>
           <TableCell><Skeleton width={60} /></TableCell>
         </TableRow>
       ))}
@@ -258,57 +230,56 @@ function TableSkeleton() {
   );
 }
 
-// Stats Summary
-function StatsSummary({ contas, loading }) {
-  const stats = useMemo(() => {
-    const pendentes = contas.filter((c) => ['pendente', 'parcial', 'agendado'].includes(c.status));
-    const vencidos = contas.filter((c) => c.status === 'vencido');
+/**
+ * Filter Chips
+ */
+function FilterChips({ filters, setFilters }) {
+  const filterOptions = [
+    { key: 'todos', label: 'Todos' },
+    { key: 'pendentes', label: 'Pendentes' },
+    { key: 'vencidos', label: 'Vencidos' },
+  ];
 
-    return {
-      totalPendente: pendentes.reduce((sum, c) => sum + (c.valorPendente || 0), 0),
-      totalVencido: vencidos.reduce((sum, c) => sum + (c.valorPendente || 0), 0),
-      qtdPendentes: pendentes.length,
-      qtdVencidos: vencidos.length,
-    };
-  }, [contas]);
+  const activeFilter = filters.apenasVencidos ? 'vencidos' : filters.apenasPendentes ? 'pendentes' : 'todos';
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <Skeleton width={150} height={24} />
-        <Skeleton width={150} height={24} />
-      </Box>
-    );
-  }
+  const handleFilter = (key) => {
+    if (key === 'todos') {
+      setFilters({ ...filters, apenasPendentes: false, apenasVencidos: false });
+    } else if (key === 'pendentes') {
+      setFilters({ ...filters, apenasPendentes: true, apenasVencidos: false });
+    } else if (key === 'vencidos') {
+      setFilters({ ...filters, apenasPendentes: false, apenasVencidos: true });
+    }
+  };
 
   return (
-    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-      <Chip
-        icon={<ReceiptIcon />}
-        label={`A pagar: ${formatCurrency(stats.totalPendente)}`}
-        color="warning"
-        variant="outlined"
-      />
-      <Chip
-        label={`Vencido: ${formatCurrency(stats.totalVencido)}`}
-        color="error"
-        variant="outlined"
-      />
-      <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
-        {stats.qtdPendentes} pendente(s) | {stats.qtdVencidos} vencido(s)
-      </Typography>
+    <Box sx={{ display: 'flex', gap: 0.5 }}>
+      {filterOptions.map((opt) => (
+        <Chip
+          key={opt.key}
+          label={opt.label}
+          size="small"
+          variant={activeFilter === opt.key ? 'filled' : 'outlined'}
+          onClick={() => handleFilter(opt.key)}
+          sx={{
+            cursor: 'pointer',
+            borderColor: activeFilter === opt.key ? theme.primary : 'rgba(0,0,0,0.12)',
+            bgcolor: activeFilter === opt.key ? theme.primary : 'transparent',
+            color: activeFilter === opt.key ? '#fff' : theme.text.secondary,
+            '&:hover': {
+              bgcolor: activeFilter === opt.key ? theme.primary : 'rgba(0,0,0,0.04)',
+            },
+          }}
+        />
+      ))}
     </Box>
   );
 }
 
-// Main Component
-export default function ContasPagarList({
-  onAdd,
-  onView,
-  onEdit,
-  onDelete,
-  onPayment,
-}) {
+/**
+ * Main Component
+ */
+export default function ContasPagarList({ onAdd, onView, onEdit, onDelete, onPayment }) {
   const {
     contas,
     loading,
@@ -320,35 +291,10 @@ export default function ContasPagarList({
   } = useContasPagar();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterAnchorEl, setFilterAnchorEl] = useState(null);
 
-  // Handle search
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
-  };
-
-  // Handle filter toggle
-  const handleFilterClick = (event) => {
-    setFilterAnchorEl(event.currentTarget);
-  };
-
-  const handleFilterClose = () => {
-    setFilterAnchorEl(null);
-  };
-
-  // Handle pagination
-  const handleChangePage = (event, newPage) => {
-    goToPage(newPage + 1);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    console.log('Change rows per page:', event.target.value);
-  };
-
-  // Filter contas locally by search term
+  // Filtrar localmente
   const filteredContas = useMemo(() => {
     if (!searchTerm) return contas;
-
     const term = searchTerm.toLowerCase();
     return contas.filter((conta) =>
       conta.descricao?.toLowerCase().includes(term) ||
@@ -358,131 +304,85 @@ export default function ContasPagarList({
   }, [contas, searchTerm]);
 
   if (error) {
-    return (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
-      </Alert>
-    );
+    return <Alert severity="error">{error}</Alert>;
   }
 
   return (
-    <Card>
-      <CardContent>
-        {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6" fontWeight="bold">
-            Contas a Pagar
+    <Box>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+        <Box>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+            Despesas
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={onAdd}
-          >
-            Nova Despesa
-          </Button>
+          <QuickStats contas={contas} loading={loading} />
         </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={onAdd}
+          sx={{
+            bgcolor: theme.primary,
+            textTransform: 'none',
+            fontWeight: 500,
+            borderRadius: 2,
+            px: 2.5,
+            '&:hover': { bgcolor: '#1040D0' },
+          }}
+        >
+          Nova Despesa
+        </Button>
+      </Box>
 
-        {/* Stats Summary */}
-        <Box sx={{ mb: 3 }}>
-          <StatsSummary contas={contas} loading={loading} />
-        </Box>
+      {/* Filters */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        <TextField
+          placeholder="Buscar..."
+          size="small"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{
+            minWidth: 200,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+              bgcolor: 'rgba(0,0,0,0.02)',
+              '& fieldset': { borderColor: 'transparent' },
+              '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
+              '&.Mui-focused fieldset': { borderColor: theme.primary },
+            },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: theme.text.secondary, fontSize: 20 }} />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <FilterChips filters={filters} setFilters={setFilters} />
+      </Box>
 
-        {/* Filters */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-          <TextField
-            placeholder="Buscar por descricao, numero ou fornecedor..."
-            size="small"
-            value={searchTerm}
-            onChange={handleSearch}
-            sx={{ minWidth: 300 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={filters.apenasPendentes}
-                onChange={(e) => setFilters({ ...filters, apenasPendentes: e.target.checked })}
-                size="small"
-              />
-            }
-            label="Apenas pendentes"
-          />
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={filters.apenasVencidos}
-                onChange={(e) => setFilters({ ...filters, apenasVencidos: e.target.checked })}
-                size="small"
-              />
-            }
-            label="Apenas vencidos"
-          />
-
-          <IconButton onClick={handleFilterClick}>
-            <FilterIcon />
-          </IconButton>
-
-          <Menu
-            anchorEl={filterAnchorEl}
-            open={Boolean(filterAnchorEl)}
-            onClose={handleFilterClose}
-          >
-            <MenuItem
-              onClick={() => {
-                setFilters({ ...filters, tipoDespesa: null });
-                handleFilterClose();
-              }}
-            >
-              Todos os tipos
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setFilters({ ...filters, tipoDespesa: 'fixa' });
-                handleFilterClose();
-              }}
-            >
-              Despesas Fixas
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setFilters({ ...filters, tipoDespesa: 'variavel' });
-                handleFilterClose();
-              }}
-            >
-              Despesas Variaveis
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setFilters({ ...filters, tipoDespesa: 'operacional' });
-                handleFilterClose();
-              }}
-            >
-              Operacional
-            </MenuItem>
-          </Menu>
-        </Box>
-
-        {/* Table */}
-        <TableContainer component={Paper} variant="outlined">
+      {/* Table */}
+      <Card sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <TableContainer>
           <Table size="small">
             <TableHead>
-              <TableRow>
-                <TableCell>Numero</TableCell>
-                <TableCell>Descricao</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell align="right">Valor</TableCell>
-                <TableCell align="right">Pendente</TableCell>
-                <TableCell>Vencimento</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Acoes</TableCell>
+              <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                <TableCell sx={{ fontWeight: 600, color: theme.text.secondary, fontSize: '0.75rem' }}>
+                  DESCRICAO
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600, color: theme.text.secondary, fontSize: '0.75rem' }}>
+                  VALOR
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600, color: theme.text.secondary, fontSize: '0.75rem' }}>
+                  VENCIMENTO
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600, color: theme.text.secondary, fontSize: '0.75rem' }}>
+                  STATUS
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600, color: theme.text.secondary, fontSize: '0.75rem' }}>
+                  ACOES
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -490,20 +390,18 @@ export default function ContasPagarList({
                 <TableSkeleton />
               ) : filteredContas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
                     <Typography color="text.secondary">
-                      Nenhuma conta a pagar encontrada
+                      Nenhuma despesa encontrada
                     </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredContas.map((conta) => (
-                  <ContaPagarRow
+                  <ContaRow
                     key={conta.id}
                     conta={conta}
-                    onView={onView}
                     onEdit={onEdit}
-                    onDelete={onDelete}
                     onPayment={onPayment}
                   />
                 ))
@@ -517,16 +415,18 @@ export default function ContasPagarList({
           component="div"
           count={pagination.total}
           page={pagination.page - 1}
-          onPageChange={handleChangePage}
+          onPageChange={(e, newPage) => goToPage(newPage + 1)}
           rowsPerPage={pagination.perPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
           rowsPerPageOptions={[10, 20, 50]}
-          labelRowsPerPage="Linhas por pagina:"
-          labelDisplayedRows={({ from, to, count }) =>
-            `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
-          }
+          labelRowsPerPage=""
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          sx={{
+            borderTop: '1px solid rgba(0,0,0,0.06)',
+            '& .MuiTablePagination-selectLabel': { display: 'none' },
+            '& .MuiTablePagination-select': { display: 'none' },
+          }}
         />
-      </CardContent>
-    </Card>
+      </Card>
+    </Box>
   );
 }
