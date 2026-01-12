@@ -353,7 +353,7 @@ export default function AppLayout({ children }) {
                         requiredAction="read"
                         fallbackMessage="Você precisa de permissão para visualizar a lista de pacientes."
                     >
-                        <PatientsListPage onPatientClick={handlePatientClick} />
+                        <PatientsListPage onPatientClick={handlePatientClick} onAddPatient={handlePacienteTopAppBarClick} />
                     </ProtectedRoute>
                 );
 
@@ -769,7 +769,7 @@ export default function AppLayout({ children }) {
                                     requiredAction="read"
                                     fallbackMessage="Você precisa de permissão para visualizar a lista de pacientes."
                                 >
-                                    <PatientsListPage onPatientClick={handlePatientClick} />
+                                    <PatientsListPage onPatientClick={handlePatientClick} onAddPatient={handlePacienteTopAppBarClick} />
                                 </ProtectedRoute>
                             </Box>
                             <Box sx={{ height: '100%', overflow: 'auto', padding: '8px' }}>

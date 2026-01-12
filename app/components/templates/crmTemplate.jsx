@@ -279,9 +279,6 @@ export default function CRMTemplate() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-              CRM & Engajamento
-            </h1>
             <p className="text-slate-500 mt-1">
               Gerencie follow-ups, campanhas e relacionamento com pacientes
             </p>

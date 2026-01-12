@@ -964,7 +964,7 @@ const ClearButton = ({onClick}) => {
 
 
 // Componente principal da página
-const PatientsListPage = ({onPatientClick}) => {
+const PatientsListPage = ({onPatientClick, onAddPatient}) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -2167,6 +2167,28 @@ const PatientsListPage = ({onPatientClick}) => {
                         flexShrink: 0
                     }}
                 >
+                    {/* Botao de criar novo paciente */}
+                    {canPerformAction('patients', 'create') && onAddPatient && (
+                        <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<AddIcon/>}
+                            onClick={onAddPatient}
+                            sx={{
+                                borderRadius: '50px',
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                px: 2,
+                                boxShadow: '0 2px 8px rgba(24, 82, 254, 0.25)',
+                                '&:hover': {
+                                    boxShadow: '0 4px 12px rgba(24, 82, 254, 0.35)',
+                                }
+                            }}
+                        >
+                            Novo Paciente
+                        </Button>
+                    )}
+
                     {hasActiveFilters && (
                         <Button
                             size="small"
