@@ -3,14 +3,6 @@ const nextConfig = {
     // Configuração para o Netlify
     output: 'standalone',
 
-    // Ignorar erros de build em páginas específicas
-    typescript: {
-        ignoreBuildErrors: false,
-    },
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
-
     // serverExternalPackages para pacotes que devem ser tratados como externos
     serverExternalPackages: ['sharp', 'tesseract.js', 'mammoth', 'puppeteer', 'pdf-img-convert'],
 
