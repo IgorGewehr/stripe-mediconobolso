@@ -1,8 +1,5 @@
 'use client';
 
-// Skip static generation for global-error page
-export const dynamic = 'force-dynamic';
-
 export default function GlobalError({ error, reset }) {
     return (
         <html lang="pt-br">
@@ -36,11 +33,12 @@ export default function GlobalError({ error, reset }) {
                         color: '#64748B',
                         marginBottom: '24px'
                     }}>
-                        Ocorreu um erro inesperado. Por favor, tente novamente.
+                        Ocorreu um erro inesperado. Por favor, recarregue a página.
                     </p>
-                    <button
-                        onClick={reset}
+                    <a
+                        href="/"
                         style={{
+                            display: 'inline-block',
                             padding: '12px 24px',
                             fontSize: '14px',
                             fontWeight: 500,
@@ -48,11 +46,12 @@ export default function GlobalError({ error, reset }) {
                             backgroundColor: '#2563EB',
                             border: 'none',
                             borderRadius: '8px',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            textDecoration: 'none'
                         }}
                     >
-                        Tentar novamente
-                    </button>
+                        Voltar ao início
+                    </a>
                 </div>
             </body>
         </html>
