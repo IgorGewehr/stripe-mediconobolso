@@ -70,8 +70,8 @@ const Sidebar = ({
             { label: "Financeiro", icon: DollarSign }
         ],
         faturamento: [
-            { label: "TISS", icon: Receipt },
-            { label: "Glossas", icon: FileX },
+            { label: "TISS", icon: Receipt, disabled: true, comingSoon: true },
+            { label: "Glossas", icon: FileX, disabled: true, comingSoon: true },
             { label: "NFSe", icon: FileCheck2 }
         ],
         admin: [
@@ -133,6 +133,21 @@ const Sidebar = ({
                     <span>{item.label}</span>
                     <span className="ml-auto text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                         Beta
+                    </span>
+                </div>
+            );
+        }
+
+        // Item com "Em breve" (coming soon)
+        if (item.comingSoon) {
+            return (
+                <div
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-not-allowed group mb-1 opacity-50"
+                >
+                    <Icon className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-400">{item.label}</span>
+                    <span className="ml-auto text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full font-medium">
+                        Em breve
                     </span>
                 </div>
             );

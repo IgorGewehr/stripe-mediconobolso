@@ -1,5 +1,5 @@
 [build]
-command = "rm -rf .next node_modules/.cache && npm run build"
+command = "npm run build"
 
 [build.environment]
 NEXT_IGNORE_PRERENDER_ERRORS = "true"
