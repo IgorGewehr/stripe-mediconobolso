@@ -10,6 +10,14 @@ import {
   Snackbar,
 } from '@mui/material';
 import {
+  Mail,
+  MessageSquare,
+  Settings,
+  Clock,
+  Users,
+  Bell,
+} from 'lucide-react';
+import {
   useCRMDashboard,
   useFollowUpRules,
   useReminderConfig,
@@ -23,6 +31,8 @@ import FollowUpRuleForm from './FollowUpRuleForm';
 import ReminderConfigCard from './ReminderConfigCard';
 import PendingFollowUpsList from './PendingFollowUpsList';
 import InactivePatientsTable from './InactivePatientsTable';
+import EmailCampaignSection from './EmailCampaignSection';
+import WhatsAppCampaignSection from './WhatsAppCampaignSection';
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -148,16 +158,64 @@ export default function CRMDashboard() {
           value={activeTab}
           onChange={(_, newValue) => setActiveTab(newValue)}
           aria-label="CRM tabs"
+          variant="scrollable"
+          scrollButtons="auto"
         >
-          <Tab label="Regras de Follow-up" />
-          <Tab label="Lembretes" />
-          <Tab label="Pendentes" />
-          <Tab label="Inativos" />
+          <Tab
+            icon={<MessageSquare className="w-4 h-4" />}
+            iconPosition="start"
+            label="WhatsApp em Massa"
+            sx={{ textTransform: 'none' }}
+          />
+          <Tab
+            icon={<Mail className="w-4 h-4" />}
+            iconPosition="start"
+            label="Email em Massa"
+            sx={{ textTransform: 'none' }}
+          />
+          <Tab
+            icon={<Settings className="w-4 h-4" />}
+            iconPosition="start"
+            label="Regras de Follow-up"
+            sx={{ textTransform: 'none' }}
+          />
+          <Tab
+            icon={<Bell className="w-4 h-4" />}
+            iconPosition="start"
+            label="Lembretes"
+            sx={{ textTransform: 'none' }}
+          />
+          <Tab
+            icon={<Clock className="w-4 h-4" />}
+            iconPosition="start"
+            label="Pendentes"
+            sx={{ textTransform: 'none' }}
+          />
+          <Tab
+            icon={<Users className="w-4 h-4" />}
+            iconPosition="start"
+            label="Inativos"
+            sx={{ textTransform: 'none' }}
+          />
         </Tabs>
       </Box>
 
       {/* Tab Panels */}
       <TabPanel value={activeTab} index={0}>
+        <WhatsAppCampaignSection
+          onSuccess={(msg) => showNotification(msg, 'success')}
+          onError={(msg) => showNotification(msg, 'error')}
+        />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={1}>
+        <EmailCampaignSection
+          onSuccess={(msg) => showNotification(msg, 'success')}
+          onError={(msg) => showNotification(msg, 'error')}
+        />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={2}>
         <FollowUpRulesList
           rules={rules.rules}
           rulesByType={rules.rulesByType}
@@ -172,7 +230,7 @@ export default function CRMDashboard() {
         />
       </TabPanel>
 
-      <TabPanel value={activeTab} index={1}>
+      <TabPanel value={activeTab} index={3}>
         <ReminderConfigCard
           config={reminderConfig.config}
           loading={reminderConfig.loading}
@@ -182,7 +240,7 @@ export default function CRMDashboard() {
         />
       </TabPanel>
 
-      <TabPanel value={activeTab} index={2}>
+      <TabPanel value={activeTab} index={4}>
         <PendingFollowUpsList
           followUps={pendingFollowUps.followUps}
           loading={pendingFollowUps.loading}
@@ -197,7 +255,7 @@ export default function CRMDashboard() {
         />
       </TabPanel>
 
-      <TabPanel value={activeTab} index={3}>
+      <TabPanel value={activeTab} index={5}>
         <InactivePatientsTable
           patients={inactivePatients.patients}
           loading={inactivePatients.loading}

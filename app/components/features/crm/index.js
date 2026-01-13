@@ -12,3 +12,4 @@ export { default as ReminderConfigCard } from './ReminderConfigCard';
 export { default as PendingFollowUpsList } from './PendingFollowUpsList';
 export { default as InactivePatientsTable } from './InactivePatientsTable';
 export { default as EmailCampaignSection } from './EmailCampaignSection';
+export { default as WhatsAppCampaignSection } from './WhatsAppCampaignSection';

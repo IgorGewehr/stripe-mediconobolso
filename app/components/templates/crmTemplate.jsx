@@ -29,6 +29,7 @@ import {
   ChevronRight,
   Check,
   MailPlus,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -46,8 +47,9 @@ import ReminderConfigCard from '../features/crm/ReminderConfigCard';
 import PendingFollowUpsList from '../features/crm/PendingFollowUpsList';
 import InactivePatientsTable from '../features/crm/InactivePatientsTable';
 
-// Email Campaign Component
+// Campaign Components
 import EmailCampaignSection from '../features/crm/EmailCampaignSection';
+import WhatsAppCampaignSection from '../features/crm/WhatsAppCampaignSection';
 
 // ============================================================================
 // Elegant UI Components (Shadcn-inspired)
@@ -266,11 +268,12 @@ export default function CRMTemplate() {
 
   // Tab definitions
   const tabs = [
+    { icon: MessageSquare, label: 'WhatsApp em Massa' },
+    { icon: MailPlus, label: 'Email em Massa' },
     { icon: Settings, label: 'Regras', badge: rules.rules?.length },
     { icon: Bell, label: 'Lembretes' },
     { icon: Clock, label: 'Pendentes', badge: pendingFollowUps.followUps?.length },
     { icon: UserX, label: 'Inativos', badge: inactivePatients.patients?.length },
-    { icon: MailPlus, label: 'Email em Massa' },
   ];
 
   return (
@@ -365,8 +368,24 @@ export default function CRMTemplate() {
 
           {/* Tab Content */}
           <div className="p-4 md:p-6">
-            {/* Regras de Follow-up */}
+            {/* WhatsApp em Massa */}
             {activeTab === 0 && (
+              <WhatsAppCampaignSection
+                onSuccess={(msg) => showNotification(msg, 'success')}
+                onError={(msg) => showNotification(msg, 'error')}
+              />
+            )}
+
+            {/* Email em Massa */}
+            {activeTab === 1 && (
+              <EmailCampaignSection
+                onSuccess={(msg) => showNotification(msg, 'success')}
+                onError={(msg) => showNotification(msg, 'error')}
+              />
+            )}
+
+            {/* Regras de Follow-up */}
+            {activeTab === 2 && (
               <FollowUpRulesList
                 rules={rules.rules}
                 rulesByType={rules.rulesByType}
@@ -382,7 +401,7 @@ export default function CRMTemplate() {
             )}
 
             {/* Lembretes */}
-            {activeTab === 1 && (
+            {activeTab === 3 && (
               <ReminderConfigCard
                 config={reminderConfig.config}
                 loading={reminderConfig.loading}
@@ -393,7 +412,7 @@ export default function CRMTemplate() {
             )}
 
             {/* Pendentes */}
-            {activeTab === 2 && (
+            {activeTab === 4 && (
               <PendingFollowUpsList
                 followUps={pendingFollowUps.followUps}
                 loading={pendingFollowUps.loading}
@@ -409,7 +428,7 @@ export default function CRMTemplate() {
             )}
 
             {/* Inativos */}
-            {activeTab === 3 && (
+            {activeTab === 5 && (
               <InactivePatientsTable
                 patients={inactivePatients.patients}
                 loading={inactivePatients.loading}
@@ -419,14 +438,6 @@ export default function CRMTemplate() {
                 onDaysChange={inactivePatients.setDays}
                 onRefresh={inactivePatients.refresh}
                 onPageChange={inactivePatients.goToPage}
-              />
-            )}
-
-            {/* Email em Massa */}
-            {activeTab === 4 && (
-              <EmailCampaignSection
-                onSuccess={(msg) => showNotification(msg, 'success')}
-                onError={(msg) => showNotification(msg, 'error')}
               />
             )}
           </div>

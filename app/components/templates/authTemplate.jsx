@@ -26,12 +26,18 @@ const AuthTemplate = () => {
         return (
             <Box
                 sx={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    height: '100vh',
+                    height: '100dvh',
                     width: '100%',
                     backgroundColor: 'white',
+                    overflow: 'hidden',
                 }}
             >
                 <CircularProgress color="primary" />
@@ -43,9 +49,14 @@ const AuthTemplate = () => {
     return (
         <Box
             sx={{
-                position: 'relative',
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 width: '100vw',
-                height: '100vh',
+                height: '100dvh',
+                maxHeight: '100dvh',
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: { xs: 'column', md: 'row' },
@@ -82,12 +93,14 @@ const AuthTemplate = () => {
                 <Box
                     sx={{
                         flex: 1,
-                        minHeight: '100vh',
+                        height: '100%',
+                        maxHeight: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         p: 2,
-                        width: '100%'
+                        width: '100%',
+                        overflow: 'hidden'
                     }}
                 >
                     <Box sx={{ width: '100%', maxWidth: 400 }}>
@@ -99,6 +112,7 @@ const AuthTemplate = () => {
                 <Box
                     sx={{
                         flex: 1,
+                        height: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -106,7 +120,7 @@ const AuthTemplate = () => {
                         p: 0,
                         marginLeft: '40px',
                         width: '100%',
-                        overflowX: 'hidden',
+                        overflow: 'hidden',
                     }}
                 >
                     <Box sx={{
@@ -126,7 +140,7 @@ const AuthTemplate = () => {
                 <Box
                     sx={{
                         flex: 1,
-                        height: '100vh',
+                        height: '100%',
                         m: 0,
                         p: 0,
                         display: { xs: 'none', md: 'block' },

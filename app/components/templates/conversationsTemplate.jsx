@@ -295,7 +295,7 @@ const ConversationsTemplate = () => {
             {conversations.map((conversation) => (
               <button
                 key={conversation.id}
-                onClick={() => selectConversation(conversation)}
+                onClick={() => selectConversation(conversation.id)}
                 onContextMenu={(e) => handleContextMenu(e, conversation.id)}
                 className={cn(
                   "w-full text-left p-4 transition-all duration-200 border-l-4 hover:bg-slate-50",
@@ -435,7 +435,8 @@ const ConversationsTemplate = () => {
               <>
                 {messages.map((message, index) => {
                   const showDivider = shouldShowDateDivider(message, index);
-                  const isOutgoing = message.direction === 'outgoing' || message.fromDoctor;
+                  // isFromUser=true significa mensagem do cliente (incoming), isFromUser=false significa do médico (outgoing)
+                  const isOutgoing = message.direction === 'outgoing' || message.fromDoctor || message.sender === 'doctor' || !message.isFromUser;
 
                   return (
                     <div key={message.id}>

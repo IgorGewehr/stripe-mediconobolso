@@ -25,6 +25,10 @@ import {
 import useAIBlockStatus from '../../hooks/useAIBlockStatus';
 
 const AIControlButton = ({ phone, conversationName }) => {
+  // AI não está integrada ainda - botão desabilitado
+  // TODO: Remover este return quando a IA for integrada
+  return null;
+
   const {
     blocked,
     loading,
