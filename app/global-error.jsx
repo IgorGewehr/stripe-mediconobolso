@@ -1,5 +1,8 @@
 'use client';
 
+// Skip static generation for global-error page
+export const dynamic = 'force-dynamic';
+
 export default function GlobalError({ error, reset }) {
     return (
         <html lang="pt-br">
