@@ -1,3 +1,6 @@
+[build]
+command = "rm -rf .next && npm run build"
+
 [build.environment]
 NEXT_IGNORE_PRERENDER_ERRORS = "true"
 SKIP_STATIC_GENERATION_WITH_PRERENDER_ERRORS = "true"
