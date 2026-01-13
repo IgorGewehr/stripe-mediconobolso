@@ -11,8 +11,8 @@ export default function GlobalError({ error, reset }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 minHeight: '100vh',
-                fontFamily: "'Inter', system-ui, sans-serif",
-                background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 50%, #EFF6FF 100%)',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                background: '#F8FAFC',
                 color: '#0F172A'
             }}>
                 <div style={{
@@ -36,7 +36,7 @@ export default function GlobalError({ error, reset }) {
                         Ocorreu um erro inesperado. Por favor, tente novamente.
                     </p>
                     <button
-                        onClick={() => reset()}
+                        onClick={reset}
                         style={{
                             padding: '12px 24px',
                             fontSize: '14px',
@@ -45,11 +45,8 @@ export default function GlobalError({ error, reset }) {
                             backgroundColor: '#2563EB',
                             border: 'none',
                             borderRadius: '8px',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
+                            cursor: 'pointer'
                         }}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#1D4ED8'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#2563EB'}
                     >
                         Tentar novamente
                     </button>

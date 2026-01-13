@@ -1,10 +1,15 @@
 [build]
-command = "rm -rf .next && npm run build"
+command = "rm -rf .next node_modules/.cache && npm run build"
 
 [build.environment]
 NEXT_IGNORE_PRERENDER_ERRORS = "true"
 SKIP_STATIC_GENERATION_WITH_PRERENDER_ERRORS = "true"
 NODE_OPTIONS = "--max-old-space-size=4096"
+NODE_VERSION = "20"
+NPM_FLAGS = "--legacy-peer-deps"
+
+[[plugins]]
+package = "@netlify/plugin-nextjs"
 
 [functions]
 node_bundler = "esbuild"
