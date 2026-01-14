@@ -397,3 +397,106 @@ export function useCodigosServico() {
     staleTime: 1000 * 60 * 60 * 24, // 24 hour cache - codes don't change often
   });
 }
+
+// =============================================================================
+// NUVEM FISCAL HOOKS
+// =============================================================================
+
+/**
+ * Hook for Nuvem Fiscal integration status
+ */
+export function useNuvemFiscalStatus() {
+  return useQuery({
+    queryKey: ['nfse', 'nuvem-fiscal', 'status'],
+    queryFn: nfseService.getNuvemFiscalStatus,
+    refetchInterval: 60000, // Refresh every minute
+  });
+}
+
+/**
+ * Hook for syncing company with Nuvem Fiscal
+ */
+export function useSyncEmpresaNuvemFiscal() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: nfseService.syncEmpresaNuvemFiscal,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nfse', 'nuvem-fiscal'] });
+      queryClient.invalidateQueries({ queryKey: ['nfse', 'configuracao'] });
+    },
+  });
+
+  return {
+    sync: mutation.mutateAsync,
+    isSyncing: mutation.isPending,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+
+/**
+ * Hook for sending certificate to Nuvem Fiscal
+ */
+export function useEnviarCertificadoNuvemFiscal() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (certificadoId) => nfseService.enviarCertificadoNuvemFiscal(certificadoId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nfse', 'nuvem-fiscal'] });
+      queryClient.invalidateQueries({ queryKey: ['nfse', 'certificados'] });
+    },
+  });
+
+  return {
+    enviar: mutation.mutateAsync,
+    isEnviando: mutation.isPending,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+
+/**
+ * Hook for emitting NFSe via Nuvem Fiscal
+ */
+export function useEmitirNfseNuvemFiscal() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: nfseService.emitirNfseNuvemFiscal,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nfse'] });
+      queryClient.invalidateQueries({ queryKey: ['nfse', 'rps'] });
+    },
+  });
+
+  return {
+    emitir: mutation.mutateAsync,
+    isEmitindo: mutation.isPending,
+    resultado: mutation.data,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+
+/**
+ * Hook for canceling NFSe via Nuvem Fiscal
+ */
+export function useCancelarNfseNuvemFiscal() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({ nfseId, motivo }) => nfseService.cancelarNfseNuvemFiscal(nfseId, motivo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nfse'] });
+    },
+  });
+
+  return {
+    cancelar: mutation.mutateAsync,
+    isCancelando: mutation.isPending,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}

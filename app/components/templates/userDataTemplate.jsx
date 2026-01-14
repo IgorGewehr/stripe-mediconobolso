@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     Box,
     Typography,
@@ -24,16 +24,59 @@ import {
     DialogContentText,
     DialogTitle,
     Switch,
-    FormControlLabel
+    FormControlLabel,
+    Skeleton,
+    alpha,
+    Tooltip
 } from "@mui/material";
 import {
     Search as SearchIcon,
     Refresh as RefreshIcon,
     AdminPanelSettings as AdminIcon,
-    Person as PersonIcon
+    Person as PersonIcon,
+    Email as EmailIcon,
+    Phone as PhoneIcon,
+    LocationOn as LocationIcon,
+    Edit as EditIcon,
+    Visibility as ViewIcon
 } from '@mui/icons-material';
 import { adminService } from '@/lib/services/api';
 import { useAuth } from "../providers/authProvider";
+
+// Cores do tema
+const themeColors = {
+    primary: "#1852FE",
+    primaryLight: "#E9EFFF",
+    success: "#0CAF60",
+    error: "#FF4B55",
+    warning: "#FFAB2B",
+    textPrimary: "#111E5A",
+    textSecondary: "#4B5574",
+    textTertiary: "#7E84A3",
+    backgroundSecondary: "#F4F7FF",
+    borderColor: "rgba(17, 30, 90, 0.08)",
+};
+
+// Helper para obter nome seguro
+const getSafeName = (user) => {
+    return user?.fullName || user?.email?.split('@')[0] || 'Usuário';
+};
+
+// Helper para obter inicial segura
+const getSafeInitial = (user) => {
+    const name = getSafeName(user);
+    return name.charAt(0).toUpperCase();
+};
+
+// Helper para obter localização formatada
+const getFormattedLocation = (user) => {
+    const city = user?.city || user?.address?.city;
+    const state = user?.state || user?.address?.state;
+
+    if (!city && !state) return null;
+    if (city && state) return `${city}, ${state}`;
+    return city || state;
+};
 
 const UserDataTemplate = () => {
     // Estados para controle da tabela e dados
@@ -50,27 +93,31 @@ const UserDataTemplate = () => {
     const { user: currentUser } = useAuth();
 
     // Carregar dados dos usuários
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         setLoading(true);
         try {
+            // Dados já normalizados pelo admin.service
             const usersData = await adminService.listAllUsers(100, null, searchQuery);
-            setUsers(usersData);
+            setUsers(usersData || []);
         } catch (error) {
             console.error("Erro ao carregar usuários:", error);
+            setUsers([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchQuery]);
 
     // Carregar dados na inicialização
     useEffect(() => {
         if (currentUser?.administrador) {
             loadUsers();
         }
-    }, [currentUser]);
+    }, [currentUser, loadUsers]);
 
-    // Recarregar ao alterar a pesquisa
+    // Recarregar ao alterar a pesquisa (debounced)
     useEffect(() => {
+        if (!currentUser?.administrador) return;
+
         const timer = setTimeout(() => {
             if (searchQuery.length === 0 || searchQuery.length > 2) {
                 loadUsers();
@@ -78,7 +125,7 @@ const UserDataTemplate = () => {
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [searchQuery]);
+    }, [searchQuery, currentUser?.administrador, loadUsers]);
 
     // Handlers para a tabela
     const handleChangePage = (event, newPage) => {
@@ -122,32 +169,66 @@ const UserDataTemplate = () => {
     // Estilo para a célula de cabeçalho da tabela
     const headerCellStyle = {
         fontWeight: 600,
-        color: "#111E5A",
-        backgroundColor: "#F0F4FF",
-        borderBottom: "2px solid #E0E7FF",
+        color: themeColors.textPrimary,
+        backgroundColor: themeColors.backgroundSecondary,
+        borderBottom: `2px solid ${themeColors.borderColor}`,
+        fontSize: "12px",
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+        py: 1.5
     };
+
+    // Se não é admin, não renderizar
+    if (!currentUser?.administrador) {
+        return (
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 400,
+                flexDirection: 'column',
+                gap: 2
+            }}>
+                <AdminIcon sx={{ fontSize: 64, color: themeColors.textTertiary, opacity: 0.3 }} />
+                <Typography sx={{ color: themeColors.textTertiary }}>
+                    Acesso restrito a administradores
+                </Typography>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ padding: { xs: 2, md: 3 }, maxWidth: "100%" }}>
-            {/* Toolbar com ações e pesquisa */}
-            <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 3, flexWrap: "wrap" }}>
-                <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={loadUsers}
-                    sx={{
-                        borderColor: "#4285F4",
-                        color: "#4285F4",
-                        "&:hover": {
-                            borderColor: "#1a73e8",
-                            backgroundColor: "rgba(66, 133, 244, 0.04)",
-                        },
-                    }}
-                >
-                    Atualizar
-                </Button>
+            {/* Header */}
+            <Box sx={{ mb: 3 }}>
+                <Typography sx={{
+                    fontSize: { xs: "1.25rem", md: "1.5rem" },
+                    fontWeight: 700,
+                    color: themeColors.textPrimary,
+                    mb: 0.5
+                }}>
+                    Gerenciamento de Usuários
+                </Typography>
+                <Typography sx={{
+                    fontSize: "14px",
+                    color: themeColors.textTertiary
+                }}>
+                    {users.length > 0 ? `${users.length} usuário${users.length > 1 ? 's' : ''} cadastrado${users.length > 1 ? 's' : ''}` : 'Carregando...'}
+                </Typography>
+            </Box>
 
+            {/* Toolbar com ações e pesquisa */}
+            <Box sx={{
+                display: "flex",
+                gap: 2,
+                alignItems: "center",
+                mb: 3,
+                flexWrap: "wrap",
+                p: 2,
+                borderRadius: "12px",
+                backgroundColor: "#FFFFFF",
+                border: `1px solid ${themeColors.borderColor}`
+            }}>
                 <TextField
                     sx={{ flex: 1, minWidth: 200 }}
                     size="small"
@@ -158,21 +239,40 @@ const UserDataTemplate = () => {
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
-                                <SearchIcon sx={{ color: "#4285F4", fontSize: 20 }} />
+                                <SearchIcon sx={{ color: themeColors.textTertiary, fontSize: 20 }} />
                             </InputAdornment>
                         ),
                         sx: {
-                            borderRadius: "8px",
-                            backgroundColor: "#FFFFFF",
+                            borderRadius: "10px",
+                            backgroundColor: themeColors.backgroundSecondary,
                             "& fieldset": {
-                                borderColor: "#E0E7FF",
+                                borderColor: "transparent",
                             },
                             "&:hover fieldset": {
-                                borderColor: "#4285F4",
+                                borderColor: themeColors.primary,
                             },
+                            "&.Mui-focused fieldset": {
+                                borderColor: themeColors.primary,
+                            }
                         },
                     }}
                 />
+
+                <Tooltip title="Atualizar lista">
+                    <IconButton
+                        onClick={loadUsers}
+                        disabled={loading}
+                        sx={{
+                            backgroundColor: alpha(themeColors.primary, 0.1),
+                            color: themeColors.primary,
+                            "&:hover": {
+                                backgroundColor: alpha(themeColors.primary, 0.2),
+                            },
+                        }}
+                    >
+                        <RefreshIcon sx={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+                    </IconButton>
+                </Tooltip>
             </Box>
 
             {/* Tabela de usuários */}
@@ -199,125 +299,165 @@ const UserDataTemplate = () => {
                         </TableHead>
                         <TableBody>
                             {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                                        <Typography>Carregando dados...</Typography>
-                                    </TableCell>
-                                </TableRow>
+                                // Skeleton loading
+                                Array.from({ length: 5 }).map((_, index) => (
+                                    <TableRow key={`skeleton-${index}`}>
+                                        <TableCell>
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                                <Skeleton variant="circular" width={40} height={40} />
+                                                <Box>
+                                                    <Skeleton width={120} height={20} />
+                                                    <Skeleton width={80} height={16} />
+                                                </Box>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell><Skeleton width={150} /></TableCell>
+                                        <TableCell><Skeleton width={100} /></TableCell>
+                                        <TableCell><Skeleton width={100} /></TableCell>
+                                        <TableCell><Skeleton width={80} /></TableCell>
+                                        <TableCell><Skeleton width={80} /></TableCell>
+                                    </TableRow>
+                                ))
                             ) : users.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                                        <Typography>Nenhum usuário encontrado</Typography>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                                        <PersonIcon sx={{ fontSize: 48, color: themeColors.textTertiary, opacity: 0.5, mb: 1 }} />
+                                        <Typography sx={{ color: themeColors.textTertiary }}>
+                                            {searchQuery ? 'Nenhum usuário encontrado para esta busca' : 'Nenhum usuário cadastrado'}
+                                        </Typography>
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 users
                                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                                    .map((user) => (
-                                        <TableRow
-                                            hover
-                                            key={user.id}
-                                            sx={{
-                                                "&:hover": { backgroundColor: "rgba(66, 133, 244, 0.04)" },
-                                                cursor: "pointer"
-                                            }}
-                                        >
-                                            {/* Usuário */}
-                                            <TableCell>
-                                                <Box sx={{ display: "flex", alignItems: "center" }}>
-                                                    <Avatar
-                                                        src={user.photoURL}
-                                                        alt={user.fullName}
-                                                        sx={{
-                                                            width: 40,
-                                                            height: 40,
-                                                            mr: 2,
-                                                            border: user.isAdmin ? "2px solid #4285F4" : "none"
-                                                        }}
-                                                    >
-                                                        {user.fullName.charAt(0)}
-                                                    </Avatar>
-                                                    <Box>
-                                                        <Typography
-                                                            variant="body1"
-                                                            sx={{ fontWeight: 600, color: "#111E5A", display: "flex", alignItems: "center" }}
+                                    .map((user) => {
+                                        const location = getFormattedLocation(user);
+                                        return (
+                                            <TableRow
+                                                hover
+                                                key={user.id}
+                                                onClick={() => handleOpenDialog(user)}
+                                                sx={{
+                                                    "&:hover": { backgroundColor: alpha(themeColors.primary, 0.04) },
+                                                    cursor: "pointer",
+                                                    transition: "background-color 0.2s ease"
+                                                }}
+                                            >
+                                                {/* Usuário */}
+                                                <TableCell>
+                                                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                                                        <Avatar
+                                                            src={user.photoURL}
+                                                            alt={getSafeName(user)}
+                                                            sx={{
+                                                                width: 40,
+                                                                height: 40,
+                                                                mr: 2,
+                                                                border: user.isAdmin ? `2px solid ${themeColors.primary}` : "none",
+                                                                backgroundColor: alpha(themeColors.primary, 0.1),
+                                                                color: themeColors.primary,
+                                                                fontWeight: 600
+                                                            }}
                                                         >
-                                                            {user.fullName}
-                                                            {user.isAdmin && (
-                                                                <AdminIcon
-                                                                    sx={{
-                                                                        color: "#4285F4",
-                                                                        fontSize: "16px",
-                                                                        ml: 1,
-                                                                    }}
-                                                                />
-                                                            )}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="body2"
-                                                            sx={{ color: "#8A94A6" }}
-                                                        >
-                                                            {user.cpf || "CPF não cadastrado"}
-                                                        </Typography>
+                                                            {getSafeInitial(user)}
+                                                        </Avatar>
+                                                        <Box sx={{ minWidth: 0 }}>
+                                                            <Typography
+                                                                sx={{
+                                                                    fontWeight: 600,
+                                                                    color: themeColors.textPrimary,
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    fontSize: "14px"
+                                                                }}
+                                                            >
+                                                                {getSafeName(user)}
+                                                                {user.isAdmin && (
+                                                                    <Tooltip title="Administrador">
+                                                                        <AdminIcon
+                                                                            sx={{
+                                                                                color: themeColors.primary,
+                                                                                fontSize: "16px",
+                                                                                ml: 0.5,
+                                                                            }}
+                                                                        />
+                                                                    </Tooltip>
+                                                                )}
+                                                            </Typography>
+                                                            <Typography
+                                                                sx={{
+                                                                    color: themeColors.textTertiary,
+                                                                    fontSize: "12px"
+                                                                }}
+                                                            >
+                                                                {user.cpf || "CPF não cadastrado"}
+                                                            </Typography>
+                                                        </Box>
                                                     </Box>
-                                                </Box>
-                                            </TableCell>
+                                                </TableCell>
 
-                                            {/* Email */}
-                                            <TableCell>
-                                                <Typography variant="body2">{user.email}</Typography>
-                                            </TableCell>
+                                                {/* Email */}
+                                                <TableCell>
+                                                    <Typography sx={{ fontSize: "13px", color: themeColors.textSecondary }}>
+                                                        {user.email || "—"}
+                                                    </Typography>
+                                                </TableCell>
 
-                                            {/* Telefone */}
-                                            <TableCell>
-                                                <Typography variant="body2">
-                                                    {user.phone || "Não informado"}
-                                                </Typography>
-                                            </TableCell>
+                                                {/* Telefone */}
+                                                <TableCell>
+                                                    <Typography sx={{ fontSize: "13px", color: themeColors.textSecondary }}>
+                                                        {user.phone || "—"}
+                                                    </Typography>
+                                                </TableCell>
 
-                                            {/* Localização */}
-                                            <TableCell>
-                                                <Typography variant="body2">
-                                                    {user.city ? `${user.city}${user.state ? `, ${user.state}` : ''}` : "Não informado"}
-                                                </Typography>
-                                            </TableCell>
+                                                {/* Localização */}
+                                                <TableCell>
+                                                    <Typography sx={{ fontSize: "13px", color: themeColors.textSecondary }}>
+                                                        {location || "—"}
+                                                    </Typography>
+                                                </TableCell>
 
-                                            {/* Status */}
-                                            <TableCell>
-                                                <Chip
-                                                    label={user.assinouPlano ? "Plano Ativo" : "Sem Plano"}
-                                                    color={user.assinouPlano ? "primary" : "default"}
-                                                    size="small"
-                                                    sx={{
-                                                        borderRadius: "6px",
-                                                        backgroundColor: user.assinouPlano
-                                                            ? "rgba(66, 133, 244, 0.1)"
-                                                            : "rgba(138, 148, 166, 0.1)",
-                                                        color: user.assinouPlano ? "#4285F4" : "#8A94A6",
-                                                        fontWeight: 500,
-                                                    }}
-                                                />
-                                            </TableCell>
+                                                {/* Status */}
+                                                <TableCell>
+                                                    <Chip
+                                                        label={user.assinouPlano ? "Plano Ativo" : "Gratuito"}
+                                                        size="small"
+                                                        sx={{
+                                                            borderRadius: "6px",
+                                                            backgroundColor: user.assinouPlano
+                                                                ? alpha(themeColors.success, 0.1)
+                                                                : alpha(themeColors.textTertiary, 0.1),
+                                                            color: user.assinouPlano ? themeColors.success : themeColors.textTertiary,
+                                                            fontWeight: 500,
+                                                            fontSize: "12px",
+                                                            height: 24
+                                                        }}
+                                                    />
+                                                </TableCell>
 
-                                            {/* Ações */}
-                                            <TableCell>
-                                                <Button
-                                                    size="small"
-                                                    variant="outlined"
-                                                    sx={{
-                                                        borderColor: "#E0E7FF",
-                                                        color: "#4285F4",
-                                                        "&:hover": {
-                                                            borderColor: "#4285F4",
-                                                            backgroundColor: "rgba(66, 133, 244, 0.04)",
-                                                        },
-                                                    }}
-                                                >
-                                                    Gerenciar
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                                {/* Ações */}
+                                                <TableCell>
+                                                    <Tooltip title="Gerenciar usuário">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleOpenDialog(user);
+                                                            }}
+                                                            sx={{
+                                                                color: themeColors.primary,
+                                                                "&:hover": {
+                                                                    backgroundColor: alpha(themeColors.primary, 0.08),
+                                                                },
+                                                            }}
+                                                        >
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                             )}
                         </TableBody>
                     </Table>
@@ -347,66 +487,208 @@ const UserDataTemplate = () => {
             </Paper>
 
             {/* Diálogo para editar usuário */}
-            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ fontWeight: 600, color: "#111E5A" }}>
+            <Dialog
+                open={openDialog}
+                onClose={handleCloseDialog}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: "16px",
+                        overflow: "hidden"
+                    }
+                }}
+            >
+                <DialogTitle sx={{
+                    fontWeight: 600,
+                    color: themeColors.textPrimary,
+                    borderBottom: `1px solid ${themeColors.borderColor}`,
+                    pb: 2
+                }}>
                     Gerenciar Usuário
                 </DialogTitle>
-                <DialogContent>
+                <DialogContent sx={{ pt: 3 }}>
                     {selectedUser && (
                         <>
-                            <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+                            {/* Header do usuário */}
+                            <Box sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 3,
+                                p: 2,
+                                borderRadius: "12px",
+                                backgroundColor: themeColors.backgroundSecondary
+                            }}>
                                 <Avatar
                                     src={selectedUser.photoURL}
-                                    alt={selectedUser.fullName}
-                                    sx={{ width: 56, height: 56, mr: 2 }}
+                                    alt={getSafeName(selectedUser)}
+                                    sx={{
+                                        width: 56,
+                                        height: 56,
+                                        mr: 2,
+                                        backgroundColor: alpha(themeColors.primary, 0.1),
+                                        color: themeColors.primary,
+                                        fontWeight: 600,
+                                        fontSize: "1.25rem"
+                                    }}
                                 >
-                                    {selectedUser.fullName.charAt(0)}
+                                    {getSafeInitial(selectedUser)}
                                 </Avatar>
-                                <Box>
-                                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#111E5A" }}>
-                                        {selectedUser.fullName}
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography sx={{
+                                        fontWeight: 600,
+                                        color: themeColors.textPrimary,
+                                        fontSize: "1.1rem",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 0.5
+                                    }}>
+                                        {getSafeName(selectedUser)}
+                                        {selectedUser.isAdmin && (
+                                            <Chip
+                                                label="Admin"
+                                                size="small"
+                                                sx={{
+                                                    height: 20,
+                                                    fontSize: "10px",
+                                                    backgroundColor: alpha(themeColors.primary, 0.1),
+                                                    color: themeColors.primary,
+                                                    fontWeight: 600
+                                                }}
+                                            />
+                                        )}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ color: "#8A94A6" }}>
-                                        {selectedUser.email}
-                                    </Typography>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                                        <EmailIcon sx={{ fontSize: 14, color: themeColors.textTertiary }} />
+                                        <Typography sx={{ color: themeColors.textSecondary, fontSize: "13px" }}>
+                                            {selectedUser.email || "—"}
+                                        </Typography>
+                                    </Box>
                                 </Box>
                             </Box>
 
-                            <DialogContentText sx={{ mb: 3 }}>
-                                Altere as permissões do usuário abaixo:
-                            </DialogContentText>
-
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={isAdmin}
-                                        onChange={(e) => setIsAdmin(e.target.checked)}
-                                        color="primary"
-                                    />
-                                }
-                                label={
-                                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                                        {isAdmin ? (
-                                            <AdminIcon sx={{ color: "#4285F4", mr: 1 }} />
-                                        ) : (
-                                            <PersonIcon sx={{ color: "#8A94A6", mr: 1 }} />
-                                        )}
-                                        <Typography>
-                                            {isAdmin ? "Administrador" : "Usuário Padrão"}
+                            {/* Informações do usuário */}
+                            <Box sx={{ mb: 3 }}>
+                                <Typography sx={{
+                                    fontSize: "12px",
+                                    fontWeight: 600,
+                                    color: themeColors.textTertiary,
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.5px",
+                                    mb: 1.5
+                                }}>
+                                    Informações
+                                </Typography>
+                                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+                                    <Box>
+                                        <Typography sx={{ fontSize: "11px", color: themeColors.textTertiary }}>
+                                            Telefone
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "14px", color: themeColors.textPrimary, fontWeight: 500 }}>
+                                            {selectedUser.phone || "—"}
                                         </Typography>
                                     </Box>
-                                }
-                            />
+                                    <Box>
+                                        <Typography sx={{ fontSize: "11px", color: themeColors.textTertiary }}>
+                                            Localização
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "14px", color: themeColors.textPrimary, fontWeight: 500 }}>
+                                            {getFormattedLocation(selectedUser) || "—"}
+                                        </Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography sx={{ fontSize: "11px", color: themeColors.textTertiary }}>
+                                            CPF
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "14px", color: themeColors.textPrimary, fontWeight: 500 }}>
+                                            {selectedUser.cpf || "—"}
+                                        </Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography sx={{ fontSize: "11px", color: themeColors.textTertiary }}>
+                                            Status do Plano
+                                        </Typography>
+                                        <Chip
+                                            label={selectedUser.assinouPlano ? "Plano Ativo" : "Gratuito"}
+                                            size="small"
+                                            sx={{
+                                                mt: 0.5,
+                                                height: 22,
+                                                fontSize: "11px",
+                                                backgroundColor: selectedUser.assinouPlano
+                                                    ? alpha(themeColors.success, 0.1)
+                                                    : alpha(themeColors.textTertiary, 0.1),
+                                                color: selectedUser.assinouPlano ? themeColors.success : themeColors.textTertiary,
+                                                fontWeight: 500
+                                            }}
+                                        />
+                                    </Box>
+                                </Box>
+                            </Box>
+
+                            {/* Permissões */}
+                            <Box sx={{
+                                p: 2,
+                                borderRadius: "12px",
+                                border: `1px solid ${themeColors.borderColor}`
+                            }}>
+                                <Typography sx={{
+                                    fontSize: "12px",
+                                    fontWeight: 600,
+                                    color: themeColors.textTertiary,
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.5px",
+                                    mb: 1.5
+                                }}>
+                                    Permissões
+                                </Typography>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={isAdmin}
+                                            onChange={(e) => setIsAdmin(e.target.checked)}
+                                            sx={{
+                                                '& .MuiSwitch-switchBase.Mui-checked': {
+                                                    color: themeColors.primary,
+                                                },
+                                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                                    backgroundColor: themeColors.primary,
+                                                },
+                                            }}
+                                        />
+                                    }
+                                    label={
+                                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                                            {isAdmin ? (
+                                                <AdminIcon sx={{ color: themeColors.primary, mr: 1, fontSize: 20 }} />
+                                            ) : (
+                                                <PersonIcon sx={{ color: themeColors.textTertiary, mr: 1, fontSize: 20 }} />
+                                            )}
+                                            <Box>
+                                                <Typography sx={{ fontSize: "14px", fontWeight: 500, color: themeColors.textPrimary }}>
+                                                    {isAdmin ? "Administrador" : "Usuário Padrão"}
+                                                </Typography>
+                                                <Typography sx={{ fontSize: "12px", color: themeColors.textTertiary }}>
+                                                    {isAdmin ? "Acesso total ao sistema" : "Acesso limitado às suas próprias informações"}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    }
+                                    sx={{ ml: 0 }}
+                                />
+                            </Box>
                         </>
                     )}
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 3 }}>
+                <DialogActions sx={{ px: 3, pb: 3, pt: 2, borderTop: `1px solid ${themeColors.borderColor}` }}>
                     <Button
                         onClick={handleCloseDialog}
                         sx={{
-                            color: "#8A94A6",
+                            color: themeColors.textSecondary,
+                            textTransform: "none",
+                            fontWeight: 500,
                             "&:hover": {
-                                backgroundColor: "rgba(138, 148, 166, 0.04)",
+                                backgroundColor: alpha(themeColors.textTertiary, 0.08),
                             }
                         }}
                     >
@@ -416,9 +698,13 @@ const UserDataTemplate = () => {
                         onClick={handleUpdateAdminStatus}
                         variant="contained"
                         sx={{
-                            backgroundColor: "#4285F4",
+                            backgroundColor: themeColors.primary,
+                            textTransform: "none",
+                            fontWeight: 500,
+                            borderRadius: "8px",
+                            px: 3,
                             "&:hover": {
-                                backgroundColor: "#1a73e8",
+                                backgroundColor: alpha(themeColors.primary, 0.9),
                             }
                         }}
                     >

@@ -7,7 +7,8 @@ import {
 } from '@mui/material';
 import PatientsListCard from "../features/patients/PatientsList.jsx";
 import { useAuth } from "../providers";
-import { usePatients, useAppointments } from "../hooks";
+import { usePatients } from "../hooks";
+import { appointmentsService } from '@/lib/services/api';
 import { format, addDays, subDays, startOfDay, isAfter } from 'date-fns';
 import MiniChatCard from "../features/shared/MiniChatCard";
 import {
@@ -47,22 +48,53 @@ const Dashboard = ({ onClickPatients }) => {
         upcomingAppointments: 0
     });
 
-    // Usar os novos hooks
+    // Usar hook de pacientes
     const {
         patients: hookPatients,
         loading: loadingPatients,
     } = usePatients({ autoLoad: true });
 
-    const {
-        appointments: hookAppointments,
-        loading: loadingAppointments,
-    } = useAppointments({ autoLoad: true });
+    // Estado para controle de loading de appointments
+    const [loadingAppointments, setLoadingAppointments] = useState(false);
 
-    // Sincronizar dados dos hooks com o estado local
+    // Carregar TODOS os appointments (não apenas do dia atual)
+    useEffect(() => {
+        const loadAllAppointments = async () => {
+            if (!user?.uid) return;
+
+            setLoadingAppointments(true);
+            try {
+                // Usar listAllConsultations para pegar TODAS as consultas
+                const allAppointments = await appointmentsService.listAllConsultations();
+
+                // Converter para o formato esperado
+                const convertedConsultations = allAppointments.map(apt => ({
+                    ...apt,
+                    consultationDate: apt.startTime || apt.consultationDate,
+                    consultationTime: apt.startTime ? format(new Date(apt.startTime), 'HH:mm') : apt.consultationTime,
+                    patientName: apt.patientName || 'Paciente',
+                }));
+
+                setConsultations(convertedConsultations);
+
+                // Calcular métricas
+                if (hookPatients) {
+                    calculateMetrics(convertedConsultations, hookPatients);
+                }
+            } catch (error) {
+                console.error('[Dashboard] Error loading appointments:', error);
+            } finally {
+                setLoadingAppointments(false);
+            }
+        };
+
+        loadAllAppointments();
+    }, [user?.uid]);
+
+    // Sincronizar pacientes do hook com estado local
     useEffect(() => {
         if (!user?.uid) return;
 
-        // Converter pacientes do hook para o formato esperado
         if (hookPatients && hookPatients.length > 0) {
             const convertedPatients = hookPatients.map(p => ({
                 ...p,
@@ -71,76 +103,63 @@ const Dashboard = ({ onClickPatients }) => {
                 patientPhone: p.phone || p.patientPhone,
             }));
             setPatients(convertedPatients);
-        }
 
-        // Converter appointments do hook para consultations
-        if (hookAppointments && hookAppointments.length > 0) {
-            const convertedConsultations = hookAppointments.map(apt => ({
-                ...apt,
-                consultationDate: apt.startTime || apt.consultationDate,
-                consultationTime: apt.startTime ? format(new Date(apt.startTime), 'HH:mm') : apt.consultationTime,
-            }));
-            setConsultations(convertedConsultations);
-        }
-
-        // Calcular métricas quando ambos estiverem disponíveis
-        if (hookPatients && hookAppointments) {
-            calculateMetrics(
-                hookAppointments.map(apt => ({
-                    ...apt,
-                    consultationDate: apt.startTime || apt.consultationDate,
-                })),
-                hookPatients
-            );
+            // Recalcular métricas quando pacientes carregarem
+            if (consultations.length > 0) {
+                calculateMetrics(consultations, convertedPatients);
+            }
         }
 
         setLoading(loadingPatients || loadingAppointments);
-    }, [user, hookPatients, hookAppointments, loadingPatients, loadingAppointments]);
+    }, [user, hookPatients, loadingPatients, loadingAppointments, consultations]);
+
+    // Helper para parsear datas de consulta de forma segura
+    const safeParseDateFromConsultation = (c) => {
+        const dateSource = c.consultationDate || c.startTime || c.date;
+        if (!dateSource) return null;
+
+        let consultDate;
+        if (dateSource instanceof Date) {
+            consultDate = new Date(dateSource);
+        } else if (typeof dateSource.toDate === 'function') {
+            consultDate = dateSource.toDate();
+        } else if (typeof dateSource === 'string') {
+            consultDate = new Date(dateSource);
+        } else {
+            return null;
+        }
+
+        return isNaN(consultDate.getTime()) ? null : consultDate;
+    };
 
     const calculateMetrics = (consultationsData, patientsData) => {
         const today = startOfDay(new Date());
         const tomorrow = addDays(today, 1);
-
-        const oneWeekAgo = subDays(today, 7);
         const oneMonthAgo = new Date(today);
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        const oneYearAgo = new Date(today);
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
         // Contar consultas por período
         const dailyAppointments = consultationsData.filter(c => {
-            const consultDate = c.consultationDate instanceof Date
-                ? c.consultationDate
-                : c.consultationDate && typeof c.consultationDate.toDate === 'function'
-                    ? c.consultationDate.toDate()
-                    : new Date();
-
+            const consultDate = safeParseDateFromConsultation(c);
+            if (!consultDate) return false;
             return startOfDay(consultDate).getTime() === today.getTime();
         }).length;
 
         const monthlyAppointments = consultationsData.filter(c => {
-            const consultDate = c.consultationDate instanceof Date
-                ? c.consultationDate
-                : c.consultationDate && typeof c.consultationDate.toDate === 'function'
-                    ? c.consultationDate.toDate()
-                    : new Date();
-
+            const consultDate = safeParseDateFromConsultation(c);
+            if (!consultDate) return false;
             return isAfter(consultDate, oneMonthAgo) || startOfDay(consultDate).getTime() === oneMonthAgo.getTime();
         }).length;
 
-        // Contar próximas consultas (futuras, excluindo hoje)
+        // Contar próximas consultas (futuras, a partir de amanhã)
         const upcomingAppointments = consultationsData.filter(c => {
-            const consultDate = c.consultationDate instanceof Date
-                ? c.consultationDate
-                : c.consultationDate && typeof c.consultationDate.toDate === 'function'
-                    ? c.consultationDate.toDate()
-                    : new Date();
-
+            const consultDate = safeParseDateFromConsultation(c);
+            if (!consultDate) return false;
             return isAfter(consultDate, tomorrow);
         }).length;
 
         // Número visualmente chamativo (quantidade total de pacientes)
-        const visuallyCalledNumber = patientsData.length;
+        const visuallyCalledNumber = patientsData?.length || 0;
 
         setMetrics({
             dailyAppointments,
@@ -153,25 +172,31 @@ const Dashboard = ({ onClickPatients }) => {
     // Encontrar a próxima consulta
     const getNextConsultation = () => {
         const now = new Date();
+
         const futureConsultations = consultations
             .filter(consultation => {
-                if (consultation.status && consultation.status.toLowerCase() === 'cancelada') return false;
+                // Ignorar canceladas
+                const status = consultation.status?.toLowerCase();
+                if (status === 'cancelada' || status === 'cancelado') return false;
 
-                const consultDate = consultation.consultationDate instanceof Date
-                    ? consultation.consultationDate
-                    : consultation.consultationDate && typeof consultation.consultationDate.toDate === 'function'
-                        ? consultation.consultationDate.toDate()
-                        : new Date();
+                let consultDate = safeParseDateFromConsultation(consultation);
+                if (!consultDate) return false;
 
+                // Aplicar horário se disponível
                 if (consultation.consultationTime) {
-                    const [hour, minute] = consultation.consultationTime.split(':').map(Number);
+                    const timeParts = consultation.consultationTime.split(':');
+                    const hour = parseInt(timeParts[0]) || 0;
+                    const minute = parseInt(timeParts[1]) || 0;
                     consultDate.setHours(hour, minute, 0, 0);
                 }
+
                 return consultDate >= now;
             })
             .sort((a, b) => {
-                const dateA = a.consultationDate instanceof Date ? a.consultationDate : new Date(a.consultationDate); // Simplification
-                const dateB = b.consultationDate instanceof Date ? b.consultationDate : new Date(b.consultationDate);
+                const dateA = safeParseDateFromConsultation(a);
+                const dateB = safeParseDateFromConsultation(b);
+                if (!dateA) return 1;
+                if (!dateB) return -1;
                 return dateA - dateB;
             });
 

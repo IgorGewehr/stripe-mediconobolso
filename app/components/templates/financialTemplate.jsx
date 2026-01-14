@@ -33,9 +33,12 @@ import {
   Category as CategoriasIcon,
   Close as CloseIcon,
   ChevronRight as ChevronRightIcon,
+  LocalHospital as ConveniosIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../providers/authProvider';
 import { useSnackbar } from '../hooks/useDialogState';
+import { usePatients } from '../hooks/usePatients';
+import { useConvenios } from '../hooks/useConvenios';
 import {
   FinancialDashboard,
   ContasReceberList,
@@ -50,6 +53,8 @@ import {
   ContaBancariaForm,
   TransferenciaDialog,
   RepassesList,
+  ConveniosList,
+  ConvenioForm,
 } from '../features/financial';
 import { useSugestoesFinanceiras } from '../hooks/useFinancial';
 
@@ -78,6 +83,7 @@ function TabPanel({ children, value, index }) {
  */
 function ConfigDrawer({ open, onClose, onSelectOption }) {
   const configOptions = [
+    { id: 'convenios', label: 'Convenios', icon: ConveniosIcon, description: 'Gerenciar convenios/planos' },
     { id: 'fornecedores', label: 'Fornecedores', icon: FornecedoresIcon, description: 'Gerenciar fornecedores' },
     { id: 'contas-bancarias', label: 'Contas Bancarias', icon: ContasBancariasIcon, description: 'Gerenciar contas' },
     { id: 'categorias', label: 'Categorias', icon: CategoriasIcon, description: 'Categorias financeiras' },
@@ -251,8 +257,16 @@ export default function FinancialTemplate() {
   const [transferenciaDialogOpen, setTransferenciaDialogOpen] = useState(false);
   const [selectedContaBancaria, setSelectedContaBancaria] = useState(null);
 
+  // Dialog states - Convenios
+  const [convenioFormOpen, setConvenioFormOpen] = useState(false);
+  const [convenioToEdit, setConvenioToEdit] = useState(null);
+
   // Sugestoes count
   const { sugestoes } = useSugestoesFinanceiras();
+
+  // Load patients and convenios for ContaReceberForm
+  const { patients, loading: loadingPatients } = usePatients({ autoLoad: true });
+  const { convenios, loading: loadingConvenios } = useConvenios({ autoLoad: true });
 
   // Tab change handler
   const handleTabChange = (event, newValue) => {
@@ -420,6 +434,30 @@ export default function FinancialTemplate() {
     snackbar.success('Transferencia realizada!');
   }, [snackbar]);
 
+  // Convenio handlers
+  const handleAddConvenio = useCallback(() => {
+    setConvenioToEdit(null);
+    setConvenioFormOpen(true);
+  }, []);
+
+  const handleEditConvenio = useCallback((convenio) => {
+    setConvenioToEdit(convenio);
+    setConvenioFormOpen(true);
+  }, []);
+
+  const handleDeleteConvenio = useCallback((convenio) => {
+    console.log('Delete convenio:', convenio);
+  }, []);
+
+  const handleConvenioFormClose = useCallback(() => {
+    setConvenioFormOpen(false);
+    setConvenioToEdit(null);
+  }, []);
+
+  const handleConvenioFormSuccess = useCallback(() => {
+    snackbar.success(convenioToEdit ? 'Convenio atualizado!' : 'Convenio criado!');
+  }, [convenioToEdit, snackbar]);
+
   // Repasses handlers
   const handleAddRepasse = useCallback(() => {
     console.log('Add repasse');
@@ -484,6 +522,29 @@ export default function FinancialTemplate() {
               onEdit={handleEditContaBancaria}
               onTransfer={handleTransfer}
               onExtrato={handleExtrato}
+            />
+          </Box>
+        </Box>
+      );
+    }
+
+    if (configView === 'convenios') {
+      return (
+        <Box>
+          <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={handleConfigBack} size="small">
+              <CloseIcon />
+            </IconButton>
+            <Typography variant="h6" fontWeight={600}>
+              Convenios
+            </Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <ConveniosList
+              onAdd={handleAddConvenio}
+              onEdit={handleEditConvenio}
+              onDelete={handleDeleteConvenio}
             />
           </Box>
         </Box>
@@ -641,6 +702,8 @@ export default function FinancialTemplate() {
         onClose={handleContaFormClose}
         contaToEdit={contaToEdit}
         onSuccess={handleContaFormSuccess}
+        pacientes={patients}
+        convenios={convenios}
       />
 
       <RecebimentoDialog
@@ -686,6 +749,14 @@ export default function FinancialTemplate() {
         onClose={handleTransferenciaClose}
         contaOrigem={selectedContaBancaria}
         onSuccess={handleTransferenciaSuccess}
+      />
+
+      {/* Dialogs - Convenios */}
+      <ConvenioForm
+        open={convenioFormOpen}
+        onClose={handleConvenioFormClose}
+        convenioToEdit={convenioToEdit}
+        onSuccess={handleConvenioFormSuccess}
       />
 
       {/* Snackbar */}

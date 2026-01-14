@@ -61,6 +61,9 @@ export {
   useFinancialReports,
 } from './useFinancial';
 
+// Convenios Hook
+export { default as useConvenios } from './useConvenios';
+
 // CRM Hooks
 export {
   default as useCRM,

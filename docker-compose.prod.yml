@@ -1,0 +1,103 @@
+# =============================================================================
+# Medico no Bolso - Frontend Production Docker Compose
+# =============================================================================
+# CONFIGURACAO OTIMIZADA PARA PRODUCAO LOCAL
+#
+# Uso: docker-compose --env-file .env.production -f docker-compose.prod.yml up -d
+#
+# Recursos alocados (Total: ~4GB RAM):
+#   - Next.js App: 3.5GB RAM
+#   - Cloudflare Tunnel: 256MB RAM
+#
+# Recuperacao automatica:
+#   - Restart policy always para todos os servicos
+#   - Health checks para monitoramento
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
+        - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+        - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_USE_NEW_API=${NEXT_PUBLIC_USE_NEW_API}
+        - NEXT_PUBLIC_API_TIMEOUT=${NEXT_PUBLIC_API_TIMEOUT}
+        - NEXT_PUBLIC_API_MAX_RETRIES=${NEXT_PUBLIC_API_MAX_RETRIES}
+        - NEXT_PUBLIC_API_RETRY_DELAY=${NEXT_PUBLIC_API_RETRY_DELAY}
+        - NEXT_PUBLIC_API_CACHE_ENABLED=${NEXT_PUBLIC_API_CACHE_ENABLED}
+        - NEXT_PUBLIC_API_CACHE_TTL=${NEXT_PUBLIC_API_CACHE_TTL}
+        - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+    image: mediconobolso-frontend:latest
+    container_name: mediconobolso-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - TISS_SERVICE_URL=${TISS_SERVICE_URL}
+    networks:
+      - mediconobolso-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 3584M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: mediconobolso-tunnel
+    restart: always
+    command: tunnel --no-autoupdate run --protocol http2
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - mediconobolso-network
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  mediconobolso-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500

@@ -44,3 +44,7 @@ export { default as SugestoesFinanceirasList } from './SugestoesFinanceirasList'
 
 // Repasses
 export { default as RepassesList } from './RepassesList';
+
+// Convenios
+export { default as ConveniosList } from './ConveniosList';
+export { default as ConvenioForm } from './ConvenioForm';

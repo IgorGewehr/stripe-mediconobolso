@@ -121,15 +121,25 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
     const parseAnyDate = (dateValue) => {
         if (dateValue == null) return null;
 
-        if (dateValue instanceof Date) return dateValue;
+        if (dateValue instanceof Date) {
+            return isNaN(dateValue.getTime()) ? null : dateValue;
+        }
         if (dateValue && typeof dateValue.toDate === 'function') {
-            return dateValue.toDate();
+            const d = dateValue.toDate();
+            return isNaN(d.getTime()) ? null : d;
         }
         if (typeof dateValue === 'string') {
-            const parts = dateValue.split('-');
-            if (parts.length === 3) {
-                return new Date(parts[0], parts[1] - 1, parts[2]);
+            // Handle empty strings
+            if (!dateValue.trim()) return null;
+
+            // Handle ISO 8601 dates (extract just the date part)
+            // Matches: 2025-01-14, 2025-01-14T10:00:00, 2025-01-14T10:00:00-03:00, etc.
+            const isoMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (isoMatch) {
+                return new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]));
             }
+
+            // Fallback: try Date constructor
             const parsed = new Date(dateValue);
             return isNaN(parsed.getTime()) ? null : parsed;
         }
@@ -144,17 +154,28 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
     // Função para criar objeto de evento padronizado
     const createEventObject = (consultation, patientName) => {
         // Obter a data da consulta como objeto Date
-        const consultationDate = parseAnyDate(consultation.consultationDate);
+        // Try multiple date sources in order of preference
+        let consultationDate = parseAnyDate(consultation.consultationDate)
+            || parseAnyDate(consultation.startTime)
+            || parseAnyDate(consultation.date);
+
+        // Fallback to today if all date parsing fails
+        if (!consultationDate || isNaN(consultationDate.getTime())) {
+            console.warn('Failed to parse consultation date, using today:', consultation);
+            consultationDate = new Date();
+        }
 
         // Usar a data consultationDate diretamente e preservar o dia
         const formattedDate = formatDateForFirebase(consultationDate);
 
-// Processar horário e duração
-        const startTime = consultation.consultationTime || "00:00";
-        const [hour, minute] = startTime.split(':').map(Number);
+        // Processar horário e duração
+        const startTime = consultation.consultationTime || consultation.horaInicio || "00:00";
+        const timeParts = startTime.split(':');
+        const hour = parseInt(timeParts[0]) || 0;
+        const minute = parseInt(timeParts[1]) || 0;
         const duration = consultation.consultationDuration || 30;
 
-// Criar um novo objeto Date para o início e fim
+        // Criar um novo objeto Date para o início e fim
         const startDate = new Date(consultationDate);
         startDate.setHours(hour, minute, 0);
         const endDate = new Date(startDate);
@@ -1143,11 +1164,16 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
 
         const upcomingEvents = eventos
             .filter(event => {
+                // Skip events with invalid dates
+                if (!event.data || typeof event.data !== 'string') return false;
                 return event.data >= todayString;
             })
             .sort((a, b) => {
-                const dateA = new Date(a.data + 'T' + a.horaInicio);
-                const dateB = new Date(b.data + 'T' + b.horaInicio);
+                const dateA = new Date(a.data + 'T' + (a.horaInicio || '00:00'));
+                const dateB = new Date(b.data + 'T' + (b.horaInicio || '00:00'));
+                // Handle invalid dates in sort
+                if (isNaN(dateA.getTime())) return 1;
+                if (isNaN(dateB.getTime())) return -1;
                 return dateA - dateB;
             })
             .slice(0, 5);
@@ -1185,7 +1211,13 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                 ) : (
                     <>
                         {upcomingEvents.map((event) => {
-                            const eventDate = new Date(event.data);
+                            // Parse date safely
+                            const eventDate = parseAnyDate(event.data);
+                            // Skip rendering if date is invalid
+                            if (!eventDate || isNaN(eventDate.getTime())) {
+                                console.warn('Skipping event with invalid date:', event);
+                                return null;
+                            }
                             const isEventToday = isSameDay(eventDate, today);
                             const colors = getStatusColors(event.status);
 

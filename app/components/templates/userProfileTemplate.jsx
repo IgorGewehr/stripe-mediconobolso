@@ -804,7 +804,11 @@ const UserProfileTemplate = ({ onLogout }) => {
                                             <>
                                                 <InfoRow icon={HomeIcon} label="Endereço" value={`${state.formData.address.street}, ${state.formData.address.number || 'S/N'}${state.formData.address.complement ? ` - ${state.formData.address.complement}` : ''}`} />
                                                 <InfoRow icon={LocationOnIcon} label="Bairro" value={state.formData.address.neighborhood} />
-                                                <InfoRow icon={LocationCityIcon} label="Cidade/Estado" value={`${state.formData.address.city || ''} - ${state.formData.address.state || ''}`} />
+                                                <InfoRow icon={LocationCityIcon} label="Cidade/Estado" value={
+                                                    [state.formData.address.city, state.formData.address.state]
+                                                        .filter(Boolean)
+                                                        .join(' - ') || '—'
+                                                } />
                                                 <InfoRow icon={PinDropIcon} label="CEP" value={state.formData.address.cep} />
                                             </>
                                         ) : (

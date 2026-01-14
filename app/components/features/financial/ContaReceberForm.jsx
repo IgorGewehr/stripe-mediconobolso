@@ -129,7 +129,7 @@ export default function ContaReceberForm({
       newErrors.dataVencimento = 'Data de vencimento é obrigatória';
     }
 
-    if (formData.origem === 'convenio' && !formData.convenioId) {
+    if (formData.origem === 'guia_convenio' && !formData.convenioId) {
       newErrors.convenioId = 'Convênio é obrigatório para esta origem';
     }
 
@@ -218,15 +218,20 @@ export default function ContaReceberForm({
                   disabled={isEditing}
                 >
                   <MenuItem value="particular">Particular</MenuItem>
-                  <MenuItem value="convenio">Convênio</MenuItem>
-                  <MenuItem value="guia">Guia TISS</MenuItem>
+                  <MenuItem value="consulta">Consulta</MenuItem>
+                  <MenuItem value="procedimento">Procedimento</MenuItem>
+                  <MenuItem value="guia_convenio">Guia Convênio/TISS</MenuItem>
+                  <MenuItem value="exame">Exame</MenuItem>
+                  <MenuItem value="pacote">Pacote</MenuItem>
+                  <MenuItem value="retorno">Retorno</MenuItem>
+                  <MenuItem value="material">Material</MenuItem>
                   <MenuItem value="outros">Outros</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
 
-            {/* Convênio (only for convenio origem) */}
-            {formData.origem === 'convenio' && (
+            {/* Convênio (only for guia_convenio origem) */}
+            {formData.origem === 'guia_convenio' && (
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth error={Boolean(errors.convenioId)}>
                   <InputLabel>Convênio</InputLabel>
