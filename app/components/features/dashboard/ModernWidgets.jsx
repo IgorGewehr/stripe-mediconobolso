@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
     Users,
@@ -6,9 +6,14 @@ import {
     Plus,
     MapPin,
     CloudSun,
-    Check
+    Cloud,
+    CloudRain,
+    Sun,
+    CloudSnow,
+    Check,
+    Loader2
 } from "lucide-react";
-import { Avatar } from "@mui/material";
+import { Avatar, Skeleton } from "@mui/material";
 
 // --- Generic UI Components (Shadcn-like) ---
 export const Card = ({ className, children, onClick }) => (
@@ -56,28 +61,124 @@ export const Badge = ({ className, variant = "default", children }) => {
 
 // --- Specific Dashboard Widgets ---
 
-export const WeatherWidget = () => (
-    <Card className="h-full overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-white to-blue-50/50">
-        <CardContent className="p-6 flex flex-col justify-between h-full">
-            <div className="flex justify-between items-start">
-                <div className="flex items-center gap-1.5 text-slate-500 text-sm font-medium">
-                    <MapPin className="w-3.5 h-3.5" />
-                    São Paulo
-                </div>
-                <CloudSun className="w-8 h-8 text-orange-400" />
-            </div>
+// Weather icon mapper
+const getWeatherIcon = (condition) => {
+    const iconMap = {
+        'Clear': Sun,
+        'Clouds': Cloud,
+        'Rain': CloudRain,
+        'Drizzle': CloudRain,
+        'Thunderstorm': CloudRain,
+        'Snow': CloudSnow,
+        'Mist': Cloud,
+        'Fog': Cloud,
+        'Haze': CloudSun,
+    };
+    return iconMap[condition] || CloudSun;
+};
 
-            <div className="mt-4">
-                <div className="text-4xl font-bold tracking-tighter text-slate-900">33°</div>
-                <div className="text-sm text-slate-500 font-medium mt-1">Nublado</div>
-                <div className="flex gap-3 mt-2 text-xs text-slate-400">
-                    <span>H: 35°</span>
-                    <span>L: 32°</span>
+// Weather description mapper
+const getWeatherDescription = (condition) => {
+    const descMap = {
+        'Clear': 'Ensolarado',
+        'Clouds': 'Nublado',
+        'Rain': 'Chuvoso',
+        'Drizzle': 'Garoa',
+        'Thunderstorm': 'Tempestade',
+        'Snow': 'Neve',
+        'Mist': 'Nevoa',
+        'Fog': 'Neblina',
+        'Haze': 'Nevoa seca',
+    };
+    return descMap[condition] || condition;
+};
+
+export const WeatherWidget = ({ city = "São Paulo,BR" }) => {
+    const [weather, setWeather] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchWeather = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+                if (!response.ok) throw new Error('Falha ao carregar clima');
+                const data = await response.json();
+                setWeather(data);
+                setError(null);
+            } catch (err) {
+                console.error('[WeatherWidget] Error:', err);
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWeather();
+        // Refresh weather every 30 minutes
+        const interval = setInterval(fetchWeather, 30 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [city]);
+
+    const WeatherIcon = weather ? getWeatherIcon(weather.currentWeather) : CloudSun;
+
+    if (loading) {
+        return (
+            <Card className="h-full overflow-hidden border-none shadow-sm bg-gradient-to-br from-white to-blue-50/50">
+                <CardContent className="p-6 flex flex-col justify-between h-full">
+                    <div className="flex justify-between items-start">
+                        <Skeleton variant="text" width={80} height={20} />
+                        <Skeleton variant="circular" width={32} height={32} />
+                    </div>
+                    <div className="mt-4">
+                        <Skeleton variant="text" width={60} height={48} />
+                        <Skeleton variant="text" width={70} height={20} sx={{ mt: 1 }} />
+                        <Skeleton variant="text" width={100} height={16} sx={{ mt: 1 }} />
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return (
+        <Card className="h-full overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-white to-blue-50/50">
+            <CardContent className="p-6 flex flex-col justify-between h-full">
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-1.5 text-slate-500 text-sm font-medium">
+                        <MapPin className="w-3.5 h-3.5" />
+                        {weather?.cityName || weather?.originalCityName || city.split(',')[0]}
+                    </div>
+                    <WeatherIcon className={cn(
+                        "w-8 h-8",
+                        weather?.currentWeather === 'Clear' ? "text-yellow-500" :
+                        weather?.currentWeather === 'Rain' ? "text-blue-500" :
+                        "text-orange-400"
+                    )} />
                 </div>
-            </div>
-        </CardContent>
-    </Card>
-);
+
+                <div className="mt-4">
+                    <div className="text-4xl font-bold tracking-tighter text-slate-900">
+                        {weather?.currentTemp ?? '--'}°
+                    </div>
+                    <div className="text-sm text-slate-500 font-medium mt-1">
+                        {weather?.currentWeather ? getWeatherDescription(weather.currentWeather) : '--'}
+                    </div>
+                    <div className="flex gap-3 mt-2 text-xs text-slate-400">
+                        <span>H: {weather?.highTemp ?? '--'}°</span>
+                        <span>L: {weather?.lowTemp ?? '--'}°</span>
+                    </div>
+                </div>
+
+                {weather?.isSimulated && (
+                    <div className="text-xs text-slate-400 mt-2 italic">
+                        Dados estimados
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
 
 export const NextAppointmentCard = ({ consultation, onDetailsClick }) => {
     if (!consultation) {

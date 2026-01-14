@@ -14,8 +14,6 @@ import {
     InputAdornment,
     alpha,
     Chip,
-    Tabs,
-    Tab,
     Fade,
     Tooltip
 } from "@mui/material";
@@ -981,99 +979,105 @@ const UserProfileTemplate = ({ onLogout }) => {
                     </Box>
                 </Box>
 
-                {/* Ações Rápidas */}
-                <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                    {!isSecretary && (
-                        <>
-                            <QuickActionCard
-                                icon={CreditCardIcon}
-                                title="Assinatura"
-                                subtitle={planInfo.name}
-                                color={planInfo.color}
-                                onClick={() => actions.setShowSubscriptionManager(true)}
-                                active={state.userData.assinouPlano}
-                            />
-                            {canManageSecretaries() && (
-                                <QuickActionCard
-                                    icon={PeopleIcon}
-                                    title="Equipe"
-                                    subtitle={state.secretaryInfo ? `${state.secretaryInfo.name}` : 'Adicionar secretária'}
-                                    color={state.secretaryInfo ? themeColors.success : themeColors.primary}
-                                    onClick={() => actions.setShowSecretaryManager(true)}
-                                    active={!!state.secretaryInfo}
-                                />
-                            )}
-                        </>
-                    )}
-                </Box>
-
-                {/* Informações da Conta */}
-                <Box sx={{
-                    mt: 3,
-                    p: 2.5,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '16px',
-                    boxShadow: '0 2px 12px rgba(17, 30, 90, 0.04)',
-                    border: '1px solid',
-                    borderColor: themeColors.borderColor
-                }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography sx={{
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            color: themeColors.textPrimary,
-                            fontFamily: 'Gellix, sans-serif'
-                        }}>
-                            Conta
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: themeColors.success }} />
-                            <Typography sx={{ fontSize: '11px', color: themeColors.success, fontWeight: 500, fontFamily: 'Gellix, sans-serif' }}>
-                                Ativa
-                            </Typography>
+                {/* Configurações e Ações */}
+                {!isSecretary && (
+                    <Box sx={{
+                        mt: 2,
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: '16px',
+                        border: '1px solid',
+                        borderColor: themeColors.borderColor,
+                        overflow: 'hidden'
+                    }}>
+                        {/* Assinatura */}
+                        <Box
+                            onClick={() => actions.setShowSubscriptionManager(true)}
+                            sx={{
+                                p: 2.5,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                                borderBottom: canManageSecretaries() ? '1px solid' : 'none',
+                                borderColor: themeColors.borderColor,
+                                transition: 'background-color 0.15s ease',
+                                '&:hover': { backgroundColor: '#FAFBFC' }
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Box sx={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: '10px',
+                                    backgroundColor: alpha(planInfo.color, 0.1),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <CreditCardIcon sx={{ fontSize: 18, color: planInfo.color }} />
+                                </Box>
+                                <Box>
+                                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: themeColors.textPrimary, fontFamily: 'Gellix, sans-serif' }}>
+                                        Assinatura
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '12px', color: themeColors.textTertiary, fontFamily: 'Gellix, sans-serif' }}>
+                                        Plano {planInfo.name}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <ChevronRightIcon sx={{ fontSize: 20, color: themeColors.textTertiary }} />
                         </Box>
-                    </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                        <EmailIcon sx={{ fontSize: 16, color: themeColors.textTertiary }} />
-                        <Typography sx={{ fontSize: '13px', color: themeColors.textSecondary, fontFamily: 'Gellix, sans-serif' }}>
-                            {user?.email}
-                        </Typography>
+                        {/* Equipe */}
+                        {canManageSecretaries() && (
+                            <Box
+                                onClick={() => actions.setShowSecretaryManager(true)}
+                                sx={{
+                                    p: 2.5,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.15s ease',
+                                    '&:hover': { backgroundColor: '#FAFBFC' }
+                                }}
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Box sx={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: '10px',
+                                        backgroundColor: state.secretaryInfo ? alpha(themeColors.success, 0.1) : alpha(themeColors.primary, 0.1),
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <PeopleIcon sx={{ fontSize: 18, color: state.secretaryInfo ? themeColors.success : themeColors.primary }} />
+                                    </Box>
+                                    <Box>
+                                        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: themeColors.textPrimary, fontFamily: 'Gellix, sans-serif' }}>
+                                            Equipe
+                                        </Typography>
+                                        <Typography sx={{ fontSize: '12px', color: themeColors.textTertiary, fontFamily: 'Gellix, sans-serif' }}>
+                                            {state.secretaryInfo ? state.secretaryInfo.name : 'Adicionar secretária'}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                                <ChevronRightIcon sx={{ fontSize: 20, color: themeColors.textTertiary }} />
+                            </Box>
+                        )}
                     </Box>
-
-                    <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<LogoutIcon />}
-                        onClick={handleLogout}
-                        disabled={state.loading}
-                        sx={{
-                            borderRadius: '10px',
-                            textTransform: 'none',
-                            fontFamily: 'Gellix, sans-serif',
-                            fontWeight: 500,
-                            color: themeColors.error,
-                            borderColor: alpha(themeColors.error, 0.3),
-                            py: 1.25,
-                            '&:hover': {
-                                backgroundColor: alpha(themeColors.error, 0.04),
-                                borderColor: themeColors.error
-                            }
-                        }}
-                    >
-                        Sair da conta
-                    </Button>
-                </Box>
+                )}
 
                 {/* Info para secretária */}
                 {isSecretary && userContext?.userData?.fullName && (
                     <Box sx={{
                         mt: 2,
                         p: 2,
-                        backgroundColor: alpha(themeColors.warning, 0.08),
+                        backgroundColor: alpha(themeColors.warning, 0.06),
                         borderRadius: '12px',
                         border: '1px solid',
-                        borderColor: alpha(themeColors.warning, 0.2),
+                        borderColor: alpha(themeColors.warning, 0.15),
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1.5
@@ -1084,6 +1088,31 @@ const UserProfileTemplate = ({ onLogout }) => {
                         </Typography>
                     </Box>
                 )}
+
+                {/* Sair da Conta */}
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                    <Button
+                        variant="text"
+                        size="small"
+                        startIcon={<LogoutIcon sx={{ fontSize: 16 }} />}
+                        onClick={handleLogout}
+                        disabled={state.loading}
+                        sx={{
+                            textTransform: 'none',
+                            fontFamily: 'Gellix, sans-serif',
+                            fontWeight: 500,
+                            fontSize: '13px',
+                            color: themeColors.textTertiary,
+                            px: 2,
+                            '&:hover': {
+                                backgroundColor: alpha(themeColors.error, 0.04),
+                                color: themeColors.error
+                            }
+                        }}
+                    >
+                        Sair da conta
+                    </Button>
+                </Box>
             </Box>
 
             {/* Modais */}

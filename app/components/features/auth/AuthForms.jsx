@@ -82,9 +82,30 @@ export const AuthForms = () => {
         setLoginLoading(true);
         try {
             await authService.login(formData.email, formData.password);
+
+            // Provisionar no backend para garantir que usuário existe
+            try {
+                const user = authService.auth.currentUser;
+                if (user) {
+                    await authApiService.provision({
+                        name: user.displayName || user.email.split('@')[0],
+                        email: user.email,
+                        phone: user.phoneNumber || null,
+                        plan_type: 'free'
+                    });
+                }
+            } catch (provisionError) {
+                console.warn('⚠️ Provision falhou, continuando:', provisionError);
+            }
+
             success("Login realizado com sucesso!", {
                 description: "Redirecionando..."
             });
+
+            // Redirecionar para /app após login bem-sucedido
+            setTimeout(() => {
+                router.push('/app');
+            }, 500);
         } catch (error) {
             console.error("Erro no login:", error);
             let errorMessage = "Erro na autenticação";
@@ -117,7 +138,7 @@ export const AuthForms = () => {
 
             console.log(
                 isNewUser
-                    ? '🆕 Conta Google criada e Firestore inicializado'
+                    ? '🆕 Conta Google criada'
                     : '✅ Login com Google concluído – usuário existente'
             );
 
@@ -129,13 +150,20 @@ export const AuthForms = () => {
                     phone: user.phoneNumber || null,
                     plan_type: 'free'
                 });
+                console.log('✅ Usuário provisionado no backend');
             } catch (provisionError) {
                 console.warn('⚠️ Provision falhou, continuando:', provisionError);
             }
 
             success("Login realizado com sucesso!", {
-                description: "Bem-vindo de volta!"
+                description: "Redirecionando..."
             });
+
+            // Redirecionar para /app após login bem-sucedido
+            setTimeout(() => {
+                console.log('🚀 Redirecionando para /app...');
+                router.push('/app');
+            }, 500);
         } catch (error) {
             console.error('❌ Erro no login/signup com Google:', error);
             let errorMessage = "Erro no login com Google";
