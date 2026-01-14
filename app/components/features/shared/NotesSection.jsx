@@ -36,7 +36,7 @@ import BiotechIcon from "@mui/icons-material/Biotech";
 import SearchIcon from "@mui/icons-material/Search";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import DescriptionIcon from "@mui/icons-material/Description"; // Ícone para atestados
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { patientsService, notesService } from '@/lib/services/api';
 import { useAuth } from '../../providers/authProvider';
@@ -48,6 +48,30 @@ import PatientNoteDialog from "../dialogs/NovaNotaDialog";
 import AllNotesViewDialog from "../dialogs/AllNotesDialog";
 import ExamDialog from "../dialogs/ExamDialog";
 import AtestadoDialog from "../dialogs/AtestadoDialog";
+
+// Helper para parsear datas de diferentes formatos
+const parseAnyDate = (date) => {
+    if (!date) return new Date();
+    if (date instanceof Date) return date;
+    if (typeof date === 'number') return new Date(date);
+    if (typeof date === 'string') {
+        // ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss)
+        if (date.includes('T') || /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return parseISO(date);
+        }
+        // DD/MM/YYYY format
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+            const [day, month, year] = date.split('/');
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        }
+        // Timestamp string
+        return new Date(date);
+    }
+    // Firestore Timestamp
+    if (date?.toDate) return date.toDate();
+    if (date?.seconds) return new Date(date.seconds * 1000);
+    return new Date();
+};
 
 // Theme colors
 const themeColors = {
@@ -949,6 +973,7 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
             setOpenAtestadoDialog(true);
         } else {
             // For regular notes, open standard note dialog
+            setSelectedNota(nota); // Pass the note data for editing
             setOpenNoteDialog(true);
         }
     };

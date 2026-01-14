@@ -1419,12 +1419,18 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             let anamneseId;
             let isNewAnamnese = true;
 
+            // Ensure we use the correct patient ID (UUID)
+            const targetPatientId = patientData?.id || patientId;
+
+            console.log("💾 Salvando anamnese para paciente ID:", targetPatientId);
+            console.log("📝 Dados da anamnese:", anamneseData);
+
             // Check if we're editing an existing anamnese
             if (anamneseId) {
                 // Update existing anamnese
                 await notesService.updateAnamnese(
                     doctorId,
-                    patientId,
+                    targetPatientId,
                     anamneseId,
                     anamneseData
                 );
@@ -1432,8 +1438,7 @@ export default function AnamneseDialog({ open, onClose, patientId, doctorId, ana
             } else {
                 // Create new anamnese
                 anamneseId = await notesService.createAnamnese(
-                    doctorId,
-                    patientId,
+                    targetPatientId, // Pass only patientId, doctorId is inferred or not needed by this method signature
                     anamneseData
                 );
             }

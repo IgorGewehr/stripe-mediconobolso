@@ -386,27 +386,38 @@ const InfoRow = React.memo(({ icon: Icon, label, value }) => (
         display: 'flex',
         alignItems: 'center',
         gap: 1.5,
-        py: 1.25,
-        borderBottom: '1px solid',
-        borderColor: alpha(themeColors.borderColor, 0.5),
-        '&:last-child': { borderBottom: 'none' }
+        py: 1.5,
+        px: 1.5,
+        borderRadius: '10px',
+        backgroundColor: alpha(themeColors.backgroundSecondary, 0.5),
+        transition: 'background-color 0.15s ease',
+        '&:hover': { backgroundColor: alpha(themeColors.primary, 0.04) }
     }}>
         <Box sx={{
-            width: 32,
-            height: 32,
-            borderRadius: '8px',
+            width: 36,
+            height: 36,
+            borderRadius: '10px',
             backgroundColor: alpha(themeColors.primary, 0.08),
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            flexShrink: 0
         }}>
-            <Icon sx={{ fontSize: 16, color: themeColors.primary }} />
+            <Icon sx={{ fontSize: 18, color: themeColors.primary }} />
         </Box>
-        <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontSize: '11px', color: themeColors.textTertiary, fontFamily: 'Gellix, sans-serif' }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: '11px', color: themeColors.textTertiary, fontFamily: 'Gellix, sans-serif', mb: 0.25 }}>
                 {label}
             </Typography>
-            <Typography sx={{ fontSize: '14px', fontWeight: 500, color: themeColors.textPrimary, fontFamily: 'Gellix, sans-serif' }}>
+            <Typography sx={{
+                fontSize: '14px',
+                fontWeight: 500,
+                color: themeColors.textPrimary,
+                fontFamily: 'Gellix, sans-serif',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+            }}>
                 {value || '—'}
             </Typography>
         </Box>
@@ -614,8 +625,21 @@ const UserProfileTemplate = ({ onLogout }) => {
             backgroundColor: '#FAFBFC',
             pb: 4
         }}>
-            {/* Container Principal */}
-            <Box sx={{ maxWidth: 900, mx: 'auto', px: { xs: 2, md: 3 }, pt: { xs: 2, md: 3 } }}>
+            {/* Container Principal - Layout de duas colunas em telas grandes */}
+            <Box sx={{
+                maxWidth: 1400,
+                mx: 'auto',
+                px: { xs: 2, md: 3, lg: 4 },
+                pt: { xs: 2, md: 3 },
+                display: 'flex',
+                flexDirection: { xs: 'column', lg: 'row' },
+                gap: { xs: 2, lg: 3 }
+            }}>
+                {/* Coluna Esquerda - Perfil e Ações Rápidas */}
+                <Box sx={{
+                    width: { xs: '100%', lg: 340 },
+                    flexShrink: 0
+                }}>
                 {/* Card do Perfil - Header Compacto */}
                 <Box sx={{
                     backgroundColor: '#FFFFFF',
@@ -669,20 +693,22 @@ const UserProfileTemplate = ({ onLogout }) => {
                                     {displayData?.name?.charAt(0) || <PersonIcon />}
                                 </Avatar>
                                 {state.isEditing && !isSecretary && (
-                                    <Box sx={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        right: 0,
-                                        width: 24,
-                                        height: 24,
-                                        borderRadius: '6px',
-                                        backgroundColor: themeColors.primary,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        border: '2px solid #FFFFFF',
-                                        cursor: 'pointer'
-                                    }}>
+                                    <Box
+                                        onClick={handleAvatarClick}
+                                        sx={{
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            right: 0,
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: '6px',
+                                            backgroundColor: themeColors.primary,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            border: '2px solid #FFFFFF',
+                                            cursor: 'pointer'
+                                        }}>
                                         <AddPhotoIcon sx={{ fontSize: 12, color: '#FFFFFF' }} />
                                     </Box>
                                 )}
@@ -800,194 +826,17 @@ const UserProfileTemplate = ({ onLogout }) => {
                             )}
                         </Box>
                     </Box>
-
-                    {/* Navegação por Pills */}
-                    <Box sx={{
-                        px: { xs: 2, md: 3 },
-                        pb: 2,
-                        display: 'flex',
-                        gap: 0.5,
-                        overflowX: 'auto',
-                        '&::-webkit-scrollbar': { display: 'none' },
-                        scrollbarWidth: 'none'
-                    }}>
-                        {navItems.map((item, index) => (
-                            <NavPill
-                                key={index}
-                                icon={item.icon}
-                                label={item.label}
-                                active={activeTab === index}
-                                onClick={() => setActiveTab(index)}
-                            />
-                        ))}
-                    </Box>
                 </Box>
 
-                {/* Card de Conteúdo */}
-                <Box sx={{
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: '16px',
-                    border: '1px solid',
-                    borderColor: themeColors.borderColor,
-                    overflow: 'hidden'
-                }}>
-
-                    {/* Conteúdo da Tab */}
-                    <Box sx={{ p: { xs: 2.5, md: 3.5 } }}>
-                        {/* Tab Dados Pessoais */}
-                        <Fade in={activeTab === 0} unmountOnExit>
-                            <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
-                                {state.isEditing ? (
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-                                        <ModernField label="Nome Completo" value={state.formData.fullName} onChange={handleChange('fullName')} error={state.errors.fullName} icon={PersonIcon} disabled={isSecretary} />
-                                        <ModernField label="CPF" value={state.formData.cpf} onChange={handleChange('cpf')} error={state.errors.cpf} icon={BadgeIcon} disabled={isSecretary} />
-                                        <ModernField label="E-mail" value={state.formData.email} onChange={handleChange('email')} error={state.errors.email} icon={EmailIcon} type="email" disabled={isSecretary} />
-                                        <ModernField label="Telefone" value={state.formData.phone} onChange={handleChange('phone')} error={state.errors.phone} icon={PhoneIcon} disabled={isSecretary} />
-                                    </Box>
-                                ) : (
-                                    <Box>
-                                        <InfoRow icon={PersonIcon} label="Nome Completo" value={state.formData.fullName} />
-                                        <InfoRow icon={BadgeIcon} label="CPF" value={state.formData.cpf} />
-                                        <InfoRow icon={EmailIcon} label="E-mail" value={state.formData.email} />
-                                        <InfoRow icon={PhoneIcon} label="Telefone" value={state.formData.phone} />
-                                    </Box>
-                                )}
-                            </Box>
-                        </Fade>
-
-                        {/* Tab Endereço */}
-                        <Fade in={activeTab === 1} unmountOnExit>
-                            <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
-                                {state.isEditing ? (
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2 }}>
-                                        <Box sx={{ gridColumn: { md: 'span 2' }, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 1fr' }, gap: 2 }}>
-                                            <ModernField label="Rua" value={state.formData.address?.street} onChange={handleChange('address.street')} icon={HomeIcon} disabled={isSecretary} />
-                                            <ModernField label="Número" value={state.formData.address?.number} onChange={handleChange('address.number')} disabled={isSecretary} />
-                                        </Box>
-                                        <ModernField label="Complemento" value={state.formData.address?.complement} onChange={handleChange('address.complement')} icon={ApartmentIcon} disabled={isSecretary} />
-                                        <ModernField label="Bairro" value={state.formData.address?.neighborhood} onChange={handleChange('address.neighborhood')} disabled={isSecretary} />
-                                        <ModernField label="Cidade" value={state.formData.address?.city} onChange={handleChange('address.city')} icon={LocationCityIcon} disabled={isSecretary} />
-                                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                                            <ModernField label="Estado" value={state.formData.address?.state} onChange={handleChange('address.state')} disabled={isSecretary} />
-                                            <ModernField label="CEP" value={state.formData.address?.cep} onChange={handleChange('address.cep')} icon={PinDropIcon} disabled={isSecretary} />
-                                        </Box>
-                                    </Box>
-                                ) : (
-                                    <Box>
-                                        {state.formData.address?.street ? (
-                                            <>
-                                                <InfoRow icon={HomeIcon} label="Endereço" value={`${state.formData.address.street}, ${state.formData.address.number || 'S/N'}${state.formData.address.complement ? ` - ${state.formData.address.complement}` : ''}`} />
-                                                <InfoRow icon={LocationOnIcon} label="Bairro" value={state.formData.address.neighborhood} />
-                                                <InfoRow icon={LocationCityIcon} label="Cidade/Estado" value={
-                                                    [state.formData.address.city, state.formData.address.state]
-                                                        .filter(Boolean)
-                                                        .join(' - ') || '—'
-                                                } />
-                                                <InfoRow icon={PinDropIcon} label="CEP" value={state.formData.address.cep} />
-                                            </>
-                                        ) : (
-                                            <Box sx={{ py: 4, textAlign: 'center' }}>
-                                                <LocationOnIcon sx={{ fontSize: 48, color: alpha(themeColors.textTertiary, 0.3), mb: 1 }} />
-                                                <Typography sx={{ color: themeColors.textTertiary, fontSize: '14px', fontFamily: 'Gellix, sans-serif' }}>
-                                                    Endereço não cadastrado
-                                                </Typography>
-                                                {!isSecretary && (
-                                                    <Button
-                                                        size="small"
-                                                        onClick={() => { actions.setEditing(true); setActiveTab(1); }}
-                                                        sx={{ mt: 1.5, textTransform: 'none', fontFamily: 'Gellix, sans-serif' }}
-                                                    >
-                                                        Adicionar endereço
-                                                    </Button>
-                                                )}
-                                            </Box>
-                                        )}
-                                    </Box>
-                                )}
-                            </Box>
-                        </Fade>
-
-                        {/* Tab Dados Fiscais */}
-                        <Fade in={activeTab === 2} unmountOnExit>
-                            <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
-                                {state.isEditing ? (
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-                                        <ModernField label="CNPJ" value={state.formData.cnpj} onChange={handleChange('cnpj')} error={state.errors.cnpj} icon={BusinessIcon} disabled={isSecretary} />
-                                        <ModernField label="Razão Social" value={state.formData.razao_social} onChange={handleChange('razao_social')} icon={BusinessIcon} disabled={isSecretary} />
-                                        <ModernField label="Nome Fantasia" value={state.formData.nome_fantasia} onChange={handleChange('nome_fantasia')} icon={BusinessIcon} disabled={isSecretary} />
-                                        <ModernField label="Inscrição Municipal" value={state.formData.inscricao_municipal} onChange={handleChange('inscricao_municipal')} icon={NumbersIcon} disabled={isSecretary} />
-                                        <ModernField label="Inscrição Estadual" value={state.formData.inscricao_estadual} onChange={handleChange('inscricao_estadual')} icon={NumbersIcon} disabled={isSecretary} />
-                                        <ModernField label="Código IBGE Município" value={state.formData.codigo_municipio_ibge} onChange={handleChange('codigo_municipio_ibge')} icon={NumbersIcon} disabled={isSecretary} />
-                                        <ModernField label="Telefone Comercial" value={state.formData.telefone_comercial} onChange={handleChange('telefone_comercial')} icon={PhoneIcon} disabled={isSecretary} />
-                                        <ModernField label="Email Fiscal" value={state.formData.email_fiscal} onChange={handleChange('email_fiscal')} icon={EmailIcon} type="email" disabled={isSecretary} />
-                                    </Box>
-                                ) : (
-                                    <Box>
-                                        <InfoRow icon={BusinessIcon} label="CNPJ" value={state.formData.cnpj} />
-                                        <InfoRow icon={BusinessIcon} label="Razão Social" value={state.formData.razao_social} />
-                                        <InfoRow icon={BusinessIcon} label="Nome Fantasia" value={state.formData.nome_fantasia} />
-                                        <InfoRow icon={NumbersIcon} label="Inscrição Municipal" value={state.formData.inscricao_municipal} />
-                                        <InfoRow icon={NumbersIcon} label="Inscrição Estadual" value={state.formData.inscricao_estadual} />
-                                        <InfoRow icon={NumbersIcon} label="Código IBGE" value={state.formData.codigo_municipio_ibge} />
-                                        <InfoRow icon={PhoneIcon} label="Telefone Comercial" value={state.formData.telefone_comercial} />
-                                        <InfoRow icon={EmailIcon} label="Email Fiscal" value={state.formData.email_fiscal} />
-                                    </Box>
-                                )}
-                            </Box>
-                        </Fade>
-
-                        {/* Tab Profissional */}
-                        <Fade in={activeTab === 3} unmountOnExit>
-                            <Box sx={{ display: activeTab === 3 ? 'block' : 'none' }}>
-                                {state.isEditing ? (
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-                                        <ModernField label="CRM" value={state.formData.crm} onChange={handleChange('crm')} icon={LocalHospitalIcon} disabled={isSecretary} />
-                                        <ModernField label="UF do CRM" value={state.formData.crm_uf} onChange={handleChange('crm_uf')} icon={LocationOnIcon} disabled={isSecretary} />
-                                        <Box sx={{ gridColumn: { md: 'span 2' } }}>
-                                            <ModernField label="Especialidade" value={state.formData.especialidade} onChange={handleChange('especialidade')} icon={LocalHospitalIcon} disabled={isSecretary} />
-                                        </Box>
-                                    </Box>
-                                ) : (
-                                    <Box>
-                                        {state.formData.crm ? (
-                                            <>
-                                                <InfoRow icon={LocalHospitalIcon} label="CRM" value={state.formData.crm} />
-                                                <InfoRow icon={LocationOnIcon} label="UF do CRM" value={state.formData.crm_uf} />
-                                                <InfoRow icon={LocalHospitalIcon} label="Especialidade" value={state.formData.especialidade || state.userData.especialidade} />
-                                            </>
-                                        ) : (
-                                            <Box sx={{ py: 4, textAlign: 'center' }}>
-                                                <LocalHospitalIcon sx={{ fontSize: 48, color: alpha(themeColors.textTertiary, 0.3), mb: 1 }} />
-                                                <Typography sx={{ color: themeColors.textTertiary, fontSize: '14px', fontFamily: 'Gellix, sans-serif' }}>
-                                                    Dados profissionais não cadastrados
-                                                </Typography>
-                                                {!isSecretary && (
-                                                    <Button
-                                                        size="small"
-                                                        onClick={() => { actions.setEditing(true); setActiveTab(3); }}
-                                                        sx={{ mt: 1.5, textTransform: 'none', fontFamily: 'Gellix, sans-serif' }}
-                                                    >
-                                                        Adicionar dados profissionais
-                                                    </Button>
-                                                )}
-                                            </Box>
-                                        )}
-                                    </Box>
-                                )}
-                            </Box>
-                        </Fade>
-                    </Box>
-                </Box>
-
-                {/* Configurações e Ações */}
+                {/* Configurações e Ações na Coluna Esquerda */}
                 {!isSecretary && (
                     <Box sx={{
-                        mt: 2,
                         backgroundColor: '#FFFFFF',
                         borderRadius: '16px',
                         border: '1px solid',
                         borderColor: themeColors.borderColor,
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        mb: 2
                     }}>
                         {/* Assinatura */}
                         <Box
@@ -1072,7 +921,6 @@ const UserProfileTemplate = ({ onLogout }) => {
                 {/* Info para secretária */}
                 {isSecretary && userContext?.userData?.fullName && (
                     <Box sx={{
-                        mt: 2,
                         p: 2,
                         backgroundColor: alpha(themeColors.warning, 0.06),
                         borderRadius: '12px',
@@ -1080,7 +928,8 @@ const UserProfileTemplate = ({ onLogout }) => {
                         borderColor: alpha(themeColors.warning, 0.15),
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1.5
+                        gap: 1.5,
+                        mb: 2
                     }}>
                         <PeopleIcon sx={{ fontSize: 18, color: themeColors.warning }} />
                         <Typography sx={{ fontSize: '12px', color: themeColors.textSecondary, fontFamily: 'Gellix, sans-serif' }}>
@@ -1090,7 +939,7 @@ const UserProfileTemplate = ({ onLogout }) => {
                 )}
 
                 {/* Sair da Conta */}
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Button
                         variant="text"
                         size="small"
@@ -1112,6 +961,197 @@ const UserProfileTemplate = ({ onLogout }) => {
                     >
                         Sair da conta
                     </Button>
+                </Box>
+                </Box>
+
+                {/* Coluna Direita - Conteúdo Principal */}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                {/* Card de Conteúdo com Navegação */}
+                <Box sx={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '16px',
+                    border: '1px solid',
+                    borderColor: themeColors.borderColor,
+                    overflow: 'hidden'
+                }}>
+                    {/* Navegação por Pills */}
+                    <Box sx={{
+                        px: { xs: 2, md: 3 },
+                        pt: 2,
+                        pb: 1,
+                        display: 'flex',
+                        gap: 0.5,
+                        overflowX: 'auto',
+                        borderBottom: '1px solid',
+                        borderColor: themeColors.borderColor,
+                        '&::-webkit-scrollbar': { display: 'none' },
+                        scrollbarWidth: 'none'
+                    }}>
+                        {navItems.map((item, index) => (
+                            <NavPill
+                                key={index}
+                                icon={item.icon}
+                                label={item.label}
+                                active={activeTab === index}
+                                onClick={() => setActiveTab(index)}
+                            />
+                        ))}
+                    </Box>
+
+                    {/* Conteúdo da Tab */}
+                    <Box sx={{ p: { xs: 2.5, md: 4 } }}>
+                        {/* Tab Dados Pessoais */}
+                        <Fade in={activeTab === 0} unmountOnExit>
+                            <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
+                                {state.isEditing ? (
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr' }, gap: { xs: 2, md: 3 } }}>
+                                        <Box sx={{ gridColumn: { lg: 'span 2' } }}>
+                                            <ModernField label="Nome Completo" value={state.formData.fullName} onChange={handleChange('fullName')} error={state.errors.fullName} icon={PersonIcon} disabled={isSecretary} />
+                                        </Box>
+                                        <ModernField label="CPF" value={state.formData.cpf} onChange={handleChange('cpf')} error={state.errors.cpf} icon={BadgeIcon} disabled={isSecretary} />
+                                        <Box sx={{ gridColumn: { lg: 'span 2' } }}>
+                                            <ModernField label="E-mail" value={state.formData.email} onChange={handleChange('email')} error={state.errors.email} icon={EmailIcon} type="email" disabled={isSecretary} />
+                                        </Box>
+                                        <ModernField label="Telefone" value={state.formData.phone} onChange={handleChange('phone')} error={state.errors.phone} icon={PhoneIcon} disabled={isSecretary} />
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
+                                        <InfoRow icon={PersonIcon} label="Nome Completo" value={state.formData.fullName} />
+                                        <InfoRow icon={BadgeIcon} label="CPF" value={state.formData.cpf} />
+                                        <InfoRow icon={EmailIcon} label="E-mail" value={state.formData.email} />
+                                        <InfoRow icon={PhoneIcon} label="Telefone" value={state.formData.phone} />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Fade>
+
+                        {/* Tab Endereço */}
+                        <Fade in={activeTab === 1} unmountOnExit>
+                            <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
+                                {state.isEditing ? (
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr' }, gap: { xs: 2, md: 3 } }}>
+                                        <Box sx={{ gridColumn: { sm: 'span 2', lg: 'span 2' } }}>
+                                            <ModernField label="Rua" value={state.formData.address?.street} onChange={handleChange('address.street')} icon={HomeIcon} disabled={isSecretary} />
+                                        </Box>
+                                        <ModernField label="Número" value={state.formData.address?.number} onChange={handleChange('address.number')} disabled={isSecretary} />
+                                        <ModernField label="Complemento" value={state.formData.address?.complement} onChange={handleChange('address.complement')} icon={ApartmentIcon} disabled={isSecretary} />
+                                        <ModernField label="Bairro" value={state.formData.address?.neighborhood} onChange={handleChange('address.neighborhood')} disabled={isSecretary} />
+                                        <ModernField label="CEP" value={state.formData.address?.cep} onChange={handleChange('address.cep')} icon={PinDropIcon} disabled={isSecretary} />
+                                        <ModernField label="Cidade" value={state.formData.address?.city} onChange={handleChange('address.city')} icon={LocationCityIcon} disabled={isSecretary} />
+                                        <ModernField label="Estado" value={state.formData.address?.state} onChange={handleChange('address.state')} disabled={isSecretary} />
+                                    </Box>
+                                ) : (
+                                    <Box>
+                                        {state.formData.address?.street ? (
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
+                                                <InfoRow icon={HomeIcon} label="Endereço" value={`${state.formData.address.street}, ${state.formData.address.number || 'S/N'}${state.formData.address.complement ? ` - ${state.formData.address.complement}` : ''}`} />
+                                                <InfoRow icon={LocationOnIcon} label="Bairro" value={state.formData.address.neighborhood} />
+                                                <InfoRow icon={LocationCityIcon} label="Cidade/Estado" value={
+                                                    [state.formData.address.city, state.formData.address.state]
+                                                        .filter(Boolean)
+                                                        .join(' - ') || '—'
+                                                } />
+                                                <InfoRow icon={PinDropIcon} label="CEP" value={state.formData.address.cep} />
+                                            </Box>
+                                        ) : (
+                                            <Box sx={{ py: 4, textAlign: 'center' }}>
+                                                <LocationOnIcon sx={{ fontSize: 48, color: alpha(themeColors.textTertiary, 0.3), mb: 1 }} />
+                                                <Typography sx={{ color: themeColors.textTertiary, fontSize: '14px', fontFamily: 'Gellix, sans-serif' }}>
+                                                    Endereço não cadastrado
+                                                </Typography>
+                                                {!isSecretary && (
+                                                    <Button
+                                                        size="small"
+                                                        onClick={() => { actions.setEditing(true); setActiveTab(1); }}
+                                                        sx={{ mt: 1.5, textTransform: 'none', fontFamily: 'Gellix, sans-serif' }}
+                                                    >
+                                                        Adicionar endereço
+                                                    </Button>
+                                                )}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                )}
+                            </Box>
+                        </Fade>
+
+                        {/* Tab Dados Fiscais */}
+                        <Fade in={activeTab === 2} unmountOnExit>
+                            <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
+                                {state.isEditing ? (
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr' }, gap: { xs: 2, md: 3 } }}>
+                                        <ModernField label="CNPJ" value={state.formData.cnpj} onChange={handleChange('cnpj')} error={state.errors.cnpj} icon={BusinessIcon} disabled={isSecretary} />
+                                        <Box sx={{ gridColumn: { lg: 'span 2' } }}>
+                                            <ModernField label="Razão Social" value={state.formData.razao_social} onChange={handleChange('razao_social')} icon={BusinessIcon} disabled={isSecretary} />
+                                        </Box>
+                                        <Box sx={{ gridColumn: { lg: 'span 2' } }}>
+                                            <ModernField label="Nome Fantasia" value={state.formData.nome_fantasia} onChange={handleChange('nome_fantasia')} icon={BusinessIcon} disabled={isSecretary} />
+                                        </Box>
+                                        <ModernField label="Inscrição Municipal" value={state.formData.inscricao_municipal} onChange={handleChange('inscricao_municipal')} icon={NumbersIcon} disabled={isSecretary} />
+                                        <ModernField label="Inscrição Estadual" value={state.formData.inscricao_estadual} onChange={handleChange('inscricao_estadual')} icon={NumbersIcon} disabled={isSecretary} />
+                                        <ModernField label="Código IBGE Município" value={state.formData.codigo_municipio_ibge} onChange={handleChange('codigo_municipio_ibge')} icon={NumbersIcon} disabled={isSecretary} />
+                                        <ModernField label="Telefone Comercial" value={state.formData.telefone_comercial} onChange={handleChange('telefone_comercial')} icon={PhoneIcon} disabled={isSecretary} />
+                                        <Box sx={{ gridColumn: { lg: 'span 2' } }}>
+                                            <ModernField label="Email Fiscal" value={state.formData.email_fiscal} onChange={handleChange('email_fiscal')} icon={EmailIcon} type="email" disabled={isSecretary} />
+                                        </Box>
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
+                                        <InfoRow icon={BusinessIcon} label="CNPJ" value={state.formData.cnpj} />
+                                        <InfoRow icon={BusinessIcon} label="Razão Social" value={state.formData.razao_social} />
+                                        <InfoRow icon={BusinessIcon} label="Nome Fantasia" value={state.formData.nome_fantasia} />
+                                        <InfoRow icon={NumbersIcon} label="Inscrição Municipal" value={state.formData.inscricao_municipal} />
+                                        <InfoRow icon={NumbersIcon} label="Inscrição Estadual" value={state.formData.inscricao_estadual} />
+                                        <InfoRow icon={NumbersIcon} label="Código IBGE" value={state.formData.codigo_municipio_ibge} />
+                                        <InfoRow icon={PhoneIcon} label="Telefone Comercial" value={state.formData.telefone_comercial} />
+                                        <InfoRow icon={EmailIcon} label="Email Fiscal" value={state.formData.email_fiscal} />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Fade>
+
+                        {/* Tab Profissional */}
+                        <Fade in={activeTab === 3} unmountOnExit>
+                            <Box sx={{ display: activeTab === 3 ? 'block' : 'none' }}>
+                                {state.isEditing ? (
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr' }, gap: { xs: 2, md: 3 } }}>
+                                        <ModernField label="CRM" value={state.formData.crm} onChange={handleChange('crm')} icon={LocalHospitalIcon} disabled={isSecretary} />
+                                        <ModernField label="UF do CRM" value={state.formData.crm_uf} onChange={handleChange('crm_uf')} icon={LocationOnIcon} disabled={isSecretary} />
+                                        <Box sx={{ gridColumn: { sm: 'span 2', lg: 'span 1' } }}>
+                                            <ModernField label="Especialidade" value={state.formData.especialidade} onChange={handleChange('especialidade')} icon={LocalHospitalIcon} disabled={isSecretary} />
+                                        </Box>
+                                    </Box>
+                                ) : (
+                                    <Box>
+                                        {state.formData.crm ? (
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr' }, gap: 1 }}>
+                                                <InfoRow icon={LocalHospitalIcon} label="CRM" value={state.formData.crm} />
+                                                <InfoRow icon={LocationOnIcon} label="UF do CRM" value={state.formData.crm_uf} />
+                                                <InfoRow icon={LocalHospitalIcon} label="Especialidade" value={state.formData.especialidade || state.userData.especialidade} />
+                                            </Box>
+                                        ) : (
+                                            <Box sx={{ py: 4, textAlign: 'center' }}>
+                                                <LocalHospitalIcon sx={{ fontSize: 48, color: alpha(themeColors.textTertiary, 0.3), mb: 1 }} />
+                                                <Typography sx={{ color: themeColors.textTertiary, fontSize: '14px', fontFamily: 'Gellix, sans-serif' }}>
+                                                    Dados profissionais não cadastrados
+                                                </Typography>
+                                                {!isSecretary && (
+                                                    <Button
+                                                        size="small"
+                                                        onClick={() => { actions.setEditing(true); setActiveTab(3); }}
+                                                        sx={{ mt: 1.5, textTransform: 'none', fontFamily: 'Gellix, sans-serif' }}
+                                                    >
+                                                        Adicionar dados profissionais
+                                                    </Button>
+                                                )}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                )}
+                            </Box>
+                        </Fade>
+                    </Box>
+                </Box>
                 </Box>
             </Box>
 

@@ -108,13 +108,11 @@ const Dashboard = ({ onClickPatients }) => {
             setPatients(convertedPatients);
 
             // Recalcular métricas quando pacientes carregarem
-            if (consultations.length > 0) {
-                calculateMetrics(consultations, convertedPatients);
-            }
+            calculateMetrics(consultations, convertedPatients);
         }
 
         setLoading(loadingPatients || loadingAppointments);
-    }, [user, hookPatients, loadingPatients, loadingAppointments, consultations]);
+    }, [user, hookPatients, loadingPatients, loadingAppointments, consultations, patientsPagination]);
 
     // Helper para parsear datas de consulta de forma segura
     const safeParseDateFromConsultation = (c) => {
