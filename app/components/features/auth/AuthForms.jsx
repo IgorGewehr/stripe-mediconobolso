@@ -30,7 +30,7 @@ export const AuthForms = () => {
     const [formData, setFormData] = useState(initialFormData);
     const [errors, setErrors] = useState({});
     const router = useRouter();
-    const { setUserId, referralSource } = useAuth();
+    const { referralSource } = useAuth();
     const { success, error: showError } = useFeedback();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));

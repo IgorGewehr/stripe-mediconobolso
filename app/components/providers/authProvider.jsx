@@ -115,59 +115,70 @@ export const AuthProvider = ({ children }) => {
 
     // ✅ CRIAR DADOS BÁSICOS PARA USUÁRIOS ÓRFÃOS - MEMOIZADA
     const createOrphanUserData = useCallback(async (authUser) => {
-        try {
-            console.log('🔧 Criando dados básicos para usuário órfão:', authUser.uid);
+        console.log('🔧 Criando dados básicos para usuário órfão:', authUser.uid);
 
-            const [firstName, ...lastNameArray] = (authUser.displayName || '').split(' ');
-            const lastName = lastNameArray.join(' ');
+        const [firstName, ...lastNameArray] = (authUser.displayName || '').split(' ');
+        const lastName = lastNameArray.join(' ');
 
-            const userData = {
-                fullName: authUser.displayName || '',
-                firstName: firstName || '',
-                lastName: lastName || '',
+        const userData = {
+            fullName: authUser.displayName || '',
+            firstName: firstName || '',
+            lastName: lastName || '',
+            email: authUser.email,
+            photoURL: authUser.photoURL || '',
+            emailVerified: authUser.emailVerified,
+            gratuito: true,
+            assinouPlano: false,
+            planType: 'free',
+            authProvider: authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email',
+            createdAt: new Date(),
+            checkoutCompleted: true,
+            needsProfileCompletion: true
+        };
+
+        if (authUser.providerData?.[0]?.providerId === 'google.com') {
+            userData.googleProfile = {
+                uid: authUser.uid,
+                displayName: authUser.displayName,
                 email: authUser.email,
-                photoURL: authUser.photoURL || '',
-                emailVerified: authUser.emailVerified,
-                gratuito: true,
-                assinouPlano: false,
-                planType: 'free',
-                authProvider: authUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email',
-                createdAt: new Date(),
-                checkoutCompleted: true,
-                needsProfileCompletion: true
+                photoURL: authUser.photoURL,
+                emailVerified: authUser.emailVerified
             };
+        }
 
-            if (authUser.providerData?.[0]?.providerId === 'google.com') {
-                userData.googleProfile = {
-                    uid: authUser.uid,
-                    displayName: authUser.displayName,
-                    email: authUser.email,
-                    photoURL: authUser.photoURL,
-                    emailVerified: authUser.emailVerified
-                };
-            }
+        const currentReferralSource = referralSource || localStorage.getItem('referralSource');
+        if (currentReferralSource === 'enrico') {
+            userData.enrico = true;
+            console.log('✅ Usuário órfão marcado como vindo através do Enrico');
+        } else if (currentReferralSource) {
+            userData.referralSource = currentReferralSource;
+        }
 
-            const currentReferralSource = referralSource || localStorage.getItem('referralSource');
-            if (currentReferralSource === 'enrico') {
-                userData.enrico = true;
-                console.log('✅ Usuário órfão marcado como vindo através do Enrico');
-            } else if (currentReferralSource) {
-                userData.referralSource = currentReferralSource;
-            }
-
-            // Provisionar usuário no backend se for novo
+        // Provisionar usuário no backend se for novo
+        try {
             await authApiService.provision({
                 name: userData.fullName,
                 email: userData.email,
                 plan_type: userData.planType,
             });
             console.log('✅ Dados básicos criados para usuário órfão via API');
-
-            return userData;
         } catch (error) {
-            console.error('❌ Erro ao criar dados para usuário órfão:', error);
-            throw error;
+            console.error('❌ Erro ao provisionar usuário órfão:', error);
+            // Verificar se é erro de conexão
+            const isConnectionError = error.message?.includes('conexão') ||
+                error.message?.includes('connection') ||
+                error.message?.includes('Load failed') ||
+                error.message?.includes('network');
+
+            if (isConnectionError) {
+                // Para erros de conexão, retornar dados básicos sem persistir
+                console.log('⚠️ Erro de conexão ao provisionar, retornando dados locais');
+            } else {
+                throw error;
+            }
         }
+
+        return userData;
     }, [referralSource]);
 
     // ✅ MIGRAÇÃO OPCIONAL - MEMOIZADA
@@ -530,6 +541,35 @@ export const AuthProvider = ({ children }) => {
                             console.log(`🔄 Aguardando ${retries * 1000}ms antes da próxima tentativa...`);
                             await new Promise(resolve => setTimeout(resolve, retries * 1000));
                         } else {
+                            // Verificar se é erro de conexão
+                            const isConnectionError = error.message?.includes('conexão') ||
+                                error.message?.includes('connection') ||
+                                error.message?.includes('Load failed') ||
+                                error.message?.includes('network') ||
+                                error.message?.includes('Context timeout');
+
+                            if (isConnectionError) {
+                                // Para erros de conexão, criar contexto básico
+                                console.log('⚠️ Usando contexto básico após erro de conexão');
+                                context = {
+                                    userType: 'doctor',
+                                    workingDoctorId: authUser.uid,
+                                    userData: {
+                                        uid: authUser.uid,
+                                        email: authUser.email,
+                                        fullName: authUser.displayName || authUser.email?.split('@')[0] || '',
+                                        photoURL: authUser.photoURL || '',
+                                        planType: 'free',
+                                        gratuito: true,
+                                        assinouPlano: false,
+                                        needsProfileCompletion: true,
+                                        _connectionError: true
+                                    },
+                                    permissions: 'full',
+                                    isSecretary: false
+                                };
+                                break;
+                            }
                             throw error;
                         }
                     }
@@ -592,16 +632,61 @@ export const AuthProvider = ({ children }) => {
                 console.error("❌ Auth processing error:", error);
 
                 if (isMounted) {
-                    // Reset em caso de erro
-                    setUser(null);
-                    setUserContext(null);
-                    setIsSecretary(false);
-                    setWorkingDoctorId(null);
-                    setPermissions('full');
+                    // Verificar se é erro de conexão (não de autorização)
+                    const isConnectionError = error.message?.includes('conexão') ||
+                        error.message?.includes('connection') ||
+                        error.message?.includes('Load failed') ||
+                        error.message?.includes('network');
 
-                    // Se erro de autorização, redirecionar
-                    if (error.message.includes('não autorizado') || error.message.includes('unauthorized')) {
+                    // Se erro de autorização, redirecionar para login
+                    if (error.message?.includes('não autorizado') || error.message?.includes('unauthorized')) {
+                        setUser(null);
+                        setUserContext(null);
+                        setIsSecretary(false);
+                        setWorkingDoctorId(null);
+                        setPermissions('full');
                         router.push('/');
+                    } else if (isConnectionError) {
+                        // Para erros de conexão, manter usuário básico e redirecionar
+                        // O usuário está autenticado no Firebase, apenas não conseguimos dados do backend
+                        console.log('⚠️ Erro de conexão, mantendo autenticação básica e redirecionando...');
+
+                        // Criar usuário básico com dados do Firebase Auth
+                        const basicUserData = {
+                            uid: authUser.uid,
+                            email: authUser.email,
+                            fullName: authUser.displayName || authUser.email?.split('@')[0] || '',
+                            photoURL: authUser.photoURL || '',
+                            planType: 'free',
+                            gratuito: true,
+                            assinouPlano: false,
+                            needsProfileCompletion: true,
+                            _connectionError: true // Flag para indicar que houve erro de conexão
+                        };
+
+                        setUser(basicUserData);
+                        setUserContext({ userType: 'doctor', workingDoctorId: authUser.uid, userData: basicUserData, permissions: 'full', isSecretary: false });
+                        setIsSecretary(false);
+                        setWorkingDoctorId(authUser.uid);
+                        setPermissions('full');
+
+                        // Redirecionar mesmo com erro de conexão
+                        const publicRoutes = ['/', '/login', '/checkout', '/free'];
+                        const isInPublicRoute = publicRoutes.includes(pathname) ||
+                            pathname.startsWith('/checkout/') ||
+                            pathname.startsWith('/free/');
+
+                        if (isInPublicRoute) {
+                            console.log('✅ Redirecionando para /app após erro de conexão');
+                            router.push('/app');
+                        }
+                    } else {
+                        // Outros erros: resetar estado
+                        setUser(null);
+                        setUserContext(null);
+                        setIsSecretary(false);
+                        setWorkingDoctorId(null);
+                        setPermissions('full');
                     }
                 }
             } finally {
