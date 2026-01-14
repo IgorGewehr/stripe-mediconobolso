@@ -162,7 +162,7 @@ const theme = createTheme({
 const StyledDialog = ({ open, onClose, children, ...props }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    
+
     return (
         <Dialog
             open={open}
@@ -184,10 +184,10 @@ const StyledDialog = ({ open, onClose, children, ...props }) => {
                     display: 'flex',
                     flexDirection: 'column',
                 },
-            '& .MuiBackdrop-root': {
-                backdropFilter: 'blur(4px)',
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            },
+                '& .MuiBackdrop-root': {
+                    backdropFilter: 'blur(4px)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                },
             }}
             TransitionComponent={Fade}
             transitionDuration={250}
@@ -343,7 +343,7 @@ const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading, 
 
     const getDateValue = (dateValue) => {
         if (!dateValue) return null;
-        return dateValue instanceof Date ? dateValue : dateValue.toDate();
+        return dateValue instanceof Date ? dateValue : new Date(dateValue);
     };
 
     const handleClick = (event) => {
@@ -450,7 +450,7 @@ const ConsultationSelector = ({ consultations, selectedDate, onSelect, loading, 
 
 // Get category icon component
 const getCategoryIcon = (category) => {
-    switch(category) {
+    switch (category) {
         case 'Receitas':
             return <MedicationIcon />;
         case 'Exames':
@@ -470,18 +470,18 @@ const getCategoryIcon = (category) => {
 
 // Main component for patient notes dialog
 const PatientNoteDialog = ({
-                               open,
-                               onClose,
-                               note = null,
-                               patientId,
-                               onSave,
-                               onDelete
-                           }) => {
+    open,
+    onClose,
+    note = null,
+    patientId,
+    onSave,
+    onDelete
+}) => {
     const { user, getEffectiveUserId } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
-    
+
     const isEditMode = !!note;
     const fileInputRef = useRef(null);
     const dropAreaRef = useRef(null);
@@ -812,7 +812,7 @@ const PatientNoteDialog = ({
 
         const consDate = consultation.consultationDate instanceof Date
             ? consultation.consultationDate
-            : consultation.consultationDate.toDate();
+            : new Date(consultation.consultationDate);
         setConsultationDate(consDate);
     };
 
@@ -859,7 +859,7 @@ const PatientNoteDialog = ({
 
     const getDateValue = (dateValue) => {
         if (!dateValue) return null;
-        return dateValue instanceof Date ? dateValue : dateValue.toDate();
+        return dateValue instanceof Date ? dateValue : new Date(dateValue);
     };
 
     const handleConfirmDelete = () => {
@@ -1271,7 +1271,7 @@ const PatientNoteDialog = ({
                                                         ? `Criado em: ${format(
                                                             note.createdAt instanceof Date
                                                                 ? note.createdAt
-                                                                : note.createdAt.toDate(),
+                                                                : new Date(note.createdAt),
                                                             "dd/MM/yyyy",
                                                             { locale: ptBR }
                                                         )}`
@@ -1304,7 +1304,7 @@ const PatientNoteDialog = ({
                                                         {`Última modificação: ${format(
                                                             note.lastModified instanceof Date
                                                                 ? note.lastModified
-                                                                : note.lastModified.toDate(),
+                                                                : new Date(note.lastModified),
                                                             "dd/MM/yyyy",
                                                             { locale: ptBR }
                                                         )}`}

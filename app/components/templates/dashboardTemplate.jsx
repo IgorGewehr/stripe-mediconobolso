@@ -121,8 +121,9 @@ const Dashboard = ({ onClickPatients }) => {
         let consultDate;
         if (dateSource instanceof Date) {
             consultDate = new Date(dateSource);
-        } else if (typeof dateSource.toDate === 'function') {
-            consultDate = dateSource.toDate();
+            // REMOVED LEGACY FIRESTORE SUPPORT
+            // } else if (typeof dateSource.toDate === 'function') {
+            //     consultDate = dateSource.toDate();
         } else if (typeof dateSource === 'string') {
             consultDate = new Date(dateSource);
         } else {

@@ -32,12 +32,12 @@ import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { patientsService } from '@/lib/services/api';
 
-const MobileConsultationCard = ({ 
-    nextConsultation, 
-    consultations, 
-    loading, 
-    onViewAgenda, 
-    onSelectPatient 
+const MobileConsultationCard = ({
+    nextConsultation,
+    consultations,
+    loading,
+    onViewAgenda,
+    onSelectPatient
 }) => {
     const theme = useTheme();
     const [patientData, setPatientData] = useState(null);
@@ -80,16 +80,15 @@ const MobileConsultationCard = ({
             return nextConsultation.consultationDate;
         }
 
-        if (nextConsultation.consultationDate?.toDate) {
-            return nextConsultation.consultationDate.toDate();
-        }
+        // REMOVED LEGACY FIRESTORE SUPPORT
+        // if (nextConsultation.consultationDate?.toDate) ...
 
         return new Date();
     };
 
     const getTimeUntilText = () => {
         if (!timeUntilConsultation) return '';
-        
+
         if (timeUntilConsultation <= 0) {
             return 'Consulta em andamento';
         } else if (timeUntilConsultation < 60) {
@@ -105,7 +104,7 @@ const MobileConsultationCard = ({
 
     const getStatusColor = () => {
         if (!timeUntilConsultation) return theme.palette.info.main;
-        
+
         if (timeUntilConsultation <= 0) {
             return theme.palette.success.main;
         } else if (timeUntilConsultation <= 30) {
@@ -151,10 +150,10 @@ const MobileConsultationCard = ({
                 background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
             }}
         >
-            <Box sx={{ 
-                p: 3, 
-                display: 'flex', 
-                flexDirection: 'column', 
+            <Box sx={{
+                p: 3,
+                display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 textAlign: 'center'
             }}>
@@ -244,7 +243,7 @@ const MobileConsultationCard = ({
                                 {isConsultationToday ? 'Hoje' : format(consultationDate, 'dd/MM/yyyy', { locale: ptBR })}
                             </Typography>
                         </Box>
-                        
+
                         {timeUntilText && (
                             <Chip
                                 label={timeUntilText}
@@ -292,12 +291,12 @@ const MobileConsultationCard = ({
                         >
                             {(patientData?.patientName || nextConsultation?.nome || "P").charAt(0)}
                         </Avatar>
-                        
+
                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography 
-                                variant="subtitle1" 
-                                sx={{ 
-                                    fontWeight: 700, 
+                            <Typography
+                                variant="subtitle1"
+                                sx={{
+                                    fontWeight: 700,
                                     fontSize: '1rem',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
@@ -306,7 +305,7 @@ const MobileConsultationCard = ({
                             >
                                 {patientData?.patientName || nextConsultation?.nome || "Paciente"}
                             </Typography>
-                            
+
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <AccessTimeRounded sx={{ fontSize: 14, opacity: 0.8 }} />
@@ -314,7 +313,7 @@ const MobileConsultationCard = ({
                                         {nextConsultation?.consultationTime || nextConsultation?.horaInicio || '00:00'}
                                     </Typography>
                                 </Box>
-                                
+
                                 {nextConsultation?.consultationType === 'Telemedicina' && (
                                     <VideoCallRounded sx={{ fontSize: 16, opacity: 0.8 }} />
                                 )}
@@ -349,7 +348,7 @@ const MobileConsultationCard = ({
                         >
                             Ver Consulta
                         </Button>
-                        
+
                         <Button
                             variant="contained"
                             onClick={() => onSelectPatient && onSelectPatient(nextConsultation.patientId)}
@@ -379,7 +378,7 @@ const MobileConsultationCard = ({
                                 transition={{ duration: 0.2 }}
                             >
                                 <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.2)' }} />
-                                
+
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <MedicalServicesRounded sx={{ fontSize: 16, opacity: 0.8 }} />
@@ -387,7 +386,7 @@ const MobileConsultationCard = ({
                                             <strong>Motivo:</strong> {nextConsultation?.reasonForVisit || "Consulta de rotina"}
                                         </Typography>
                                     </Box>
-                                    
+
                                     {(patientData?.patientPhone || patientData?.phone) && (
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <PhoneRounded sx={{ fontSize: 16, opacity: 0.8 }} />
@@ -396,7 +395,7 @@ const MobileConsultationCard = ({
                                             </Typography>
                                         </Box>
                                     )}
-                                    
+
                                     {nextConsultation?.consultationType !== 'Telemedicina' && (
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <LocationOnRounded sx={{ fontSize: 16, opacity: 0.8 }} />

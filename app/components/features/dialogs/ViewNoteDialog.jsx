@@ -212,15 +212,15 @@ const getFileTypeInfo = (fileName, fileType) => {
 };
 
 const ViewNoteDialog = ({
-                            open,
-                            onClose,
-                            noteData,
-                            noteType,
-                            patientId,
-                            doctorId,
-                            onEdit,
-                            onDelete
-                        }) => {
+    open,
+    onClose,
+    noteData,
+    noteType,
+    patientId,
+    doctorId,
+    onEdit,
+    onDelete
+}) => {
     const [loading, setLoading] = useState(false);
     const [patientData, setPatientData] = useState(null);
     const [expanded, setExpanded] = useState({});
@@ -231,7 +231,7 @@ const ViewNoteDialog = ({
 
     // Cores por tipo de nota
     const getTypeColor = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return theme.palette.anamnese;
             case 'Receita':
@@ -251,7 +251,7 @@ const ViewNoteDialog = ({
 
     // Ícone por tipo de nota
     const getTypeIcon = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return <HistoryEduIcon />;
             case 'Receita':
@@ -267,7 +267,7 @@ const ViewNoteDialog = ({
 
     // Ícone por categoria
     const getCategoryIcon = (category) => {
-        switch(category) {
+        switch (category) {
             case 'Receitas':
                 return <MedicationIcon />;
             case 'Exames':
@@ -287,7 +287,7 @@ const ViewNoteDialog = ({
 
     // Formato do tipo de nota
     const getTypeLabel = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return 'Anamnese';
             case 'Receita':
@@ -325,19 +325,19 @@ const ViewNoteDialog = ({
     // Formatação de data
     const formatDate = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return format(dateObj, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
     };
 
     const formatDateTime = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return format(dateObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
     };
 
     const formatTimeAgo = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return formatDistanceToNow(dateObj, { addSuffix: true, locale: ptBR });
     };
 
@@ -369,7 +369,7 @@ const ViewNoteDialog = ({
 
 
 
-// Versão corrigida do generateAndOpenPdf sem referências a toast
+    // Versão corrigida do generateAndOpenPdf sem referências a toast
     const generateAndOpenPdf = () => {
         try {
             // Gerar PDF baseado nos dados da receita
@@ -443,9 +443,7 @@ const ViewNoteDialog = ({
             if (patientData && patientData.dataNascimento) {
                 const dataNasc = patientData.dataNascimento instanceof Date ?
                     patientData.dataNascimento :
-                    patientData.dataNascimento.toDate ?
-                        patientData.dataNascimento.toDate() :
-                        new Date(patientData.dataNascimento);
+                    new Date(patientData.dataNascimento);
 
                 const idade = Math.floor((new Date() - dataNasc) / (365.25 * 24 * 60 * 60 * 1000));
                 doc.text(`Idade: ${idade} anos`, margin, yPos);

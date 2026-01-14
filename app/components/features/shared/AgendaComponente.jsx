@@ -49,7 +49,7 @@ import ViewConsultationDialog from "../dialogs/ViewConsultationDialog";
 import DoctorFilter from "./DoctorFilter";
 
 // Main component
-const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
+const AgendaMedica = forwardRef(({ initialConsultationId }, ref) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { user, getEffectiveUserId } = useAuth();
@@ -124,10 +124,8 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
         if (dateValue instanceof Date) {
             return isNaN(dateValue.getTime()) ? null : dateValue;
         }
-        if (dateValue && typeof dateValue.toDate === 'function') {
-            const d = dateValue.toDate();
-            return isNaN(d.getTime()) ? null : d;
-        }
+        // REMOVED LEGACY FIRESTORE SUPPORT
+        // if (dateValue && typeof dateValue.toDate === 'function') { ... }
         if (typeof dateValue === 'string') {
             // Handle empty strings
             if (!dateValue.trim()) return null;
@@ -181,7 +179,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
         const endDate = new Date(startDate);
         endDate.setMinutes(startDate.getMinutes() + duration);
 
-// Criar momentos consistentes usando as datas criadas
+        // Criar momentos consistentes usando as datas criadas
         const startMoment = moment(startDate);
         const endMoment = moment(endDate);
 
@@ -353,7 +351,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                 message: "Consulta agendada com sucesso!",
                 type: 'success'
             });
-            
+
             // Log para debug
             console.log('✅ Consulta criada com sucesso, modal será fechado');
             return consultationId; // Return the ID to indicate success
@@ -442,7 +440,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                 message: "Consulta atualizada com sucesso!",
                 type: 'success'
             });
-            
+
             // Log para debug
             console.log('✅ Consulta atualizada com sucesso, modal será fechado');
         } catch (error) {
@@ -690,7 +688,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
     const handleSaveEvent = useCallback(async (event) => {
         // Clone o evento para evitar modificar o original
         const eventToSave = { ...event };
-        
+
         console.log('💾 handleSaveEvent iniciado com dados:', eventToSave);
 
         try {
@@ -752,7 +750,7 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
 
     // Status color utilities
     const getStatusColors = (status) => {
-        switch(status?.toLowerCase()) {
+        switch (status?.toLowerCase()) {
             case 'confirmado':
             case 'concluída':
                 return {
@@ -1463,15 +1461,15 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
         if (isMobile) {
             // Mobile week view - simplified list
             return (
-                <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    height: '100%', 
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
                     overflow: 'hidden',
                     bgcolor: '#F8FAFF'
                 }}>
-                    <Box sx={{ 
-                        overflowY: 'auto', 
+                    <Box sx={{
+                        overflowY: 'auto',
                         p: 2,
                         '&::-webkit-scrollbar': { width: '4px' },
                         '&::-webkit-scrollbar-thumb': { backgroundColor: '#ccc', borderRadius: '4px' }
@@ -1479,13 +1477,13 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                         {currentWeek.map((day, dayIndex) => {
                             const dayEvents = weekEvents[dayIndex] || [];
                             if (dayEvents.length === 0) return null;
-                            
+
                             return (
                                 <Box key={dayIndex} sx={{ mb: 3 }}>
-                                    <Typography 
-                                        variant="h6" 
-                                        sx={{ 
-                                            mb: 2, 
+                                    <Typography
+                                        variant="h6"
+                                        sx={{
+                                            mb: 2,
                                             fontWeight: 600,
                                             color: 'text.primary',
                                             borderBottom: '2px solid',
@@ -1495,10 +1493,10 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                                     >
                                         {format(day, 'EEEE, dd/MM', { locale: ptBR })}
                                         {isSameDay(day, new Date()) && (
-                                            <Chip 
-                                                label="Hoje" 
-                                                size="small" 
-                                                color="primary" 
+                                            <Chip
+                                                label="Hoje"
+                                                size="small"
+                                                color="primary"
                                                 sx={{ ml: 1, fontSize: '0.7rem' }}
                                             />
                                         )}
@@ -1969,9 +1967,9 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                     bgcolor: 'white',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                 }}>
-                    <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: isMobile ? 1 : 2,
                         justifyContent: isMobile ? 'space-between' : 'flex-start',
                         width: isMobile ? '100%' : 'auto'
@@ -1997,8 +1995,8 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                             Hoje
                         </Button>
 
-                        <Box sx={{ 
-                            display: 'flex', 
+                        <Box sx={{
+                            display: 'flex',
                             gap: isMobile ? 0.5 : 1,
                             alignItems: 'center'
                         }}>
@@ -2028,10 +2026,10 @@ const AgendaMedica = forwardRef(({initialConsultationId}, ref) => {
                             </IconButton>
                         </Box>
 
-                        <Typography 
-                            variant={isMobile ? "body1" : "h6"} 
+                        <Typography
+                            variant={isMobile ? "body1" : "h6"}
                             fontWeight={600}
-                            sx={{ 
+                            sx={{
                                 fontSize: isMobile ? '1rem' : '1.25rem',
                                 textAlign: isMobile ? 'center' : 'left',
                                 flex: isMobile ? 1 : 'initial'

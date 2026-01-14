@@ -114,7 +114,7 @@ function NotaCard({ nota, onOpen, isMobile, isTablet }) {
     // Format date
     const formatDate = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate();
+        const dateObj = parseAnyDate(date);
         return format(dateObj, "dd/MM/yyyy", { locale: ptBR });
     };
 
@@ -129,7 +129,7 @@ function NotaCard({ nota, onOpen, isMobile, isTablet }) {
         if (!fileType) return <FileIcon fontSize="small" />;
         if (fileType.startsWith('image/')) return <ImageIcon fontSize="small" sx={{ color: "#10B981" }} />;
         if (fileType.includes('pdf')) return <PictureAsPdfIcon fontSize="small" sx={{ color: "#EF4444" }} />;
-        return <FileIcon fontSize="small" sx={{color: "#3B82F6" }} />;
+        return <FileIcon fontSize="small" sx={{ color: "#3B82F6" }} />;
     };
 
     // Determine the file type to display the correct icon
@@ -708,7 +708,7 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
     const isMedium = useMediaQuery(theme.breakpoints.down('md'));
-    
+
     // Estados
     const [notasData, setNotasData] = useState([]);
     const [filteredNotas, setFilteredNotas] = useState([]);
@@ -786,8 +786,8 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
 
             // Sort by creation date, newest first
             const sortedNotes = notes.sort((a, b) => {
-                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+                const dateA = parseAnyDate(a.createdAt) || new Date(0);
+                const dateB = parseAnyDate(b.createdAt) || new Date(0);
                 return dateB - dateA;
             });
 

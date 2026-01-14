@@ -101,11 +101,11 @@ const DoctorAITemplate = () => {
         if (!dateInput) return new Date();
 
         let date;
-        if (dateInput?.toDate && typeof dateInput.toDate === 'function') {
-            // Firestore Timestamp
-            date = dateInput.toDate();
-        } else if (dateInput instanceof Date) {
+        if (dateInput instanceof Date) {
             date = dateInput;
+            // REMOVED LEGACY FIRESTORE SUPPORT
+            // } else if (dateInput?.toDate && typeof dateInput.toDate === 'function') {
+            //     date = dateInput.toDate();
         } else if (typeof dateInput === 'string' || typeof dateInput === 'number') {
             date = new Date(dateInput);
         } else {
@@ -159,14 +159,14 @@ const DoctorAITemplate = () => {
     // ✅ INCREMENTAR CONTADOR DE USOS FREE
     const incrementFreeUsage = () => {
         if (!isFreeUser) return;
-        
+
         const today = new Date().toISOString().split('T')[0];
         const usageKey = `doctorAI_${getEffectiveUserId()}_${today}`;
         const newCount = freeUsageCount + 1;
-        
+
         localStorage.setItem(usageKey, newCount.toString());
         setFreeUsageCount(newCount);
-        
+
         console.log(`🔢 Uso incrementado: ${newCount}/${FREE_USAGE_LIMIT}`);
     };
 
@@ -250,13 +250,13 @@ const DoctorAITemplate = () => {
         setMessages([]);
         setCurrentConversationId(null);
         setError('');
-        
+
         // Fechar sidebar no mobile após criar nova conversa
         if (isMobile) {
             console.log('📱 Closing sidebar on mobile');
             setSidebarOpen(false);
         }
-        
+
         if (inputRef.current) {
             inputRef.current.focus();
         }
@@ -509,8 +509,7 @@ const DoctorAITemplate = () => {
     return (
         <Box sx={{
             display: 'flex',
-            height: isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 120px)',
-            maxHeight: isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 120px)',
+            flex: 1,
             minHeight: 0,
             backgroundColor: '#F4F9FF',
             borderRadius: '20px',

@@ -752,6 +752,9 @@ export default function AppLayout({ children }) {
                 {/* ✅ CONTEÚDO PRINCIPAL COM PROTEÇÃO */}
                 <Box flex={1} sx={{
                     position: 'relative',
+                    display: activePage.toLowerCase() === 'doctor ai' ? 'flex' : 'block',
+                    flexDirection: 'column',
+                    minHeight: 0,
                     overflow: isMobile ? 'hidden' : (activePage.toLowerCase() === 'doctor ai' ? 'hidden' : 'auto'),
                     pb: isMobile ? '56px' : 0 // Space for bottom navigation
                 }}>
@@ -793,7 +796,10 @@ export default function AppLayout({ children }) {
                         </SwipeableView>
                     ) : (
                         <Box sx={{
-                            height: activePage.toLowerCase() === 'doctor ai' ? '100%' : 'auto',
+                            flex: activePage.toLowerCase() === 'doctor ai' ? 1 : 'none',
+                            minHeight: activePage.toLowerCase() === 'doctor ai' ? 0 : 'auto',
+                            display: activePage.toLowerCase() === 'doctor ai' ? 'flex' : 'block',
+                            flexDirection: 'column',
                             padding: isMobile ? '8px' : isTablet ? '8px' : '10px',
                             boxSizing: 'border-box',
                             overflow: activePage.toLowerCase() === 'doctor ai' ? 'hidden' : 'visible',

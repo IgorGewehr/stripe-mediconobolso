@@ -49,7 +49,7 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import {ChevronRightIcon} from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 
 // Importar o AnamneseViewer
 import AnamneseViewer from "./AnamneseViewer";
@@ -132,12 +132,12 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 });
 
 const AnamneseNotesPanel = ({
-                                open,
-                                onClose,
-                                patientData,
-                                notesData,
-                                onSelectNote
-                            }) => {
+    open,
+    onClose,
+    patientData,
+    notesData,
+    onSelectNote
+}) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeFilter, setActiveFilter] = useState("todas");
     const [filteredNotes, setFilteredNotes] = useState([]);
@@ -218,8 +218,8 @@ const AnamneseNotesPanel = ({
 
         // Ordenar por data, mais recentes primeiro
         filtered.sort((a, b) => {
-            const dateA = a.createdAt instanceof Date ? a.createdAt : a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-            const dateB = b.createdAt instanceof Date ? b.createdAt : b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
             return dateB - dateA;
         });
 
@@ -287,7 +287,7 @@ const AnamneseNotesPanel = ({
 
     // Cores por tipo de nota
     const getTypeColor = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return theme.palette.anamnese;
             case 'Receita':
@@ -301,7 +301,7 @@ const AnamneseNotesPanel = ({
 
     // Ícone por tipo de nota
     const getTypeIcon = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return <HistoryEduIcon />;
             case 'Receita':
@@ -317,7 +317,7 @@ const AnamneseNotesPanel = ({
 
     // Formato do tipo de nota
     const getTypeLabel = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return 'Anamnese';
             case 'Receita':
@@ -342,19 +342,19 @@ const AnamneseNotesPanel = ({
     // Formatação de data
     const formatDate = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return format(dateObj, "dd 'de' MMMM", { locale: ptBR });
     };
 
     const formatDateTime = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return format(dateObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
     };
 
     const formatTimeAgo = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return formatDistanceToNow(dateObj, { addSuffix: true, locale: ptBR });
     };
 

@@ -425,11 +425,11 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
 
             if (receita) {
                 // Convertendo as datas de Timestamp para Date se necessário
-                const dataEmissao = receita.dataEmissao?.toDate ?
-                    receita.dataEmissao.toDate() : new Date(receita.dataEmissao);
+                const dataEmissao = receita.dataEmissao instanceof Date ?
+                    receita.dataEmissao : new Date(receita.dataEmissao);
 
-                const dataValidade = receita.dataValidade?.toDate ?
-                    receita.dataValidade.toDate() : new Date(receita.dataValidade);
+                const dataValidade = receita.dataValidade instanceof Date ?
+                    receita.dataValidade : new Date(receita.dataValidade);
 
                 setReceitaData({
                     ...receita,
@@ -540,7 +540,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
         if (editingMedicamentoIndex !== null) {
             // Editando um medicamento existente
             const novosMedicamentos = [...receitaData.medicamentos];
-            novosMedicamentos[editingMedicamentoIndex] = {...medicamentoTemp};
+            novosMedicamentos[editingMedicamentoIndex] = { ...medicamentoTemp };
             setReceitaData(prev => ({
                 ...prev,
                 medicamentos: novosMedicamentos
@@ -550,7 +550,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
             // Adicionando um novo medicamento
             setReceitaData(prev => ({
                 ...prev,
-                medicamentos: [...prev.medicamentos, {...medicamentoTemp}]
+                medicamentos: [...prev.medicamentos, { ...medicamentoTemp }]
             }));
         }
 
@@ -567,7 +567,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
     };
 
     const handleEditMedicamento = (index) => {
-        setMedicamentoTemp({...receitaData.medicamentos[index]});
+        setMedicamentoTemp({ ...receitaData.medicamentos[index] });
         setEditingMedicamentoIndex(index);
         setAddingMedicamento(true);
     };
@@ -1649,7 +1649,7 @@ const ReceitaDialog = ({ open, onClose, patientId, doctorId, onSave, receitaId =
                                                             <Grid item xs={12} sm={6}>
                                                                 {/* Campo de concentração - Se o medicamento existir, mostrar select de dosagens */}
                                                                 {medicamentoTemp.nome && medications.some(m => m.name === medicamentoTemp.nome) &&
-                                                                medications.find(m => m.name === medicamentoTemp.nome)?.dosages?.length > 0 ? (
+                                                                    medications.find(m => m.name === medicamentoTemp.nome)?.dosages?.length > 0 ? (
                                                                     <FormControl fullWidth>
                                                                         <InputLabel id="dosage-select-label">Concentração</InputLabel>
                                                                         <Select

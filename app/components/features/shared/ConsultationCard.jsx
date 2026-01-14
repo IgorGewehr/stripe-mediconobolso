@@ -84,8 +84,8 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
             let consultDate;
             if (consultation.consultationDate instanceof Date) {
                 consultDate = consultation.consultationDate;
-            } else if (consultation.consultationDate != null && typeof consultation.consultationDate.toDate === 'function') {
-                consultDate = consultation.consultationDate.toDate();
+            } else if (consultation.consultationDate != null) {
+                consultDate = new Date(consultation.consultationDate);
             } else if (consultation.data) {
                 consultDate = parseISO(consultation.data);
             }
@@ -108,8 +108,8 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
     const getConsultationDate = () => {
         if (!nextConsultation) return new Date();
         if (nextConsultation.consultationDate instanceof Date) return nextConsultation.consultationDate;
-        if (nextConsultation.consultationDate != null && typeof nextConsultation.consultationDate.toDate === 'function') {
-            return nextConsultation.consultationDate.toDate();
+        if (nextConsultation.consultationDate != null) {
+            return new Date(nextConsultation.consultationDate);
         }
         if (nextConsultation.data) {
             const parsed = parseISO(nextConsultation.data);
@@ -209,7 +209,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                         </Box>
                         <Grid container spacing={0.25} sx={{ mb: 0.5 }}>
                             {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => (
-                                <Grid item key={index} xs={12/7}>
+                                <Grid item key={index} xs={12 / 7}>
                                     <Typography sx={{
                                         textAlign: 'center',
                                         color: '#94A3B8',
@@ -227,7 +227,7 @@ const ConsultationCard = ({ nextConsultation, consultations, loading, onViewAgen
                                 const isToday_ = isToday(dayInfo.date);
                                 const hasEvents = hasConsultationsOnDay(dayInfo.date);
                                 return (
-                                    <Grid item key={index} xs={12/7}>
+                                    <Grid item key={index} xs={12 / 7}>
                                         <Box sx={{
                                             display: 'flex',
                                             alignItems: 'center',

@@ -671,9 +671,10 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
             return obj[field];
         }
 
-        if (typeof obj[field].toDate === 'function') {
-            return obj[field].toDate();
-        }
+        // REMOVED LEGACY FIRESTORE SUPPORT
+        // if (typeof obj[field].toDate === 'function') {
+        //     return obj[field].toDate();
+        // }
 
         if (typeof obj[field] === 'string') {
             // Tentar diferentes formatos de data
@@ -1649,7 +1650,7 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
                                                     }
                                                     fontWeight={
                                                         expirationStatus.status === 'expired' ||
-                                                        expirationStatus.status === 'critical' ?
+                                                            expirationStatus.status === 'critical' ?
                                                             600 : 400
                                                     }
                                                 >
@@ -1854,7 +1855,7 @@ const PrescriptionsListPage = ({ onPrescriptionClick, onEditPrescription, onNewP
                                     cursor: 'pointer'
                                 }
                             }}
-                                  onClick={() => handlePrescriptionClick(prescription.id)}
+                                onClick={() => handlePrescriptionClick(prescription.id)}
                             >
                                 <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>

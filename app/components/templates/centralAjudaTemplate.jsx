@@ -302,7 +302,7 @@ const CentralAjudaTemplate = ({ selectedReportId = null }) => {
 
     const formatDate = (date) => {
         if (!date) return '';
-        const messageDate = date.toDate ? date.toDate() : new Date(date);
+        const messageDate = date instanceof Date ? date : new Date(date);
         return messageDate.toLocaleString('pt-BR');
     };
 

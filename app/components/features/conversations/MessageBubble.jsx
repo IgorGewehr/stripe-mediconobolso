@@ -44,8 +44,8 @@ const safeFormat = (date, formatStr) => {
   let dateObj = date;
   if (typeof date === 'string') {
     dateObj = parseISO(date);
-  } else if (date?.toDate) {
-    dateObj = date.toDate();
+  } else if (date instanceof Date) {
+    dateObj = date;
   }
 
   if (!isValid(dateObj)) return '--:--';
@@ -61,7 +61,8 @@ const safeFormat = (date, formatStr) => {
 const toDate = (value) => {
   if (!value) return null;
   if (value instanceof Date) return value;
-  if (value?.toDate) return value.toDate();
+  // REMOVED LEGACY FIRESTORE SUPPORT
+  // if (value?.toDate) return value.toDate();
   if (typeof value === 'string') {
     const parsed = parseISO(value);
     return isValid(parsed) ? parsed : null;

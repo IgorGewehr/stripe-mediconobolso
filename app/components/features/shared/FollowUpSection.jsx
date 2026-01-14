@@ -31,7 +31,7 @@ import { patientsService, examsService, notesService } from '@/lib/services/api'
 import useModuleAccess from '../../hooks/useModuleAccess';
 import ModuleProtection from '../../layout/ModuleProtection';
 import AccessDeniedDialog from '../dialogs/AccessDeniedDialog';
-import {useAuth} from '../../providers/authProvider';
+import { useAuth } from '../../providers/authProvider';
 
 // Paleta de cores refinada
 const themeColors = {
@@ -448,11 +448,8 @@ const formatDateString = (dateValue) => {
             return dateValue;
         }
 
-        // Se for um objeto Timestamp do Firestore
-        if (dateValue && typeof dateValue.toDate === 'function') {
-            const date = dateValue.toDate();
-            return date.toISOString().split('T')[0];
-        }
+        // REMOVED LEGACY FIRESTORE SUPPORT
+        // if (dateValue && typeof dateValue.toDate === 'function') { ... }
 
         // Se for um objeto Date
         if (dateValue instanceof Date) {
@@ -809,12 +806,8 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
         // Filtrar apenas notas do tipo "Receita"
         const prescriptions = notes.filter(note => note.noteType === "Receita")
             .sort((a, b) => {
-                const dateA = a.createdAt ?
-                    (typeof a.createdAt.toDate === 'function' ?
-                        a.createdAt.toDate() : new Date(a.createdAt)) : new Date();
-                const dateB = b.createdAt ?
-                    (typeof b.createdAt.toDate === 'function' ?
-                        b.createdAt.toDate() : new Date(b.createdAt)) : new Date();
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt || new Date());
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt || new Date());
                 return dateB - dateA;
             });
 
@@ -850,12 +843,8 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
                 note.noteType === "Consulta" ||
                 (note.noteType && !["Receita", "Exame"].includes(note.noteType)))
             .sort((a, b) => {
-                const dateA = a.createdAt ?
-                    (typeof a.createdAt.toDate === 'function' ?
-                        a.createdAt.toDate() : new Date(a.createdAt)) : new Date();
-                const dateB = b.createdAt ?
-                    (typeof b.createdAt.toDate === 'function' ?
-                        b.createdAt.toDate() : new Date(b.createdAt)) : new Date();
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt || new Date());
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt || new Date());
                 return dateB - dateA;
             })
             .slice(0, limit); // Limitar à quantidade solicitada
@@ -1073,7 +1062,7 @@ export default function AcompanhamentoSection({ pacienteId, doctorId, patientDat
             }
 
             // Atualizar a lista local de exames
-            const updatedExams = [...allExams, {...examData, id: examId}];
+            const updatedExams = [...allExams, { ...examData, id: examId }];
             setAllExams(updatedExams);
 
             showSnackbar("Exame salvo com sucesso!", "success");

@@ -91,7 +91,7 @@ export default function NuvemFiscalSetup() {
   // Determine active step based on status
   useEffect(() => {
     if (status) {
-      if (!status.empresa_cadastrada) {
+      if (!status.prestador_configurado) {
         setActiveStep(0);
       } else if (!status.certificado_cadastrado) {
         setActiveStep(1);
@@ -146,11 +146,11 @@ export default function NuvemFiscalSetup() {
 
     try {
       await syncEmpresa(empresaForm);
-      setSuccessMessage('Empresa sincronizada com sucesso na Nuvem Fiscal!');
+      setSuccessMessage('Empresa sincronizada com sucesso na API gov.br!');
       refetchStatus();
       setActiveStep(1);
     } catch (err) {
-      console.error('Erro ao sincronizar empresa:', err);
+      console.error('Erro ao salvar dados do prestador:', err);
     }
   };
 
@@ -161,7 +161,7 @@ export default function NuvemFiscalSetup() {
 
     try {
       await enviarCertificado(selectedCertificadoId);
-      setSuccessMessage('Certificado enviado com sucesso para a Nuvem Fiscal!');
+      setSuccessMessage('Certificado enviado com sucesso para a API gov.br!');
       refetchStatus();
       setActiveStep(2);
     } catch (err) {
@@ -175,7 +175,7 @@ export default function NuvemFiscalSetup() {
         <CardContent>
           <LinearProgress />
           <Typography sx={{ mt: 2, textAlign: 'center' }}>
-            Verificando status da integracao...
+            Verificando configuração...
           </Typography>
         </CardContent>
       </Card>
@@ -188,7 +188,7 @@ export default function NuvemFiscalSetup() {
         title={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <CloudIcon color="primary" />
-            <Typography variant="h6" fontWeight="bold">Integracao Nuvem Fiscal</Typography>
+            <Typography variant="h6" fontWeight="bold">Configuração Prestador NFSe</Typography>
           </Box>
         }
         subheader="Configure sua empresa e certificado para emissao de NFSe"
@@ -221,7 +221,7 @@ export default function NuvemFiscalSetup() {
             )}
             <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle1" fontWeight="bold">
-                {status?.habilitado ? 'Integracao Ativa' : 'Configuracao Pendente'}
+                {status?.habilitado ? 'Prestador Configurado' : 'Configuração Pendente'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Ambiente: {status?.ambiente || 'N/A'}
@@ -230,9 +230,9 @@ export default function NuvemFiscalSetup() {
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Chip
                 size="small"
-                icon={status?.empresa_cadastrada ? <SuccessIcon /> : <ErrorIcon />}
-                label={status?.empresa_cadastrada ? 'Empresa OK' : 'Empresa pendente'}
-                color={status?.empresa_cadastrada ? 'success' : 'warning'}
+                icon={status?.prestador_configurado ? <SuccessIcon /> : <ErrorIcon />}
+                label={status?.prestador_configurado ? 'Prestador OK' : 'Prestador pendente'}
+                color={status?.prestador_configurado ? 'success' : 'warning'}
               />
               <Chip
                 size="small"
@@ -252,7 +252,7 @@ export default function NuvemFiscalSetup() {
         )}
         {syncError && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => resetSyncError()}>
-            {syncError.message || 'Erro ao sincronizar empresa'}
+            {syncError.message || 'Erro ao salvar dados do prestador'}
           </Alert>
         )}
         {certError && (
@@ -267,12 +267,12 @@ export default function NuvemFiscalSetup() {
           <Step>
             <StepLabel
               optional={
-                status?.empresa_cadastrada && (
+                status?.prestador_configurado && (
                   <Typography variant="caption" color="success.main">Concluido</Typography>
                 )
               }
             >
-              <Typography fontWeight="medium">Cadastrar Empresa na Nuvem Fiscal</Typography>
+              <Typography fontWeight="medium">Cadastrar Dados do Prestador</Typography>
             </StepLabel>
             <StepContent>
               <Box sx={{ mb: 2 }}>
@@ -450,7 +450,7 @@ export default function NuvemFiscalSetup() {
                     disabled={isSyncing || !empresaForm.cnpj || !empresaForm.razaoSocial}
                     startIcon={isSyncing ? null : <SyncIcon />}
                   >
-                    {isSyncing ? 'Sincronizando...' : 'Sincronizar Empresa'}
+                    {isSyncing ? 'Salvando...' : 'Salvar Dados do Prestador'}
                   </Button>
                 </Box>
               </Box>
@@ -473,7 +473,7 @@ export default function NuvemFiscalSetup() {
             <StepContent>
               <Box sx={{ mb: 2 }}>
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Selecione um certificado A1 ja cadastrado no sistema e envie para a Nuvem Fiscal.
+                  Selecione um certificado A1 ja cadastrado no sistema e envie para a API gov.br.
                   O certificado e necessario para assinar as notas fiscais.
                 </Alert>
 
@@ -529,7 +529,7 @@ export default function NuvemFiscalSetup() {
                   Integracao configurada com sucesso!
                 </Typography>
                 <Typography variant="body2">
-                  Voce ja pode emitir NFSe usando a Nuvem Fiscal. Acesse a aba "Notas Fiscais" e use a opcao
+                  Voce ja pode emitir NFSe usando a API gov.br. Acesse a aba "Notas Fiscais" e use a opcao
                   "Emitir NFSe" para enviar suas notas.
                 </Typography>
               </Alert>

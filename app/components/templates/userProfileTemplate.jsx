@@ -38,7 +38,11 @@ import {
     Logout as LogoutIcon,
     CreditCard as CreditCardIcon,
     ChevronRight as ChevronRightIcon,
-    Check as CheckIcon
+    Check as CheckIcon,
+    Business as BusinessIcon,
+    Receipt as ReceiptIcon,
+    LocalHospital as LocalHospitalIcon,
+    Numbers as NumbersIcon
 } from "@mui/icons-material";
 import { debounce } from 'lodash';
 import { authService, storageService } from '@/lib/services/firebase';
@@ -174,11 +178,24 @@ const applyCpfMask = (value) => {
     return value.replace(/\D/g, "").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 };
 
+const applyCnpjMask = (value) => {
+    if (!value) return "";
+    const digits = value.replace(/\D/g, "").slice(0, 14);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return digits.slice(0, 2) + "." + digits.slice(2);
+    if (digits.length <= 8) return digits.slice(0, 2) + "." + digits.slice(2, 5) + "." + digits.slice(5);
+    if (digits.length <= 12) return digits.slice(0, 2) + "." + digits.slice(2, 5) + "." + digits.slice(5, 8) + "/" + digits.slice(8);
+    return digits.slice(0, 2) + "." + digits.slice(2, 5) + "." + digits.slice(5, 8) + "/" + digits.slice(8, 12) + "-" + digits.slice(12);
+};
+
 const applyFieldMask = (field, value) => {
     switch (field) {
         case 'phone': return applyPhoneMask(value);
+        case 'telefone_comercial': return applyPhoneMask(value);
         case 'address.cep': return applyCepMask(value);
+        case 'endereco_cep': return applyCepMask(value);
         case 'cpf': return applyCpfMask(value);
+        case 'cnpj': return applyCnpjMask(value);
         default: return value;
     }
 };
@@ -411,6 +428,38 @@ const ProfileSkeleton = () => (
     </Box>
 );
 
+// Navegação por Pills
+const NavPill = React.memo(({ icon: Icon, label, active, onClick }) => (
+    <Box
+        onClick={onClick}
+        sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 2,
+            py: 1,
+            borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            backgroundColor: active ? alpha(themeColors.primary, 0.08) : 'transparent',
+            color: active ? themeColors.primary : themeColors.textTertiary,
+            '&:hover': {
+                backgroundColor: active ? alpha(themeColors.primary, 0.12) : alpha(themeColors.textTertiary, 0.06)
+            }
+        }}
+    >
+        <Icon sx={{ fontSize: 18 }} />
+        <Typography sx={{
+            fontSize: '13px',
+            fontWeight: active ? 600 : 500,
+            fontFamily: 'Gellix, sans-serif',
+            whiteSpace: 'nowrap'
+        }}>
+            {label}
+        </Typography>
+    </Box>
+));
+
 // Componente principal
 const UserProfileTemplate = ({ onLogout }) => {
     const authContext = useAuth();
@@ -551,46 +600,43 @@ const UserProfileTemplate = ({ onLogout }) => {
     const planInfo = useMemo(() => getUserPlanInfo(), [getUserPlanInfo]);
     const firstName = useMemo(() => getFirstName(displayData?.name), [getFirstName, displayData?.name]);
 
+    // Configuração das tabs
+    const navItems = useMemo(() => [
+        { icon: PersonIcon, label: 'Pessoal' },
+        { icon: LocationOnIcon, label: 'Endereço' },
+        { icon: BusinessIcon, label: 'Fiscal' },
+        { icon: LocalHospitalIcon, label: 'Profissional' }
+    ], []);
+
     if (state.loading || authContext.loading) return <ProfileSkeleton />;
 
     return (
         <Box sx={{
             minHeight: '100vh',
-            background: `linear-gradient(180deg, ${themeColors.backgroundSecondary} 0%, #FFFFFF 50%)`,
+            backgroundColor: '#FAFBFC',
             pb: 4
         }}>
-            {/* Header do Perfil */}
-            <Box sx={{
-                background: `linear-gradient(135deg, ${themeColors.primary} 0%, ${themeColors.primaryDark} 100%)`,
-                pt: { xs: 3, md: 4 },
-                pb: { xs: 6, md: 7 },
-                px: { xs: 2, md: 4 },
-                position: 'relative',
-                overflow: 'hidden'
-            }}>
-                {/* Círculos decorativos */}
+            {/* Container Principal */}
+            <Box sx={{ maxWidth: 900, mx: 'auto', px: { xs: 2, md: 3 }, pt: { xs: 2, md: 3 } }}>
+                {/* Card do Perfil - Header Compacto */}
                 <Box sx={{
-                    position: 'absolute',
-                    top: -60,
-                    right: -60,
-                    width: 200,
-                    height: 200,
-                    borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.05)'
-                }} />
-                <Box sx={{
-                    position: 'absolute',
-                    bottom: -40,
-                    left: -40,
-                    width: 150,
-                    height: 150,
-                    borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.03)'
-                }} />
-
-                <Box sx={{ maxWidth: 900, mx: 'auto', position: 'relative', zIndex: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '16px',
+                    border: '1px solid',
+                    borderColor: themeColors.borderColor,
+                    overflow: 'hidden',
+                    mb: 2
+                }}>
+                    {/* Seção do Avatar e Info */}
+                    <Box sx={{
+                        p: { xs: 2.5, md: 3 },
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 2
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                             {/* Avatar */}
                             <Box sx={{ position: 'relative' }}>
                                 <input
@@ -606,18 +652,19 @@ const UserProfileTemplate = ({ onLogout }) => {
                                     onClick={handleAvatarClick}
                                     src={state.photoPreview || state.userData.photoURL}
                                     sx={{
-                                        width: { xs: 72, md: 88 },
-                                        height: { xs: 72, md: 88 },
-                                        border: '3px solid rgba(255,255,255,0.3)',
-                                        backgroundColor: 'rgba(255,255,255,0.15)',
-                                        color: '#FFFFFF',
-                                        fontSize: { xs: '1.75rem', md: '2rem' },
+                                        width: { xs: 64, md: 72 },
+                                        height: { xs: 64, md: 72 },
+                                        border: '2px solid',
+                                        borderColor: alpha(themeColors.primary, 0.15),
+                                        backgroundColor: alpha(themeColors.primary, 0.08),
+                                        color: themeColors.primary,
+                                        fontSize: { xs: '1.5rem', md: '1.75rem' },
                                         fontWeight: 600,
                                         cursor: state.isEditing && !isSecretary ? 'pointer' : 'default',
-                                        transition: 'all 0.3s ease',
+                                        transition: 'all 0.2s ease',
                                         '&:hover': {
-                                            transform: state.isEditing && !isSecretary ? 'scale(1.05)' : 'none',
-                                            borderColor: state.isEditing && !isSecretary ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.3)'
+                                            borderColor: state.isEditing && !isSecretary ? themeColors.primary : alpha(themeColors.primary, 0.15),
+                                            transform: state.isEditing && !isSecretary ? 'scale(1.02)' : 'none'
                                         }
                                     }}
                                 >
@@ -626,144 +673,166 @@ const UserProfileTemplate = ({ onLogout }) => {
                                 {state.isEditing && !isSecretary && (
                                     <Box sx={{
                                         position: 'absolute',
-                                        bottom: -4,
-                                        right: -4,
-                                        width: 28,
-                                        height: 28,
-                                        borderRadius: '50%',
-                                        backgroundColor: '#FFFFFF',
+                                        bottom: 0,
+                                        right: 0,
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: '6px',
+                                        backgroundColor: themeColors.primary,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                        border: '2px solid #FFFFFF',
+                                        cursor: 'pointer'
                                     }}>
-                                        <AddPhotoIcon sx={{ fontSize: 14, color: themeColors.primary }} />
+                                        <AddPhotoIcon sx={{ fontSize: 12, color: '#FFFFFF' }} />
                                     </Box>
                                 )}
                             </Box>
 
                             {/* Nome e info */}
                             <Box>
-                                <Typography sx={{
-                                    fontSize: { xs: '1.25rem', md: '1.5rem' },
-                                    fontWeight: 700,
-                                    color: '#FFFFFF',
-                                    fontFamily: 'Gellix, sans-serif',
-                                    mb: 0.25
-                                }}>
-                                    {isSecretary ? displayData?.name : `Dr. ${firstName}`}
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                                    <Typography sx={{
+                                        fontSize: { xs: '1.125rem', md: '1.25rem' },
+                                        fontWeight: 700,
+                                        color: themeColors.textPrimary,
+                                        fontFamily: 'Gellix, sans-serif'
+                                    }}>
+                                        {isSecretary ? displayData?.name : `Dr. ${firstName}`}
+                                    </Typography>
+                                    <Chip
+                                        size="small"
+                                        label={planInfo.name}
+                                        sx={{
+                                            backgroundColor: planInfo.bg,
+                                            color: planInfo.color,
+                                            fontWeight: 600,
+                                            fontSize: '11px',
+                                            height: 22,
+                                            '& .MuiChip-label': { px: 1 }
+                                        }}
+                                    />
+                                </Box>
                                 <Typography sx={{
                                     fontSize: '13px',
-                                    color: 'rgba(255,255,255,0.75)',
-                                    fontFamily: 'Gellix, sans-serif',
-                                    mb: 1
+                                    color: themeColors.textTertiary,
+                                    fontFamily: 'Gellix, sans-serif'
                                 }}>
-                                    {isSecretary ? 'Secretária' : (state.userData.especialidade || 'Médico')}
+                                    {isSecretary ? 'Secretária' : (state.userData.especialidade || 'Médico')} • {user?.email}
                                 </Typography>
-                                <Chip
-                                    size="small"
-                                    icon={<span style={{ fontSize: '12px', marginLeft: 8 }}>{planInfo.icon}</span>}
-                                    label={planInfo.name}
-                                    sx={{
-                                        backgroundColor: 'rgba(255,255,255,0.15)',
-                                        color: '#FFFFFF',
-                                        fontWeight: 600,
-                                        fontSize: '11px',
-                                        height: 24,
-                                        backdropFilter: 'blur(10px)',
-                                        '& .MuiChip-icon': { marginRight: -0.5 }
-                                    }}
-                                />
                             </Box>
                         </Box>
 
                         {/* Botões de ação */}
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 1.5 }}>
                             {state.isEditing ? (
                                 <>
-                                    <Tooltip title="Cancelar">
-                                        <IconButton
-                                            onClick={() => actions.resetForm()}
-                                            disabled={state.saving}
-                                            sx={{
-                                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                                color: '#FFFFFF',
-                                                '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }
-                                            }}
-                                        >
-                                            <CloseIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Salvar">
-                                        <IconButton
-                                            onClick={handleSave}
-                                            disabled={state.saving}
-                                            sx={{
-                                                backgroundColor: '#FFFFFF',
-                                                color: themeColors.primary,
-                                                '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' }
-                                            }}
-                                        >
-                                            {state.saving ? <CircularProgress size={18} /> : <SaveIcon fontSize="small" />}
-                                        </IconButton>
-                                    </Tooltip>
-                                </>
-                            ) : !isSecretary && (
-                                <Tooltip title="Editar perfil">
-                                    <IconButton
-                                        onClick={() => actions.setEditing(true)}
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={() => actions.resetForm()}
+                                        disabled={state.saving}
+                                        startIcon={<CloseIcon sx={{ fontSize: 16 }} />}
                                         sx={{
-                                            backgroundColor: 'rgba(255,255,255,0.1)',
-                                            color: '#FFFFFF',
-                                            '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }
+                                            borderRadius: '8px',
+                                            textTransform: 'none',
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontWeight: 500,
+                                            fontSize: '13px',
+                                            px: 2,
+                                            borderColor: themeColors.borderColor,
+                                            color: themeColors.textSecondary,
+                                            '&:hover': {
+                                                borderColor: themeColors.textTertiary,
+                                                backgroundColor: 'transparent'
+                                            }
                                         }}
                                     >
-                                        <EditIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
+                                        Cancelar
+                                    </Button>
+                                    <Button
+                                        variant="contained"
+                                        size="small"
+                                        onClick={handleSave}
+                                        disabled={state.saving}
+                                        startIcon={state.saving ? <CircularProgress size={14} color="inherit" /> : <CheckIcon sx={{ fontSize: 16 }} />}
+                                        sx={{
+                                            borderRadius: '8px',
+                                            textTransform: 'none',
+                                            fontFamily: 'Gellix, sans-serif',
+                                            fontWeight: 600,
+                                            fontSize: '13px',
+                                            px: 2,
+                                            backgroundColor: themeColors.primary,
+                                            boxShadow: 'none',
+                                            '&:hover': {
+                                                backgroundColor: themeColors.primaryDark,
+                                                boxShadow: 'none'
+                                            }
+                                        }}
+                                    >
+                                        Salvar
+                                    </Button>
+                                </>
+                            ) : !isSecretary && (
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => actions.setEditing(true)}
+                                    startIcon={<EditIcon sx={{ fontSize: 16 }} />}
+                                    sx={{
+                                        borderRadius: '8px',
+                                        textTransform: 'none',
+                                        fontFamily: 'Gellix, sans-serif',
+                                        fontWeight: 500,
+                                        fontSize: '13px',
+                                        px: 2,
+                                        borderColor: themeColors.borderColor,
+                                        color: themeColors.textSecondary,
+                                        '&:hover': {
+                                            borderColor: themeColors.primary,
+                                            backgroundColor: alpha(themeColors.primary, 0.04),
+                                            color: themeColors.primary
+                                        }
+                                    }}
+                                >
+                                    Editar
+                                </Button>
                             )}
                         </Box>
                     </Box>
-                </Box>
-            </Box>
 
-            {/* Conteúdo Principal */}
-            <Box sx={{ maxWidth: 900, mx: 'auto', px: { xs: 2, md: 3 }, mt: { xs: -5, md: -6 } }}>
-                {/* Card Principal */}
+                    {/* Navegação por Pills */}
+                    <Box sx={{
+                        px: { xs: 2, md: 3 },
+                        pb: 2,
+                        display: 'flex',
+                        gap: 0.5,
+                        overflowX: 'auto',
+                        '&::-webkit-scrollbar': { display: 'none' },
+                        scrollbarWidth: 'none'
+                    }}>
+                        {navItems.map((item, index) => (
+                            <NavPill
+                                key={index}
+                                icon={item.icon}
+                                label={item.label}
+                                active={activeTab === index}
+                                onClick={() => setActiveTab(index)}
+                            />
+                        ))}
+                    </Box>
+                </Box>
+
+                {/* Card de Conteúdo */}
                 <Box sx={{
                     backgroundColor: '#FFFFFF',
-                    borderRadius: '20px',
-                    boxShadow: '0 4px 24px rgba(17, 30, 90, 0.08)',
+                    borderRadius: '16px',
+                    border: '1px solid',
+                    borderColor: themeColors.borderColor,
                     overflow: 'hidden'
                 }}>
-                    {/* Tabs */}
-                    <Box sx={{ borderBottom: '1px solid', borderColor: themeColors.borderColor }}>
-                        <Tabs
-                            value={activeTab}
-                            onChange={(_, v) => setActiveTab(v)}
-                            sx={{
-                                px: { xs: 2, md: 3 },
-                                '& .MuiTab-root': {
-                                    fontFamily: 'Gellix, sans-serif',
-                                    fontWeight: 600,
-                                    fontSize: '13px',
-                                    textTransform: 'none',
-                                    color: themeColors.textTertiary,
-                                    minHeight: 56,
-                                    '&.Mui-selected': { color: themeColors.primary }
-                                },
-                                '& .MuiTabs-indicator': {
-                                    backgroundColor: themeColors.primary,
-                                    height: 3,
-                                    borderRadius: '3px 3px 0 0'
-                                }
-                            }}
-                        >
-                            <Tab label="Dados Pessoais" icon={<PersonIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
-                            <Tab label="Endereço" icon={<LocationOnIcon sx={{ fontSize: 18 }} />} iconPosition="start" />
-                        </Tabs>
-                    </Box>
 
                     {/* Conteúdo da Tab */}
                     <Box sx={{ p: { xs: 2.5, md: 3.5 } }}>
@@ -831,6 +900,76 @@ const UserProfileTemplate = ({ onLogout }) => {
                                                         sx={{ mt: 1.5, textTransform: 'none', fontFamily: 'Gellix, sans-serif' }}
                                                     >
                                                         Adicionar endereço
+                                                    </Button>
+                                                )}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                )}
+                            </Box>
+                        </Fade>
+
+                        {/* Tab Dados Fiscais */}
+                        <Fade in={activeTab === 2} unmountOnExit>
+                            <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
+                                {state.isEditing ? (
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                                        <ModernField label="CNPJ" value={state.formData.cnpj} onChange={handleChange('cnpj')} error={state.errors.cnpj} icon={BusinessIcon} disabled={isSecretary} />
+                                        <ModernField label="Razão Social" value={state.formData.razao_social} onChange={handleChange('razao_social')} icon={BusinessIcon} disabled={isSecretary} />
+                                        <ModernField label="Nome Fantasia" value={state.formData.nome_fantasia} onChange={handleChange('nome_fantasia')} icon={BusinessIcon} disabled={isSecretary} />
+                                        <ModernField label="Inscrição Municipal" value={state.formData.inscricao_municipal} onChange={handleChange('inscricao_municipal')} icon={NumbersIcon} disabled={isSecretary} />
+                                        <ModernField label="Inscrição Estadual" value={state.formData.inscricao_estadual} onChange={handleChange('inscricao_estadual')} icon={NumbersIcon} disabled={isSecretary} />
+                                        <ModernField label="Código IBGE Município" value={state.formData.codigo_municipio_ibge} onChange={handleChange('codigo_municipio_ibge')} icon={NumbersIcon} disabled={isSecretary} />
+                                        <ModernField label="Telefone Comercial" value={state.formData.telefone_comercial} onChange={handleChange('telefone_comercial')} icon={PhoneIcon} disabled={isSecretary} />
+                                        <ModernField label="Email Fiscal" value={state.formData.email_fiscal} onChange={handleChange('email_fiscal')} icon={EmailIcon} type="email" disabled={isSecretary} />
+                                    </Box>
+                                ) : (
+                                    <Box>
+                                        <InfoRow icon={BusinessIcon} label="CNPJ" value={state.formData.cnpj} />
+                                        <InfoRow icon={BusinessIcon} label="Razão Social" value={state.formData.razao_social} />
+                                        <InfoRow icon={BusinessIcon} label="Nome Fantasia" value={state.formData.nome_fantasia} />
+                                        <InfoRow icon={NumbersIcon} label="Inscrição Municipal" value={state.formData.inscricao_municipal} />
+                                        <InfoRow icon={NumbersIcon} label="Inscrição Estadual" value={state.formData.inscricao_estadual} />
+                                        <InfoRow icon={NumbersIcon} label="Código IBGE" value={state.formData.codigo_municipio_ibge} />
+                                        <InfoRow icon={PhoneIcon} label="Telefone Comercial" value={state.formData.telefone_comercial} />
+                                        <InfoRow icon={EmailIcon} label="Email Fiscal" value={state.formData.email_fiscal} />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Fade>
+
+                        {/* Tab Profissional */}
+                        <Fade in={activeTab === 3} unmountOnExit>
+                            <Box sx={{ display: activeTab === 3 ? 'block' : 'none' }}>
+                                {state.isEditing ? (
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                                        <ModernField label="CRM" value={state.formData.crm} onChange={handleChange('crm')} icon={LocalHospitalIcon} disabled={isSecretary} />
+                                        <ModernField label="UF do CRM" value={state.formData.crm_uf} onChange={handleChange('crm_uf')} icon={LocationOnIcon} disabled={isSecretary} />
+                                        <Box sx={{ gridColumn: { md: 'span 2' } }}>
+                                            <ModernField label="Especialidade" value={state.formData.especialidade} onChange={handleChange('especialidade')} icon={LocalHospitalIcon} disabled={isSecretary} />
+                                        </Box>
+                                    </Box>
+                                ) : (
+                                    <Box>
+                                        {state.formData.crm ? (
+                                            <>
+                                                <InfoRow icon={LocalHospitalIcon} label="CRM" value={state.formData.crm} />
+                                                <InfoRow icon={LocationOnIcon} label="UF do CRM" value={state.formData.crm_uf} />
+                                                <InfoRow icon={LocalHospitalIcon} label="Especialidade" value={state.formData.especialidade || state.userData.especialidade} />
+                                            </>
+                                        ) : (
+                                            <Box sx={{ py: 4, textAlign: 'center' }}>
+                                                <LocalHospitalIcon sx={{ fontSize: 48, color: alpha(themeColors.textTertiary, 0.3), mb: 1 }} />
+                                                <Typography sx={{ color: themeColors.textTertiary, fontSize: '14px', fontFamily: 'Gellix, sans-serif' }}>
+                                                    Dados profissionais não cadastrados
+                                                </Typography>
+                                                {!isSecretary && (
+                                                    <Button
+                                                        size="small"
+                                                        onClick={() => { actions.setEditing(true); setActiveTab(3); }}
+                                                        sx={{ mt: 1.5, textTransform: 'none', fontFamily: 'Gellix, sans-serif' }}
+                                                    >
+                                                        Adicionar dados profissionais
                                                     </Button>
                                                 )}
                                             </Box>

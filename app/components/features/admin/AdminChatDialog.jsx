@@ -32,11 +32,11 @@ import { adminService } from '@/lib/services/api';
 import { useAuth } from '../../providers/authProvider';
 
 const AdminChatDialog = ({
-                             selectedUser,
-                             open,
-                             onClose,
-                             onConversationCreated = () => {}
-                         }) => {
+    selectedUser,
+    open,
+    onClose,
+    onConversationCreated = () => { }
+}) => {
     // Estados principais
     const [conversation, setConversation] = useState(null);
     const [newMessage, setNewMessage] = useState('');
@@ -246,7 +246,7 @@ const AdminChatDialog = ({
 
     const formatDate = (date) => {
         if (!date) return '';
-        const messageDate = date.toDate ? date.toDate() : new Date(date);
+        const messageDate = date instanceof Date ? date : new Date(date);
         return messageDate.toLocaleString('pt-BR', {
             day: '2-digit',
             month: '2-digit',

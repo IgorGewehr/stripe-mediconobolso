@@ -127,7 +127,8 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 const convertToDate = (value) => {
     if (!value) return new Date();
     if (value instanceof Date) return value;
-    if (value && typeof value.toDate === 'function') return value.toDate();
+    // REMOVED LEGACY FIRESTORE SUPPORT
+    // if (value && typeof value.toDate === 'function') return value.toDate();
     if (typeof value === 'string') {
         // Se a string tiver "/" assume formato "dd/MM/yyyy"
         if (value.includes('/')) {
@@ -291,7 +292,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             results = results.filter(p => {
-                const createdAt = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+                const createdAt = p.createdAt instanceof Date ? p.createdAt : new Date(p.createdAt);
                 return createdAt >= thirtyDaysAgo;
             });
         }
@@ -314,7 +315,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
         if (filters.dateFrom) {
             const dateFrom = new Date(filters.dateFrom);
             results = results.filter(p => {
-                const createdAt = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+                const createdAt = p.createdAt instanceof Date ? p.createdAt : new Date(p.createdAt);
                 return createdAt >= dateFrom;
             });
         }
@@ -323,7 +324,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
             const dateTo = new Date(filters.dateTo);
             dateTo.setHours(23, 59, 59, 999);
             results = results.filter(p => {
-                const createdAt = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+                const createdAt = p.createdAt instanceof Date ? p.createdAt : new Date(p.createdAt);
                 return createdAt <= dateTo;
             });
         }
@@ -530,7 +531,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
         return doc;
     };
 
-// Função para abrir ou baixar o PDF
+    // Função para abrir ou baixar o PDF
     const openPrescriptionPDF = () => {
         if (!selectedPrescription) return;
 
@@ -602,7 +603,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
         handleCloseReceitaDialog();
     };
 
-// Função auxiliar para determinar a cor por categoria
+    // Função auxiliar para determinar a cor por categoria
     const getMedicationCategoryColor = (category) => {
         const categories = {
             'Analgésico': theme.palette.primary.main,
@@ -615,7 +616,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
         return categories[category] || theme.palette.grey[500];
     };
 
-// Função para adicionar medicamento à receita atual (para implementar)
+    // Função para adicionar medicamento à receita atual (para implementar)
     const handleAddToCurrentPrescription = (medication) => {
         // Implementar lógica para adicionar à receita atual ou criar nova receita
         setSnackbar({
@@ -625,7 +626,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
         });
     };
 
-// Função para selecionar medicamento da pesquisa
+    // Função para selecionar medicamento da pesquisa
     const handleMedicationSelect = (medication) => {
         // Implementar ação ao selecionar medicamento na pesquisa
         handleOpenMedicationDialog(medication);
@@ -779,7 +780,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
 
     // Componente simples para o gráfico de rosca
     // Componente DonutChart - adicione junto às outras funções auxiliares
-// (antes do return principal, aproximadamente por volta da linha 580-590)
+    // (antes do return principal, aproximadamente por volta da linha 580-590)
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
     const DonutChart = ({ data }) => {
@@ -1126,7 +1127,7 @@ const PrescriptionsPage = forwardRef((props, ref) => {
     const StatusChip = ({ status }) => {
         let color, bgColor, textColor;
 
-        switch(status?.toLowerCase()) {
+        switch (status?.toLowerCase()) {
             case 'ativa':
                 color = theme.palette.success.main;
                 bgColor = alpha(theme.palette.success.main, 0.12);
@@ -2634,9 +2635,9 @@ const PrescriptionsPage = forwardRef((props, ref) => {
                                                                 }}
                                                             />
                                                             <span>
-                                                    <strong>Frequência:</strong><br />
+                                                                <strong>Frequência:</strong><br />
                                                                 {med.frequency}
-                                                </span>
+                                                            </span>
                                                         </Typography>
                                                     </Grid>
                                                 )}
@@ -2661,9 +2662,9 @@ const PrescriptionsPage = forwardRef((props, ref) => {
                                                                 }}
                                                             />
                                                             <span>
-                                                    <strong>Duração:</strong><br />
+                                                                <strong>Duração:</strong><br />
                                                                 {med.duration}
-                                                </span>
+                                                            </span>
                                                         </Typography>
                                                     </Grid>
                                                 )}
@@ -2688,9 +2689,9 @@ const PrescriptionsPage = forwardRef((props, ref) => {
                                                                 }}
                                                             />
                                                             <span>
-                                                    <strong>Forma:</strong><br />
+                                                                <strong>Forma:</strong><br />
                                                                 {med.form}
-                                                </span>
+                                                            </span>
                                                         </Typography>
                                                     </Grid>
                                                 )}
@@ -2715,9 +2716,9 @@ const PrescriptionsPage = forwardRef((props, ref) => {
                                                                 }}
                                                             />
                                                             <span>
-                                                    <strong>Quantidade:</strong><br />
+                                                                <strong>Quantidade:</strong><br />
                                                                 {med.quantidade}
-                                                </span>
+                                                            </span>
                                                         </Typography>
                                                     </Grid>
                                                 )}

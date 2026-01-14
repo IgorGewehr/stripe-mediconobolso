@@ -265,8 +265,8 @@ const AdminMessagesComponent = ({ open, onClose }) => {
     // Helper para converter datas de diferentes formatos (Firebase Timestamp ou ISO string)
     const parseDate = useCallback((date) => {
         if (!date) return null;
-        // Firebase Timestamp
-        if (typeof date.toDate === 'function') return date.toDate();
+        // Firebase Timestamp - REMOVED LEGACY SUPPORT
+        // if (typeof date.toDate === 'function') return date.toDate();
         // String ISO ou Date
         return new Date(date);
     }, []);

@@ -635,14 +635,14 @@ const ConditionChip = ({ label, type = "condition" }) => {
 
 // Componente principal
 const ViewConsultationDialog = ({
-                                    open,
-                                    onClose,
-                                    consultationData,
-                                    patientId,
-                                    doctorId,
-                                    onEdit,
-                                    onChangeStatus
-                                }) => {
+    open,
+    onClose,
+    consultationData,
+    patientId,
+    doctorId,
+    onEdit,
+    onChangeStatus
+}) => {
     const [loading, setLoading] = useState(false);
     const [patientData, setPatientData] = useState(null);
     const [expanded, setExpanded] = useState({
@@ -658,7 +658,7 @@ const ViewConsultationDialog = ({
 
     // Cores por tipo de status
     const getStatusColor = (status) => {
-        switch(status?.toLowerCase()) {
+        switch (status?.toLowerCase()) {
             case 'concluída':
             case 'confirmada':
             case 'confirmado':
@@ -675,7 +675,7 @@ const ViewConsultationDialog = ({
 
     // Cores por tipo de consulta
     const getTipoColor = (tipo) => {
-        switch(tipo?.toLowerCase()) {
+        switch (tipo?.toLowerCase()) {
             case 'telemedicina':
                 return theme.palette.tipo.telemedicina;
             default:
@@ -685,7 +685,7 @@ const ViewConsultationDialog = ({
 
     // Ícone por tipo de consulta
     const getTipoIcon = (tipo) => {
-        switch(tipo?.toLowerCase()) {
+        switch (tipo?.toLowerCase()) {
             case 'telemedicina':
                 return <VideoCallIcon />;
             default:
@@ -698,7 +698,8 @@ const ViewConsultationDialog = ({
         if (dateValue == null) return null;
 
         if (dateValue instanceof Date) return dateValue;
-        if (dateValue && typeof dateValue.toDate === 'function') return dateValue.toDate();
+        // REMOVED LEGACY FIRESTORE SUPPORT
+        // if (dateValue && typeof dateValue.toDate === 'function') return dateValue.toDate();
         if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
             const [year, month, day] = dateValue.split('-').map(Number);
             return new Date(year, month - 1, day);
@@ -738,11 +739,10 @@ const ViewConsultationDialog = ({
         try {
             if (!date) return "";
 
-            let dateObj;
             if (date instanceof Date) {
                 dateObj = date;
-            } else if (date && typeof date.toDate === 'function') {
-                dateObj = date.toDate();
+                // REMOVED LEGACY FIRESTORE SUPPORT
+                // } else if (date && typeof date.toDate === 'function') { ... }
             } else if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
                 const [year, month, day] = date.split('-').map(Number);
                 dateObj = new Date(year, month - 1, day);
@@ -768,8 +768,8 @@ const ViewConsultationDialog = ({
             let dateObj;
             if (date instanceof Date) {
                 dateObj = date;
-            } else if (date && typeof date.toDate === 'function') {
-                dateObj = date.toDate();
+                // REMOVED LEGACY FIRESTORE SUPPORT
+                // } else if (date && typeof date.toDate === 'function') { ... }
             } else if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
                 const [year, month, day] = date.split('-').map(Number);
                 dateObj = new Date(year, month - 1, day);
@@ -824,10 +824,11 @@ const ViewConsultationDialog = ({
         }
         // Se já for um objeto Date ou tiver método toDate (Timestamp do Firebase)
         if (dateValue instanceof Date) return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
-        if (dateValue && typeof dateValue.toDate === 'function') {
-            const temp = dateValue.toDate();
-            return new Date(temp.getFullYear(), temp.getMonth(), temp.getDate());
-        }
+        // REMOVED LEGACY FIRESTORE SUPPORT
+        // if (dateValue && typeof dateValue.toDate === 'function') {
+        //     const temp = dateValue.toDate();
+        //     return new Date(temp.getFullYear(), temp.getMonth(), temp.getDate());
+        // }
         return new Date(dateValue);
     };
 
@@ -1354,11 +1355,11 @@ const ViewConsultationDialog = ({
                         </Fade>
                         <Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 0.8 }}>
-                                <Typography 
-                                    variant={isMobile ? "h6" : "h5"} 
-                                    sx={{ 
-                                        fontWeight: 700, 
-                                        color: statusColor.dark, 
+                                <Typography
+                                    variant={isMobile ? "h6" : "h5"}
+                                    sx={{
+                                        fontWeight: 700,
+                                        color: statusColor.dark,
                                         letterSpacing: '-0.02em',
                                         fontSize: isMobile ? '14px' : isTablet ? '16px' : '20px'
                                     }}
@@ -1658,7 +1659,7 @@ const ViewConsultationDialog = ({
                                                     <Grid container spacing={isMobile ? 2 : isTablet ? 2.5 : 3}>
                                                         <Grid item xs={12} sm={isMobile ? 12 : 7}>
                                                             <Box onClick={() => window.handlePatientClick && window.handlePatientClick(patientData.id)}
-                                                                 sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                                                sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                                                                 <Badge
                                                                     overlap="circular"
                                                                     anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
@@ -1939,10 +1940,10 @@ const ViewConsultationDialog = ({
                             >
                                 <WarningIcon sx={{ color: theme.palette.primary.main, fontSize: '1.5rem' }} />
                             </Box>
-                            <Typography sx={{ 
-                                color: theme.palette.primary.main, 
-                                fontWeight: 600, 
-                                mr: 'auto', 
+                            <Typography sx={{
+                                color: theme.palette.primary.main,
+                                fontWeight: 600,
+                                mr: 'auto',
                                 letterSpacing: '-0.01em',
                                 fontSize: isMobile ? '14px' : '16px'
                             }}>
@@ -1983,12 +1984,12 @@ const ViewConsultationDialog = ({
                         </Box>
                     ) : (
                         <>
-                            <Box sx={{ 
-                                width: '100%', 
-                                display: 'flex', 
+                            <Box sx={{
+                                width: '100%',
+                                display: 'flex',
                                 flexDirection: isMobile ? 'column' : 'row',
-                                justifyContent: 'flex-end', 
-                                gap: isMobile ? 1.5 : 1.5 
+                                justifyContent: 'flex-end',
+                                gap: isMobile ? 1.5 : 1.5
                             }}>
                                 {consultationData.status !== 'Concluída' && consultationData.status !== 'Cancelada' && (
                                     <Box sx={{ display: 'flex', gap: 1.5 }}>

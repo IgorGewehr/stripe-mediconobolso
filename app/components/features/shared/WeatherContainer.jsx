@@ -100,8 +100,9 @@ const WeatherContainer = () => {
 
         try {
             if (typeof data.timestamp === 'object' && data.timestamp.toDate) {
-                // Firestore Timestamp
-                dataTime = data.timestamp.toDate().getTime();
+                // Firestore Timestamp - REMOVED LEGACY SUPPORT
+                // dataTime = data.timestamp.toDate().getTime();
+                dataTime = new Date().getTime(); // Fallback or invalid
             } else if (data.timestamp instanceof Date) {
                 // Date object
                 dataTime = data.timestamp.getTime();
@@ -170,7 +171,7 @@ const WeatherContainer = () => {
     const processWeatherData = (data) => {
         if (!data) return null;
 
-        const processedData = {...data};
+        const processedData = { ...data };
 
         // Garantir que temos todos os campos necessários
         // CORREÇÃO: Priorizar cityRequested sobre cityName

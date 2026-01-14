@@ -239,7 +239,7 @@ const NotificationComponent = ({ onMessageClick }) => {
   const formatTimeAgo = (dateString) => {
     if (!dateString) return "";
 
-    const date = dateString.toDate ? dateString.toDate() : new Date(dateString);
+    const date = dateString instanceof Date ? dateString : new Date(dateString);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -491,8 +491,8 @@ const NotificationComponent = ({ onMessageClick }) => {
               report.type === "admin_chat"
                 ? "3px solid #9c27b0"
                 : report.hasUnreadResponses
-                ? "3px solid #1852FE"
-                : "3px solid transparent",
+                  ? "3px solid #1852FE"
+                  : "3px solid transparent",
             "&:hover": {
               backgroundColor: "rgba(24, 82, 254, 0.08)",
             },
@@ -711,23 +711,23 @@ const NotificationComponent = ({ onMessageClick }) => {
                 </Tooltip>
                 {((activeTab === 0 && notificationsUnreadCount > 0) ||
                   (activeTab === 1 && reportsUnreadCount > 0)) && (
-                  <Button
-                    variant="text"
-                    size="small"
-                    startIcon={<MarkReadIcon />}
-                    onClick={handleMarkAllAsRead}
-                    disabled={reportsLoading}
-                    sx={{
-                      fontSize: isMobile ? "10px" : "11px",
-                      color: "#1852FE",
-                      textTransform: "none",
-                      minWidth: "auto",
-                      px: 1,
-                    }}
-                  >
-                    Marcar lidas
-                  </Button>
-                )}
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={<MarkReadIcon />}
+                      onClick={handleMarkAllAsRead}
+                      disabled={reportsLoading}
+                      sx={{
+                        fontSize: isMobile ? "10px" : "11px",
+                        color: "#1852FE",
+                        textTransform: "none",
+                        minWidth: "auto",
+                        px: 1,
+                      }}
+                    >
+                      Marcar lidas
+                    </Button>
+                  )}
               </Box>
             </Box>
 

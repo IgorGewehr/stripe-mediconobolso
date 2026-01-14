@@ -109,7 +109,7 @@ const AnamneseViewer = ({ anamneseData, typeColor, onOpenPdf }) => {
     // Função para formatar datas
     const formatDate = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return format(dateObj, "dd/MM/yyyy", { locale: ptBR });
     };
 

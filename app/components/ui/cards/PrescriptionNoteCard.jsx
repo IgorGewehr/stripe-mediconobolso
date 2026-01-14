@@ -16,7 +16,7 @@ import { ptBR } from 'date-fns/locale';
 const ReceitaTipoChip = ({ tipo }) => {
     let chipColor, chipIcon, chipLabel;
 
-    switch(tipo) {
+    switch (tipo) {
         case "controlada":
             chipColor = "#F59E0B";
             chipLabel = "CONTROLADA";
@@ -71,7 +71,7 @@ const ReceitaNotaCard = ({ nota, onOpen }) => {
     // Formatar data
     const formatDate = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate();
+        const dateObj = date instanceof Date ? date : new Date(date);
         return format(dateObj, "dd/MM/yyyy", { locale: ptBR });
     };
 

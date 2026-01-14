@@ -153,13 +153,13 @@ const getFileTypeInfo = (fileName, fileType) => {
 };
 
 const AllNotesViewDialog = ({
-                                open,
-                                onClose,
-                                patientData,
-                                notesData,
-                                onEdit,
-                                onDelete
-                            }) => {
+    open,
+    onClose,
+    patientData,
+    notesData,
+    onEdit,
+    onDelete
+}) => {
     const [activeFilter, setActiveFilter] = useState("todas");
     const [expanded, setExpanded] = useState({});
     const [filteredNotes, setFilteredNotes] = useState([]);
@@ -296,7 +296,7 @@ const AllNotesViewDialog = ({
 
     // Cores por tipo de nota
     const getTypeColor = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return theme.palette.anamnese;
             case 'Receita':
@@ -310,7 +310,7 @@ const AllNotesViewDialog = ({
 
     // Ícone por tipo de nota
     const getTypeIcon = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return <HistoryEduIcon />;
             case 'Receita':
@@ -326,7 +326,7 @@ const AllNotesViewDialog = ({
 
     // Formato do tipo de nota
     const getTypeLabel = (type) => {
-        switch(type) {
+        switch (type) {
             case 'Anamnese':
                 return 'Anamnese';
             case 'Receita':
@@ -345,19 +345,19 @@ const AllNotesViewDialog = ({
     // Formatação de data
     const formatDate = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return format(dateObj, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
     };
 
     const formatDateTime = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return format(dateObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
     };
 
     const formatTimeAgo = (date) => {
         if (!date) return "";
-        const dateObj = date instanceof Date ? date : date.toDate ? date.toDate() : new Date(date);
+        const dateObj = date instanceof Date ? date : new Date(date);
         return formatDistanceToNow(dateObj, { addSuffix: true, locale: ptBR });
     };
 

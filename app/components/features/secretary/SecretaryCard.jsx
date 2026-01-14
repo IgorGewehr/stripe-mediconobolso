@@ -54,7 +54,7 @@ const formatRelativeDate = (date) => {
     if (!date) return 'Nunca';
 
     const now = new Date();
-    const targetDate = date.toDate ? date.toDate() : new Date(date);
+    const targetDate = date instanceof Date ? date : new Date(date);
     const diffMs = now - targetDate;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
