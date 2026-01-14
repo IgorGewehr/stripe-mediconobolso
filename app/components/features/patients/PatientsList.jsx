@@ -221,7 +221,7 @@ const PatientsListCard = ({
                                         {/* Gênero */}
                                         <td className="px-6 py-3.5 hidden md:table-cell">
                                             <span className="text-slate-600">
-                                                {formatGender(patient.gender || patient.sexo)}
+                                                {formatGender(patient.patientGender || patient.gender || patient.sexo)}
                                             </span>
                                         </td>
 

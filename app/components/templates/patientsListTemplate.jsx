@@ -108,6 +108,39 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import MaleIcon from "@mui/icons-material/Male";
 import FemaleIcon from "@mui/icons-material/Female";
 
+/**
+ * Helper para parsear datas em múltiplos formatos
+ * Suporta: YYYY-MM-DD (ISO/backend), DD/MM/YYYY (brasileiro), Date objects
+ */
+const parseBirthDate = (dateValue) => {
+    if (!dateValue) return null;
+
+    // Se já é um Date válido
+    if (dateValue instanceof Date && isValid(dateValue)) {
+        return dateValue;
+    }
+
+    if (typeof dateValue === 'string') {
+        // Tenta formato ISO (YYYY-MM-DD) primeiro - formato do backend
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateValue)) {
+            const parsed = parseISO(dateValue);
+            if (isValid(parsed)) return parsed;
+        }
+
+        // Tenta formato brasileiro (DD/MM/YYYY)
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
+            const parsed = parse(dateValue, 'dd/MM/yyyy', new Date());
+            if (isValid(parsed)) return parsed;
+        }
+
+        // Tenta como timestamp ou ISO completo
+        const asDate = new Date(dateValue);
+        if (isValid(asDate)) return asDate;
+    }
+
+    return null;
+};
+
 // Constantes para opções de filtro - coloque estas no início do arquivo ou em um arquivo separado
 const PATIENT_CONDITIONS = [
     {label: 'Diabetes', value: 'diabetes', color: 'diabetes'},
@@ -1504,11 +1537,9 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
                 // Verificar idoso (idade > 65)
                 if (patient.birthDate) {
                     try {
-                        const birthDate = typeof patient.birthDate === 'string'
-                            ? parse(patient.birthDate, 'dd/MM/yyyy', new Date())
-                            : new Date(patient.birthDate);
+                        const birthDate = parseBirthDate(patient.birthDate);
 
-                        if (isValid(birthDate) && differenceInYears(new Date(), birthDate) >= 65) {
+                        if (birthDate && differenceInYears(new Date(), birthDate) >= 65) {
                             patientConditions.push('idoso');
                         }
                     } catch (e) {
@@ -1581,13 +1612,11 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
                 if (!patient.birthDate && !patient.dataNascimento) return false;
 
                 try {
-                    // Converter birthDate para objeto Date
+                    // Converter birthDate para objeto Date (suporta YYYY-MM-DD e DD/MM/YYYY)
                     const birthDateStr = patient.birthDate || patient.dataNascimento;
-                    const birthDate = typeof birthDateStr === 'string'
-                        ? parse(birthDateStr, 'dd/MM/yyyy', new Date())
-                        : new Date(birthDateStr);
+                    const birthDate = parseBirthDate(birthDateStr);
 
-                    if (!isValid(birthDate)) return false;
+                    if (!birthDate) return false;
 
                     const age = differenceInYears(new Date(), birthDate);
 
@@ -2441,14 +2470,14 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
                     ) : (
                         paginatedPatients.map((patient) => {
                             const patientName = patient.patientName || 'Sem nome';
-                            const gender = patient.gender || 'Não informado';
+                            const gender = patient.patientGender || patient.gender || 'Não informado';
                             let age = '-';
 
-                            // Cálculo da idade a partir do campo birthDate (formato "dd/MM/yyyy")
+                            // Cálculo da idade a partir do campo birthDate (suporta YYYY-MM-DD e DD/MM/YYYY)
                             if (patient.birthDate) {
                                 try {
-                                    const parsedBirthDate = parse(patient.birthDate, 'dd/MM/yyyy', new Date());
-                                    if (isValid(parsedBirthDate)) {
+                                    const parsedBirthDate = parseBirthDate(patient.birthDate);
+                                    if (parsedBirthDate) {
                                         age = differenceInYears(new Date(), parsedBirthDate);
                                     }
                                 } catch (e) {
@@ -2939,14 +2968,14 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
             ) : (
                 paginatedPatients.map(patient => {
                     const patientName = patient.patientName || 'Sem nome';
-                    const gender = patient.gender || 'Não informado';
+                    const gender = patient.patientGender || patient.gender || 'Não informado';
                     let age = '-';
 
-                    // Cálculo da idade a partir do campo birthDate (formato "dd/MM/yyyy")
+                    // Cálculo da idade a partir do campo birthDate (suporta YYYY-MM-DD e DD/MM/YYYY)
                     if (patient.birthDate) {
                         try {
-                            const parsedBirthDate = parse(patient.birthDate, 'dd/MM/yyyy', new Date());
-                            if (isValid(parsedBirthDate)) {
+                            const parsedBirthDate = parseBirthDate(patient.birthDate);
+                            if (parsedBirthDate) {
                                 age = differenceInYears(new Date(), parsedBirthDate);
                             }
                         } catch (e) {

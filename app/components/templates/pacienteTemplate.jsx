@@ -76,13 +76,17 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                     }
 
                     // Preparar os dados para o template - garantir que todos os dados estão sendo preservados
+                    // O CardPaciente já suporta tanto os campos novos (patientName, birthDate, etc.)
+                    // quanto os antigos (nome, dataNascimento, etc.), então passamos os dados diretamente
                     const processedPatient = {
-                        ...patientData, // Manter todos os campos originais
+                        ...patientData, // Manter todos os campos originais do normalizePatient
                         id: pacienteId, // Garantir que o ID esteja presente
+                        // Mapeamento para compatibilidade com CardPaciente (que aceita ambos os formatos)
                         nome: patientData.patientName || patientData.nome || "",
-                        fotoPerfil: patientData.patientPhotoUrl || "",
-                        tipoSanguineo: patientData.bloodType || "",
-                        dataNascimento: patientData.birthDate || "",
+                        fotoPerfil: patientData.photoURL || patientData.fotoPerfil || "",
+                        tipoSanguineo: patientData.bloodType || patientData.tipoSanguineo || "",
+                        dataNascimento: patientData.birthDate || patientData.dataNascimento || "",
+                        sexo: patientData.patientGender || patientData.sexo || "",
                         contato: {
                             celular: patientData.patientPhone || patientData.phone || "",
                             fixo: patientData.secondaryPhone || "",
@@ -91,19 +95,28 @@ export default function PacienteTemplate({ paciente, pacienteId, onBack }) {
                         },
                         chronicDiseases: patientData.chronicDiseases || [],
                         endereco: {
-                            rua: patientData.patientAddress || patientData.address || "",
-                            numero: "",
-                            bairro: "",
-                            cidade: patientData.city || "",
-                            estado: patientData.state || "",
-                            cep: patientData.cep || ""
+                            rua: patientData.address?.logradouro || patientData.patientAddress || "",
+                            numero: patientData.address?.numero || "",
+                            bairro: patientData.address?.bairro || "",
+                            cidade: patientData.address?.cidade || "",
+                            estado: patientData.address?.uf || "",
+                            cep: patientData.address?.cep || ""
                         },
-                        cirurgias: patientData.condicoesClinicas?.cirurgias || [],
+                        cirurgias: patientData.surgicalHistory || patientData.condicoesClinicas?.cirurgias || [],
                         alergias: patientData.allergies || patientData.condicoesClinicas?.alergias || [],
+                        medicamentosUsoContinuo: patientData.medications || [],
                         atividadeFisica: patientData.condicoesClinicas?.atividades || [],
-                        historicoMedico: patientData.historicoConduta?.doencasHereditarias || "Nenhuma informação cadastrada",
+                        // Histórico e conduta - mapear notes para condutaInicial
+                        historicoConduta: {
+                            condutaInicial: patientData.notes || patientData.historicoConduta?.condutaInicial || "",
+                            doencasHereditarias: patientData.familyHistory?.join(", ") || patientData.historicoConduta?.doencasHereditarias || ""
+                        },
+                        historicoMedico: patientData.familyHistory?.join(", ") || patientData.historicoConduta?.doencasHereditarias || "Nenhuma informação cadastrada",
+                        // Dados de saúde
+                        isSmoker: patientData.isSmoker || false,
+                        isAlcoholConsumer: patientData.isAlcoholConsumer || false,
                         // Garantir que healthPlans e statusList estão presentes
-                        healthPlans: patientData.healthPlans || [],
+                        healthPlans: patientData.healthPlans || (patientData.healthPlan?.name ? [patientData.healthPlan] : []),
                         healthPlan: patientData.healthPlan || {},
                         statusList: patientData.statusList || []
                     };

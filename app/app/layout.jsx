@@ -195,8 +195,20 @@ export default function AppLayout({ children }) {
     }, []);
 
     const handleReceitaClick = useCallback(() => {
-        setActivePage("Receitas");
-    }, []);
+        // Se já está na página de receitas, abre o dialog diretamente
+        if (activePage.toLowerCase() === 'receitas' && receitasTemplateRef.current) {
+            receitasTemplateRef.current.openNewPrescriptionDialog?.();
+        } else {
+            // Navega para a página de receitas e abre o dialog
+            setActivePage("Receitas");
+            // Usa timeout para permitir que a página carregue antes de abrir o dialog
+            setTimeout(() => {
+                if (receitasTemplateRef.current) {
+                    receitasTemplateRef.current.openNewPrescriptionDialog?.();
+                }
+            }, 150);
+        }
+    }, [activePage]);
 
     const handlePacienteTopAppBarClick = useCallback(() => {
         setActivePage("Criar novo paciente");

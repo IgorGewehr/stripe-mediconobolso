@@ -52,6 +52,7 @@ const Dashboard = ({ onClickPatients }) => {
     const {
         patients: hookPatients,
         loading: loadingPatients,
+        pagination: patientsPagination,
     } = usePatients({ autoLoad: true });
 
     // Estado para controle de loading de appointments
@@ -98,9 +99,11 @@ const Dashboard = ({ onClickPatients }) => {
         if (hookPatients && hookPatients.length > 0) {
             const convertedPatients = hookPatients.map(p => ({
                 ...p,
-                patientName: p.name || p.patientName,
-                patientEmail: p.email || p.patientEmail,
-                patientPhone: p.phone || p.patientPhone,
+                patientName: p.patientName || p.name,
+                patientEmail: p.patientEmail || p.email,
+                patientPhone: p.patientPhone || p.phone,
+                patientGender: p.patientGender || p.gender || p.sexo,
+                birthDate: p.birthDate || p.dataNascimento,
             }));
             setPatients(convertedPatients);
 
@@ -160,7 +163,8 @@ const Dashboard = ({ onClickPatients }) => {
         }).length;
 
         // Número visualmente chamativo (quantidade total de pacientes)
-        const visuallyCalledNumber = patientsData?.length || 0;
+        // Usar pagination.total para o total real, não apenas o tamanho da página atual
+        const visuallyCalledNumber = patientsPagination?.total || patientsData?.length || 0;
 
         setMetrics({
             dailyAppointments,
