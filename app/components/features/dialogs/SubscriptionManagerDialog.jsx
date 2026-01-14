@@ -49,6 +49,7 @@ import {
     CalendarToday as CalendarTodayIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../providers/authProvider';
+import { auth } from '@/lib/config/firebase.config';
 import UpgradeModal from './UpgradeModal';
 
 // Configuração dos planos com ícones e cores melhoradas
@@ -526,7 +527,11 @@ const SubscriptionManagerDialog = ({ open, onClose }) => {
             setError('');
 
             // Get Firebase token to authenticate with the backend
-            const token = await user.getIdToken();
+            const firebaseUser = auth.currentUser;
+            if (!firebaseUser) {
+                throw new Error('Usuário não autenticado');
+            }
+            const token = await firebaseUser.getIdToken();
 
             const response = await fetch(`/api/subscription-status?uid=${user.uid}`, {
                 headers: {

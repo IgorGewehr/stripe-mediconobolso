@@ -44,6 +44,10 @@ const initialFormData = {
   categoriaId: '',
   emitirNfse: false,
   observacoes: '',
+  // Campos NFSe (quando emitirNfse = true)
+  nfseCodigoServico: '06.01', // Código padrão para serviços médicos
+  nfseAliquotaIss: '2',
+  nfseDiscriminacao: '',
 };
 
 export default function ContaReceberForm({
@@ -133,6 +137,16 @@ export default function ContaReceberForm({
       newErrors.convenioId = 'Convênio é obrigatório para esta origem';
     }
 
+    // Validação NFSe
+    if (formData.emitirNfse) {
+      if (!formData.pacienteId) {
+        newErrors.pacienteId = 'Paciente é obrigatório para emissão de NFSe';
+      }
+      if (!formData.nfseAliquotaIss || parseFloat(formData.nfseAliquotaIss) <= 0) {
+        newErrors.nfseAliquotaIss = 'Alíquota ISS deve ser maior que zero';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -162,6 +176,13 @@ export default function ContaReceberForm({
       if (formData.categoriaId) data.categoriaId = formData.categoriaId;
       data.emitirNfse = formData.emitirNfse;
       if (formData.observacoes) data.observacoes = formData.observacoes;
+
+      // Dados específicos NFSe (quando emitirNfse = true)
+      if (formData.emitirNfse) {
+        data.nfseCodigoServico = formData.nfseCodigoServico;
+        data.nfseAliquotaIss = parseFloat(formData.nfseAliquotaIss);
+        data.nfseDiscriminacao = formData.nfseDiscriminacao || formData.descricao;
+      }
 
       if (isEditing) {
         await updateConta(contaToEdit.id, data);
@@ -437,9 +458,76 @@ export default function ContaReceberForm({
                     onChange={handleChange('emitirNfse')}
                   />
                 }
-                label="Emitir NFSe"
+                label="Emitir NFSe automaticamente"
               />
             </Grid>
+
+            {/* Campos NFSe (somente quando emitirNfse está ativo) */}
+            {formData.emitirNfse && (
+              <>
+                <Grid item xs={12}>
+                  <Divider>
+                    <Typography variant="caption" color="text.secondary">
+                      Dados para NFSe
+                    </Typography>
+                  </Divider>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Código do Serviço</InputLabel>
+                    <Select
+                      value={formData.nfseCodigoServico}
+                      label="Código do Serviço"
+                      onChange={handleChange('nfseCodigoServico')}
+                    >
+                      <MenuItem value="06.01">06.01 - Medicina e biomedicina</MenuItem>
+                      <MenuItem value="06.02">06.02 - Análises clínicas</MenuItem>
+                      <MenuItem value="06.03">06.03 - Hospitais e clínicas</MenuItem>
+                      <MenuItem value="06.04">06.04 - Instrumentação cirúrgica</MenuItem>
+                      <MenuItem value="06.05">06.05 - Acupuntura e fisioterapia</MenuItem>
+                      <MenuItem value="06.06">06.06 - Ambulância e UTI móvel</MenuItem>
+                      <MenuItem value="06.07">06.07 - Banco de sangue/órgãos</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Alíquota ISS (%)"
+                    value={formData.nfseAliquotaIss}
+                    onChange={handleChange('nfseAliquotaIss')}
+                    fullWidth
+                    type="number"
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                    }}
+                    helperText="Consulte a alíquota do seu município"
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Discriminação dos Serviços"
+                    value={formData.nfseDiscriminacao}
+                    onChange={handleChange('nfseDiscriminacao')}
+                    fullWidth
+                    multiline
+                    rows={2}
+                    placeholder="Descreva os serviços prestados (será exibido na NFSe)"
+                    helperText="Se vazio, será usado a descrição da conta"
+                  />
+                </Grid>
+
+                {!formData.pacienteId && (
+                  <Grid item xs={12}>
+                    <Alert severity="warning">
+                      Para emitir NFSe, é necessário selecionar um paciente (tomador do serviço).
+                    </Alert>
+                  </Grid>
+                )}
+              </>
+            )}
 
             {/* Observações */}
             <Grid item xs={12}>

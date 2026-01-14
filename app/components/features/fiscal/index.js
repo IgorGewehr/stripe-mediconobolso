@@ -8,3 +8,4 @@ export { default as ConfiguracaoFiscal } from './ConfiguracaoFiscal';
 export { default as CertificadoUpload } from './CertificadoUpload';
 export { default as NfseList } from './NfseList';
 export { default as EmissaoNfse } from './EmissaoNfse';
+export { default as NuvemFiscalSetup } from './NuvemFiscalSetup';

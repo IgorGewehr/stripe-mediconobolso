@@ -24,12 +24,14 @@ import {
   Add as AddIcon,
   Settings as SettingsIcon,
   Refresh as RefreshIcon,
+  Cloud as CloudIcon,
 } from '@mui/icons-material';
 import { useFiscalDashboard, useNfseConfiguracao } from '../../hooks/useNfse';
 import CertificadoUpload from './CertificadoUpload';
 import ConfiguracaoFiscal from './ConfiguracaoFiscal';
 import NfseList from './NfseList';
 import EmissaoNfse from './EmissaoNfse';
+import NuvemFiscalSetup from './NuvemFiscalSetup';
 
 // Format currency
 const formatCurrency = (value) => {
@@ -189,6 +191,7 @@ export default function FiscalDashboard() {
             <Tab icon={<AddIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Emitir" />
             <Tab icon={<CertIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Certificado" />
             <Tab icon={<SettingsIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Config" />
+            <Tab icon={<CloudIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Nuvem Fiscal" />
           </Tabs>
         </Box>
 
@@ -207,6 +210,10 @@ export default function FiscalDashboard() {
 
           <TabPanel value={currentTab} index={3}>
             <ConfiguracaoFiscal />
+          </TabPanel>
+
+          <TabPanel value={currentTab} index={4}>
+            <NuvemFiscalSetup />
           </TabPanel>
         </Box>
       </Card>

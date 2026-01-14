@@ -49,16 +49,21 @@ const DAYS_OPTIONS = [
 ];
 
 function PatientRow({ patient }) {
+  // API returns fields with patient_ prefix
+  const name = patient.patient_name || patient.name;
+  const phone = patient.patient_phone || patient.phone;
+  const email = patient.patient_email || patient.email;
+
   const handleWhatsApp = () => {
-    if (patient.phone) {
-      const cleanPhone = patient.phone.replace(/\D/g, '');
+    if (phone) {
+      const cleanPhone = phone.replace(/\D/g, '');
       window.open(`https://wa.me/55${cleanPhone}`, '_blank');
     }
   };
 
   const handleEmail = () => {
-    if (patient.email) {
-      window.open(`mailto:${patient.email}`, '_blank');
+    if (email) {
+      window.open(`mailto:${email}`, '_blank');
     }
   };
 
@@ -66,17 +71,17 @@ function PatientRow({ patient }) {
     <TableRow hover>
       <TableCell>
         <Typography variant="body2" fontWeight="medium">
-          {patient.name || 'N/A'}
+          {name || 'N/A'}
         </Typography>
       </TableCell>
       <TableCell>
         <Typography variant="body2" color="text.secondary">
-          {patient.phone || '-'}
+          {phone || '-'}
         </Typography>
       </TableCell>
       <TableCell>
         <Typography variant="body2" color="text.secondary">
-          {patient.email || '-'}
+          {email || '-'}
         </Typography>
       </TableCell>
       <TableCell>{formatDate(patient.last_consultation_date)}</TableCell>
@@ -90,14 +95,14 @@ function PatientRow({ patient }) {
       </TableCell>
       <TableCell align="right">
         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-          {patient.phone && (
+          {phone && (
             <Tooltip title="Enviar WhatsApp">
               <IconButton size="small" color="success" onClick={handleWhatsApp}>
                 <WhatsAppIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          {patient.email && (
+          {email && (
             <Tooltip title="Enviar Email">
               <IconButton size="small" color="primary" onClick={handleEmail}>
                 <EmailIcon fontSize="small" />
@@ -197,7 +202,7 @@ export default function InactivePatientsTable({
                 </TableHead>
                 <TableBody>
                   {patients.map((patient) => (
-                    <PatientRow key={patient.id} patient={patient} />
+                    <PatientRow key={patient.patient_id || patient.id} patient={patient} />
                   ))}
                 </TableBody>
               </Table>

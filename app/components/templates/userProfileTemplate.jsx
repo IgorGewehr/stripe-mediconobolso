@@ -413,11 +413,12 @@ const ProfileSkeleton = () => (
 
 // Componente principal
 const UserProfileTemplate = ({ onLogout }) => {
-    const auth = useAuth();
-    const { user, isSecretary, userContext, getDisplayUserData, reloadUserContext } = auth;
+    const authContext = useAuth();
+    const { user, isSecretary, userContext, getDisplayUserData, reloadUserContext } = authContext;
     const { state, actions, updateField } = useProfileState();
     const [activeTab, setActiveTab] = useState(0);
     const loadingRef = useRef(false);
+    const fileInputRef = useRef(null);
 
     const displayData = getDisplayUserData();
 
@@ -477,13 +478,13 @@ const UserProfileTemplate = ({ onLogout }) => {
                 globalCache.invalidate('secretaryInfo', user.uid);
             }
             if (onLogout) await onLogout();
-            else await auth.logout();
+            else await authContext.logout();
         } catch (error) {
             console.error("Erro ao sair:", error);
             actions.setAlert('Erro ao sair.', 'error');
             actions.setLoading(false);
         }
-    }, [onLogout, auth, user?.uid, actions]);
+    }, [onLogout, authContext, user?.uid, actions]);
 
     const handlePhotoChange = useCallback((e) => {
         if (e.target.files?.[0]) {
@@ -497,6 +498,12 @@ const UserProfileTemplate = ({ onLogout }) => {
             reader.readAsDataURL(file);
         }
     }, [actions]);
+
+    const handleAvatarClick = useCallback(() => {
+        if (state.isEditing && !isSecretary && fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    }, [state.isEditing, isSecretary]);
 
     const handleSave = useCallback(async () => {
         if (isSecretary) {
@@ -535,16 +542,16 @@ const UserProfileTemplate = ({ onLogout }) => {
     }, [isSecretary, state, user?.uid, actions, reloadUserContext]);
 
     useEffect(() => {
-        if (user && !auth.loading) {
+        if (user && !authContext.loading) {
             loadUserData();
             loadSecretaryInfo();
         }
-    }, [user, auth.loading, loadUserData, loadSecretaryInfo]);
+    }, [user, authContext.loading, loadUserData, loadSecretaryInfo]);
 
     const planInfo = useMemo(() => getUserPlanInfo(), [getUserPlanInfo]);
     const firstName = useMemo(() => getFirstName(displayData?.name), [getFirstName, displayData?.name]);
 
-    if (state.loading || auth.loading) return <ProfileSkeleton />;
+    if (state.loading || authContext.loading) return <ProfileSkeleton />;
 
     return (
         <Box sx={{
@@ -555,8 +562,8 @@ const UserProfileTemplate = ({ onLogout }) => {
             {/* Header do Perfil */}
             <Box sx={{
                 background: `linear-gradient(135deg, ${themeColors.primary} 0%, ${themeColors.primaryDark} 100%)`,
-                pt: { xs: 4, md: 5 },
-                pb: { xs: 8, md: 10 },
+                pt: { xs: 3, md: 4 },
+                pb: { xs: 6, md: 7 },
                 px: { xs: 2, md: 4 },
                 position: 'relative',
                 overflow: 'hidden'
@@ -587,6 +594,7 @@ const UserProfileTemplate = ({ onLogout }) => {
                             {/* Avatar */}
                             <Box sx={{ position: 'relative' }}>
                                 <input
+                                    ref={fileInputRef}
                                     accept="image/*"
                                     id="profile-photo-upload"
                                     type="file"
@@ -594,28 +602,27 @@ const UserProfileTemplate = ({ onLogout }) => {
                                     onChange={handlePhotoChange}
                                     disabled={!state.isEditing || isSecretary}
                                 />
-                                <label htmlFor={state.isEditing && !isSecretary ? "profile-photo-upload" : ""}>
-                                    <Avatar
-                                        src={state.photoPreview || state.userData.photoURL}
-                                        sx={{
-                                            width: { xs: 72, md: 88 },
-                                            height: { xs: 72, md: 88 },
-                                            border: '3px solid rgba(255,255,255,0.3)',
-                                            backgroundColor: 'rgba(255,255,255,0.15)',
-                                            color: '#FFFFFF',
-                                            fontSize: { xs: '1.75rem', md: '2rem' },
-                                            fontWeight: 600,
-                                            cursor: state.isEditing && !isSecretary ? 'pointer' : 'default',
-                                            transition: 'all 0.3s ease',
-                                            '&:hover': {
-                                                transform: state.isEditing && !isSecretary ? 'scale(1.05)' : 'none',
-                                                borderColor: state.isEditing && !isSecretary ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.3)'
-                                            }
-                                        }}
-                                    >
-                                        {displayData?.name?.charAt(0) || <PersonIcon />}
-                                    </Avatar>
-                                </label>
+                                <Avatar
+                                    onClick={handleAvatarClick}
+                                    src={state.photoPreview || state.userData.photoURL}
+                                    sx={{
+                                        width: { xs: 72, md: 88 },
+                                        height: { xs: 72, md: 88 },
+                                        border: '3px solid rgba(255,255,255,0.3)',
+                                        backgroundColor: 'rgba(255,255,255,0.15)',
+                                        color: '#FFFFFF',
+                                        fontSize: { xs: '1.75rem', md: '2rem' },
+                                        fontWeight: 600,
+                                        cursor: state.isEditing && !isSecretary ? 'pointer' : 'default',
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                            transform: state.isEditing && !isSecretary ? 'scale(1.05)' : 'none',
+                                            borderColor: state.isEditing && !isSecretary ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.3)'
+                                        }
+                                    }}
+                                >
+                                    {displayData?.name?.charAt(0) || <PersonIcon />}
+                                </Avatar>
                                 {state.isEditing && !isSecretary && (
                                     <Box sx={{
                                         position: 'absolute',
@@ -722,7 +729,7 @@ const UserProfileTemplate = ({ onLogout }) => {
             </Box>
 
             {/* Conteúdo Principal */}
-            <Box sx={{ maxWidth: 900, mx: 'auto', px: { xs: 2, md: 3 }, mt: { xs: -6, md: -8 } }}>
+            <Box sx={{ maxWidth: 900, mx: 'auto', px: { xs: 2, md: 3 }, mt: { xs: -5, md: -6 } }}>
                 {/* Card Principal */}
                 <Box sx={{
                     backgroundColor: '#FFFFFF',

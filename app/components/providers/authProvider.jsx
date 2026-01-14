@@ -563,6 +563,10 @@ export const AuthProvider = ({ children }) => {
 
                 setUser(displayUserData);
 
+                // ✅ CARREGAR DADOS DA CLÍNICA (clinicMode vem do backend)
+                const userClinicMode = context.userData?.clinicMode || 'solo';
+                await loadClinicData(userClinicMode);
+
                 // ✅ REGISTRAR LOGIN (NÃO BLOQUEANTE) - Agora tratado pelo backend automaticamente
                 console.log(`✅ Login registrado: ${authUser.uid} via ${authUser.providerData?.[0]?.providerId || 'email'}`);
 
@@ -1164,19 +1168,47 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Carrega dados da clínica e médicos (chamado após login)
+     * @param {string} [modeFromUser] - clinicMode já obtido do /account/me
      */
-    const loadClinicData = useCallback(async () => {
+    const loadClinicData = useCallback(async (modeFromUser = null) => {
         try {
-            // Por enquanto, apenas configura modo solo
-            // Quando o backend estiver pronto, buscar dados reais
-            setClinicMode('solo');
-            setClinicData(null);
-            setDoctorAssociation(null);
-            setAccessibleDoctors([]);
+            // Se já temos o modo do usuário, usar diretamente
+            const mode = modeFromUser || 'solo';
+            setClinicMode(mode);
 
-            console.log('📊 Modo clínica: solo (padrão)');
+            console.log('📊 Modo clínica:', mode);
+
+            // Se for multi_doctor, carregar dados adicionais da clínica
+            if (mode === 'multi_doctor') {
+                try {
+                    const clinicService = (await import('@/lib/services/api/clinic.service')).default;
+
+                    // Carregar informações da clínica
+                    const clinicInfo = await clinicService.getCurrent();
+                    setClinicData(clinicInfo);
+
+                    // Carregar lista de médicos acessíveis
+                    const doctors = await clinicService.listDoctors({ activeOnly: true });
+                    setAccessibleDoctors(doctors || []);
+
+                    console.log('📊 Clínica multi-médico carregada:', {
+                        clinicName: clinicInfo?.name,
+                        doctorsCount: doctors?.length || 0
+                    });
+                } catch (clinicError) {
+                    console.warn('⚠️ Erro ao carregar dados da clínica (não crítico):', clinicError);
+                    // Continua funcionando em modo solo como fallback
+                    setClinicData(null);
+                    setAccessibleDoctors([]);
+                }
+            } else {
+                setClinicData(null);
+                setDoctorAssociation(null);
+                setAccessibleDoctors([]);
+            }
         } catch (error) {
             console.error('Erro ao carregar dados da clínica:', error);
+            setClinicMode('solo'); // Fallback seguro
         }
     }, []);
 
