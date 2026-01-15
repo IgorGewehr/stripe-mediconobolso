@@ -607,11 +607,9 @@ const PatientNoteDialog = ({
             setUploadProgress('Fazendo upload dos arquivos...');
             try {
                 for (const file of fileList) {
-                    const fileInfo = await storageService.uploadNoteAttachment(
-                        file,
-                        getEffectiveUserId(),
-                        patientId,
-                        note.id
+                    const fileInfo = await notesService.uploadNoteAttachment(
+                        note.id,
+                        file
                     );
                     setAttachments(prev => [...prev, fileInfo]);
                 }
@@ -781,12 +779,9 @@ const PatientNoteDialog = ({
             try {
                 const attachment = attachments[index];
                 if (attachment.fileUrl) {
-                    await storageService.removeNoteAttachment(
-                        getEffectiveUserId(),
-                        patientId,
+                    await notesService.removeNoteAttachment(
                         note.id,
-                        attachment.fileUrl,
-                        index
+                        attachment.id || attachment
                     );
                 }
                 const newAttachments = [...attachments];

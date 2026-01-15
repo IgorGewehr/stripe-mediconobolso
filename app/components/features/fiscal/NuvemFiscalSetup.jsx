@@ -46,6 +46,7 @@ import {
   useEnviarCertificadoNuvemFiscal,
   useCertificados,
 } from '../../hooks/useNfse';
+import { useAuth } from '../../providers/authProvider';
 
 // Brazilian states
 const ESTADOS_BR = [
@@ -58,6 +59,10 @@ export default function NuvemFiscalSetup() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Get user data from auth context
+  const { user, getDisplayUserData } = useAuth();
+  const userData = getDisplayUserData();
+
   // Hooks
   const { data: status, isLoading: statusLoading, refetch: refetchStatus } = useNuvemFiscalStatus();
   const { sync: syncEmpresa, isSyncing, error: syncError, reset: resetSyncError } = useSyncEmpresaNuvemFiscal();
@@ -65,6 +70,7 @@ export default function NuvemFiscalSetup() {
   const { certificados = [] } = useCertificados({ apenasAtivos: true, apenasValidos: true });
 
   // Form state
+  const [formLoaded, setFormLoaded] = useState(false);
   const [empresaForm, setEmpresaForm] = useState({
     cnpj: '',
     razaoSocial: '',
@@ -88,10 +94,38 @@ export default function NuvemFiscalSetup() {
   const [successMessage, setSuccessMessage] = useState('');
   const [expandedSection, setExpandedSection] = useState('empresa');
 
+  // Load fiscal data from user profile
+  useEffect(() => {
+    if (userData && !formLoaded) {
+      console.log('[NuvemFiscalSetup] Carregando dados fiscais do perfil:', userData);
+      setEmpresaForm((prev) => ({
+        ...prev,
+        // Map user profile fields to form fields
+        cnpj: userData.cnpj || prev.cnpj,
+        razaoSocial: userData.razao_social || prev.razaoSocial,
+        nomeFantasia: userData.nome_fantasia || prev.nomeFantasia,
+        inscricaoMunicipal: userData.inscricao_municipal || prev.inscricaoMunicipal,
+        inscricaoEstadual: userData.inscricao_estadual || prev.inscricaoEstadual,
+        email: userData.email_fiscal || userData.email || prev.email,
+        telefone: userData.telefone_comercial || userData.phone || prev.telefone,
+        codigoMunicipio: userData.codigo_municipio_ibge || prev.codigoMunicipio,
+        // Address fields from user profile
+        logradouro: userData.address?.street || prev.logradouro,
+        numero: userData.address?.number || prev.numero,
+        complemento: userData.address?.complement || prev.complemento,
+        bairro: userData.address?.neighborhood || prev.bairro,
+        cidade: userData.address?.city || prev.cidade,
+        uf: userData.address?.state || prev.uf || 'SP',
+        cep: userData.address?.cep || prev.cep,
+      }));
+      setFormLoaded(true);
+    }
+  }, [userData, formLoaded]);
+
   // Determine active step based on status
   useEffect(() => {
     if (status) {
-      if (!status.prestador_configurado) {
+      if (!status.empresa_cadastrada) {
         setActiveStep(0);
       } else if (!status.certificado_cadastrado) {
         setActiveStep(1);
@@ -230,9 +264,9 @@ export default function NuvemFiscalSetup() {
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Chip
                 size="small"
-                icon={status?.prestador_configurado ? <SuccessIcon /> : <ErrorIcon />}
-                label={status?.prestador_configurado ? 'Prestador OK' : 'Prestador pendente'}
-                color={status?.prestador_configurado ? 'success' : 'warning'}
+                icon={status?.empresa_cadastrada ? <SuccessIcon /> : <ErrorIcon />}
+                label={status?.empresa_cadastrada ? 'Prestador OK' : 'Prestador pendente'}
+                color={status?.empresa_cadastrada ? 'success' : 'warning'}
               />
               <Chip
                 size="small"
@@ -267,7 +301,7 @@ export default function NuvemFiscalSetup() {
           <Step>
             <StepLabel
               optional={
-                status?.prestador_configurado && (
+                status?.empresa_cadastrada && (
                   <Typography variant="caption" color="success.main">Concluido</Typography>
                 )
               }

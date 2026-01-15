@@ -314,7 +314,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleContaFormSuccess = useCallback(() => {
-    snackbar.success(contaToEdit ? 'Conta atualizada!' : 'Conta criada!');
+    snackbar.showSuccess(contaToEdit ? 'Conta atualizada!' : 'Conta criada!');
   }, [contaToEdit, snackbar]);
 
   const handleRecebimentoClose = useCallback(() => {
@@ -323,7 +323,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleRecebimentoSuccess = useCallback(() => {
-    snackbar.success('Recebimento registrado!');
+    snackbar.showSuccess('Recebimento registrado!');
   }, [snackbar]);
 
   // Conta a Pagar handlers
@@ -356,7 +356,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleContaPagarFormSuccess = useCallback(() => {
-    snackbar.success(contaPagarToEdit ? 'Conta atualizada!' : 'Conta criada!');
+    snackbar.showSuccess(contaPagarToEdit ? 'Conta atualizada!' : 'Conta criada!');
   }, [contaPagarToEdit, snackbar]);
 
   const handlePagamentoClose = useCallback(() => {
@@ -365,7 +365,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handlePagamentoSuccess = useCallback(() => {
-    snackbar.success('Pagamento registrado!');
+    snackbar.showSuccess('Pagamento registrado!');
   }, [snackbar]);
 
   // Fornecedor handlers
@@ -393,7 +393,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleFornecedorFormSuccess = useCallback(() => {
-    snackbar.success(fornecedorToEdit ? 'Fornecedor atualizado!' : 'Fornecedor criado!');
+    snackbar.showSuccess(fornecedorToEdit ? 'Fornecedor atualizado!' : 'Fornecedor criado!');
   }, [fornecedorToEdit, snackbar]);
 
   // Conta Bancaria handlers
@@ -422,7 +422,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleContaBancariaFormSuccess = useCallback(() => {
-    snackbar.success(contaBancariaToEdit ? 'Conta atualizada!' : 'Conta criada!');
+    snackbar.showSuccess(contaBancariaToEdit ? 'Conta atualizada!' : 'Conta criada!');
   }, [contaBancariaToEdit, snackbar]);
 
   const handleTransferenciaClose = useCallback(() => {
@@ -431,7 +431,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleTransferenciaSuccess = useCallback(() => {
-    snackbar.success('Transferencia realizada!');
+    snackbar.showSuccess('Transferencia realizada!');
   }, [snackbar]);
 
   // Convenio handlers
@@ -455,7 +455,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleConvenioFormSuccess = useCallback(() => {
-    snackbar.success(convenioToEdit ? 'Convenio atualizado!' : 'Convenio criado!');
+    snackbar.showSuccess(convenioToEdit ? 'Convenio atualizado!' : 'Convenio criado!');
   }, [convenioToEdit, snackbar]);
 
   // Repasses handlers

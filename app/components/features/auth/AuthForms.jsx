@@ -83,29 +83,13 @@ export const AuthForms = () => {
         try {
             await authService.login(formData.email, formData.password);
 
-            // Provisionar no backend para garantir que usuário existe
-            try {
-                const user = authService.auth.currentUser;
-                if (user) {
-                    await authApiService.provision({
-                        name: user.displayName || user.email.split('@')[0],
-                        email: user.email,
-                        phone: user.phoneNumber || null,
-                        plan_type: 'free'
-                    });
-                }
-            } catch (provisionError) {
-                console.warn('⚠️ Provision falhou, continuando:', provisionError);
-            }
+            // Provisionamento agora é tratado automaticamente pelo AuthProvider
+            // quando detecta um novo usuário sem cadastro no backend
 
             success("Login realizado com sucesso!", {
-                description: "Redirecionando..."
+                description: "Aguarde..."
             });
-
-            // Redirecionar para /app após login bem-sucedido
-            setTimeout(() => {
-                router.push('/app');
-            }, 500);
+            // A navegação agora é controlada pelo AuthProvider
         } catch (error) {
             console.error("Erro no login:", error);
             let errorMessage = "Erro na autenticação";
@@ -142,28 +126,13 @@ export const AuthForms = () => {
                     : '✅ Login com Google concluído – usuário existente'
             );
 
-            // Sempre tentar provisionar no backend Rust
-            try {
-                await authApiService.provision({
-                    name: user.displayName || user.email.split('@')[0],
-                    email: user.email,
-                    phone: user.phoneNumber || null,
-                    plan_type: 'free'
-                });
-                console.log('✅ Usuário provisionado no backend');
-            } catch (provisionError) {
-                console.warn('⚠️ Provision falhou, continuando:', provisionError);
-            }
+            // Provisionamento agora é tratado automaticamente pelo AuthProvider
+            console.log('✅ Autenticação Google realizada, aguardando AuthProvider...');
 
             success("Login realizado com sucesso!", {
-                description: "Redirecionando..."
+                description: "Aguarde..."
             });
-
-            // Redirecionar para /app após login bem-sucedido
-            setTimeout(() => {
-                console.log('🚀 Redirecionando para /app...');
-                router.push('/app');
-            }, 500);
+            // A navegação agora é controlada pelo AuthProvider
         } catch (error) {
             console.error('❌ Erro no login/signup com Google:', error);
             let errorMessage = "Erro no login com Google";

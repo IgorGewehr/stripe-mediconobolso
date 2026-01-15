@@ -128,6 +128,7 @@ export const AuthProvider = ({ children }) => {
                 email: authUser.email,
                 photoURL: authUser.photoURL || '',
                 emailVerified: authUser.emailVerified,
+                inputPhone: authUser.phoneNumber || null, // Armazenar telefone se disponível
                 gratuito: true,
                 assinouPlano: false,
                 planType: 'free',
@@ -159,6 +160,7 @@ export const AuthProvider = ({ children }) => {
             await authApiService.provision({
                 name: userData.fullName,
                 email: userData.email,
+                phone: userData.inputPhone,
                 plan_type: userData.planType,
             });
             console.log('✅ Dados básicos criados para usuário órfão via API');

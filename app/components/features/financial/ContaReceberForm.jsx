@@ -251,6 +251,25 @@ export default function ContaReceberForm({
               </FormControl>
             </Grid>
 
+            {/* Forma de Pagamento - Adicionado conforme solicitação */}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Forma de Pagamento</InputLabel>
+                <Select
+                  value={formData.formaPagamento || 'dinheiro'}
+                  label="Forma de Pagamento"
+                  onChange={handleChange('formaPagamento')}
+                >
+                  <MenuItem value="dinheiro">Dinheiro</MenuItem>
+                  <MenuItem value="pix">Pix</MenuItem>
+                  <MenuItem value="cartao_credito">Cartão de Crédito</MenuItem>
+                  <MenuItem value="cartao_debito">Cartão de Débito</MenuItem>
+                  <MenuItem value="boleto">Boleto</MenuItem>
+                  <MenuItem value="transferencia">Transferência</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
             {/* Convênio (only for guia_convenio origem) */}
             {formData.origem === 'guia_convenio' && (
               <Grid item xs={12} sm={6}>

@@ -183,15 +183,15 @@ const Sidebar = ({
                 >
                     <img
                         src="/logo.png"
-                        alt="Médico no Bolso"
+                        alt="Doctor Care"
                         className="w-8 h-8 object-contain"
                     />
                     <div className="flex flex-col">
                         <span className="text-base font-bold leading-none tracking-tight text-foreground">
-                            Médico
+                            Doctor
                         </span>
                         <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
-                            No Bolso
+                            Care
                         </span>
                     </div>
                 </div>
@@ -278,11 +278,19 @@ const Sidebar = ({
                     className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
                 >
                     <div className="relative h-9 w-9">
-                        <img
-                            src={user?.photoURL || "https://github.com/shadcn.png"}
-                            alt={userName}
-                            className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-sm"
-                        />
+                        {user?.photoURL ? (
+                            <img
+                                src={user.photoURL}
+                                alt={userName}
+                                className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-sm"
+                            />
+                        ) : (
+                            <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center border-2 border-white shadow-sm">
+                                <span className="text-sm font-semibold text-white">
+                                    {(user?.fullName || userName || "U").charAt(0).toUpperCase()}
+                                </span>
+                            </div>
+                        )}
                         <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
                     </div>
 

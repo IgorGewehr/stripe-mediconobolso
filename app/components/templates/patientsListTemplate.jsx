@@ -101,6 +101,7 @@ import {ptBR} from 'date-fns/locale';
 import {useAuth} from "../providers";
 import useModuleAccess from "../hooks/useModuleAccess";
 import { usePatients, useAppointments } from "../hooks";
+import { patientsService } from "@/lib/services/api";
 import SearchField from "../ui/inputs/SearchField";
 import DoctorFilter from "../features/shared/DoctorFilter";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -1774,12 +1775,33 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
                 : prev.filter(id => id !== patientId)
         );
 
+        // Atualiza também o estado local de patients para manter consistência
+        setPatients(prev =>
+            prev.map(p =>
+                p.id === patientId
+                    ? { ...p, isFavorite: newFavoriteStatus, favorite: newFavoriteStatus }
+                    : p
+            )
+        );
+
         try {
-            // Atualiza o status no Firebase
-            await FirebaseService.updateFavoriteStatus(getEffectiveUserId(), patientId, newFavoriteStatus);
+            // Atualiza o status via API backend (PostgreSQL)
+            await patientsService.updateFavorite(patientId, newFavoriteStatus);
         } catch (error) {
-            console.error("Erro ao atualizar favorito no Firebase:", error);
-            // Se necessário, reverta o estado local
+            console.error("Erro ao atualizar favorito:", error);
+            // Reverte o estado local em caso de erro
+            setFavoritePatients(prev =>
+                isCurrentlyFavorite
+                    ? [...prev, patientId]
+                    : prev.filter(id => id !== patientId)
+            );
+            setPatients(prev =>
+                prev.map(p =>
+                    p.id === patientId
+                        ? { ...p, isFavorite: isCurrentlyFavorite, favorite: isCurrentlyFavorite }
+                        : p
+                )
+            );
         }
     };
 

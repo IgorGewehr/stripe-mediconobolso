@@ -59,6 +59,7 @@ import {
   useEnviarCertificadoNuvemFiscal,
   useCertificados,
 } from '../../hooks/useNfse';
+import { useAuth } from '../../providers/authProvider';
 import NfseList from './NfseList';
 import EmissaoNfse from './EmissaoNfse';
 
@@ -491,10 +492,15 @@ function DadosFiscaisTab() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Get user data from auth context
+  const { user, getDisplayUserData } = useAuth();
+  const userData = getDisplayUserData();
+
   const { data: status, isLoading: statusLoading, refetch: refetchStatus } = useNuvemFiscalStatus();
   const { sync: syncEmpresa, isSyncing, error: syncError, reset: resetSyncError } = useSyncEmpresaNuvemFiscal();
 
   const [successMessage, setSuccessMessage] = useState('');
+  const [formLoaded, setFormLoaded] = useState(false);
   const [empresaForm, setEmpresaForm] = useState({
     cnpj: '',
     razaoSocial: '',
@@ -512,6 +518,34 @@ function DadosFiscaisTab() {
     cep: '',
     codigoMunicipio: '',
   });
+
+  // Load fiscal data from user profile
+  useEffect(() => {
+    if (userData && !formLoaded) {
+      console.log('[FiscalDashboard] Carregando dados fiscais do perfil:', userData);
+      setEmpresaForm((prev) => ({
+        ...prev,
+        // Map user profile fields to form fields
+        cnpj: userData.cnpj || prev.cnpj,
+        razaoSocial: userData.razao_social || prev.razaoSocial,
+        nomeFantasia: userData.nome_fantasia || prev.nomeFantasia,
+        inscricaoMunicipal: userData.inscricao_municipal || prev.inscricaoMunicipal,
+        inscricaoEstadual: userData.inscricao_estadual || prev.inscricaoEstadual,
+        email: userData.email_fiscal || userData.email || prev.email,
+        telefone: userData.telefone_comercial || userData.phone || prev.telefone,
+        codigoMunicipio: userData.codigo_municipio_ibge || prev.codigoMunicipio,
+        // Address fields from user profile
+        logradouro: userData.address?.street || prev.logradouro,
+        numero: userData.address?.number || prev.numero,
+        complemento: userData.address?.complement || prev.complemento,
+        bairro: userData.address?.neighborhood || prev.bairro,
+        cidade: userData.address?.city || prev.cidade,
+        uf: userData.address?.state || prev.uf || 'SP',
+        cep: userData.address?.cep || prev.cep,
+      }));
+      setFormLoaded(true);
+    }
+  }, [userData, formLoaded]);
 
   const handleEmpresaChange = (field) => (event) => {
     setEmpresaForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -565,23 +599,23 @@ function DadosFiscaisTab() {
         sx={{
           p: 2.5,
           mb: 3,
-          bgcolor: status?.prestador_configurado ? 'success.lighter' : 'warning.lighter',
-          borderColor: status?.prestador_configurado ? 'success.main' : 'warning.main',
+          bgcolor: status?.empresa_cadastrada ? 'success.lighter' : 'warning.lighter',
+          borderColor: status?.empresa_cadastrada ? 'success.main' : 'warning.main',
           borderRadius: 2,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          {status?.prestador_configurado ? (
+          {status?.empresa_cadastrada ? (
             <SuccessIcon color="success" sx={{ fontSize: 32 }} />
           ) : (
             <WarningIcon color="warning" sx={{ fontSize: 32 }} />
           )}
           <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle1" fontWeight="bold">
-              {status?.prestador_configurado ? 'Empresa Configurada' : 'Configuracao Pendente'}
+              {status?.empresa_cadastrada ? 'Empresa Configurada' : 'Configuracao Pendente'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {status?.prestador_configurado
+              {status?.empresa_cadastrada
                 ? 'Os dados fiscais da empresa estao configurados para emissao'
                 : 'Preencha os dados fiscais da empresa para emitir NFSe'}
             </Typography>
