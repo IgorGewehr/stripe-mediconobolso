@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=doctor
+      - POSTGRES_PASSWORD=doctordev123
+      - POSTGRES_DB=doctor_db
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
