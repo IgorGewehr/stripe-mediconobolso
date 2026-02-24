@@ -1,6 +1,7 @@
 "use client";
 
 import {
+    Alert,
     Box,
     Button,
     Link,
@@ -10,7 +11,8 @@ import {
     useMediaQuery,
     useTheme,
 } from "@mui/material";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { authService } from "../../../../lib/services/firebase";
 import { authApiService } from "../../../../lib/services/api";
 import { useRouter } from "next/navigation";
@@ -21,6 +23,9 @@ import { useFeedback, StyledInput, LoadingButton } from '../../ui/feedback';
 export const AuthForms = () => {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [loginLoading, setLoginLoading] = useState(false);
+    const [showWelcome, setShowWelcome] = useState(false);
+    const [showExisting, setShowExisting] = useState(false);
+    const searchParams = useSearchParams();
 
     const initialFormData = {
         email: "",
@@ -35,6 +40,31 @@ export const AuthForms = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    // Verificar se veio do lead signup
+    useEffect(() => {
+        const email = searchParams.get('email');
+        const welcome = searchParams.get('welcome');
+        const existing = searchParams.get('existing');
+
+        if (email) {
+            setFormData(prev => ({ ...prev, email }));
+        }
+        if (welcome === 'true') {
+            setShowWelcome(true);
+            // Remover o param da URL sem recarregar
+            const url = new URL(window.location.href);
+            url.searchParams.delete('welcome');
+            window.history.replaceState({}, '', url.toString());
+        }
+        if (existing === 'true') {
+            setShowExisting(true);
+            // Remover o param da URL sem recarregar
+            const url = new URL(window.location.href);
+            url.searchParams.delete('existing');
+            window.history.replaceState({}, '', url.toString());
+        }
+    }, [searchParams]);
 
     // Handlers do formulário
     const handleInputChange = (e) => {
@@ -182,6 +212,52 @@ export const AuthForms = () => {
                 position: 'relative'
             }}
         >
+            {/* Alerta de boas-vindas para novos leads */}
+            {showWelcome && (
+                <Alert
+                    severity="success"
+                    onClose={() => setShowWelcome(false)}
+                    sx={{
+                        width: '100%',
+                        mb: 2,
+                        borderRadius: 2,
+                        '& .MuiAlert-message': {
+                            width: '100%',
+                        }
+                    }}
+                >
+                    <Typography variant="body2" fontWeight={600}>
+                        Conta criada com sucesso!
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        Sua senha foi enviada para o email informado. Verifique sua caixa de entrada.
+                    </Typography>
+                </Alert>
+            )}
+
+            {/* Alerta para usuarios existentes */}
+            {showExisting && (
+                <Alert
+                    severity="info"
+                    onClose={() => setShowExisting(false)}
+                    sx={{
+                        width: '100%',
+                        mb: 2,
+                        borderRadius: 2,
+                        '& .MuiAlert-message': {
+                            width: '100%',
+                        }
+                    }}
+                >
+                    <Typography variant="body2" fontWeight={600}>
+                        Voce ja tem uma conta!
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        Use sua senha existente ou clique em "Esqueceu sua senha?" para recupera-la.
+                    </Typography>
+                </Alert>
+            )}
+
             {/* Logo apenas no mobile */}
             {isMobile && (
                 <Box

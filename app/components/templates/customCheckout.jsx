@@ -136,149 +136,52 @@ const brazilianStates = [
     { value: 'TO', label: 'Tocantins' }
 ];
 
-// 🆕 PLANOS ATUALIZADOS - Removido plano gratuito, adicionado plano trimestral
+// Plano único de R$147/mês
 const plansData = {
     monthly: {
         id: 'monthly',
-        name: 'Pro',
-        price: 'R$127',
-        pricePerMonth: 'R$127/mês',
+        name: 'Médico no Bolso',
+        price: 'R$147',
+        pricePerMonth: 'R$147/mês',
         period: '/mês',
-        features: [
-            'Acesso a todas as funcionalidades',
-            'Pacientes ilimitados',
-            'Suporte prioritário',
-            'Atualizações gratuitas'
-        ],
-        priceId: 'price_1QyKrNI2qmEooUtqKfgYIemz'
-    },
-    quarterly: {
-        id: 'quarterly',
-        name: 'Trimestral',
-        price: 'R$345',
-        pricePerMonth: 'R$115/mês',
-        period: '/trimestre',
-        features: [
-            'Acesso a todas as funcionalidades',
-            'Pacientes ilimitados',
-            'Suporte prioritário',
-            'Atualizações gratuitas',
-            'Economia de 9% em relação ao plano mensal'
-        ],
-        priceId: 'price_1RIH5eI2qmEooUtqsdXyxnEP'
-    },
-    annual: {
-        id: 'annual',
-        name: 'Especialista',
-        price: 'R$1143',
-        pricePerMonth: 'R$95,25/mês',
-        period: '/ano',
         popular: true,
         features: [
             'Acesso a todas as funcionalidades',
             'Pacientes ilimitados',
             'Suporte prioritário',
             'Atualizações gratuitas',
-            'Economia de 25% em relação ao plano mensal'
+            'IA para análise de exames',
+            'Geração de receitas e anamnese'
         ],
-        priceId: 'price_1QyKwWI2qmEooUtqOJ9lCFBl'
+        priceId: 'price_1SpgnZI2qmEooUtqtaCEw3jN'
     }
 };
 
-// 🆕 COMPONENTE PARA SELEÇÃO DE MÉTODO DE PAGAMENTO - Atualizado para restringir boleto apenas para planos não mensais
+// Componente para método de pagamento - apenas cartão
 const PaymentMethodSelector = ({ paymentMethod, onPaymentMethodChange, selectedPlan }) => {
-    const allowBoleto = selectedPlan !== 'monthly'; // Boleto não disponível para plano mensal
-
     return (
         <Box sx={{ mb: 3 }}>
             <FormLabel component="legend" sx={{ color: 'white', mb: 2, fontWeight: 'bold' }}>
-                Escolha o método de pagamento:
+                Método de pagamento:
             </FormLabel>
-            <RadioGroup
-                value={paymentMethod}
-                onChange={(e) => onPaymentMethodChange(e.target.value)}
-                sx={{ gap: 2 }}
-            >
-                <Paper sx={{
-                    backgroundColor: paymentMethod === 'card' ? 'rgba(249, 185, 52, 0.2)' : '#2F2F2F',
-                    border: paymentMethod === 'card' ? '2px solid #F9B934' : '1px solid #5F5F5F',
-                    borderRadius: 2,
-                    p: 2,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease'
-                }} onClick={() => onPaymentMethodChange('card')}>
-                    <FormControlLabel
-                        value="card"
-                        control={<Radio sx={{ color: '#F9B934' }} />}
-                        label={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <CreditCardIcon sx={{ color: '#F9B934' }} />
-                                <Box>
-                                    <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
-                                        Cartão de Crédito
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                                        Pagamento instantâneo • Acesso imediato
-                                    </Typography>
-                                </Box>
-                            </Box>
-                        }
-                        sx={{ m: 0, width: '100%' }}
-                    />
-                </Paper>
-
-                {allowBoleto && (
-                    <Paper sx={{
-                        backgroundColor: paymentMethod === 'boleto' ? 'rgba(249, 185, 52, 0.2)' : '#2F2F2F',
-                        border: paymentMethod === 'boleto' ? '2px solid #F9B934' : '1px solid #5F5F5F',
-                        borderRadius: 2,
-                        p: 2,
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                    }} onClick={() => onPaymentMethodChange('boleto')}>
-                        <FormControlLabel
-                            value="boleto"
-                            control={<Radio sx={{ color: '#F9B934' }} />}
-                            label={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <ReceiptIcon sx={{ color: '#F9B934' }} />
-                                    <Box>
-                                        <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
-                                            Boleto Bancário
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                                            Vencimento em 3 dias • Acesso após confirmação
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            }
-                            sx={{ m: 0, width: '100%' }}
-                        />
-                    </Paper>
-                )}
-
-                {!allowBoleto && (
-                    <Paper sx={{
-                        backgroundColor: '#1A1A1A',
-                        border: '1px solid #3F3F3F',
-                        borderRadius: 2,
-                        p: 2,
-                        opacity: 0.6
-                    }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <ReceiptIcon sx={{ color: 'grey.600' }} />
-                            <Box>
-                                <Typography variant="subtitle1" sx={{ color: 'grey.600', fontWeight: 'bold' }}>
-                                    Boleto Bancário
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: 'grey.600' }}>
-                                    Disponível apenas para planos trimestrais e anuais
-                                </Typography>
-                            </Box>
-                        </Box>
-                    </Paper>
-                )}
-            </RadioGroup>
+            <Paper sx={{
+                backgroundColor: 'rgba(249, 185, 52, 0.2)',
+                border: '2px solid #F9B934',
+                borderRadius: 2,
+                p: 2,
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <CreditCardIcon sx={{ color: '#F9B934' }} />
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
+                            Cartão de Crédito
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'grey.400' }}>
+                            Pagamento instantâneo • Acesso imediato
+                        </Typography>
+                    </Box>
+                </Box>
+            </Paper>
         </Box>
     );
 };
@@ -2063,12 +1966,10 @@ function CheckoutForm() {
                                             </Typography>
                                             <Box sx={{ textAlign: 'right' }}>
                                                 <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                                                    {selectedPlan === 'monthly' ? '~127 BRL' :
-                                                        selectedPlan === 'quarterly' ? '~345 BRL' :
-                                                            selectedPlan === 'annual' ? '~1143 BRL' : ''}
+                                                    ~147 BRL
                                                 </Typography>
                                                 <Typography variant="caption" sx={{ color: '#F9B934' }}>
-                                                    via {paymentMethod === 'boleto' ? 'Boleto' : 'Cartão'}
+                                                    via Cartão
                                                 </Typography>
                                             </Box>
                                         </Paper>
@@ -2089,7 +1990,7 @@ function CheckoutForm() {
                                             }
                                             label={
                                                 <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                                                    Aceito os <span style={{ color: 'white', textDecoration: 'underline' }}>Termos e Condições</span> e <span style={{ color: 'white', textDecoration: 'underline' }}>Política de Privacidade</span>, e concordo em pagar {selectedPlan && plans[selectedPlan]?.price} a cada {selectedPlan === 'monthly' ? 'mês' : selectedPlan === 'quarterly' ? 'trimestre' : 'ano'} até que eu cancele.
+                                                    Aceito os <span style={{ color: 'white', textDecoration: 'underline' }}>Termos e Condições</span> e <span style={{ color: 'white', textDecoration: 'underline' }}>Política de Privacidade</span>, e concordo em pagar R$147 mensalmente até que eu cancele.
                                                 </Typography>
                                             }
                                         />

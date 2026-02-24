@@ -342,6 +342,7 @@ export default function PacienteCadastroTemplate() {
                 chronicDiseases: formData.condicoesClinicas.doencas || [],
                 medications: formData.condicoesClinicas.medicamentos || [],
                 surgicalHistory: formData.condicoesClinicas.cirurgias || [],
+                physicalActivities: formData.condicoesClinicas.atividades || [],
                 familyHistory: formData.historicoConduta.doencasHereditarias
                     ? [formData.historicoConduta.doencasHereditarias]
                     : [],

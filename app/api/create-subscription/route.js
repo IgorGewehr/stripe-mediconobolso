@@ -25,7 +25,7 @@ export async function POST(req) {
             );
         }
 
-        if (!["monthly", "quarterly", "annual"].includes(plan)) {
+        if (!["monthly"].includes(plan)) {
             return NextResponse.json(
                 { message: 'Plano inválido selecionado' },
                 { status: 400 }
@@ -58,18 +58,8 @@ export async function POST(req) {
 
         console.log(`Criando assinatura: UID=${uid}, Email=${email}, Plano=${plan}, Método=${paymentMethod}`);
 
-        // Define o priceId
-        let priceId;
-        switch (plan) {
-            case "annual":
-                priceId = "price_1QyKwWI2qmEooUtqOJ9lCFBl";
-                break;
-            case "quarterly":
-                priceId = "price_1RIH5eI2qmEooUtqsdXyxnEP";
-                break;
-            default:
-                priceId = "price_1QyKrNI2qmEooUtqKfgYIemz";
-        }
+        // Define o priceId - Plano único de R$147/mês
+        const priceId = "price_1SpgnZI2qmEooUtqtaCEw3jN";
 
         // Preparar metadados
         const customerMetadata = {

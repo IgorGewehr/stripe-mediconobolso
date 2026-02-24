@@ -87,7 +87,7 @@ export async function GET(request) {
         }
 
         // Link da aplicação
-        const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;
+        const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.doctorcare.io'}/app`;
 
         console.log(`📧 [TEST-EMAIL] Enviando ${type} para ${email} (${name})`);
 
@@ -181,7 +181,7 @@ export async function POST(request) {
         }
 
         // Link da aplicação
-        const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;
+        const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.doctorcare.io'}/app`;
 
         console.log(`📧 [TEST-EMAIL] POST - Enviando ${type} para ${email} (${name})`);
 

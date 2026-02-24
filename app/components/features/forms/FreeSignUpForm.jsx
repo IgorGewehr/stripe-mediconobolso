@@ -386,7 +386,7 @@ const FreeSignupForm = () => {
             });
 
             // Enviar emails de boas-vindas
-            const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;
+            const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.doctorcare.io'}/app`;
             const welcomeName = formData.fullName.trim() || formData.email.split('@')[0];
 
             // Enviar emails de forma assíncrona
@@ -726,17 +726,38 @@ const FreeSignupForm = () => {
                                             onChange={handleInputChange}
                                             error={Boolean(errors.city)}
                                             helperText={errors.city}
-                                            placeholder="São Paulo"
+                                            placeholder="Sao Paulo"
                                             sx={{ flex: 1 }}
                                         />
                                         <FormControl
-                                            sx={{
-                                                flex: { xs: 1, sm: 0.6 },
-                                                '& .MuiOutlinedInput-root': {
-                                                    borderRadius: '12px'
-                                                }
-                                            }}
+                                            fullWidth
+                                            size="medium"
                                             error={Boolean(errors.state)}
+                                            sx={{
+                                                flex: { xs: 1, sm: 0.5 },
+                                                minWidth: { xs: '100%', sm: 120 },
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderRadius: '12px',
+                                                    backgroundColor: '#FFFFFF',
+                                                    height: '56px',
+                                                    '& fieldset': {
+                                                        borderColor: errors.state ? '#d32f2f' : 'rgba(17, 30, 90, 0.15)',
+                                                    },
+                                                    '&:hover fieldset': {
+                                                        borderColor: errors.state ? '#d32f2f' : 'rgba(17, 30, 90, 0.3)',
+                                                    },
+                                                    '&.Mui-focused fieldset': {
+                                                        borderColor: errors.state ? '#d32f2f' : '#1852FE',
+                                                        borderWidth: '2px',
+                                                    },
+                                                },
+                                                '& .MuiInputLabel-root': {
+                                                    color: 'rgba(17, 30, 90, 0.6)',
+                                                    '&.Mui-focused': {
+                                                        color: errors.state ? '#d32f2f' : '#1852FE',
+                                                    },
+                                                },
+                                            }}
                                         >
                                             <InputLabel>Estado</InputLabel>
                                             <Select
@@ -744,16 +765,24 @@ const FreeSignupForm = () => {
                                                 label="Estado"
                                                 name="state"
                                                 onChange={handleInputChange}
-                                                sx={{ borderRadius: '12px' }}
+                                                MenuProps={{
+                                                    PaperProps: {
+                                                        sx: {
+                                                            maxHeight: 250,
+                                                            borderRadius: '12px',
+                                                            mt: 0.5,
+                                                        }
+                                                    }
+                                                }}
                                             >
                                                 {brazilianStates.map((state) => (
                                                     <MenuItem key={state.value} value={state.value}>
-                                                        {state.value}
+                                                        {state.label} ({state.value})
                                                     </MenuItem>
                                                 ))}
                                             </Select>
                                             {errors.state && (
-                                                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1 }}>
+                                                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
                                                     {errors.state}
                                                 </Typography>
                                             )}

@@ -349,6 +349,7 @@ export const PrescriptionDialog = memo(({
                                         recentMedications={recentMedications}
                                         onSelect={handleQuickAddMedication}
                                         onToggleFavorite={handleToggleFavorite}
+                                        onAddManually={() => setIsAddingMed(true)}
                                         isLoading={loadingMeds}
                                     />
 

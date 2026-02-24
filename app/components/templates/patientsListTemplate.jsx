@@ -1,6 +1,7 @@
 "use client";
 
 import React, {useState, useEffect, useMemo, useCallback} from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Box,
     Typography,
@@ -1004,6 +1005,7 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
     const {user, getEffectiveUserId} = useAuth();
     const { hasAccess, canPerformAction } = useModuleAccess();
+    const router = useRouter();
 
     // Verificar se o usuário tem acesso ao módulo de pacientes
     const canViewPatients = hasAccess('patients');
@@ -2551,7 +2553,7 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
                                     <TableCell>
                                         <Box sx={{display: 'flex', alignItems: 'center'}}>
                                             <Avatar
-                                                src={patient.patientPhotoUrl}
+                                                src={patient.photoURL || patient.patientPhotoUrl}
                                                 alt={patientName}
                                                 sx={{
                                                     width: 40,
@@ -2794,7 +2796,7 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
                             </Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Avatar
-                                    src={selectedPatient.patientPhotoUrl}
+                                    src={selectedPatient.photoURL || selectedPatient.patientPhotoUrl}
                                     alt={selectedPatient.patientName || "Paciente"}
                                     sx={{
                                         width: 40,
@@ -3050,7 +3052,7 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
                                 <CardContent sx={{p: 3, flex: 1, display: 'flex', flexDirection: 'column'}}>
                                     <Box sx={{display: 'flex', alignItems: 'center', mb: 2}}>
                                         <Avatar
-                                            src={patient.patientPhotoUrl}
+                                            src={patient.photoURL || patient.patientPhotoUrl}
                                             alt={patientName}
                                             sx={{
                                                 width: 50,
@@ -3230,7 +3232,7 @@ const PatientsListPage = ({onPatientClick, onAddPatient}) => {
                                             sx={{borderRadius: '50px', fontSize: '0.75rem'}}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                // Função para agendamento
+                                                router.push(`/app/agenda?patientId=${patient.id}&patientName=${encodeURIComponent(patient.patientName || patient.name || '')}`);
                                             }}
                                         >
                                             Agendar

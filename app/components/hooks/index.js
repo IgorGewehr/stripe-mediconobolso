@@ -96,5 +96,8 @@ export {
 // Glossas Hooks
 export { useGlossas } from './useGlossas';
 
+// Stock Hook
+export { default as useStock } from './useStock';
+
 // Re-export auth hook from providers for convenience
 export { useAuth } from '../providers';

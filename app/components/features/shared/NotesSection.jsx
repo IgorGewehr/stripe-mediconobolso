@@ -1473,13 +1473,28 @@ export default function NotasSection({ notas = [], pacienteId, onNotaUpdated }) 
                     <Box
                         sx={{
                             p: 1.5,
-                            maxHeight: isMobile ? 320 : 380,
+                            maxHeight: isMobile ? 400 : 500,
                             overflowY: "auto",
                             display: "flex",
                             flexDirection: "column",
                             gap: 1,
                             borderTop: "1px solid rgba(0,0,0,0.04)",
                             backgroundColor: "rgba(248, 250, 252, 0.2)",
+                            // Custom scrollbar styling
+                            "&::-webkit-scrollbar": {
+                                width: "8px",
+                            },
+                            "&::-webkit-scrollbar-track": {
+                                backgroundColor: "rgba(0,0,0,0.02)",
+                                borderRadius: "4px",
+                            },
+                            "&::-webkit-scrollbar-thumb": {
+                                backgroundColor: "rgba(0,0,0,0.15)",
+                                borderRadius: "4px",
+                                "&:hover": {
+                                    backgroundColor: "rgba(0,0,0,0.25)",
+                                },
+                            },
                         }}
                     >
                         {searchFilteredNotas.map((nota, index) => (

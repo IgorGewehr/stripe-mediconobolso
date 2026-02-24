@@ -240,10 +240,24 @@ export default function ContaPagarForm({
             <Grid item xs={12} sm={6}>
               <Autocomplete
                 options={fornecedores}
-                getOptionLabel={(option) => option.nome || ''}
+                getOptionLabel={(option) => {
+                  if (typeof option === 'string') return option;
+                  return option.nomeFantasia || option.razaoSocial || option.nome || '';
+                }}
                 value={selectedFornecedor}
                 onChange={handleFornecedorChange}
                 loading={loadingFornecedores}
+                isOptionEqualToValue={(option, value) => option?.id === value?.id}
+                renderOption={(props, option) => (
+                  <li {...props} key={option.id}>
+                    {option.nomeFantasia || option.razaoSocial}
+                    {option.nomeFantasia && option.razaoSocial && (
+                      <span style={{ marginLeft: 8, color: '#666', fontSize: '0.85em' }}>
+                        ({option.razaoSocial})
+                      </span>
+                    )}
+                  </li>
+                )}
                 renderInput={(params) => (
                   <TextField
                     {...params}

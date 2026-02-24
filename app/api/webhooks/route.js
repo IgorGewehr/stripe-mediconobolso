@@ -131,7 +131,7 @@ async function sendWelcomeEmailIfNeeded(uid, customerEmail, customerName) {
     }
 
     console.log('📧 Enviando email de boas-vindas para:', customerEmail);
-    const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}/app`;
+    const appLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.doctorcare.io'}/app`;
     const welcomeName = customerName || customerEmail.split('@')[0];
 
     const emailResult = await sendWelcomeEmail(customerEmail, welcomeName, appLink);

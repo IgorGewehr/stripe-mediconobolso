@@ -215,12 +215,63 @@ const isValidCpf = (cpf) => {
 
 const validateFormData = (formData) => {
     const errors = {};
+
+    // Campos obrigatórios
     if (!formData.fullName?.trim()) errors.fullName = 'Nome é obrigatório';
     if (!formData.email?.trim()) errors.email = 'E-mail é obrigatório';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = 'E-mail inválido';
     if (!formData.phone?.trim()) errors.phone = 'Telefone é obrigatório';
-    if (formData.cpf && !isValidCpf(formData.cpf)) errors.cpf = 'CPF inválido';
+
+    // Validações opcionais (só valida se preenchido)
+    if (formData.cpf) {
+        const cpfDigits = formData.cpf.replace(/\D/g, '');
+        if (cpfDigits.length > 0 && cpfDigits.length !== 11) {
+            errors.cpf = 'CPF deve ter 11 dígitos';
+        } else if (cpfDigits.length === 11 && !isValidCpf(formData.cpf)) {
+            errors.cpf = 'CPF inválido';
+        }
+    }
+
+    // Validação de email fiscal (se preenchido)
+    if (formData.email_fiscal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_fiscal)) {
+        errors.email_fiscal = 'E-mail fiscal inválido';
+    }
+
+    // CEP (se preenchido, deve ter 8 dígitos)
+    if (formData.address?.cep) {
+        const cepDigits = formData.address.cep.replace(/\D/g, '');
+        if (cepDigits.length > 0 && cepDigits.length !== 8) {
+            errors['address.cep'] = 'CEP deve ter 8 dígitos';
+        }
+    }
+
     return errors;
+};
+
+// Função para gerar mensagem de erro amigável
+const getErrorMessage = (errors) => {
+    const errorCount = Object.keys(errors).length;
+    if (errorCount === 0) return null;
+
+    const fieldLabels = {
+        fullName: 'Nome',
+        email: 'E-mail',
+        phone: 'Telefone',
+        cpf: 'CPF',
+        email_fiscal: 'E-mail Fiscal',
+        'address.cep': 'CEP',
+        cnpj: 'CNPJ'
+    };
+
+    const errorFields = Object.keys(errors).map(key => fieldLabels[key] || key);
+
+    if (errorCount === 1) {
+        return `Corrija o campo: ${errorFields[0]}`;
+    } else if (errorCount <= 3) {
+        return `Corrija os campos: ${errorFields.join(', ')}`;
+    } else {
+        return `Corrija ${errorCount} campos com erro`;
+    }
 };
 
 // Hook de estado
@@ -565,13 +616,14 @@ const UserProfileTemplate = ({ onLogout }) => {
 
     const handleSave = useCallback(async () => {
         if (isSecretary) {
-            actions.setAlert('Sem permissão para editar.', 'warning');
+            actions.setAlert('Sem permissao para editar.', 'warning');
             return;
         }
         const errors = validateFormData(state.formData);
         if (Object.keys(errors).length > 0) {
             actions.setErrors(errors);
-            actions.setAlert('Corrija os erros antes de salvar.', 'error');
+            const errorMessage = getErrorMessage(errors);
+            actions.setAlert(errorMessage, 'error');
             return;
         }
         try {
@@ -1033,14 +1085,14 @@ const UserProfileTemplate = ({ onLogout }) => {
                                     {state.isEditing ? (
                                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr' }, gap: { xs: 2, md: 3 } }}>
                                             <Box sx={{ gridColumn: { sm: 'span 2', lg: 'span 2' } }}>
-                                                <ModernField label="Rua" value={state.formData.address?.street} onChange={handleChange('address.street')} icon={HomeIcon} disabled={isSecretary} />
+                                                <ModernField label="Rua" value={state.formData.address?.street} onChange={handleChange('address.street')} icon={HomeIcon} disabled={isSecretary} error={state.errors['address.street']} />
                                             </Box>
-                                            <ModernField label="Número" value={state.formData.address?.number} onChange={handleChange('address.number')} disabled={isSecretary} />
+                                            <ModernField label="Numero" value={state.formData.address?.number} onChange={handleChange('address.number')} disabled={isSecretary} error={state.errors['address.number']} />
                                             <ModernField label="Complemento" value={state.formData.address?.complement} onChange={handleChange('address.complement')} icon={ApartmentIcon} disabled={isSecretary} />
-                                            <ModernField label="Bairro" value={state.formData.address?.neighborhood} onChange={handleChange('address.neighborhood')} disabled={isSecretary} />
-                                            <ModernField label="CEP" value={state.formData.address?.cep} onChange={handleChange('address.cep')} icon={PinDropIcon} disabled={isSecretary} />
-                                            <ModernField label="Cidade" value={state.formData.address?.city} onChange={handleChange('address.city')} icon={LocationCityIcon} disabled={isSecretary} />
-                                            <ModernField label="Estado" value={state.formData.address?.state} onChange={handleChange('address.state')} disabled={isSecretary} />
+                                            <ModernField label="Bairro" value={state.formData.address?.neighborhood} onChange={handleChange('address.neighborhood')} disabled={isSecretary} error={state.errors['address.neighborhood']} />
+                                            <ModernField label="CEP" value={state.formData.address?.cep} onChange={handleChange('address.cep')} icon={PinDropIcon} disabled={isSecretary} error={state.errors['address.cep']} />
+                                            <ModernField label="Cidade" value={state.formData.address?.city} onChange={handleChange('address.city')} icon={LocationCityIcon} disabled={isSecretary} error={state.errors['address.city']} />
+                                            <ModernField label="Estado" value={state.formData.address?.state} onChange={handleChange('address.state')} disabled={isSecretary} error={state.errors['address.state']} />
                                         </Box>
                                     ) : (
                                         <Box>
@@ -1084,17 +1136,17 @@ const UserProfileTemplate = ({ onLogout }) => {
                                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr' }, gap: { xs: 2, md: 3 } }}>
                                             <ModernField label="CNPJ" value={state.formData.cnpj} onChange={handleChange('cnpj')} error={state.errors.cnpj} icon={BusinessIcon} disabled={isSecretary} />
                                             <Box sx={{ gridColumn: { lg: 'span 2' } }}>
-                                                <ModernField label="Razão Social" value={state.formData.razao_social} onChange={handleChange('razao_social')} icon={BusinessIcon} disabled={isSecretary} />
+                                                <ModernField label="Razao Social" value={state.formData.razao_social} onChange={handleChange('razao_social')} error={state.errors.razao_social} icon={BusinessIcon} disabled={isSecretary} />
                                             </Box>
                                             <Box sx={{ gridColumn: { lg: 'span 2' } }}>
                                                 <ModernField label="Nome Fantasia" value={state.formData.nome_fantasia} onChange={handleChange('nome_fantasia')} icon={BusinessIcon} disabled={isSecretary} />
                                             </Box>
-                                            <ModernField label="Inscrição Municipal" value={state.formData.inscricao_municipal} onChange={handleChange('inscricao_municipal')} icon={NumbersIcon} disabled={isSecretary} />
-                                            <ModernField label="Inscrição Estadual" value={state.formData.inscricao_estadual} onChange={handleChange('inscricao_estadual')} icon={NumbersIcon} disabled={isSecretary} />
-                                            <ModernField label="Código IBGE Município" value={state.formData.codigo_municipio_ibge} onChange={handleChange('codigo_municipio_ibge')} icon={NumbersIcon} disabled={isSecretary} />
-                                            <ModernField label="Telefone Comercial" value={state.formData.telefone_comercial} onChange={handleChange('telefone_comercial')} icon={PhoneIcon} disabled={isSecretary} />
+                                            <ModernField label="Inscricao Municipal" value={state.formData.inscricao_municipal} onChange={handleChange('inscricao_municipal')} icon={NumbersIcon} disabled={isSecretary} />
+                                            <ModernField label="Inscricao Estadual" value={state.formData.inscricao_estadual} onChange={handleChange('inscricao_estadual')} icon={NumbersIcon} disabled={isSecretary} />
+                                            <ModernField label="Codigo IBGE Municipio" value={state.formData.codigo_municipio_ibge} onChange={handleChange('codigo_municipio_ibge')} icon={NumbersIcon} disabled={isSecretary} />
+                                            <ModernField label="Telefone Comercial" value={state.formData.telefone_comercial} onChange={handleChange('telefone_comercial')} error={state.errors.telefone_comercial} icon={PhoneIcon} disabled={isSecretary} />
                                             <Box sx={{ gridColumn: { lg: 'span 2' } }}>
-                                                <ModernField label="Email Fiscal" value={state.formData.email_fiscal} onChange={handleChange('email_fiscal')} icon={EmailIcon} type="email" disabled={isSecretary} />
+                                                <ModernField label="Email Fiscal" value={state.formData.email_fiscal} onChange={handleChange('email_fiscal')} error={state.errors.email_fiscal} icon={EmailIcon} type="email" disabled={isSecretary} />
                                             </Box>
                                         </Box>
                                     ) : (

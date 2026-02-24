@@ -123,7 +123,7 @@ export default function ConvenioForm({ open, onClose, convenioToEdit = null, onS
       onClose();
     } catch (err) {
       console.error('Error saving convenio:', err);
-      setSubmitError(err.message || 'Erro ao salvar convenio');
+      setSubmitError(err.message || 'Erro ao salvar convênio');
     }
   };
 
@@ -148,7 +148,7 @@ export default function ConvenioForm({ open, onClose, convenioToEdit = null, onS
       fullWidth
     >
       <DialogTitle>
-        {isEditing ? 'Editar Convenio' : 'Novo Convenio'}
+        {isEditing ? 'Editar Convênio' : 'Novo Convênio'}
       </DialogTitle>
 
       <DialogContent dividers>
@@ -162,7 +162,7 @@ export default function ConvenioForm({ open, onClose, convenioToEdit = null, onS
           {/* Nome */}
           <Grid item xs={12}>
             <TextField
-              label="Nome do Convenio"
+              label="Nome do Convênio"
               value={formData.nome}
               onChange={handleChange('nome')}
               fullWidth

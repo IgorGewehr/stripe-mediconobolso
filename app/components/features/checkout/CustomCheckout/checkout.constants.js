@@ -20,52 +20,24 @@ export const brazilianStates = [
     { value: 'TO', label: 'Tocantins' }
 ];
 
-// Subscription plans data
+// Subscription plans data - Plano único de R$147/mês
 export const plansData = {
     monthly: {
         id: 'monthly',
-        name: 'Pro',
-        price: 'R$127',
-        pricePerMonth: 'R$127/mês',
+        name: 'Médico no Bolso',
+        price: 'R$147',
+        pricePerMonth: 'R$147/mês',
         period: '/mês',
-        features: [
-            'Acesso a todas as funcionalidades',
-            'Pacientes ilimitados',
-            'Suporte prioritário',
-            'Atualizações gratuitas'
-        ],
-        priceId: 'price_1QyKrNI2qmEooUtqKfgYIemz'
-    },
-    quarterly: {
-        id: 'quarterly',
-        name: 'Trimestral',
-        price: 'R$345',
-        pricePerMonth: 'R$115/mês',
-        period: '/trimestre',
-        features: [
-            'Acesso a todas as funcionalidades',
-            'Pacientes ilimitados',
-            'Suporte prioritário',
-            'Atualizações gratuitas',
-            'Economia de 9% em relação ao plano mensal'
-        ],
-        priceId: 'price_1RIH5eI2qmEooUtqsdXyxnEP'
-    },
-    annual: {
-        id: 'annual',
-        name: 'Especialista',
-        price: 'R$1143',
-        pricePerMonth: 'R$95,25/mês',
-        period: '/ano',
         popular: true,
         features: [
             'Acesso a todas as funcionalidades',
             'Pacientes ilimitados',
             'Suporte prioritário',
             'Atualizações gratuitas',
-            'Economia de 25% em relação ao plano mensal'
+            'IA para análise de exames',
+            'Geração de receitas e anamnese'
         ],
-        priceId: 'price_1QyKwWI2qmEooUtqOJ9lCFBl'
+        priceId: 'price_1SpgnZI2qmEooUtqtaCEw3jN'
     }
 };
 

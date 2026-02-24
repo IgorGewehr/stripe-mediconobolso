@@ -48,3 +48,6 @@ export { default as RepassesList } from './RepassesList';
 // Convenios
 export { default as ConveniosList } from './ConveniosList';
 export { default as ConvenioForm } from './ConvenioForm';
+
+// Categorias
+export { default as CategoriasList } from './CategoriasList';

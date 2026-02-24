@@ -23,7 +23,8 @@ import {
     NotebookPen,
     Receipt,
     FileX,
-    FileCheck2
+    FileCheck2,
+    Package
 } from "lucide-react";
 import { Avatar } from "@mui/material";
 
@@ -67,7 +68,8 @@ const Sidebar = ({
             { label: "Agenda", icon: Calendar },
             { label: "Conversas", icon: MessageSquare },
             { label: "CRM", icon: BarChart3 },
-            { label: "Financeiro", icon: DollarSign }
+            { label: "Financeiro", icon: DollarSign },
+            { label: "Estoque", icon: Package }
         ],
         faturamento: [
             { label: "TISS", icon: Receipt, disabled: true, comingSoon: true },

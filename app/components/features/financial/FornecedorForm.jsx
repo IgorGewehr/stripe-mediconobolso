@@ -63,6 +63,7 @@ export default function FornecedorForm({
   onClose,
   fornecedorToEdit = null,
   onSuccess,
+  viewMode = false,
 }) {
   const { createFornecedor, updateFornecedor, saving, error: saveError } = useFornecedores({ autoLoad: false });
 
@@ -228,10 +229,16 @@ export default function FornecedorForm({
     onClose();
   };
 
+  const getDialogTitle = () => {
+    if (viewMode) return 'Visualizar Fornecedor';
+    if (fornecedorToEdit) return 'Editar Fornecedor';
+    return 'Novo Fornecedor';
+  };
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>
-        {fornecedorToEdit ? 'Editar Fornecedor' : 'Novo Fornecedor'}
+        {getDialogTitle()}
       </DialogTitle>
 
       <DialogContent>
@@ -261,9 +268,10 @@ export default function FornecedorForm({
                 onChange={handleChange('razaoSocial')}
                 fullWidth
                 size="small"
-                required
+                required={!viewMode}
                 error={!!errors.razaoSocial}
                 helperText={errors.razaoSocial}
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -273,6 +281,7 @@ export default function FornecedorForm({
                 onChange={handleChange('nomeFantasia')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -283,6 +292,7 @@ export default function FornecedorForm({
                 fullWidth
                 size="small"
                 placeholder="00.000.000/0000-00"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -292,6 +302,7 @@ export default function FornecedorForm({
                 onChange={handleChange('inscricaoEstadual')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -301,6 +312,7 @@ export default function FornecedorForm({
                 onChange={handleChange('inscricaoMunicipal')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
 
@@ -319,6 +331,7 @@ export default function FornecedorForm({
                 fullWidth
                 size="small"
                 placeholder="(00) 0000-0000"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -329,6 +342,7 @@ export default function FornecedorForm({
                 fullWidth
                 size="small"
                 placeholder="(00) 00000-0000"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -341,6 +355,7 @@ export default function FornecedorForm({
                 type="email"
                 error={!!errors.email}
                 helperText={errors.email}
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -350,15 +365,17 @@ export default function FornecedorForm({
                 onChange={handleChange('website')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small">
+              <FormControl fullWidth size="small" disabled={viewMode}>
                 <InputLabel>Categoria</InputLabel>
                 <Select
                   value={formData.categoria}
                   onChange={handleChange('categoria')}
                   label="Categoria"
+                  readOnly={viewMode}
                 >
                   <MenuItem value="">Sem categoria</MenuItem>
                   {CATEGORIAS.map((cat) => (
@@ -376,6 +393,7 @@ export default function FornecedorForm({
                 size="small"
                 multiline
                 rows={2}
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
           </Grid>
@@ -392,6 +410,7 @@ export default function FornecedorForm({
                 fullWidth
                 size="small"
                 placeholder="00000-000"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={8}>
@@ -401,6 +420,7 @@ export default function FornecedorForm({
                 onChange={handleChange('logradouro')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -410,6 +430,7 @@ export default function FornecedorForm({
                 onChange={handleChange('numero')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={8}>
@@ -419,6 +440,7 @@ export default function FornecedorForm({
                 onChange={handleChange('complemento')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -428,6 +450,7 @@ export default function FornecedorForm({
                 onChange={handleChange('bairro')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={5}>
@@ -437,15 +460,17 @@ export default function FornecedorForm({
                 onChange={handleChange('cidade')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={3}>
-              <FormControl fullWidth size="small">
+              <FormControl fullWidth size="small" disabled={viewMode}>
                 <InputLabel>UF</InputLabel>
                 <Select
                   value={formData.uf}
                   onChange={handleChange('uf')}
                   label="UF"
+                  readOnly={viewMode}
                 >
                   <MenuItem value="">-</MenuItem>
                   {UFS.map((uf) => (
@@ -468,15 +493,17 @@ export default function FornecedorForm({
                 fullWidth
                 size="small"
                 placeholder="Ex: Banco do Brasil"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small">
+              <FormControl fullWidth size="small" disabled={viewMode}>
                 <InputLabel>Tipo de Conta</InputLabel>
                 <Select
                   value={formData.tipoConta}
                   onChange={handleChange('tipoConta')}
                   label="Tipo de Conta"
+                  readOnly={viewMode}
                 >
                   <MenuItem value="">-</MenuItem>
                   {TIPOS_CONTA.map((tipo) => (
@@ -492,6 +519,7 @@ export default function FornecedorForm({
                 onChange={handleChange('agencia')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12} sm={8}>
@@ -501,6 +529,7 @@ export default function FornecedorForm({
                 onChange={handleChange('conta')}
                 fullWidth
                 size="small"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -511,6 +540,7 @@ export default function FornecedorForm({
                 fullWidth
                 size="small"
                 placeholder="CPF, CNPJ, email, telefone ou chave aleatoria"
+                InputProps={{ readOnly: viewMode }}
               />
             </Grid>
           </Grid>
@@ -519,15 +549,17 @@ export default function FornecedorForm({
 
       <DialogActions>
         <Button onClick={handleClose} disabled={saving}>
-          Cancelar
+          {viewMode ? 'Fechar' : 'Cancelar'}
         </Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={saving}
-        >
-          {saving ? <CircularProgress size={24} /> : fornecedorToEdit ? 'Salvar' : 'Criar'}
-        </Button>
+        {!viewMode && (
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={saving}
+          >
+            {saving ? <CircularProgress size={24} /> : fornecedorToEdit ? 'Salvar' : 'Criar'}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

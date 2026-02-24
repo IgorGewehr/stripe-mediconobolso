@@ -46,3 +46,6 @@ export { default as FinancialTemplate } from './financialTemplate';
 
 // CRM
 export { default as CRMTemplate } from './crmTemplate';
+
+// Stock
+export { default as StockTemplate } from './stockTemplate';

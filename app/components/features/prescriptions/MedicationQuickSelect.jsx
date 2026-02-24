@@ -29,6 +29,7 @@ export const MedicationQuickSelect = memo(({
     recentMedications = [],
     onSelect,
     onToggleFavorite,
+    onAddManually,
     isLoading = false,
     className
 }) => {
@@ -38,7 +39,7 @@ export const MedicationQuickSelect = memo(({
 
     if (isEmpty && !isLoading) {
         return (
-            <EmptyState onAddFirst={() => {}} />
+            <EmptyState onAddFirst={onAddManually} />
         );
     }
 

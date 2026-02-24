@@ -85,7 +85,7 @@ export async function POST(request) {
                             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #EEEEEE;">
                                 <p style="color: #666666; font-size: 14px; margin: 0;">
                                     <strong>Dúvidas sobre o pagamento?</strong><br>
-                                    Entre em contato: <a href="mailto:suporte@mediconobolso.app" style="color: #F9B934; text-decoration: none; font-weight: bold;">suporte@mediconobolso.app</a>
+                                    Entre em contato: <a href="mailto:suporte@doctorcare.io" style="color: #F9B934; text-decoration: none; font-weight: bold;">suporte@doctorcare.io</a>
                                 </p>
                             </div>
                         </div>

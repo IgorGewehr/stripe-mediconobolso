@@ -28,6 +28,7 @@ import {
     ClinicManagementTemplate,
     FinancialTemplate,
     CRMTemplate,
+    StockTemplate,
     OnboardingProvider
 } from "../components";
 import { ClinicalNotesPage } from "../components/features/clinical-notes";
@@ -456,6 +457,10 @@ export default function AppLayout({ children }) {
                 // Sistema de CRM
                 return <CRMTemplate />;
 
+            case "estoque":
+                // Sistema de Estoque
+                return <StockTemplate />;
+
             case "notas":
                 // Notas Clínicas Avançadas (Tiptap/Notion-like)
                 return (
@@ -615,6 +620,8 @@ export default function AppLayout({ children }) {
             case "nfse":
             case "fiscal":
                 return "Nota Fiscal de Serviço Eletrônica";
+            case "estoque":
+                return "Gestao de Estoque";
             default:
                 return activePage;
         }

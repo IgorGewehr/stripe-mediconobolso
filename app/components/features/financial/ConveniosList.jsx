@@ -48,7 +48,7 @@ export default function ConveniosList({ onAdd, onEdit, onDelete }) {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h6" fontWeight={600}>
-          Convenios
+          Convênios
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Atualizar">
@@ -62,7 +62,7 @@ export default function ConveniosList({ onAdd, onEdit, onDelete }) {
             onClick={onAdd}
             size="small"
           >
-            Novo Convenio
+            Novo Convênio
           </Button>
         </Box>
       </Box>
@@ -108,7 +108,7 @@ export default function ConveniosList({ onAdd, onEdit, onDelete }) {
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">
-                    {searchTerm ? 'Nenhum convenio encontrado' : 'Nenhum convenio cadastrado'}
+                    {searchTerm ? 'Nenhum convênio encontrado' : 'Nenhum convênio cadastrado'}
                   </Typography>
                 </TableCell>
               </TableRow>

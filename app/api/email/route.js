@@ -38,7 +38,7 @@ export async function POST(request) {
 
         // Definir valores padrão
         const userName = name || email.split('@')[0];
-        const finalAppLink = appLink || `${process.env.NEXT_PUBLIC_APP_URL || 'https://mediconobolso.app'}`;
+        const finalAppLink = appLink || `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.doctorcare.io'}`;
 
         console.log(`📧 Solicitação de envio de email - Tipo: ${type}, Para: ${email}, Nome: ${userName}`);
 

@@ -55,8 +55,9 @@ import {
   RepassesList,
   ConveniosList,
   ConvenioForm,
+  CategoriasList,
 } from '../features/financial';
-import { useSugestoesFinanceiras } from '../hooks/useFinancial';
+import { useSugestoesFinanceiras, useFornecedores } from '../hooks/useFinancial';
 
 // Theme colors - Design system minimalista
 const theme = {
@@ -83,7 +84,7 @@ function TabPanel({ children, value, index }) {
  */
 function ConfigDrawer({ open, onClose, onSelectOption }) {
   const configOptions = [
-    { id: 'convenios', label: 'Convenios', icon: ConveniosIcon, description: 'Gerenciar convenios/planos' },
+    { id: 'convenios', label: 'Convênios', icon: ConveniosIcon, description: 'Gerenciar convênios/planos' },
     { id: 'fornecedores', label: 'Fornecedores', icon: FornecedoresIcon, description: 'Gerenciar fornecedores' },
     { id: 'contas-bancarias', label: 'Contas Bancarias', icon: ContasBancariasIcon, description: 'Gerenciar contas' },
     { id: 'categorias', label: 'Categorias', icon: CategoriasIcon, description: 'Categorias financeiras' },
@@ -250,6 +251,7 @@ export default function FinancialTemplate() {
   // Dialog states - Fornecedores
   const [fornecedorFormOpen, setFornecedorFormOpen] = useState(false);
   const [fornecedorToEdit, setFornecedorToEdit] = useState(null);
+  const [fornecedorViewMode, setFornecedorViewMode] = useState(false);
 
   // Dialog states - Contas Bancarias
   const [contaBancariaFormOpen, setContaBancariaFormOpen] = useState(false);
@@ -266,7 +268,8 @@ export default function FinancialTemplate() {
 
   // Load patients and convenios for ContaReceberForm
   const { patients, loading: loadingPatients } = usePatients({ autoLoad: true });
-  const { convenios, loading: loadingConvenios } = useConvenios({ autoLoad: true });
+  const { deactivateFornecedor, loadFornecedores } = useFornecedores({ autoLoad: false });
+  const { convenios, loading: loadingConvenios, deleteConvenio, refresh: refreshConvenios } = useConvenios({ autoLoad: true });
 
   // Tab change handler
   const handleTabChange = (event, newValue) => {
@@ -371,25 +374,37 @@ export default function FinancialTemplate() {
   // Fornecedor handlers
   const handleAddFornecedor = useCallback(() => {
     setFornecedorToEdit(null);
+    setFornecedorViewMode(false);
     setFornecedorFormOpen(true);
   }, []);
 
   const handleViewFornecedor = useCallback((fornecedor) => {
-    console.log('View fornecedor:', fornecedor);
+    setFornecedorToEdit(fornecedor);
+    setFornecedorViewMode(true);
+    setFornecedorFormOpen(true);
   }, []);
 
   const handleEditFornecedor = useCallback((fornecedor) => {
     setFornecedorToEdit(fornecedor);
+    setFornecedorViewMode(false);
     setFornecedorFormOpen(true);
   }, []);
 
-  const handleDeactivateFornecedor = useCallback((fornecedor) => {
-    console.log('Deactivate fornecedor:', fornecedor);
-  }, []);
+  const handleDeactivateFornecedor = useCallback(async (fornecedor) => {
+    try {
+      await deactivateFornecedor(fornecedor.id);
+      snackbar.showSuccess('Fornecedor desativado com sucesso!');
+      loadFornecedores();
+    } catch (err) {
+      console.error('Error deactivating fornecedor:', err);
+      snackbar.showError('Erro ao desativar fornecedor');
+    }
+  }, [deactivateFornecedor, loadFornecedores, snackbar]);
 
   const handleFornecedorFormClose = useCallback(() => {
     setFornecedorFormOpen(false);
     setFornecedorToEdit(null);
+    setFornecedorViewMode(false);
   }, []);
 
   const handleFornecedorFormSuccess = useCallback(() => {
@@ -445,9 +460,16 @@ export default function FinancialTemplate() {
     setConvenioFormOpen(true);
   }, []);
 
-  const handleDeleteConvenio = useCallback((convenio) => {
-    console.log('Delete convenio:', convenio);
-  }, []);
+  const handleDeleteConvenio = useCallback(async (convenio) => {
+    try {
+      await deleteConvenio(convenio.id);
+      snackbar.showSuccess('Convênio excluído com sucesso!');
+      refreshConvenios();
+    } catch (err) {
+      console.error('Error deleting convenio:', err);
+      snackbar.showError('Erro ao excluir convênio');
+    }
+  }, [deleteConvenio, refreshConvenios, snackbar]);
 
   const handleConvenioFormClose = useCallback(() => {
     setConvenioFormOpen(false);
@@ -455,7 +477,7 @@ export default function FinancialTemplate() {
   }, []);
 
   const handleConvenioFormSuccess = useCallback(() => {
-    snackbar.showSuccess(convenioToEdit ? 'Convenio atualizado!' : 'Convenio criado!');
+    snackbar.showSuccess(convenioToEdit ? 'Convênio atualizado!' : 'Convênio criado!');
   }, [convenioToEdit, snackbar]);
 
   // Repasses handlers
@@ -536,7 +558,7 @@ export default function FinancialTemplate() {
               <CloseIcon />
             </IconButton>
             <Typography variant="h6" fontWeight={600}>
-              Convenios
+              Convênios
             </Typography>
           </Box>
           <Divider />
@@ -546,6 +568,25 @@ export default function FinancialTemplate() {
               onEdit={handleEditConvenio}
               onDelete={handleDeleteConvenio}
             />
+          </Box>
+        </Box>
+      );
+    }
+
+    if (configView === 'categorias') {
+      return (
+        <Box>
+          <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={handleConfigBack} size="small">
+              <CloseIcon />
+            </IconButton>
+            <Typography variant="h6" fontWeight={600}>
+              Categorias Financeiras
+            </Typography>
+          </Box>
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <CategoriasList />
           </Box>
         </Box>
       );
@@ -734,6 +775,7 @@ export default function FinancialTemplate() {
         onClose={handleFornecedorFormClose}
         fornecedorToEdit={fornecedorToEdit}
         onSuccess={handleFornecedorFormSuccess}
+        viewMode={fornecedorViewMode}
       />
 
       {/* Dialogs - Contas Bancarias */}
