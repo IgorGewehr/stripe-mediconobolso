@@ -140,16 +140,16 @@ export default function StockTemplate() {
 
   const handleSaveItem = async () => {
     if (!formData.itemName.trim()) {
-      showSnackbar('Nome do item e obrigatorio', 'error');
+      showSnackbar('Nome do item é obrigatório', 'error');
       return;
     }
     try {
       if (editingItem) {
         await updateItem(editingItem.id, formData);
-        showSnackbar('Item atualizado com sucesso');
+        showSnackbar('Item atualizado com sucesso!');
       } else {
         await createItem(formData);
-        showSnackbar('Item criado com sucesso');
+        showSnackbar('Item criado com sucesso!');
       }
       setFormOpen(false);
     } catch (err) {
@@ -162,7 +162,7 @@ export default function StockTemplate() {
     if (!deletingItem) return;
     try {
       await deleteItem(deletingItem.id);
-      showSnackbar('Item removido com sucesso');
+      showSnackbar('Item removido com sucesso!');
       setDeleteDialogOpen(false);
       setDeletingItem(null);
     } catch (err) {
@@ -181,10 +181,10 @@ export default function StockTemplate() {
     if (!movementItem || movementData.quantity <= 0) return;
     try {
       await registerMovement(movementItem.id, movementData.type, movementData.quantity, movementData.notes);
-      showSnackbar(`Movimentacao de ${movementData.type === 'entrada' ? 'entrada' : 'saida'} registrada`);
+      showSnackbar(`Movimentação de ${movementData.type === 'entrada' ? 'entrada' : 'saida'} registrada`);
       setMovementDialogOpen(false);
     } catch (err) {
-      showSnackbar(err.userMessage || 'Erro ao registrar movimentacao', 'error');
+      showSnackbar(err.userMessage || 'Erro ao registrar movimentação', 'error');
     }
   };
 
@@ -198,7 +198,7 @@ export default function StockTemplate() {
       const response = await stockService.getMovementHistory(item.id);
       setHistoryData(response.items || []);
     } catch (err) {
-      showSnackbar('Erro ao carregar historico', 'error');
+      showSnackbar('Erro ao carregar histórico', 'error');
     } finally {
       setHistoryLoading(false);
     }
@@ -367,12 +367,12 @@ export default function StockTemplate() {
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                        <Tooltip title="Entrada/Saida">
+                        <Tooltip title="Entrada/Saída">
                           <IconButton size="small" onClick={() => handleOpenMovement(item)} sx={{ color: theme.primary }}>
                             <EntradaIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Historico">
+                        <Tooltip title="Histórico">
                           <IconButton size="small" onClick={() => handleOpenHistory(item)}>
                             <HistoryIcon fontSize="small" />
                           </IconButton>
@@ -439,7 +439,7 @@ export default function StockTemplate() {
               />
             )}
             <TextField
-              label="Quantidade Minima"
+              label="Quantidade Mínima"
               type="number"
               value={formData.minimumQuantity}
               onChange={(e) => setFormData((p) => ({ ...p, minimumQuantity: parseInt(e.target.value) || 0 }))}
@@ -455,7 +455,7 @@ export default function StockTemplate() {
             fullWidth
           />
           <TextField
-            label="Observacoes"
+            label="Observações"
             value={formData.notes}
             onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
             multiline
@@ -478,7 +478,7 @@ export default function StockTemplate() {
 
       {/* ---- Delete Confirmation Dialog ---- */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Confirmar Exclusao</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Confirmar Exclusão</DialogTitle>
         <DialogContent>
           <Typography>
             Deseja realmente excluir o item <strong>{deletingItem?.itemName}</strong>?
@@ -501,7 +501,7 @@ export default function StockTemplate() {
       {/* ---- Movement Dialog ---- */}
       <Dialog open={movementDialogOpen} onClose={() => setMovementDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>
-          Movimentacao - {movementItem?.itemName}
+          Movimentação - {movementItem?.itemName}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important' }}>
           <Typography sx={{ fontSize: 14, color: theme.text.secondary }}>
@@ -535,7 +535,7 @@ export default function StockTemplate() {
             inputProps={{ min: 1 }}
           />
           <TextField
-            label="Observacoes"
+            label="Observações"
             value={movementData.notes}
             onChange={(e) => setMovementData((p) => ({ ...p, notes: e.target.value }))}
             multiline
@@ -564,7 +564,7 @@ export default function StockTemplate() {
       {/* ---- History Dialog ---- */}
       <Dialog open={historyDialogOpen} onClose={() => setHistoryDialogOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle sx={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Historico - {historyItem?.itemName}
+          Histórico - {historyItem?.itemName}
           <IconButton onClick={() => setHistoryDialogOpen(false)} size="small">
             <CloseIcon />
           </IconButton>
@@ -576,7 +576,7 @@ export default function StockTemplate() {
             </Box>
           ) : historyData.length === 0 ? (
             <Typography sx={{ textAlign: 'center', py: 4, color: theme.text.secondary }}>
-              Nenhuma movimentacao registrada
+              Nenhuma movimentação registrada
             </Typography>
           ) : (
             <Table size="small">
@@ -585,7 +585,7 @@ export default function StockTemplate() {
                   <TableCell sx={{ fontWeight: 700 }}>Data</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
                   <TableCell align="center" sx={{ fontWeight: 700 }}>Quantidade</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Observacoes</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Observações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
